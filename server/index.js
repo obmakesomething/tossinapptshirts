@@ -34,7 +34,7 @@ function getS3Client() {
 
 function buildPublicUrl(key) {
   if (!IMAGE_BASE_URL) return '';
-  return `${IMAGE_BASE_URL.replace(/\\/$/, '')}/${key}`;
+  return `${IMAGE_BASE_URL.replace(/\/$/, '')}/${key}`;
 }
 
 async function uploadToS3({ key, body, contentType }) {
