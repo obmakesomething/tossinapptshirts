@@ -149,7 +149,7 @@ function Page() {
           {selectedColor} · {selectedSize?.label} · {selectedPrint.label} · {quantity}개
         </Text>
         <Text style={styles.summaryMeta}>
-          예상 결제 {formatPrice(pricing.customerTotal)} (배송비{' '}
+          예상 결제(수수료 포함) {formatPrice(pricing.customerTotal)} (배송비{' '}
           {pricing.shippingFee === 0 ? '무료' : formatPrice(pricing.shippingFee)})
         </Text>
         <Text style={styles.summaryMeta}>

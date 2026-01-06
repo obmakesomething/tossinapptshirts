@@ -1,6 +1,6 @@
 export const FREE_SHIPPING_THRESHOLD = 70000;
 export const SHIPPING_FEE = 3000;
-export const MARGIN_TARGET = 0.22;
+export const MARGIN_TARGET = 0.2;
 export const MARGIN_MIN = 0.2;
 export const MARGIN_MAX = 0.25;
 export const ROUND_STEP = 1000;

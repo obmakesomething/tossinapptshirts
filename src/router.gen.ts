@@ -4,6 +4,7 @@ import { Route as _DesignsRoute } from '../pages/designs';
 import { Route as _EditorRoute } from '../pages/editor';
 import { Route as _GenerateRoute } from '../pages/generate';
 import { Route as _IndexRoute } from '../pages/';
+import { Route as _OrderRoute } from '../pages/order';
 import { Route as _PreviewRoute } from '../pages/preview';
 import { Route as _ProductsRoute } from '../pages/products';
 import { Route as _UploadRoute } from '../pages/upload';
@@ -14,6 +15,7 @@ declare module '@granite-js/react-native' {
     '/editor': (typeof _EditorRoute)['_inputType'];
     '/generate': (typeof _GenerateRoute)['_inputType'];
     '/': (typeof _IndexRoute)['_inputType'];
+    '/order': (typeof _OrderRoute)['_inputType'];
     '/preview': (typeof _PreviewRoute)['_inputType'];
     '/products': (typeof _ProductsRoute)['_inputType'];
     '/upload': (typeof _UploadRoute)['_inputType'];
@@ -24,6 +26,7 @@ declare module '@granite-js/react-native' {
     '/editor': (typeof _EditorRoute)['_outputType'];
     '/generate': (typeof _GenerateRoute)['_outputType'];
     '/': (typeof _IndexRoute)['_outputType'];
+    '/order': (typeof _OrderRoute)['_outputType'];
     '/preview': (typeof _PreviewRoute)['_outputType'];
     '/products': (typeof _ProductsRoute)['_outputType'];
     '/upload': (typeof _UploadRoute)['_outputType'];

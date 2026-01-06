@@ -94,12 +94,6 @@ function Page() {
             <Text style={styles.productMeta}>
               모델명 {selectedProduct.modelName}
             </Text>
-            {selectedProduct.originalPrice &&
-            selectedProduct.originalPrice > (selectedProduct.price ?? 0) ? (
-              <Text style={styles.productOriginal}>
-                정가 {formatPrice(selectedProduct.originalPrice)}
-              </Text>
-            ) : null}
           </View>
           <SecondaryButton
             label="상품 변경"
@@ -341,7 +335,7 @@ function Page() {
       </Card>
 
       <Card style={styles.priceCard}>
-        <Text style={styles.priceTitle}>예상 비용</Text>
+        <Text style={styles.priceTitle}>판매가 (수수료 포함)</Text>
         <Text style={styles.priceValue}>{formatPrice(pricing.customerTotal)}</Text>
         <Text style={styles.priceNote}>
           제품가 {formatPrice(basePrice)} + 프린트 {formatPrice(selectedPrintOption.price)}
@@ -352,7 +346,7 @@ function Page() {
           {` ${formatPrice(FREE_SHIPPING_THRESHOLD)} 이상 무료배송`}
         </Text>
         <Text style={styles.priceNote}>
-          수수료 포함 {formatPrice(pricing.marginAmount)} ({Math.round(pricing.marginRate * 100)}%)
+          수수료 {formatPrice(pricing.marginAmount)} ({Math.round(pricing.marginRate * 100)}%)
         </Text>
       </Card>
 
@@ -395,12 +389,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: theme.colors.textSecondary,
     marginTop: 4,
-  },
-  productOriginal: {
-    fontSize: 12,
-    color: theme.colors.muted,
-    marginTop: 2,
-    textDecorationLine: 'line-through',
   },
   section: {
     marginBottom: theme.spacing.lg,

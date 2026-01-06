@@ -1,6 +1,7 @@
 import { createRoute } from '@granite-js/react-native';
 import React, { useState } from 'react';
-import { StyleSheet, Switch, Text, View, TextInput, Image } from 'react-native';
+import { StyleSheet, Text, View, Image, ActivityIndicator } from 'react-native';
+import { launchImageLibrary } from 'react-native-image-picker';
 import {
   Card,
   PrimaryButton,
@@ -9,6 +10,7 @@ import {
   TopBar,
   theme,
 } from '../components/ui';
+import { API_BASE_URL } from '../config';
 import { useCatalog } from '../context/catalog';
 
 export const Route = createRoute('/upload', {
@@ -17,9 +19,9 @@ export const Route = createRoute('/upload', {
 
 function Page() {
   const navigation = Route.useNavigation();
-  const [removeBackground, setRemoveBackground] = useState(true);
   const { designImageUri, setDesignImageUri } = useCatalog();
-  const [imageUrl, setImageUrl] = useState(designImageUri ?? '');
+  const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState('');
 
   const goNext = () => {
     navigation.navigate('/editor');
@@ -27,6 +29,46 @@ function Page() {
 
   const goGenerate = () => {
     navigation.navigate('/generate');
+  };
+
+  const handlePick = async () => {
+    setError('');
+    const result = await launchImageLibrary({
+      mediaType: 'photo',
+      selectionLimit: 1,
+      includeBase64: true,
+      quality: 0.92,
+    });
+    if (result.didCancel) return;
+    const asset = result.assets?.[0];
+    if (!asset?.base64) {
+      setError('이미지 선택에 실패했어요.');
+      return;
+    }
+    setUploading(true);
+    try {
+      const response = await fetch(`${API_BASE_URL}/v1/images/upload`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          filename: asset.fileName || 'upload',
+          base64: asset.base64,
+          contentType: asset.type || 'image/jpeg',
+        }),
+      });
+      if (!response.ok) {
+        throw new Error('업로드에 실패했어요.');
+      }
+      const data = await response.json();
+      if (!data.url) {
+        throw new Error('업로드 결과가 올바르지 않아요.');
+      }
+      setDesignImageUri(data.url);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '업로드에 실패했어요.');
+    } finally {
+      setUploading(false);
+    }
   };
 
   return (
@@ -46,50 +88,23 @@ function Page() {
             <Text style={styles.previewText}>이미지를 선택해 주세요</Text>
           )}
         </View>
-        <TextInput
-          style={styles.urlInput}
-          placeholder="이미지 URL을 붙여 넣어주세요"
-          placeholderTextColor={theme.colors.muted}
-          value={imageUrl}
-          onChangeText={setImageUrl}
-        />
         <SecondaryButton
-          label="URL 적용"
-          onPress={() => setDesignImageUri(imageUrl.trim() || null)}
+          label={uploading ? '업로드 중...' : '파일 선택'}
+          onPress={handlePick}
+          disabled={uploading}
           style={styles.urlButton}
         />
+        {uploading ? (
+          <View style={styles.loadingRow}>
+            <ActivityIndicator color={theme.colors.primary} />
+            <Text style={styles.loadingText}>이미지 업로드 중...</Text>
+          </View>
+        ) : null}
         <Text style={styles.helperText}>
-          투명 배경 PNG면 자동 유지돼요.
+          투명 배경 PNG면 자동 유지돼요. 배경 제거는 주문 단계에서 적용됩니다.
         </Text>
       </Card>
-
-      <Card style={styles.optionCard}>
-        <View style={styles.optionRow}>
-          <View>
-            <Text style={styles.optionTitle}>배경 제거</Text>
-            <Text style={styles.optionDesc}>
-              인물/사물 배경을 제거해 깔끔하게 만들어요.
-            </Text>
-          </View>
-          <Switch
-            value={removeBackground}
-            onValueChange={setRemoveBackground}
-            trackColor={{
-              false: theme.colors.border,
-              true: theme.colors.primary,
-            }}
-            thumbColor="#FFFFFF"
-          />
-        </View>
-        <View style={styles.previewRow}>
-          <View style={styles.previewBox}>
-            <Text style={styles.previewLabel}>원본</Text>
-          </View>
-          <View style={styles.previewBox}>
-            <Text style={styles.previewLabel}>배경 제거</Text>
-          </View>
-        </View>
-      </Card>
+      {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
       <View style={styles.actionRow}>
         <PrimaryButton label="편집으로 이동" onPress={goNext} style={styles.actionButton} />
@@ -156,43 +171,20 @@ const styles = StyleSheet.create({
     color: theme.colors.muted,
     marginTop: theme.spacing.sm,
   },
-  optionCard: {
-    marginBottom: theme.spacing.lg,
-  },
-  optionRow: {
+  loadingRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: theme.spacing.md,
+    marginTop: theme.spacing.sm,
   },
-  optionTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: theme.colors.textPrimary,
-    marginBottom: 4,
-  },
-  optionDesc: {
+  loadingText: {
     fontSize: 12,
     color: theme.colors.textSecondary,
-    width: 220,
+    marginLeft: theme.spacing.sm,
   },
-  previewRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  previewBox: {
-    width: '48%',
-    height: 120,
-    borderRadius: theme.radius.md,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    backgroundColor: theme.colors.background,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  previewLabel: {
+  errorText: {
     fontSize: 12,
-    color: theme.colors.textSecondary,
+    color: '#DC2626',
+    marginBottom: theme.spacing.sm,
   },
   actionRow: {
     marginTop: theme.spacing.sm,

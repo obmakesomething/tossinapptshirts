@@ -58,9 +58,6 @@ function Page() {
                     <Text style={styles.cardTitle}>{product.name}</Text>
                     <Text style={styles.cardMeta}>
                       {formatPrice(product.price ?? 0)}
-                      {product.originalPrice && product.originalPrice > (product.price ?? 0)
-                        ? ` (정가 ${formatPrice(product.originalPrice)})`
-                        : ''}
                     </Text>
                     <Text style={styles.cardMeta}>
                       색상 {product.colors.length} · 사이즈 {product.sizes.length}
