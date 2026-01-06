@@ -73,10 +73,8 @@
 ## API (internal)
 - POST /v1/images/upload
 - POST /v1/images/generate
-- POST /v1/images/{id}/remove-bg
-- GET /v1/templates
-- POST /v1/mockups (template composite)
-- GET /v1/designs (optional)
+- POST /v1/orders/submit
+- Planned: /v1/images/remove-bg, /v1/templates, /v1/mockups
 
 ## Data model (conceptual)
 - Image: id, source (upload|imagen), width, height, url, createdAt
@@ -96,7 +94,7 @@
 - High contrast for critical actions.
 
 ## Config (env)
-- See .env.example for required variables (Imagen + bg removal).
+- See .env.example for required variables (Imagen + S3 + Gmail SMTP).
 - `CATALOG_ASSET_BASE_URL` (optional): when running `scripts/build_catalog.py`, overrides catalog image URLs to point to your CDN/S3 base.
 
 ## Data source
