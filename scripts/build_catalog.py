@@ -1,13 +1,14 @@
 #!/usr/bin/env python3
 import csv
+import os
 import re
 from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
 CSV_PATH = ROOT / "data" / "customzone_products.csv"
-ASSETS_OUT = ROOT / "src" / "data" / "catalogAssets.ts"
 CATALOG_OUT = ROOT / "src" / "data" / "catalog.ts"
+ASSET_BASE_URL = os.environ.get("CATALOG_ASSET_BASE_URL", "").strip()
 
 PRODUCT_ORDER = [
     "[프린트스타] 148 헤비 14수 라운드 반팔 (남녀공용)",
@@ -72,32 +73,15 @@ def parse_sizes(raw: str):
     return sizes
 
 
-def build_assets_map(rows):
-    asset_paths = []
-    for row in rows:
-        for key in ("Local Main Image", "Local Detail Images"):
-            rel = row.get(key, "").strip()
-            if not rel:
-                continue
-            if (ROOT / "data" / rel).exists():
-                asset_paths.append(rel)
-    asset_paths = sorted(set(asset_paths))
-
-    lines = [
-        "export const assetMap = {",
-    ]
-    for rel in asset_paths:
-        require_path = f"../../data/{rel}"
-        lines.append(f'  "{rel}": require("{require_path}"),')
-    lines.append("} as const;")
-    lines.append("")
-    ASSETS_OUT.write_text("\n".join(lines), encoding="utf-8")
+def build_remote_url(local_path: str, fallback_url: str) -> str:
+    if ASSET_BASE_URL and local_path:
+        return f"{ASSET_BASE_URL.rstrip('/')}/{local_path}"
+    return fallback_url
 
 
 def build_catalog(rows):
     lines = [
         "import type { ImageSourcePropType } from 'react-native';",
-        "import { assetMap } from './catalogAssets';",
         "",
         "export type SizeOption = {",
         "  label: string;",
@@ -120,11 +104,7 @@ def build_catalog(rows):
         "  tags: string[];",
         "};",
         "",
-        "const resolveImage = (localPath: string, remoteUrl: string): ImageSourcePropType => {",
-        "  if (!__DEV__) return { uri: remoteUrl };",
-        "  const asset = assetMap[localPath as keyof typeof assetMap];",
-        "  return asset ?? { uri: remoteUrl };",
-        "};",
+        "const resolveImage = (remoteUrl: string): ImageSourcePropType => ({ uri: remoteUrl });",
         "",
         "const formatPrice = (value: number | null) => {",
         "  if (value == null) return '';",
@@ -139,10 +119,8 @@ def build_catalog(rows):
         meta = PRODUCT_META[name]
         price, original = parse_prices(row["Price"])
         url = row["URL"]
-        main_url = row["Main Image URL"]
-        detail_url = row["Detail Image URLs"]
-        main_local = row["Local Main Image"]
-        detail_local = row["Local Detail Images"]
+        main_url = build_remote_url(row["Local Main Image"], row["Main Image URL"])
+        detail_url = build_remote_url(row["Local Detail Images"], row["Detail Image URLs"])
         colors = FORCED_COLORS
         sizes = parse_sizes(row["Sizes"])
         tags = parse_list(row["Tags"])
@@ -158,8 +136,8 @@ def build_catalog(rows):
         lines.append(f"      {price if price is not None else 'null'}")
         lines.append("    ),")
         lines.append(f"    url: {url!r},")
-        lines.append(f"    mainImage: resolveImage({main_local!r}, {main_url!r}),")
-        lines.append(f"    detailImage: resolveImage({detail_local!r}, {detail_url!r}),")
+        lines.append(f"    mainImage: resolveImage({main_url!r}),")
+        lines.append(f"    detailImage: resolveImage({detail_url!r}),")
         lines.append(f"    colors: {colors!r},")
         lines.append(f"    sizes: {sizes!r},")
         lines.append(f"    tags: {tags!r},")
@@ -178,8 +156,7 @@ def main():
     order_index = {name: idx for idx, name in enumerate(PRODUCT_ORDER)}
     rows.sort(key=lambda row: order_index.get(row["Name"], 999))
 
-    ASSETS_OUT.parent.mkdir(parents=True, exist_ok=True)
-    build_assets_map(rows)
+    CATALOG_OUT.parent.mkdir(parents=True, exist_ok=True)
     build_catalog(rows)
 
 

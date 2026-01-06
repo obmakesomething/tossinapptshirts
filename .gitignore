@@ -15,3 +15,6 @@ yarn-error.log
 .granite
 .swc
 .DS_Store
+
+data/downloads/
+data/optimized/

@@ -97,12 +97,19 @@
 
 ## Config (env)
 - See .env.example for required variables (Imagen + bg removal).
+- `CATALOG_ASSET_BASE_URL` (optional): when running `scripts/build_catalog.py`, overrides catalog image URLs to point to your CDN/S3 base.
 
 ## Data source
 - `data/customzone_products.csv` is the source of products, colors, sizes, and prices.
 - `scripts/build_catalog.py` filters to core SKUs (Printstar 148/188/183 + Canvas 35x40) and forces colors to white/black.
-- `data/downloads/**` contains local product images for dev only.
-- Run `python scripts/build_catalog.py` after CSV changes.
+- `data/downloads/**` contains local product images for dev only and is gitignored.
+- `scripts/optimize_images.py` outputs JPG-only optimized assets to `data/optimized/**` (gitignored).
+- Run `python3 scripts/build_catalog.py` after CSV changes or after setting `CATALOG_ASSET_BASE_URL`.
+
+### Image optimization + CDN flow
+1. `npm run optimize-images` (writes optimized JPGs to `data/optimized/**`).
+2. Upload `data/optimized` to S3/CDN root (keep `downloads/...` paths).
+3. `CATALOG_ASSET_BASE_URL=https://your-cdn.example.com python3 scripts/build_catalog.py`.
 
 ## Pricing (print-only)
 - Logo (<10cm): ₩2,500

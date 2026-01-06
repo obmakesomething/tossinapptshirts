@@ -6,7 +6,8 @@
     "build": "granite build",
     "test": "jest --passWithNoTests",
     "typecheck": "tsc --noEmit",
-    "lint": "biome check --write"
+    "lint": "biome check --write",
+    "optimize-images": "python3 scripts/optimize_images.py"
   },
   "dependencies": {
     "@apps-in-toss/framework": "^1.0.0",
