@@ -100,7 +100,7 @@
 
 ## Data source
 - `data/customzone_products.csv` is the source of products, colors, sizes, and prices.
-- `scripts/build_catalog.py` filters to core SKUs and forces colors to white/black.
+- `scripts/build_catalog.py` filters to core SKUs (Printstar 148/188/183 + Canvas 35x40) and forces colors to white/black.
 - `data/downloads/**` contains local product images for dev only.
 - Run `python scripts/build_catalog.py` after CSV changes.
 
