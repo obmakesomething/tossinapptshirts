@@ -42,14 +42,16 @@ export const theme = {
 type ScreenProps = {
   children: React.ReactNode;
   contentStyle?: StyleProp<ViewStyle>;
+  scrollEnabled?: boolean;
 };
 
-export function Screen({ children, contentStyle }: ScreenProps) {
+export function Screen({ children, contentStyle, scrollEnabled = true }: ScreenProps) {
   return (
     <SafeAreaView style={styles.safe}>
       <ScrollView
         contentContainerStyle={[styles.container, contentStyle]}
         showsVerticalScrollIndicator={false}
+        scrollEnabled={scrollEnabled}
       >
         {children}
       </ScrollView>

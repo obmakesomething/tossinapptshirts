@@ -11,7 +11,7 @@ import {
 } from '../components/ui';
 import { API_BASE_URL } from '../config';
 import { useCatalog } from '../context/catalog';
-import { calcPricing, FREE_SHIPPING_THRESHOLD } from '../data/pricing';
+import { calcPricing, BULK_UNIT_THRESHOLD, BULK_UNIT_PRICE, FREE_SHIPPING_THRESHOLD_QTY } from '../data/pricing';
 import { formatPrice } from '../utils/format';
 
 export const Route = createRoute('/order', {
@@ -24,7 +24,7 @@ function Page() {
     selectedProduct,
     selectedColor,
     selectedSize,
-    selectedPlacement,
+    printBackEnabled,
     selectedPrint,
     quantity,
     designImageUri,
@@ -41,16 +41,11 @@ function Page() {
   const [zip, setZip] = useState('');
   const [memo, setMemo] = useState('');
   const [removeBg, setRemoveBg] = useState(true);
-  const [allowWarnToPass, setAllowWarnToPass] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
 
-  const itemBase =
-    (selectedProduct.price ?? 0) +
-    (selectedSize?.extraPrice ?? 0) +
-    selectedPrint.price;
-  const pricing = calcPricing(itemBase, quantity);
+  const pricing = calcPricing(quantity);
 
   const targetSize = useMemo(() => {
     const baseWidth = 3600;
@@ -98,7 +93,7 @@ function Page() {
             quantity,
             print: {
               method: 'DTF/DTG',
-              placement: selectedPlacement,
+              placement: printBackEnabled ? 'front/back' : 'front',
               sizeLabel: selectedPrint.label,
               sizeCm: selectedPrint.description,
             },
@@ -107,18 +102,16 @@ function Page() {
           },
         ],
         pricing: {
-          productSubtotal: formatPrice((selectedProduct.price ?? 0) * quantity),
-          printSubtotal: formatPrice(selectedPrint.price * quantity),
+          unitPrice: formatPrice(pricing.unitPrice),
           shipping: pricing.shippingFee === 0 ? '무료' : formatPrice(pricing.shippingFee),
-          total: formatPrice(pricing.customerTotal),
-          margin: formatPrice(pricing.marginAmount),
+          total: formatPrice(pricing.total),
+          quantity,
         },
         pipeline: {
           enabled: true,
           masterPngUrl: designImageUri,
           targetWidthPx: targetSize.width,
           targetHeightPx: targetSize.height,
-          allowWarnToPass,
           removeBackground: removeBg,
         },
       };
@@ -146,14 +139,16 @@ function Page() {
       <Card style={styles.summaryCard}>
         <Text style={styles.summaryTitle}>{selectedProduct.name}</Text>
         <Text style={styles.summaryMeta}>
-          {selectedColor} · {selectedSize?.label} · {selectedPrint.label} · {quantity}개
+          {selectedColor} · {selectedSize?.label} · {quantity}개
+          {printBackEnabled ? ' · 뒷면 포함' : ''}
         </Text>
         <Text style={styles.summaryMeta}>
-          예상 결제(수수료 포함) {formatPrice(pricing.customerTotal)} (배송비{' '}
+          예상 결제 {formatPrice(pricing.total)} (배송비{' '}
           {pricing.shippingFee === 0 ? '무료' : formatPrice(pricing.shippingFee)})
         </Text>
         <Text style={styles.summaryMeta}>
-          {formatPrice(FREE_SHIPPING_THRESHOLD)} 이상 무료배송
+          {FREE_SHIPPING_THRESHOLD_QTY}개부터 무료배송 · {BULK_UNIT_THRESHOLD}개부터{' '}
+          {formatPrice(BULK_UNIT_PRICE)} 적용
         </Text>
       </Card>
 
@@ -242,22 +237,10 @@ function Page() {
         <Text style={styles.optionDesc}>
           주문 제출 시 고해상도 이미지 기준으로 Clipdrop 누끼가 진행돼요.
         </Text>
-        <View style={styles.optionRow}>
-          <Text style={styles.optionTitle}>WARN 자동 진행</Text>
-          <Switch
-            value={allowWarnToPass}
-            onValueChange={setAllowWarnToPass}
-            trackColor={{ false: theme.colors.border, true: theme.colors.primary }}
-            thumbColor="#FFFFFF"
-          />
-        </View>
-        <Text style={styles.optionDesc}>
-          품질 경고가 있어도 바로 진행할지 선택합니다.
-        </Text>
       </Card>
 
       <Text style={styles.noticeText}>
-        출력 이미지에 대한 최종 판단은 주문자가 진행합니다. 시안 확인 후 승인 부탁드립니다.
+        출력 이미지에 대한 최종 판단은 주문자가 진행합니다. 주문서 메일을 꼭 확인해 주세요.
       </Text>
 
       {error ? <Text style={styles.errorText}>{error}</Text> : null}

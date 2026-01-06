@@ -193,8 +193,8 @@ function buildOrderPdf(order) {
     doc.fontSize(13).text('Pricing');
     doc.fontSize(11);
     if (order.pricing) {
-      doc.text(`Product Subtotal: ${order.pricing.productSubtotal || ''}`);
-      doc.text(`Print Subtotal: ${order.pricing.printSubtotal || ''}`);
+      doc.text(`Unit Price: ${order.pricing.unitPrice || ''}`);
+      doc.text(`Quantity: ${order.pricing.quantity || ''}`);
       doc.text(`Shipping: ${order.pricing.shipping || ''}`);
       doc.text(`Total: ${order.pricing.total || ''}`);
     }
@@ -202,7 +202,7 @@ function buildOrderPdf(order) {
     doc.moveDown();
     doc.fontSize(11).fillColor('#6B7280');
     doc.text(
-      '※ 출력 이미지에 대한 최종 판단은 주문자가 진행합니다. 시안 확인 후 승인 부탁드립니다.'
+      '※ 출력 이미지에 대한 최종 판단은 주문자가 진행합니다. 주문서 메일을 꼭 확인해 주세요.'
     );
 
     doc.end();
@@ -242,7 +242,17 @@ app.post('/v1/images/upload', async (req, res) => {
       return res.status(400).json({ error: 'No image payload provided.' });
     }
 
-    const key = `${IMAGE_PREFIX}/${Date.now()}-${Math.random().toString(36).slice(2)}-${filename || 'upload'}.jpg`;
+    const safeName = path
+      .parse(filename || 'upload')
+      .name.replace(/[^a-zA-Z0-9-_]/g, '');
+    const extension = mimeType.includes('png')
+      ? 'png'
+      : mimeType.includes('webp')
+      ? 'webp'
+      : 'jpg';
+    const key = `${IMAGE_PREFIX}/${Date.now()}-${Math.random()
+      .toString(36)
+      .slice(2)}-${safeName || 'upload'}.${extension}`;
     const url = await uploadToS3({ key, body: buffer, contentType: mimeType });
     res.json({ url });
   } catch (error) {
@@ -377,7 +387,7 @@ app.post('/v1/orders/submit', async (req, res) => {
     const customerEmail = order.customer?.email || '';
     const baseSubject = `Order ${order.orderId || ''} - ${order.customer?.name || ''}`;
     const note =
-      '출력 이미지에 대한 최종 판단은 주문자가 진행합니다. 시안 확인 후 승인 부탁드립니다.';
+      '출력 이미지에 대한 최종 판단은 주문자가 진행합니다. 주문서 메일을 꼭 확인해 주세요.';
     const pipelineLine = pipelineResult
       ? `Pipeline: ${pipelineResult.status} (QC: ${pipelineResult.qc?.status || ''})`
       : 'Pipeline: not run';

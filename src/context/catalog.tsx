@@ -24,6 +24,7 @@ type CatalogContextValue = {
   selectedColor: string;
   selectedSize: SizeOption | null;
   selectedPlacement: Placement;
+  printBackEnabled: boolean;
   selectedPrint: PrintOption;
   quantity: number;
   designImageUri: string | null;
@@ -36,7 +37,7 @@ type CatalogContextValue = {
   setSelectedColor: (color: string) => void;
   setSelectedSizeLabel: (label: string) => void;
   setSelectedPlacement: (placement: Placement) => void;
-  setSelectedPrintId: (id: PrintOption['id']) => void;
+  setPrintBackEnabled: (enabled: boolean) => void;
   setQuantity: (quantity: number) => void;
   setDesignImageUri: (uri: string | null) => void;
   setDesignPrompt: (prompt: string) => void;
@@ -58,10 +59,16 @@ export function CatalogProvider({ children }: { children: React.ReactNode }) {
   if (!fallbackPrint) {
     throw new Error('Print options are missing.');
   }
+  const resolveAutoPrint = (product: CatalogProduct) => {
+    if (product.category === '에코백') {
+      return printOptions.find((option) => option.id === 'a5') ?? fallbackPrint;
+    }
+    return printOptions.find((option) => option.id === 'a4') ?? fallbackPrint;
+  };
   const defaultImageTransform: LayerTransform = {
     offsetX: 0,
     offsetY: 0,
-    scale: fallbackPrint.designScale,
+    scale: resolveAutoPrint(fallbackProduct).designScale,
     rotation: 0,
   };
   const defaultTextTransform: LayerTransform = {
@@ -82,8 +89,9 @@ export function CatalogProvider({ children }: { children: React.ReactNode }) {
   const [selectedColor, setSelectedColor] = useState('');
   const [selectedSizeLabel, setSelectedSizeLabel] = useState('');
   const [selectedPlacement, setSelectedPlacement] = useState<Placement>('front');
+  const [printBackEnabled, setPrintBackEnabledState] = useState(false);
   const [selectedPrintId, setSelectedPrintId] = useState<PrintOption['id']>(
-    fallbackPrint.id
+    resolveAutoPrint(fallbackProduct).id
   );
   const [quantity, setQuantity] = useState(1);
   const [designImageUri, setDesignImageUri] = useState<string | null>(null);
@@ -118,11 +126,20 @@ export function CatalogProvider({ children }: { children: React.ReactNode }) {
     if (!selectedProduct) return;
     setSelectedColor(selectedProduct.colors[0] ?? '');
     setSelectedSizeLabel(selectedProduct.sizes[0]?.label ?? '');
+    const autoPrint = resolveAutoPrint(selectedProduct);
+    setSelectedPrintId(autoPrint.id);
   }, [selectedProduct?.id]);
 
   useEffect(() => {
     setImageTransform((prev) => ({ ...prev, scale: selectedPrint.designScale }));
   }, [selectedPrint.id]);
+
+  const setPrintBackEnabled = (enabled: boolean) => {
+    setPrintBackEnabledState(enabled);
+    if (!enabled) {
+      setSelectedPlacement('front');
+    }
+  };
 
   const value: CatalogContextValue = {
     products,
@@ -130,6 +147,7 @@ export function CatalogProvider({ children }: { children: React.ReactNode }) {
     selectedColor,
     selectedSize,
     selectedPlacement,
+    printBackEnabled,
     selectedPrint,
     quantity,
     designImageUri,
@@ -142,7 +160,7 @@ export function CatalogProvider({ children }: { children: React.ReactNode }) {
     setSelectedColor,
     setSelectedSizeLabel,
     setSelectedPlacement,
-    setSelectedPrintId,
+    setPrintBackEnabled,
     setQuantity,
     setDesignImageUri,
     setDesignPrompt,

@@ -1,5 +1,5 @@
 import { createRoute } from '@granite-js/react-native';
-import React, { useMemo } from 'react';
+import React, { useState } from 'react';
 import { StyleSheet, Text, View, TextInput, Pressable, Switch } from 'react-native';
 import {
   Card,
@@ -17,8 +17,7 @@ import { buildTemplate } from '../data/mockupTemplates';
 import type { Placement } from '../data/mockupTemplates';
 import { useCatalog } from '../context/catalog';
 import { resolveColorValue } from '../data/colorMap';
-import { printOptions } from '../data/printOptions';
-import { calcPricing, FREE_SHIPPING_THRESHOLD } from '../data/pricing';
+import { calcPricing, BULK_UNIT_THRESHOLD, BULK_UNIT_PRICE, FREE_SHIPPING_THRESHOLD_QTY } from '../data/pricing';
 import { formatPrice } from '../utils/format';
 
 export const Route = createRoute('/editor', {
@@ -37,6 +36,7 @@ function Page() {
     selectedColor,
     selectedSize,
     selectedPlacement,
+    printBackEnabled,
     selectedPrint,
     quantity,
     designImageUri,
@@ -47,13 +47,14 @@ function Page() {
     setSelectedColor,
     setSelectedSizeLabel,
     setSelectedPlacement,
-    setSelectedPrintId,
+    setPrintBackEnabled,
     setQuantity,
     setImageTransform,
     setTextTransform,
     setActiveLayer,
     setTextLayer,
   } = useCatalog();
+  const [scrollEnabled, setScrollEnabled] = useState(true);
 
   const goPreview = () => {
     navigation.navigate('/preview');
@@ -61,10 +62,7 @@ function Page() {
 
   const template = buildTemplate(selectedProduct, selectedColor, selectedPlacement);
   const selectedPrintOption = selectedPrint;
-  const sizeExtra = selectedSize?.extraPrice ?? 0;
-  const basePrice = selectedProduct.price ?? 0;
-  const itemBase = basePrice + sizeExtra + selectedPrintOption.price;
-  const pricing = calcPricing(itemBase, quantity);
+  const pricing = calcPricing(quantity);
 
   const activeTransform = activeLayer === 'text' ? textTransform : imageTransform;
   const updateActiveTransform = (next: typeof activeTransform) => {
@@ -75,22 +73,25 @@ function Page() {
     }
   };
 
-  const textSizeLabel = useMemo(
-    () => `${Math.round(textLayer.fontSize)}px`,
-    [textLayer.fontSize]
-  );
+  const ensureTextLayer = () => {
+    if (!textLayer.enabled) {
+      setTextLayer({
+        ...textLayer,
+        enabled: true,
+        text: textLayer.text?.trim() ? textLayer.text : '텍스트',
+      });
+    }
+    setActiveLayer('text');
+  };
 
   return (
-    <Screen>
+    <Screen scrollEnabled={scrollEnabled}>
       <TopBar title="상품 편집" onBack={() => navigation.goBack()} />
 
       <Card style={styles.productCard}>
         <View style={styles.productHeader}>
           <View style={styles.productText}>
             <Text style={styles.productTitle}>{selectedProduct.name}</Text>
-            <Text style={styles.productDesc}>
-              제품가 {formatPrice(selectedProduct.price ?? 0)}
-            </Text>
             <Text style={styles.productMeta}>
               모델명 {selectedProduct.modelName}
             </Text>
@@ -121,16 +122,10 @@ function Page() {
         <Text style={styles.sectionTitle}>사이즈</Text>
         <View style={styles.chipRow}>
           {selectedProduct.sizes.map((size) => {
-            const label =
-              size.extraPrice !== 0
-                ? `${size.label} (${size.extraPrice > 0 ? '+' : ''}${formatPrice(
-                    size.extraPrice
-                  )})`
-                : size.label;
             return (
               <Chip
                 key={size.label}
-                label={label}
+                label={size.label}
                 selected={selectedSize?.label === size.label}
                 onPress={() => setSelectedSizeLabel(size.label)}
                 style={styles.chipSpacing}
@@ -150,43 +145,29 @@ function Page() {
       </View>
 
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>프린트 크기</Text>
-        <View style={styles.printOptionList}>
-          {printOptions.map((option, index) => (
-            <Card
-              key={option.id}
-              style={[
-                styles.printOption,
-                selectedPrintOption.id === option.id && styles.printOptionSelected,
-                index < printOptions.length - 1 && styles.printOptionSpacing,
-              ]}
-            >
-              <Text style={styles.printOptionTitle}>{option.label}</Text>
-              <Text style={styles.printOptionDesc}>{option.description}</Text>
-              <Text style={styles.printOptionPrice}>{formatPrice(option.price)}</Text>
-              <SecondaryButton
-                label={selectedPrintOption.id === option.id ? '선택됨' : '선택'}
-                onPress={() => setSelectedPrintId(option.id)}
-                style={styles.printOptionButton}
+        <Text style={styles.sectionTitle}>프린팅 옵션</Text>
+        <View style={styles.optionRow}>
+          <Text style={styles.optionTitle}>뒷면 프린팅 추가</Text>
+          <Switch
+            value={printBackEnabled}
+            onValueChange={setPrintBackEnabled}
+            trackColor={{ false: theme.colors.border, true: theme.colors.primary }}
+            thumbColor="#FFFFFF"
+          />
+        </View>
+        {printBackEnabled ? (
+          <View style={styles.chipRow}>
+            {placementOptions.map((placement) => (
+              <Chip
+                key={placement.value}
+                label={placement.label}
+                selected={selectedPlacement === placement.value}
+                onPress={() => setSelectedPlacement(placement.value)}
+                style={styles.chipSpacing}
               />
-            </Card>
-          ))}
-        </View>
-      </View>
-
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>프린트 위치</Text>
-        <View style={styles.chipRow}>
-          {placementOptions.map((placement) => (
-            <Chip
-              key={placement.value}
-              label={placement.label}
-              selected={selectedPlacement === placement.value}
-              onPress={() => setSelectedPlacement(placement.value)}
-              style={styles.chipSpacing}
-            />
-          ))}
-        </View>
+            ))}
+          </View>
+        ) : null}
       </View>
 
       <Card style={styles.canvasCard}>
@@ -203,7 +184,7 @@ function Page() {
           <Chip
             label="텍스트"
             selected={activeLayer === 'text'}
-            onPress={() => setActiveLayer('text')}
+            onPress={ensureTextLayer}
           />
         </View>
         <View style={styles.canvas}>
@@ -219,6 +200,8 @@ function Page() {
             activeLayer={activeLayer}
             onImageTransformChange={setImageTransform}
             onTextTransformChange={setTextTransform}
+            onInteractionStart={() => setScrollEnabled(false)}
+            onInteractionEnd={() => setScrollEnabled(true)}
           />
         </View>
         <Text style={styles.canvasHint}>
@@ -265,95 +248,81 @@ function Page() {
       <Card style={styles.textCard}>
         <View style={styles.optionRow}>
           <Text style={styles.optionTitle}>텍스트 추가</Text>
-          <Switch
-            value={textLayer.enabled}
-            onValueChange={(value) =>
-              setTextLayer({ ...textLayer, enabled: value })
-            }
-            trackColor={{ false: theme.colors.border, true: theme.colors.primary }}
-            thumbColor="#FFFFFF"
+          <SecondaryButton
+            label={textLayer.enabled ? '텍스트 삭제' : '텍스트 생성'}
+            onPress={() => {
+              if (textLayer.enabled) {
+                setTextLayer({ ...textLayer, enabled: false });
+                setActiveLayer('image');
+              } else {
+                ensureTextLayer();
+              }
+            }}
           />
         </View>
-        <TextInput
-          style={styles.textInput}
-          value={textLayer.text}
-          onChangeText={(value) => setTextLayer({ ...textLayer, text: value })}
-          placeholder="예: MERCH STUDIO"
-          placeholderTextColor={theme.colors.muted}
-          editable={textLayer.enabled}
-        />
-        <View style={styles.fontRow}>
-          <Text style={styles.fontLabel}>굵기</Text>
-          <View style={styles.fontButtons}>
-            {['regular', 'bold'].map((weight) => (
-              <Pressable
-                key={weight}
-                onPress={() => setTextLayer({ ...textLayer, fontWeight: weight as 'regular' | 'bold' })}
-                style={[
-                  styles.fontButton,
-                  textLayer.fontWeight === weight && styles.fontButtonSelected,
-                ]}
-              >
-                <Text
-                  style={[
-                    styles.fontButtonText,
-                    textLayer.fontWeight === weight && styles.fontButtonTextSelected,
-                  ]}
-                >
-                  {weight === 'regular' ? 'Regular' : 'Bold'}
-                </Text>
-              </Pressable>
-            ))}
-          </View>
-        </View>
-        <View style={styles.sliderRow}>
-          <Text style={styles.sliderLabel}>폰트 크기</Text>
-          <ScaleSlider
-            min={14}
-            max={72}
-            value={textLayer.fontSize}
-            onChange={(fontSize) =>
-              setTextLayer({ ...textLayer, fontSize })
-            }
-          />
-          <Text style={styles.sliderValue}>{textSizeLabel}</Text>
-        </View>
-        <View style={styles.colorRow}>
-          <Text style={styles.fontLabel}>색상</Text>
-          {['#0F172A', '#FFFFFF'].map((color) => (
-            <Pressable
-              key={color}
-              onPress={() => setTextLayer({ ...textLayer, color })}
-              style={[
-                styles.colorChip,
-                { backgroundColor: color },
-                textLayer.color === color && styles.colorChipSelected,
-              ]}
+        {textLayer.enabled ? (
+          <>
+            <TextInput
+              style={styles.textInput}
+              value={textLayer.text}
+              onChangeText={(value) => setTextLayer({ ...textLayer, text: value })}
+              placeholder="예: MERCH STUDIO"
+              placeholderTextColor={theme.colors.muted}
             />
-          ))}
-        </View>
+            <View style={styles.fontRow}>
+              <Text style={styles.fontLabel}>굵기</Text>
+              <View style={styles.fontButtons}>
+                {['regular', 'bold'].map((weight) => (
+                  <Pressable
+                    key={weight}
+                    onPress={() =>
+                      setTextLayer({ ...textLayer, fontWeight: weight as 'regular' | 'bold' })
+                    }
+                    style={[
+                      styles.fontButton,
+                      textLayer.fontWeight === weight && styles.fontButtonSelected,
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.fontButtonText,
+                        textLayer.fontWeight === weight && styles.fontButtonTextSelected,
+                      ]}
+                    >
+                      {weight === 'regular' ? 'Regular' : 'Bold'}
+                    </Text>
+                  </Pressable>
+                ))}
+              </View>
+            </View>
+            <View style={styles.colorRow}>
+              <Text style={styles.fontLabel}>색상</Text>
+              {['#0F172A', '#FFFFFF'].map((color) => (
+                <Pressable
+                  key={color}
+                  onPress={() => setTextLayer({ ...textLayer, color })}
+                  style={[
+                    styles.colorChip,
+                    { backgroundColor: color },
+                    textLayer.color === color && styles.colorChipSelected,
+                  ]}
+                />
+              ))}
+            </View>
+          </>
+        ) : null}
       </Card>
 
       <Card style={styles.priceCard}>
-        <Text style={styles.priceTitle}>판매가 (수수료 포함)</Text>
-        <Text style={styles.priceValue}>{formatPrice(pricing.customerTotal)}</Text>
+        <Text style={styles.priceTitle}>예상 결제 금액</Text>
+        <Text style={styles.priceValue}>{formatPrice(pricing.total)}</Text>
         <Text style={styles.priceNote}>
-          제품가 {formatPrice(basePrice)} + 프린트 {formatPrice(selectedPrintOption.price)}
-          {sizeExtra !== 0 ? ` + 사이즈 ${formatPrice(sizeExtra)}` : ''} × {quantity}
+          개당 {formatPrice(pricing.unitPrice)} · 배송비{' '}
+          {pricing.shippingFee === 0 ? '무료' : formatPrice(pricing.shippingFee)}
         </Text>
         <Text style={styles.priceNote}>
-          배송비 {pricing.shippingFee === 0 ? '무료' : formatPrice(pricing.shippingFee)} ·
-          {` ${formatPrice(FREE_SHIPPING_THRESHOLD)} 이상 무료배송`}
-        </Text>
-        <Text style={styles.priceNote}>
-          수수료 {formatPrice(pricing.marginAmount)} ({Math.round(pricing.marginRate * 100)}%)
-        </Text>
-      </Card>
-
-      <Card style={styles.warningCard}>
-        <Text style={styles.warningTitle}>해상도 확인</Text>
-        <Text style={styles.warningDesc}>
-          현재 이미지 해상도가 낮아 인쇄 시 흐릿해질 수 있어요.
+          {FREE_SHIPPING_THRESHOLD_QTY}개부터 무료배송 · {BULK_UNIT_THRESHOLD}개부터{' '}
+          {formatPrice(BULK_UNIT_PRICE)} 적용
         </Text>
       </Card>
 
@@ -380,10 +349,6 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: theme.colors.textPrimary,
     marginBottom: 4,
-  },
-  productDesc: {
-    fontSize: 13,
-    color: theme.colors.textSecondary,
   },
   productMeta: {
     fontSize: 12,
@@ -416,38 +381,6 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: theme.colors.textPrimary,
     marginHorizontal: theme.spacing.lg,
-  },
-  printOptionList: {
-  },
-  printOption: {
-    paddingVertical: theme.spacing.md,
-  },
-  printOptionSpacing: {
-    marginBottom: theme.spacing.sm,
-  },
-  printOptionSelected: {
-    borderColor: theme.colors.primary,
-    backgroundColor: theme.colors.primarySoft,
-  },
-  printOptionTitle: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: theme.colors.textPrimary,
-    marginBottom: 4,
-  },
-  printOptionDesc: {
-    fontSize: 12,
-    color: theme.colors.textSecondary,
-    marginBottom: 8,
-  },
-  printOptionPrice: {
-    fontSize: 14,
-    color: theme.colors.textPrimary,
-    fontWeight: '700',
-    marginBottom: theme.spacing.sm,
-  },
-  printOptionButton: {
-    alignSelf: 'flex-start',
   },
   chipSpacing: {
     marginRight: theme.spacing.sm,
@@ -488,11 +421,6 @@ const styles = StyleSheet.create({
     color: theme.colors.textSecondary,
     marginBottom: 8,
   },
-  sliderValue: {
-    fontSize: 12,
-    color: theme.colors.textSecondary,
-    marginTop: 6,
-  },
   toolRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -501,21 +429,6 @@ const styles = StyleSheet.create({
   toolButton: {
     marginRight: theme.spacing.sm,
     marginBottom: theme.spacing.sm,
-  },
-  warningCard: {
-    borderColor: '#FACC15',
-    backgroundColor: '#FFFBEB',
-    marginBottom: theme.spacing.lg,
-  },
-  warningTitle: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: '#92400E',
-    marginBottom: 4,
-  },
-  warningDesc: {
-    fontSize: 13,
-    color: '#A16207',
   },
   textCard: {
     marginBottom: theme.spacing.lg,

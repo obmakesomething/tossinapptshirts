@@ -3,7 +3,6 @@ import React from 'react';
 import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Card, Screen, TopBar, theme } from '../components/ui';
 import { useCatalog } from '../context/catalog';
-import { formatPrice } from '../utils/format';
 
 export const Route = createRoute('/products', {
   component: Page,
@@ -56,9 +55,6 @@ function Page() {
                   <Image source={product.mainImage} style={styles.thumbnail} resizeMode="cover" />
                   <View style={styles.cardBody}>
                     <Text style={styles.cardTitle}>{product.name}</Text>
-                    <Text style={styles.cardMeta}>
-                      {formatPrice(product.price ?? 0)}
-                    </Text>
                     <Text style={styles.cardMeta}>
                       색상 {product.colors.length} · 사이즈 {product.sizes.length}
                     </Text>

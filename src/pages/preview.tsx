@@ -1,6 +1,6 @@
 import { createRoute } from '@granite-js/react-native';
-import React, { useState } from 'react';
-import { StyleSheet, Text, View, ScrollView, Pressable } from 'react-native';
+import React from 'react';
+import { StyleSheet, Text, View, ScrollView } from 'react-native';
 import {
   Card,
   ColorSwatch,
@@ -27,20 +27,14 @@ function Page() {
     selectedProduct,
     selectedColor,
     selectedPrint,
+    printBackEnabled,
     setSelectedColor,
     designImageUri,
     imageTransform,
     textLayer,
     textTransform,
   } = useCatalog();
-  const [placement, setPlacement] = useState<'front' | 'back' | 'both'>('both');
-
-  const filteredShots =
-    placement === 'both'
-      ? mockupShots
-      : mockupShots.filter((shot) =>
-          placement === 'front' ? shot !== 'Back' : shot !== 'Front'
-        );
+  const filteredShots = printBackEnabled ? mockupShots : mockupShots.slice(0, 1);
 
   const goDesigns = () => {
     navigation.navigate('/designs');
@@ -56,32 +50,6 @@ function Page() {
 
       <Text style={styles.title}>{selectedProduct.name}</Text>
       <Text style={styles.subtitle}>색상별 목업을 확인하세요</Text>
-
-      <View style={styles.placementRow}>
-        {[
-          { label: '앞면', value: 'front' as const },
-          { label: '뒷면', value: 'back' as const },
-          { label: '전체', value: 'both' as const },
-        ].map((item) => (
-          <Pressable
-            key={item.value}
-            onPress={() => setPlacement(item.value)}
-            style={[
-              styles.placementChip,
-              placement === item.value && styles.placementChipSelected,
-            ]}
-          >
-            <Text
-              style={[
-                styles.placementText,
-                placement === item.value && styles.placementTextSelected,
-              ]}
-            >
-              {item.label}
-            </Text>
-          </Pressable>
-        ))}
-      </View>
 
       <ScrollView horizontal showsHorizontalScrollIndicator={false}>
         {filteredShots.map((label, index) => (
@@ -148,31 +116,6 @@ const styles = StyleSheet.create({
     color: theme.colors.textSecondary,
     marginTop: 4,
     marginBottom: theme.spacing.md,
-  },
-  placementRow: {
-    flexDirection: 'row',
-    marginBottom: theme.spacing.md,
-  },
-  placementChip: {
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 999,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    backgroundColor: theme.colors.surface,
-    marginRight: theme.spacing.sm,
-  },
-  placementChipSelected: {
-    borderColor: theme.colors.primary,
-    backgroundColor: theme.colors.primarySoft,
-  },
-  placementText: {
-    fontSize: 13,
-    color: theme.colors.textSecondary,
-    fontWeight: '600',
-  },
-  placementTextSelected: {
-    color: theme.colors.primary,
   },
   mockupCard: {
     width: 220,

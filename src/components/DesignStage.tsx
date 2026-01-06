@@ -3,6 +3,7 @@ import { Image, PanResponder, StyleSheet, Text, View } from 'react-native';
 import type { MockupTemplate } from '../data/mockupTemplates';
 import type { LayerTransform, TextLayer } from '../context/catalog';
 import { theme } from './ui';
+import { resolveColorValue } from '../data/colorMap';
 
 type DesignStageProps = {
   template: MockupTemplate;
@@ -16,6 +17,8 @@ type DesignStageProps = {
   activeLayer: 'image' | 'text';
   onImageTransformChange: (transform: LayerTransform) => void;
   onTextTransformChange: (transform: LayerTransform) => void;
+  onInteractionStart?: () => void;
+  onInteractionEnd?: () => void;
 };
 
 const clamp = (value: number, min: number, max: number) =>
@@ -24,6 +27,7 @@ const clamp = (value: number, min: number, max: number) =>
 const MIN_SCALE = 0.2;
 const MAX_SCALE = 1.6;
 const MAX_OFFSET = 0.55;
+const HIT_SLOP = 12;
 
 export function DesignStage({
   template,
@@ -37,6 +41,8 @@ export function DesignStage({
   activeLayer,
   onImageTransformChange,
   onTextTransformChange,
+  onInteractionStart,
+  onInteractionEnd,
 }: DesignStageProps) {
   const area = {
     left: width * template.printArea.x,
@@ -44,6 +50,13 @@ export function DesignStage({
     width: width * template.printArea.width,
     height: height * template.printArea.height,
   };
+  const colorValue = resolveColorValue(template.color);
+  const lightness =
+    (parseInt(colorValue.slice(1, 3), 16) * 0.299 +
+      parseInt(colorValue.slice(3, 5), 16) * 0.587 +
+      parseInt(colorValue.slice(5, 7), 16) * 0.114) /
+    255;
+  const overlayOpacity = lightness < 0.5 ? 0.28 : 0.1;
 
   const activeTransform = activeLayer === 'text' ? textTransform : imageTransform;
   const updateTransform =
@@ -58,12 +71,26 @@ export function DesignStage({
     angle: 0,
   });
 
+  const isWithinPrintArea = (x: number, y: number) =>
+    x >= area.left - HIT_SLOP &&
+    x <= area.left + area.width + HIT_SLOP &&
+    y >= area.top - HIT_SLOP &&
+    y <= area.top + area.height + HIT_SLOP;
+
   const responder = useMemo(
     () =>
       PanResponder.create({
-        onStartShouldSetPanResponder: () => true,
-        onMoveShouldSetPanResponder: () => true,
+        onStartShouldSetPanResponder: (evt) => {
+          const { locationX, locationY } = evt.nativeEvent;
+          return isWithinPrintArea(locationX, locationY);
+        },
+        onMoveShouldSetPanResponder: (evt) => {
+          const { locationX, locationY } = evt.nativeEvent;
+          return isWithinPrintArea(locationX, locationY);
+        },
+        onPanResponderTerminationRequest: () => false,
         onPanResponderGrant: (evt) => {
+          onInteractionStart?.();
           const { touches } = evt.nativeEvent;
           const a = touches[0];
           const b = touches[1];
@@ -120,8 +147,14 @@ export function DesignStage({
             });
           }
         },
+        onPanResponderRelease: () => {
+          onInteractionEnd?.();
+        },
+        onPanResponderTerminate: () => {
+          onInteractionEnd?.();
+        },
       }),
-    [activeTransform, area.height, area.width, updateTransform]
+    [activeTransform, area.height, area.width, isWithinPrintArea, onInteractionEnd, onInteractionStart, updateTransform]
   );
 
   const buildLayerStyle = (transform: LayerTransform) => {
@@ -143,6 +176,10 @@ export function DesignStage({
   return (
     <View style={[styles.container, { width, height }]} {...responder.panHandlers}>
       <Image source={template.image} style={styles.image} resizeMode="cover" />
+      <View
+        pointerEvents="none"
+        style={[styles.colorOverlay, { backgroundColor: colorValue, opacity: overlayOpacity }]}
+      />
       {showPrintArea ? (
         <View
           style={[
@@ -197,6 +234,9 @@ const styles = StyleSheet.create({
     borderColor: theme.colors.border,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  colorOverlay: {
+    ...StyleSheet.absoluteFillObject,
   },
   image: {
     ...StyleSheet.absoluteFillObject,

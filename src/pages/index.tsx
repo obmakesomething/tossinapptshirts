@@ -5,7 +5,6 @@ import { Card, PrimaryButton, Screen, SecondaryButton, theme } from '../componen
 import { MockupCanvas } from '../components/MockupCanvas';
 import { buildTemplate } from '../data/mockupTemplates';
 import { useCatalog } from '../context/catalog';
-import { formatPrice } from '../utils/format';
 
 export const Route = createRoute('/', {
   component: Page,
@@ -70,7 +69,7 @@ function Page() {
           <View style={styles.productText}>
             <Text style={styles.productTitle}>{selectedProduct.name}</Text>
             <Text style={styles.productMeta}>
-              제품가 {formatPrice(selectedProduct.price ?? 0)}
+              모델명 {selectedProduct.modelName}
             </Text>
           </View>
         </Card>
