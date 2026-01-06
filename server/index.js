@@ -1,3 +1,4 @@
+const crypto = require('crypto');
 const express = require('express');
 const cors = require('cors');
 const nodemailer = require('nodemailer');
@@ -12,6 +13,23 @@ const { runPrintPipeline } = require('./printPipeline');
 const app = express();
 app.use(cors({ origin: true }));
 app.use(express.json({ limit: '15mb' }));
+
+app.use((req, res, next) => {
+  const incomingId = req.headers['x-request-id'];
+  const requestId =
+    typeof incomingId === 'string' && incomingId.trim().length > 0
+      ? incomingId
+      : crypto.randomUUID();
+  req.requestId = requestId;
+  res.setHeader('x-request-id', requestId);
+  console.log('request_in', {
+    requestId,
+    method: req.method,
+    path: req.path,
+    userAgent: req.headers['user-agent'] || '',
+  });
+  next();
+});
 
 const PORT = process.env.PORT || 3000;
 const IMAGE_BUCKET = process.env.S3_BUCKET || '';
@@ -77,14 +95,27 @@ async function uploadToS3({ key, body, contentType }) {
   if (!client || !IMAGE_BUCKET || !resolveBaseUrl()) {
     throw new Error('S3 configuration is missing. Check S3_BUCKET, S3_ENDPOINT, S3_PUBLIC_BASE_URL.');
   }
-  await client.send(
-    new PutObjectCommand({
-      Bucket: IMAGE_BUCKET,
-      Key: key,
-      Body: body,
-      ContentType: contentType,
-    })
-  );
+  try {
+    await client.send(
+      new PutObjectCommand({
+        Bucket: IMAGE_BUCKET,
+        Key: key,
+        Body: body,
+        ContentType: contentType,
+      })
+    );
+  } catch (error) {
+    console.error('s3_upload_failed', {
+      bucket: IMAGE_BUCKET,
+      key,
+      endpoint: process.env.S3_ENDPOINT || '',
+      baseUrl: resolveBaseUrl(),
+      forcePathStyle: String(process.env.S3_FORCE_PATH_STYLE || 'false'),
+      region: process.env.AWS_REGION || process.env.S3_REGION || 'us-east-1',
+      message: error.message || 'unknown_error',
+    });
+    throw error;
+  }
   return buildPublicUrl(key);
 }
 
@@ -270,9 +301,13 @@ app.post('/v1/images/upload', async (req, res) => {
       .toString(36)
       .slice(2)}-${safeName || 'upload'}.${extension}`;
     const url = await uploadToS3({ key, body: buffer, contentType: mimeType });
-    res.json({ url });
+    res.json({ url, requestId: req.requestId });
   } catch (error) {
-    res.status(500).json({ error: error.message || 'Upload failed.' });
+    console.error('image_upload_failed', {
+      requestId: req.requestId,
+      message: error.message || 'Upload failed.',
+    });
+    res.status(500).json({ error: error.message || 'Upload failed.', requestId: req.requestId });
   }
 });
 
@@ -289,6 +324,15 @@ app.post('/v1/images/generate', async (req, res) => {
     const size = sizeMap[aspectRatio] || '1024x1024';
 
     const client = getOpenAIClient();
+    console.log('image_generate_request', {
+      requestId: req.requestId,
+      model: OPENAI_IMAGE_MODEL,
+      quality: OPENAI_IMAGE_QUALITY,
+      size,
+      count,
+      promptLength: prompt.length,
+    });
+
     const response = await client.images.generate({
       model: OPENAI_IMAGE_MODEL,
       prompt,
@@ -316,10 +360,17 @@ app.post('/v1/images/generate', async (req, res) => {
       results.push({ url, mimeType });
     }
 
-    res.json({ images: results, size });
+    res.json({ images: results, size, requestId: req.requestId });
   } catch (error) {
-    console.error('image_generate_failed', error);
-    res.status(500).json({ error: error.message || 'OpenAI image failed.' });
+    console.error('image_generate_failed', {
+      requestId: req.requestId,
+      message: error.message || 'OpenAI image failed.',
+      status: error.status,
+      code: error.code,
+      param: error.param,
+      type: error.type,
+    });
+    res.status(500).json({ error: error.message || 'OpenAI image failed.', requestId: req.requestId });
   }
 });
 
@@ -332,6 +383,11 @@ app.post('/v1/images/remove-background', async (req, res) => {
     if (!imageUrl && !dataUrl) {
       return res.status(400).json({ error: 'imageUrl or dataUrl is required.' });
     }
+    console.log('remove_background_request', {
+      requestId: req.requestId,
+      sourceType: imageUrl ? 'url' : 'dataUrl',
+      filename: filename || '',
+    });
     const tempDir = path.join(ORDER_OUTPUT_DIR, 'temp');
     await fsp.mkdir(tempDir, { recursive: true });
     const baseName = filename || `remove-bg-${Date.now()}`;
@@ -357,16 +413,25 @@ app.post('/v1/images/remove-background', async (req, res) => {
       .toString(36)
       .slice(2)}-${baseName}.png`;
     const url = await uploadToS3({ key, body: outputBuffer, contentType: 'image/png' });
-    res.json({ url });
+    res.json({ url, requestId: req.requestId });
   } catch (error) {
-    console.error('remove_background_failed', error);
-    res.status(500).json({ error: error.message || 'Remove background failed.' });
+    console.error('remove_background_failed', {
+      requestId: req.requestId,
+      message: error.message || 'Remove background failed.',
+    });
+    res.status(500).json({ error: error.message || 'Remove background failed.', requestId: req.requestId });
   }
 });
 
 app.post('/v1/print-files/process', async (req, res) => {
   try {
     const payload = req.body || {};
+    console.log('print_pipeline_request', {
+      requestId: req.requestId,
+      orderId: payload.order_id || '',
+      targetWidth: payload.target_width_px,
+      targetHeight: payload.target_height_px,
+    });
     const result = await runPrintPipeline({
       master_png_path: payload.master_png_path,
       order_id: payload.order_id,
@@ -376,15 +441,25 @@ app.post('/v1/print-files/process', async (req, res) => {
       output_dir: payload.output_dir || ORDER_OUTPUT_DIR,
       allow_warn_to_pass: false,
     });
-    res.json(result);
+    res.json({ ...result, requestId: req.requestId });
   } catch (error) {
-    res.status(500).json({ error: error.message || 'pipeline_failed' });
+    console.error('print_pipeline_failed', {
+      requestId: req.requestId,
+      message: error.message || 'pipeline_failed',
+    });
+    res.status(500).json({ error: error.message || 'pipeline_failed', requestId: req.requestId });
   }
 });
 
 app.post('/v1/orders/submit', async (req, res) => {
   try {
     const order = req.body || {};
+    console.log('order_submit_request', {
+      requestId: req.requestId,
+      orderId: order.orderId || '',
+      totalQuantity: order.pricing?.quantity || 0,
+      pipelineEnabled: Boolean(order.pipeline?.enabled),
+    });
     const mailer = getMailer();
     if (!mailer) {
       return res.status(500).json({ error: 'SMTP configuration is missing.' });
@@ -479,12 +554,26 @@ app.post('/v1/orders/submit', async (req, res) => {
       status: 'submitted',
     });
 
-    res.json({ ok: true, pdfUrl, pipeline: pipelineResult });
+    res.json({ ok: true, pdfUrl, pipeline: pipelineResult, requestId: req.requestId });
   } catch (error) {
-    res.status(500).json({ error: error.message || 'Order submit failed.' });
+    console.error('order_submit_failed', {
+      requestId: req.requestId,
+      message: error.message || 'Order submit failed.',
+    });
+    res.status(500).json({ error: error.message || 'Order submit failed.', requestId: req.requestId });
   }
 });
 
 app.listen(PORT, () => {
+  console.log('server_config', {
+    port: PORT,
+    s3Bucket: IMAGE_BUCKET,
+    s3Endpoint: process.env.S3_ENDPOINT || '',
+    s3BaseUrl: resolveBaseUrl(),
+    s3ForcePathStyle: String(process.env.S3_FORCE_PATH_STYLE || 'false'),
+    openaiModel: OPENAI_IMAGE_MODEL,
+    openaiQuality: OPENAI_IMAGE_QUALITY,
+    clipdropEnabled: Boolean(CLIPDROP_API_KEY),
+  });
   console.log(`server listening on ${PORT}`);
 });
