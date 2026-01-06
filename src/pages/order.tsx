@@ -1,6 +1,6 @@
 import { createRoute } from '@granite-js/react-native';
 import React, { useMemo, useState } from 'react';
-import { StyleSheet, Text, TextInput, View, Switch } from 'react-native';
+import { StyleSheet, Text, TextInput, View } from 'react-native';
 import {
   Card,
   PrimaryButton,
@@ -11,7 +11,7 @@ import {
 } from '../components/ui';
 import { API_BASE_URL } from '../config';
 import { useCatalog } from '../context/catalog';
-import { calcPricing, BULK_UNIT_THRESHOLD, BULK_UNIT_PRICE, FREE_SHIPPING_THRESHOLD_QTY } from '../data/pricing';
+import { calcPricing } from '../data/pricing';
 import { formatPrice } from '../utils/format';
 
 export const Route = createRoute('/order', {
@@ -23,10 +23,10 @@ function Page() {
   const {
     selectedProduct,
     selectedColor,
-    selectedSize,
+    orderLines,
+    totalQuantity,
     printBackEnabled,
     selectedPrint,
-    quantity,
     designImageUri,
     textLayer,
   } = useCatalog();
@@ -40,12 +40,14 @@ function Page() {
   const [state, setState] = useState('');
   const [zip, setZip] = useState('');
   const [memo, setMemo] = useState('');
-  const [removeBg, setRemoveBg] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
 
-  const pricing = calcPricing(quantity);
+  const pricing = calcPricing(totalQuantity);
+  const sizeSummary = orderLines
+    .map((line) => `${line.sizeLabel} ${line.quantity}개`)
+    .join(' · ');
 
   const targetSize = useMemo(() => {
     const baseWidth = 3600;
@@ -85,12 +87,12 @@ function Page() {
           memo,
         },
         items: [
-          {
+          ...orderLines.map((line) => ({
             productName: selectedProduct.name,
             modelName: selectedProduct.modelName,
             color: selectedColor,
-            size: selectedSize?.label || '',
-            quantity,
+            size: line.sizeLabel,
+            quantity: line.quantity,
             print: {
               method: 'DTF/DTG',
               placement: printBackEnabled ? 'front/back' : 'front',
@@ -99,20 +101,19 @@ function Page() {
             },
             designUrl: designImageUri || '',
             text: textLayer.enabled ? textLayer : null,
-          },
+          })),
         ],
         pricing: {
           unitPrice: formatPrice(pricing.unitPrice),
           shipping: pricing.shippingFee === 0 ? '무료' : formatPrice(pricing.shippingFee),
           total: formatPrice(pricing.total),
-          quantity,
+          quantity: totalQuantity,
         },
         pipeline: {
           enabled: true,
           masterPngUrl: designImageUri,
           targetWidthPx: targetSize.width,
           targetHeightPx: targetSize.height,
-          removeBackground: removeBg,
         },
       };
 
@@ -139,16 +140,12 @@ function Page() {
       <Card style={styles.summaryCard}>
         <Text style={styles.summaryTitle}>{selectedProduct.name}</Text>
         <Text style={styles.summaryMeta}>
-          {selectedColor} · {selectedSize?.label} · {quantity}개
+          {selectedColor} · {sizeSummary || `${totalQuantity}개`}
           {printBackEnabled ? ' · 뒷면 포함' : ''}
         </Text>
         <Text style={styles.summaryMeta}>
           예상 결제 {formatPrice(pricing.total)} (배송비{' '}
           {pricing.shippingFee === 0 ? '무료' : formatPrice(pricing.shippingFee)})
-        </Text>
-        <Text style={styles.summaryMeta}>
-          {FREE_SHIPPING_THRESHOLD_QTY}개부터 무료배송 · {BULK_UNIT_THRESHOLD}개부터{' '}
-          {formatPrice(BULK_UNIT_PRICE)} 적용
         </Text>
       </Card>
 
@@ -224,21 +221,6 @@ function Page() {
         />
       </Card>
 
-      <Card style={styles.optionCard}>
-        <View style={styles.optionRow}>
-          <Text style={styles.optionTitle}>배경 제거</Text>
-          <Switch
-            value={removeBg}
-            onValueChange={setRemoveBg}
-            trackColor={{ false: theme.colors.border, true: theme.colors.primary }}
-            thumbColor="#FFFFFF"
-          />
-        </View>
-        <Text style={styles.optionDesc}>
-          주문 제출 시 고해상도 이미지 기준으로 Clipdrop 누끼가 진행돼요.
-        </Text>
-      </Card>
-
       <Text style={styles.noticeText}>
         출력 이미지에 대한 최종 판단은 주문자가 진행합니다. 주문서 메일을 꼭 확인해 주세요.
       </Text>
@@ -303,25 +285,6 @@ const styles = StyleSheet.create({
   },
   inlineInput: {
     width: '48%',
-  },
-  optionCard: {
-    marginBottom: theme.spacing.lg,
-  },
-  optionRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 6,
-  },
-  optionTitle: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: theme.colors.textPrimary,
-  },
-  optionDesc: {
-    fontSize: 12,
-    color: theme.colors.textSecondary,
-    marginBottom: theme.spacing.md,
   },
   actionRow: {
     marginTop: theme.spacing.md,

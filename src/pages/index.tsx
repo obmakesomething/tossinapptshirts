@@ -1,6 +1,6 @@
 import { createRoute } from '@granite-js/react-native';
 import React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View, Image } from 'react-native';
 import { Card, PrimaryButton, Screen, SecondaryButton, theme } from '../components/ui';
 import { MockupCanvas } from '../components/MockupCanvas';
 import { buildTemplate } from '../data/mockupTemplates';
@@ -17,7 +17,7 @@ function Page() {
   const steps = [
     { title: '이미지 준비', desc: '업로드 또는 생성' },
     { title: '상품 선택', desc: '컬러·사이즈' },
-    { title: '목업 완성', desc: '미리보기·저장' },
+    { title: '완성 미리보기', desc: '미리보기·저장' },
   ];
 
   const goToUpload = () => {
@@ -39,10 +39,15 @@ function Page() {
   return (
     <Screen>
       <View style={styles.hero}>
-        <Text style={styles.heroTitle}>티셔츠 목업 스튜디오</Text>
+        <Text style={styles.heroTitle}>나만의 티셔츠 만들기</Text>
         <Text style={styles.heroSubtitle}>
-          이미지 업로드 또는 AI 생성으로 바로 목업을 만들고 저장하세요.
+          이미지 업로드 또는 AI 생성으로 바로 제작을 시작하세요.
         </Text>
+        <Image
+          source={{ uri: 'https://static.toss.im/3d-common/tds-kv-text-hero.png' }}
+          style={styles.heroImage}
+          resizeMode="contain"
+        />
         <View style={styles.heroActions}>
           <PrimaryButton label="이미지 업로드" onPress={goToUpload} style={styles.actionButton} />
           <SecondaryButton
@@ -141,6 +146,11 @@ const styles = StyleSheet.create({
   },
   heroActions: {
     marginTop: theme.spacing.xs,
+  },
+  heroImage: {
+    width: '100%',
+    height: 140,
+    marginBottom: theme.spacing.lg,
   },
   actionButton: {
     marginBottom: theme.spacing.sm,

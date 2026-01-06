@@ -117,13 +117,12 @@ export function DesignStage({
         },
         onPanResponderTerminationRequest: () => false,
         onPanResponderGrant: (evt) => {
-          const { touches } = evt.nativeEvent;
+          const touches = evt.nativeEvent.touches ?? [];
           const a = touches[0];
           const b = touches[1];
-          const distance = b
-            ? Math.hypot(b.pageX - a.pageX, b.pageY - a.pageY)
-            : 0;
-          const angle = b ? Math.atan2(b.pageY - a.pageY, b.pageX - a.pageX) : 0;
+          const distance =
+            a && b ? Math.hypot(b.pageX - a.pageX, b.pageY - a.pageY) : 0;
+          const angle = a && b ? Math.atan2(b.pageY - a.pageY, b.pageX - a.pageX) : 0;
           startRef.current = {
             offsetX: activeTransform.offsetX,
             offsetY: activeTransform.offsetY,
@@ -134,8 +133,8 @@ export function DesignStage({
           };
         },
         onPanResponderMove: (evt, gestureState) => {
-          const { touches } = evt.nativeEvent;
-          if (touches.length >= 2) {
+          const touches = evt.nativeEvent.touches ?? [];
+          if (touches.length >= 2 && touches[0] && touches[1]) {
             const [a, b] = touches;
             const distance = Math.hypot(b.pageX - a.pageX, b.pageY - a.pageY);
             const angle = Math.atan2(b.pageY - a.pageY, b.pageX - a.pageX);

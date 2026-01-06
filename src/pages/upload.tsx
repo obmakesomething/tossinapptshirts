@@ -11,7 +11,8 @@ import {
 } from '../components/ui';
 import { API_BASE_URL } from '../config';
 import { useCatalog } from '../context/catalog';
-import { fetchAlbumPhotos, ImageResponse } from '@apps-in-toss/native-modules';
+import { fetchAlbumPhotos } from '@apps-in-toss/native-modules';
+import type { ImageResponse } from '@apps-in-toss/types';
 
 export const Route = createRoute('/upload', {
   component: Page,
@@ -22,6 +23,7 @@ function Page() {
   const { designImageUri, setDesignImageUri } = useCatalog();
   const [uploading, setUploading] = useState(false);
   const [loadingAlbum, setLoadingAlbum] = useState(false);
+  const [removingBg, setRemovingBg] = useState(false);
   const [albumPhotos, setAlbumPhotos] = useState<ImageResponse[]>([]);
   const [error, setError] = useState('');
 
@@ -71,7 +73,7 @@ function Page() {
           return;
         }
       }
-      const photos = await fetchAlbumPhotos({ maxCount: 30, maxWidth: 1024 });
+      const photos = await fetchAlbumPhotos({ maxCount: 30, maxWidth: 1024, base64: true });
       setAlbumPhotos(photos);
       if (!photos.length) {
         setError('앨범에서 사진을 찾지 못했어요.');
@@ -90,14 +92,37 @@ function Page() {
     await uploadDataUrl(dataUrl, `album-${photo.id}`);
   };
 
+  const handleRemoveBackground = async () => {
+    if (!designImageUri) return;
+    setRemovingBg(true);
+    setError('');
+    try {
+      const response = await fetch(`${API_BASE_URL}/v1/images/remove-background`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ imageUrl: designImageUri }),
+      });
+      if (!response.ok) {
+        throw new Error('배경 제거에 실패했어요.');
+      }
+      const data = await response.json();
+      if (!data.url) {
+        throw new Error('배경 제거 결과가 올바르지 않아요.');
+      }
+      setDesignImageUri(data.url);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '배경 제거에 실패했어요.');
+    } finally {
+      setRemovingBg(false);
+    }
+  };
+
   return (
     <Screen>
       <TopBar title="이미지 업로드" onBack={() => navigation.goBack()} />
 
-      <Text style={styles.title}>파일을 선택해 바로 목업을 만들어요</Text>
-      <Text style={styles.subtitle}>
-        앨범에서 이미지를 골라 바로 업로드하세요.
-      </Text>
+      <Text style={styles.title}>이미지를 선택해 바로 시작하세요</Text>
+      <Text style={styles.subtitle}>앨범에서 이미지를 골라 바로 업로드하세요.</Text>
 
       <Card style={styles.uploadCard}>
         <View style={styles.uploadPreview}>
@@ -126,8 +151,14 @@ function Page() {
           </View>
         ) : null}
         <Text style={styles.helperText}>
-          투명 배경 PNG면 자동 유지돼요. 배경 제거는 주문 단계에서 적용됩니다.
+          투명 배경 PNG면 자동 유지돼요. 필요하면 바로 배경 제거를 눌러 주세요.
         </Text>
+        <SecondaryButton
+          label={removingBg ? '배경 제거 중...' : '배경 제거'}
+          onPress={handleRemoveBackground}
+          disabled={!designImageUri || removingBg}
+          style={styles.urlButton}
+        />
       </Card>
       {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
@@ -141,7 +172,14 @@ function Page() {
                 style={styles.albumItem}
                 onPress={() => handleSelectPhoto(photo)}
               >
-                <Image source={{ uri: photo.dataUri }} style={styles.albumImage} />
+                <Image
+                  source={{
+                    uri: photo.dataUri.startsWith('data:')
+                      ? photo.dataUri
+                      : `data:image/jpeg;base64,${photo.dataUri}`,
+                  }}
+                  style={styles.albumImage}
+                />
               </Pressable>
             ))}
           </View>
@@ -149,7 +187,12 @@ function Page() {
       ) : null}
 
       <View style={styles.actionRow}>
-        <PrimaryButton label="편집으로 이동" onPress={goNext} style={styles.actionButton} />
+        <PrimaryButton
+          label="내 티셔츠 만들기"
+          onPress={goNext}
+          disabled={!designImageUri}
+          style={styles.actionButton}
+        />
         <SecondaryButton label="AI로 생성" onPress={goGenerate} />
       </View>
     </Screen>

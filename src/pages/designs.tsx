@@ -38,7 +38,7 @@ function Page() {
     <Screen>
       <TopBar title="내 디자인" onBack={() => navigation.goBack()} />
 
-      <Text style={styles.title}>저장된 목업을 다시 편집하거나 공유하세요</Text>
+      <Text style={styles.title}>저장된 디자인을 다시 편집하거나 공유하세요</Text>
 
       <View style={styles.list}>
         {designs.map((item) => (

@@ -1,5 +1,5 @@
 import { createRoute } from '@granite-js/react-native';
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { StyleSheet, Text, View, TextInput, Pressable, Switch } from 'react-native';
 import {
   Card,
@@ -17,7 +17,7 @@ import { buildTemplate } from '../data/mockupTemplates';
 import type { Placement } from '../data/mockupTemplates';
 import { useCatalog } from '../context/catalog';
 import { resolveColorValue } from '../data/colorMap';
-import { calcPricing, BULK_UNIT_THRESHOLD, BULK_UNIT_PRICE, FREE_SHIPPING_THRESHOLD_QTY } from '../data/pricing';
+import { calcPricing } from '../data/pricing';
 import { formatPrice } from '../utils/format';
 
 export const Route = createRoute('/editor', {
@@ -34,35 +34,60 @@ function Page() {
   const {
     selectedProduct,
     selectedColor,
-    selectedSize,
+    orderLines,
+    totalQuantity,
     selectedPlacement,
     printBackEnabled,
     selectedPrint,
-    quantity,
     designImageUri,
     imageTransform,
     textTransform,
     activeLayer,
     textLayer,
     setSelectedColor,
-    setSelectedSizeLabel,
     setSelectedPlacement,
     setPrintBackEnabled,
-    setQuantity,
+    addOrderLine,
+    removeOrderLine,
+    setOrderLineSize,
+    setOrderLineQuantity,
     setImageTransform,
     setTextTransform,
     setActiveLayer,
     setTextLayer,
   } = useCatalog();
   const [scrollEnabled, setScrollEnabled] = useState(true);
+  const [activeLineId, setActiveLineId] = useState<string | null>(null);
 
   const goPreview = () => {
     navigation.navigate('/preview');
   };
 
   const template = buildTemplate(selectedProduct, selectedColor, selectedPlacement);
-  const selectedPrintOption = selectedPrint;
-  const pricing = calcPricing(quantity);
+  const pricing = calcPricing(totalQuantity);
+
+  useEffect(() => {
+    const firstLine = orderLines[0];
+    if (firstLine && !activeLineId) {
+      setActiveLineId(firstLine.id);
+      return;
+    }
+    if (activeLineId && !orderLines.find((line) => line.id === activeLineId)) {
+      setActiveLineId(firstLine?.id ?? null);
+    }
+  }, [orderLines, activeLineId]);
+
+  const activeLine = useMemo(
+    () => orderLines.find((line) => line.id === activeLineId) ?? orderLines[0],
+    [orderLines, activeLineId]
+  );
+  const usedSizes = useMemo(
+    () => new Set(orderLines.map((line) => line.sizeLabel)),
+    [orderLines]
+  );
+  const remainingSizes = selectedProduct.sizes.filter(
+    (size) => !usedSizes.has(size.label)
+  );
 
   const activeTransform = activeLayer === 'text' ? textTransform : imageTransform;
   const updateActiveTransform = (next: typeof activeTransform) => {
@@ -102,73 +127,6 @@ function Page() {
           />
         </View>
       </Card>
-
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>색상</Text>
-        <View style={styles.swatchRow}>
-          {selectedProduct.colors.map((color) => (
-            <ColorSwatch
-              key={color}
-              label={color}
-              color={resolveColorValue(color)}
-              selected={selectedColor === color}
-              onPress={() => setSelectedColor(color)}
-            />
-          ))}
-        </View>
-      </View>
-
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>사이즈</Text>
-        <View style={styles.chipRow}>
-          {selectedProduct.sizes.map((size) => {
-            return (
-              <Chip
-                key={size.label}
-                label={size.label}
-                selected={selectedSize?.label === size.label}
-                onPress={() => setSelectedSizeLabel(size.label)}
-                style={styles.chipSpacing}
-              />
-            );
-          })}
-        </View>
-      </View>
-
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>수량</Text>
-        <View style={styles.quantityRow}>
-          <SecondaryButton label="-" onPress={() => setQuantity(Math.max(1, quantity - 1))} />
-          <Text style={styles.quantityValue}>{quantity}</Text>
-          <SecondaryButton label="+" onPress={() => setQuantity(quantity + 1)} />
-        </View>
-      </View>
-
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>프린팅 옵션</Text>
-        <View style={styles.optionRow}>
-          <Text style={styles.optionTitle}>뒷면 프린팅 추가</Text>
-          <Switch
-            value={printBackEnabled}
-            onValueChange={setPrintBackEnabled}
-            trackColor={{ false: theme.colors.border, true: theme.colors.primary }}
-            thumbColor="#FFFFFF"
-          />
-        </View>
-        {printBackEnabled ? (
-          <View style={styles.chipRow}>
-            {placementOptions.map((placement) => (
-              <Chip
-                key={placement.value}
-                label={placement.label}
-                selected={selectedPlacement === placement.value}
-                onPress={() => setSelectedPlacement(placement.value)}
-                style={styles.chipSpacing}
-              />
-            ))}
-          </View>
-        ) : null}
-      </View>
 
       <Card style={styles.canvasCard}>
         <Text style={styles.canvasTitle}>
@@ -238,12 +196,122 @@ function Page() {
             onPress={() =>
               updateActiveTransform({
                 ...activeTransform,
-                scale: activeLayer === 'text' ? 0.45 : selectedPrintOption.designScale,
+                scale: activeLayer === 'text' ? 0.45 : selectedPrint.designScale,
               })
             }
           />
         </View>
       </Card>
+
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>색상</Text>
+        <View style={styles.swatchRow}>
+          {selectedProduct.colors.map((color) => (
+            <ColorSwatch
+              key={color}
+              label={color}
+              color={resolveColorValue(color)}
+              selected={selectedColor === color}
+              onPress={() => setSelectedColor(color)}
+            />
+          ))}
+        </View>
+      </View>
+
+      <Card style={styles.optionCard}>
+        <Text style={styles.sectionTitle}>사이즈 · 수량</Text>
+        {orderLines.map((line) => (
+          <View key={line.id} style={styles.lineRow}>
+            <Pressable
+              style={[
+                styles.lineBadge,
+                activeLineId === line.id && styles.lineBadgeActive,
+              ]}
+              onPress={() => setActiveLineId(line.id)}
+            >
+              <Text
+                style={[
+                  styles.lineBadgeText,
+                  activeLineId === line.id && styles.lineBadgeTextActive,
+                ]}
+              >
+                {line.sizeLabel}
+              </Text>
+            </Pressable>
+            <View style={styles.quantityRow}>
+              <SecondaryButton
+                label="-"
+                onPress={() => setOrderLineQuantity(line.id, line.quantity - 1)}
+              />
+              <Text style={styles.quantityValue}>{line.quantity}</Text>
+              <SecondaryButton
+                label="+"
+                onPress={() => setOrderLineQuantity(line.id, line.quantity + 1)}
+              />
+            </View>
+            {orderLines.length > 1 ? (
+              <Pressable
+                onPress={() => removeOrderLine(line.id)}
+                accessibilityRole="button"
+                accessibilityLabel={`${line.sizeLabel} 삭제`}
+              >
+                <Text style={styles.removeText}>삭제</Text>
+              </Pressable>
+            ) : null}
+          </View>
+        ))}
+        {activeLine ? (
+          <>
+            <Text style={styles.subTitle}>사이즈 변경</Text>
+            <View style={styles.chipRow}>
+              {selectedProduct.sizes.map((size) => (
+                <Chip
+                  key={size.label}
+                  label={size.label}
+                  selected={activeLine.sizeLabel === size.label}
+                  onPress={() => setOrderLineSize(activeLine.id, size.label)}
+                  style={styles.chipSpacing}
+                />
+              ))}
+            </View>
+          </>
+        ) : null}
+        <SecondaryButton
+          label="다른 사이즈 추가"
+          onPress={() => {
+            const nextSize = remainingSizes[0]?.label || selectedProduct.sizes[0]?.label;
+            if (nextSize) addOrderLine(nextSize);
+          }}
+          disabled={!remainingSizes.length}
+          style={styles.addLineButton}
+        />
+      </Card>
+
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>프린팅 옵션</Text>
+        <View style={styles.optionRow}>
+          <Text style={styles.optionTitle}>뒷면 프린팅 추가</Text>
+          <Switch
+            value={printBackEnabled}
+            onValueChange={setPrintBackEnabled}
+            trackColor={{ false: theme.colors.border, true: theme.colors.primary }}
+            thumbColor="#FFFFFF"
+          />
+        </View>
+        {printBackEnabled ? (
+          <View style={styles.chipRow}>
+            {placementOptions.map((placement) => (
+              <Chip
+                key={placement.value}
+                label={placement.label}
+                selected={selectedPlacement === placement.value}
+                onPress={() => setSelectedPlacement(placement.value)}
+                style={styles.chipSpacing}
+              />
+            ))}
+          </View>
+        ) : null}
+      </View>
 
       <Card style={styles.textCard}>
         <View style={styles.optionRow}>
@@ -317,16 +385,12 @@ function Page() {
         <Text style={styles.priceTitle}>예상 결제 금액</Text>
         <Text style={styles.priceValue}>{formatPrice(pricing.total)}</Text>
         <Text style={styles.priceNote}>
-          개당 {formatPrice(pricing.unitPrice)} · 배송비{' '}
-          {pricing.shippingFee === 0 ? '무료' : formatPrice(pricing.shippingFee)}
-        </Text>
-        <Text style={styles.priceNote}>
-          {FREE_SHIPPING_THRESHOLD_QTY}개부터 무료배송 · {BULK_UNIT_THRESHOLD}개부터{' '}
-          {formatPrice(BULK_UNIT_PRICE)} 적용
+          배송비 {pricing.shippingFee === 0 ? '무료' : formatPrice(pricing.shippingFee)} · 총{' '}
+          {totalQuantity}개
         </Text>
       </Card>
 
-      <PrimaryButton label="목업 미리보기" onPress={goPreview} />
+      <PrimaryButton label="완성 미리보기" onPress={goPreview} />
     </Screen>
   );
 }
@@ -372,6 +436,35 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
   },
+  optionCard: {
+    marginBottom: theme.spacing.lg,
+  },
+  lineRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: theme.spacing.sm,
+  },
+  lineBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    backgroundColor: theme.colors.surface,
+  },
+  lineBadgeActive: {
+    borderColor: theme.colors.primary,
+    backgroundColor: theme.colors.primarySoft,
+  },
+  lineBadgeText: {
+    fontSize: 12,
+    color: theme.colors.textSecondary,
+  },
+  lineBadgeTextActive: {
+    color: theme.colors.primary,
+    fontWeight: '600',
+  },
   quantityRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -381,6 +474,19 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: theme.colors.textPrimary,
     marginHorizontal: theme.spacing.lg,
+  },
+  removeText: {
+    fontSize: 12,
+    color: '#DC2626',
+    fontWeight: '600',
+  },
+  subTitle: {
+    fontSize: 13,
+    color: theme.colors.textSecondary,
+    marginBottom: theme.spacing.sm,
+  },
+  addLineButton: {
+    marginTop: theme.spacing.sm,
   },
   chipSpacing: {
     marginRight: theme.spacing.sm,

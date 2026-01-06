@@ -1,7 +1,7 @@
 import { createRoute } from '@granite-js/react-native';
 import React, { useState } from 'react';
-import { StyleSheet, Text, TextInput, View, Pressable, Image, ActivityIndicator } from 'react-native';
-import { Chip, PrimaryButton, Screen, TopBar, theme, Card } from '../components/ui';
+import { StyleSheet, Text, TextInput, View, Image, ActivityIndicator } from 'react-native';
+import { Chip, PrimaryButton, Screen, TopBar, theme, Card, SecondaryButton } from '../components/ui';
 import { API_BASE_URL } from '../config';
 import { useCatalog } from '../context/catalog';
 
@@ -16,24 +16,34 @@ const stylePromptMap: Record<string, string> = {
   라인아트: 'line art',
   그래픽: 'graphic',
 };
+const promptExamples = [
+  'Minimal line art mountain + sun',
+  'Bold typography: WAVE CLUB',
+  'Cute bear mascot, flat illustration',
+];
 
 function Page() {
   const navigation = Route.useNavigation();
   const { setDesignImageUri, setDesignPrompt } = useCatalog();
   const [prompt, setPrompt] = useState('');
-  const [style, setStyle] = useState(styleOptions[0]);
-  const [ratio, setRatio] = useState(ratioOptions[0]);
-  const [selectedIndex, setSelectedIndex] = useState(0);
-  const [results, setResults] = useState<string[]>([]);
+  const [style, setStyle] = useState<string>(styleOptions[0] ?? '미니멀');
+  const [ratio, setRatio] = useState<string>(ratioOptions[0] ?? '1:1');
+  const [resultUrl, setResultUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [removingBg, setRemovingBg] = useState(false);
+  const [showExamples, setShowExamples] = useState(true);
   const [error, setError] = useState('');
 
   const goNext = () => {
-    const selected = results[selectedIndex];
-    if (selected) {
-      setDesignImageUri(selected);
+    if (resultUrl) {
+      setDesignImageUri(resultUrl);
       navigation.navigate('/editor');
     }
+  };
+
+  const handleSelectExample = (value: string) => {
+    setPrompt(value);
+    setShowExamples(false);
   };
 
   const handleGenerate = async () => {
@@ -50,7 +60,7 @@ function Page() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           prompt: `${prompt.trim()} (${stylePromptMap[style] || style})`,
-          numberOfImages: 4,
+          numberOfImages: 1,
           aspectRatio: ratio,
         }),
       });
@@ -58,13 +68,40 @@ function Page() {
         throw new Error('이미지 생성에 실패했어요.');
       }
       const data = await response.json();
-      const urls = (data.images || []).map((item: { url: string }) => item.url);
-      setResults(urls);
-      setSelectedIndex(0);
+      const nextUrl = data.images?.[0]?.url || '';
+      if (!nextUrl) {
+        throw new Error('이미지 생성 결과가 비어 있어요.');
+      }
+      setResultUrl(nextUrl);
     } catch (err) {
       setError(err instanceof Error ? err.message : '이미지 생성에 실패했어요.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleRemoveBackground = async () => {
+    if (!resultUrl) return;
+    setRemovingBg(true);
+    setError('');
+    try {
+      const response = await fetch(`${API_BASE_URL}/v1/images/remove-background`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ imageUrl: resultUrl }),
+      });
+      if (!response.ok) {
+        throw new Error('배경 제거에 실패했어요.');
+      }
+      const data = await response.json();
+      if (!data.url) {
+        throw new Error('배경 제거 결과가 올바르지 않아요.');
+      }
+      setResultUrl(data.url);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '배경 제거에 실패했어요.');
+    } finally {
+      setRemovingBg(false);
     }
   };
 
@@ -79,9 +116,30 @@ function Page() {
         placeholderTextColor={theme.colors.muted}
         value={prompt}
         onChangeText={setPrompt}
+        onFocus={() => setShowExamples(false)}
+        onBlur={() => {
+          if (!prompt.trim()) {
+            setShowExamples(true);
+          }
+        }}
         multiline
       />
       <Text style={styles.helperText}>영문 프롬프트 기준으로 가장 품질이 좋아요.</Text>
+      {showExamples ? (
+        <View style={styles.exampleSection}>
+          <Text style={styles.sectionTitle}>프롬프트 예시</Text>
+          <View style={styles.chipRow}>
+            {promptExamples.map((example) => (
+              <Chip
+                key={example}
+                label={example}
+                onPress={() => handleSelectExample(example)}
+                style={styles.chipSpacing}
+              />
+            ))}
+          </View>
+        </View>
+      ) : null}
 
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>스타일</Text>
@@ -124,29 +182,30 @@ function Page() {
 
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>생성 결과</Text>
-        <View style={styles.grid}>
-          {(results.length ? results : Array.from({ length: 4 })).map((item, index) => (
-            <Pressable
-              key={`result-${index}`}
-              onPress={() => setSelectedIndex(index)}
-              style={[
-                styles.gridItem,
-                selectedIndex === index && styles.gridItemSelected,
-              ]}
-            >
-              <Card style={styles.gridCard}>
-                {typeof item === 'string' ? (
-                  <Image source={{ uri: item }} style={styles.resultImage} />
-                ) : (
-                  <Text style={styles.gridLabel}>Result {index + 1}</Text>
-                )}
-              </Card>
-            </Pressable>
-          ))}
+        <View style={styles.resultCenter}>
+          <Card style={styles.resultCard}>
+            {resultUrl ? (
+              <Image source={{ uri: resultUrl }} style={styles.resultImage} />
+            ) : (
+              <Text style={styles.resultPlaceholder}>생성된 이미지가 여기에 표시돼요</Text>
+            )}
+          </Card>
+        </View>
+        <View style={styles.resultActions}>
+          <SecondaryButton
+            label={removingBg ? '배경 제거 중...' : '배경 제거'}
+            onPress={handleRemoveBackground}
+            disabled={!resultUrl || removingBg}
+            style={styles.resultButton}
+          />
+          <PrimaryButton
+            label="내 티셔츠 만들기"
+            onPress={goNext}
+            disabled={!resultUrl}
+            style={styles.resultButton}
+          />
         </View>
       </View>
-
-      <PrimaryButton label="선택 완료" onPress={goNext} disabled={!results.length} />
     </Screen>
   );
 }
@@ -174,6 +233,9 @@ const styles = StyleSheet.create({
     marginTop: theme.spacing.sm,
     marginBottom: theme.spacing.lg,
   },
+  exampleSection: {
+    marginBottom: theme.spacing.lg,
+  },
   section: {
     marginTop: theme.spacing.lg,
   },
@@ -191,23 +253,13 @@ const styles = StyleSheet.create({
     marginRight: theme.spacing.sm,
     marginBottom: theme.spacing.sm,
   },
-  grid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
+  resultCenter: {
+    alignItems: 'center',
     marginTop: theme.spacing.sm,
   },
-  gridItem: {
-    width: '48%',
-    marginBottom: theme.spacing.sm,
-  },
-  gridItemSelected: {
-    borderRadius: theme.radius.md,
-    borderWidth: 2,
-    borderColor: theme.colors.primary,
-  },
-  gridCard: {
-    height: 140,
+  resultCard: {
+    width: 220,
+    height: 220,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -216,9 +268,17 @@ const styles = StyleSheet.create({
     height: '100%',
     borderRadius: theme.radius.md,
   },
-  gridLabel: {
+  resultPlaceholder: {
     fontSize: 12,
     color: theme.colors.textSecondary,
+    textAlign: 'center',
+    paddingHorizontal: theme.spacing.md,
+  },
+  resultActions: {
+    marginTop: theme.spacing.md,
+  },
+  resultButton: {
+    marginBottom: theme.spacing.sm,
   },
   loadingRow: {
     flexDirection: 'row',

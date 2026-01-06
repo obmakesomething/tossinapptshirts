@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
-import { catalogProducts, type CatalogProduct, type SizeOption } from '../data/catalog';
+import { catalogProducts, type CatalogProduct } from '../data/catalog';
 import { printOptions, type PrintOption } from '../data/printOptions';
 import type { Placement } from '../data/mockupTemplates';
 
@@ -18,15 +18,21 @@ export type TextLayer = {
   color: string;
 };
 
+export type OrderLine = {
+  id: string;
+  sizeLabel: string;
+  quantity: number;
+};
+
 type CatalogContextValue = {
   products: CatalogProduct[];
   selectedProduct: CatalogProduct;
   selectedColor: string;
-  selectedSize: SizeOption | null;
+  orderLines: OrderLine[];
+  totalQuantity: number;
   selectedPlacement: Placement;
   printBackEnabled: boolean;
   selectedPrint: PrintOption;
-  quantity: number;
   designImageUri: string | null;
   designPrompt: string;
   imageTransform: LayerTransform;
@@ -35,10 +41,12 @@ type CatalogContextValue = {
   textLayer: TextLayer;
   setSelectedProductId: (id: string) => void;
   setSelectedColor: (color: string) => void;
-  setSelectedSizeLabel: (label: string) => void;
+  addOrderLine: (sizeLabel: string) => void;
+  removeOrderLine: (lineId: string) => void;
+  setOrderLineSize: (lineId: string, sizeLabel: string) => void;
+  setOrderLineQuantity: (lineId: string, quantity: number) => void;
   setSelectedPlacement: (placement: Placement) => void;
   setPrintBackEnabled: (enabled: boolean) => void;
-  setQuantity: (quantity: number) => void;
   setDesignImageUri: (uri: string | null) => void;
   setDesignPrompt: (prompt: string) => void;
   setImageTransform: (transform: LayerTransform) => void;
@@ -87,13 +95,12 @@ export function CatalogProvider({ children }: { children: React.ReactNode }) {
 
   const [selectedProductId, setSelectedProductId] = useState(fallbackProduct.id);
   const [selectedColor, setSelectedColor] = useState('');
-  const [selectedSizeLabel, setSelectedSizeLabel] = useState('');
+  const [orderLines, setOrderLines] = useState<OrderLine[]>([]);
   const [selectedPlacement, setSelectedPlacement] = useState<Placement>('front');
   const [printBackEnabled, setPrintBackEnabledState] = useState(false);
   const [selectedPrintId, setSelectedPrintId] = useState<PrintOption['id']>(
     resolveAutoPrint(fallbackProduct).id
   );
-  const [quantity, setQuantity] = useState(1);
   const [designImageUri, setDesignImageUri] = useState<string | null>(null);
   const [designPrompt, setDesignPrompt] = useState('');
   const [imageTransform, setImageTransform] = useState<LayerTransform>(
@@ -110,22 +117,25 @@ export function CatalogProvider({ children }: { children: React.ReactNode }) {
     [products, selectedProductId, fallbackProduct]
   );
 
-  const selectedSize = useMemo(() => {
-    if (!selectedProduct) return null;
-    return (
-      selectedProduct.sizes.find((size) => size.label === selectedSizeLabel) ??
-      selectedProduct.sizes[0] ??
-      null
-    );
-  }, [selectedProduct, selectedSizeLabel]);
-
   const selectedPrint =
     printOptions.find((option) => option.id === selectedPrintId) ?? fallbackPrint;
+
+  const totalQuantity = useMemo(
+    () => orderLines.reduce((sum, line) => sum + line.quantity, 0),
+    [orderLines]
+  );
+
+  const createOrderLine = (sizeLabel: string, quantityValue = 1): OrderLine => ({
+    id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+    sizeLabel,
+    quantity: quantityValue,
+  });
 
   useEffect(() => {
     if (!selectedProduct) return;
     setSelectedColor(selectedProduct.colors[0] ?? '');
-    setSelectedSizeLabel(selectedProduct.sizes[0]?.label ?? '');
+    const firstSize = selectedProduct.sizes[0]?.label ?? '';
+    setOrderLines([createOrderLine(firstSize, 1)]);
     const autoPrint = resolveAutoPrint(selectedProduct);
     setSelectedPrintId(autoPrint.id);
   }, [selectedProduct?.id]);
@@ -141,15 +151,41 @@ export function CatalogProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const addOrderLine = (sizeLabel: string) => {
+    setOrderLines((lines) => [...lines, createOrderLine(sizeLabel, 1)]);
+  };
+
+  const removeOrderLine = (lineId: string) => {
+    setOrderLines((lines) => lines.filter((line) => line.id !== lineId));
+  };
+
+  const setOrderLineSize = (lineId: string, sizeLabel: string) => {
+    setOrderLines((lines) =>
+      lines.map((line) =>
+        line.id === lineId ? { ...line, sizeLabel } : line
+      )
+    );
+  };
+
+  const setOrderLineQuantity = (lineId: string, quantityValue: number) => {
+    setOrderLines((lines) =>
+      lines.map((line) =>
+        line.id === lineId
+          ? { ...line, quantity: Math.max(1, quantityValue) }
+          : line
+      )
+    );
+  };
+
   const value: CatalogContextValue = {
     products,
     selectedProduct,
     selectedColor,
-    selectedSize,
+    orderLines,
+    totalQuantity,
     selectedPlacement,
     printBackEnabled,
     selectedPrint,
-    quantity,
     designImageUri,
     designPrompt,
     imageTransform,
@@ -158,10 +194,12 @@ export function CatalogProvider({ children }: { children: React.ReactNode }) {
     textLayer,
     setSelectedProductId,
     setSelectedColor,
-    setSelectedSizeLabel,
+    addOrderLine,
+    removeOrderLine,
+    setOrderLineSize,
+    setOrderLineQuantity,
     setSelectedPlacement,
     setPrintBackEnabled,
-    setQuantity,
     setDesignImageUri,
     setDesignPrompt,
     setImageTransform,

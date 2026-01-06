@@ -46,10 +46,10 @@ function Page() {
 
   return (
     <Screen>
-      <TopBar title="목업 미리보기" onBack={() => navigation.goBack()} />
+      <TopBar title="완성 미리보기" onBack={() => navigation.goBack()} />
 
       <Text style={styles.title}>{selectedProduct.name}</Text>
-      <Text style={styles.subtitle}>색상별 목업을 확인하세요</Text>
+      <Text style={styles.subtitle}>색상별 미리보기를 확인하세요</Text>
 
       <ScrollView horizontal showsHorizontalScrollIndicator={false}>
         {filteredShots.map((label, index) => (

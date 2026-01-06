@@ -19,6 +19,7 @@ const IMAGE_BASE_URL = process.env.S3_PUBLIC_BASE_URL || '';
 const IMAGE_PREFIX = process.env.S3_IMAGE_PREFIX || 'uploads';
 const PDF_PREFIX = process.env.S3_PDF_PREFIX || 'orders';
 const OPENAI_IMAGE_MODEL = process.env.OPENAI_IMAGE_MODEL || 'gpt-image-1';
+const OPENAI_IMAGE_QUALITY = process.env.OPENAI_IMAGE_QUALITY || 'auto';
 const ORDER_OUTPUT_DIR = process.env.ORDER_OUTPUT_DIR || path.join(process.cwd(), 'order-output');
 const CLIPDROP_API_KEY = process.env.CLIPDROP_API_KEY || '';
 const KAKAO_WEBHOOK_URL = process.env.KAKAO_WEBHOOK_URL || '';
@@ -56,15 +57,25 @@ function getOpenAIClient() {
   return openaiClient;
 }
 
+function resolveBaseUrl() {
+  if (IMAGE_BASE_URL) return IMAGE_BASE_URL.replace(/\/$/, '');
+  const endpoint = process.env.S3_ENDPOINT || '';
+  if (IMAGE_BUCKET && endpoint.includes('storage.railway.app')) {
+    return `https://${IMAGE_BUCKET}.storage.railway.app`;
+  }
+  return '';
+}
+
 function buildPublicUrl(key) {
-  if (!IMAGE_BASE_URL) return '';
-  return `${IMAGE_BASE_URL.replace(/\/$/, '')}/${key}`;
+  const baseUrl = resolveBaseUrl();
+  if (!baseUrl) return '';
+  return `${baseUrl}/${key}`;
 }
 
 async function uploadToS3({ key, body, contentType }) {
   const client = getS3Client();
-  if (!client || !IMAGE_BUCKET || !IMAGE_BASE_URL) {
-    throw new Error('S3 configuration is missing.');
+  if (!client || !IMAGE_BUCKET || !resolveBaseUrl()) {
+    throw new Error('S3 configuration is missing. Check S3_BUCKET, S3_ENDPOINT, S3_PUBLIC_BASE_URL.');
   }
   await client.send(
     new PutObjectCommand({
@@ -267,7 +278,7 @@ app.post('/v1/images/upload', async (req, res) => {
 
 app.post('/v1/images/generate', async (req, res) => {
   try {
-    const { prompt, numberOfImages = 4, aspectRatio = '1:1' } = req.body || {};
+    const { prompt, numberOfImages = 1, aspectRatio = '1:1' } = req.body || {};
     if (!prompt) return res.status(400).json({ error: 'Prompt is required.' });
     const count = Math.max(1, Math.min(4, Number(numberOfImages) || 1));
     const sizeMap = {
@@ -283,6 +294,7 @@ app.post('/v1/images/generate', async (req, res) => {
       prompt,
       size,
       n: count,
+      ...(OPENAI_IMAGE_QUALITY ? { quality: OPENAI_IMAGE_QUALITY } : {}),
     });
 
     const results = [];
@@ -311,6 +323,47 @@ app.post('/v1/images/generate', async (req, res) => {
   }
 });
 
+app.post('/v1/images/remove-background', async (req, res) => {
+  try {
+    const { imageUrl, dataUrl, filename } = req.body || {};
+    if (!CLIPDROP_API_KEY) {
+      return res.status(500).json({ error: 'CLIPDROP_API_KEY is required.' });
+    }
+    if (!imageUrl && !dataUrl) {
+      return res.status(400).json({ error: 'imageUrl or dataUrl is required.' });
+    }
+    const tempDir = path.join(ORDER_OUTPUT_DIR, 'temp');
+    await fsp.mkdir(tempDir, { recursive: true });
+    const baseName = filename || `remove-bg-${Date.now()}`;
+    const inputPath = path.join(tempDir, `${baseName}.png`);
+    if (dataUrl) {
+      const decoded = decodeDataUrl(dataUrl);
+      if (!decoded) {
+        return res.status(400).json({ error: 'Invalid dataUrl.' });
+      }
+      await fsp.writeFile(inputPath, decoded.buffer);
+    } else {
+      await downloadToFile(imageUrl, inputPath);
+    }
+
+    const outputPath = path.join(tempDir, `${baseName}-nobg.png`);
+    await removeBackgroundClipdrop({
+      sourcePath: inputPath,
+      apiKey: CLIPDROP_API_KEY,
+      outputPath,
+    });
+    const outputBuffer = await fsp.readFile(outputPath);
+    const key = `${IMAGE_PREFIX}/${Date.now()}-${Math.random()
+      .toString(36)
+      .slice(2)}-${baseName}.png`;
+    const url = await uploadToS3({ key, body: outputBuffer, contentType: 'image/png' });
+    res.json({ url });
+  } catch (error) {
+    console.error('remove_background_failed', error);
+    res.status(500).json({ error: error.message || 'Remove background failed.' });
+  }
+});
+
 app.post('/v1/print-files/process', async (req, res) => {
   try {
     const payload = req.body || {};
@@ -321,7 +374,7 @@ app.post('/v1/print-files/process', async (req, res) => {
       target_height_px: payload.target_height_px,
       clipdrop_api_key: payload.clipdrop_api_key || CLIPDROP_API_KEY,
       output_dir: payload.output_dir || ORDER_OUTPUT_DIR,
-      allow_warn_to_pass: Boolean(payload.allow_warn_to_pass),
+      allow_warn_to_pass: false,
     });
     res.json(result);
   } catch (error) {
@@ -356,15 +409,6 @@ app.post('/v1/orders/submit', async (req, res) => {
         }
       }
       if (masterPath) {
-        if (order.pipeline.removeBackground) {
-          const cleanedPath = path.join(workDir, 'master_nobg.png');
-          await removeBackgroundClipdrop({
-            sourcePath: masterPath,
-            apiKey: CLIPDROP_API_KEY,
-            outputPath: cleanedPath,
-          });
-          masterPath = cleanedPath;
-        }
         pipelineResult = await runPrintPipeline({
           master_png_path: masterPath,
           order_id: orderId,
@@ -372,7 +416,7 @@ app.post('/v1/orders/submit', async (req, res) => {
           target_height_px: order.pipeline.targetHeightPx,
           clipdrop_api_key: CLIPDROP_API_KEY,
           output_dir: ORDER_OUTPUT_DIR,
-          allow_warn_to_pass: Boolean(order.pipeline.allowWarnToPass),
+          allow_warn_to_pass: false,
         });
       }
     }
