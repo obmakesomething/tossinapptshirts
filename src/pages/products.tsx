@@ -1,0 +1,101 @@
+import { createRoute } from '@granite-js/react-native';
+import React from 'react';
+import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Card, Screen, TopBar, theme } from '../components/ui';
+import { useCatalog } from '../context/catalog';
+import { formatPrice } from '../utils/format';
+
+export const Route = createRoute('/products', {
+  component: Page,
+});
+
+function Page() {
+  const navigation = Route.useNavigation();
+  const { products, selectedProduct, setSelectedProductId } = useCatalog();
+
+  const handleSelect = (id: string) => {
+    setSelectedProductId(id);
+    navigation.goBack();
+  };
+
+  return (
+    <Screen>
+      <TopBar title="상품 선택" onBack={() => navigation.goBack()} />
+
+      <Text style={styles.subtitle}>
+        커스텀존 카탈로그에서 제품을 선택하세요.
+      </Text>
+
+      <View style={styles.list}>
+        {products.map((product) => (
+          <Pressable
+            key={product.id}
+            onPress={() => handleSelect(product.id)}
+            style={styles.cardPressable}
+          >
+            <Card
+              style={[
+                styles.card,
+                selectedProduct.id === product.id && styles.cardSelected,
+              ]}
+            >
+              <Image source={product.mainImage} style={styles.thumbnail} resizeMode="cover" />
+              <View style={styles.cardBody}>
+                <Text style={styles.cardTitle}>{product.name}</Text>
+                <Text style={styles.cardMeta}>
+                  {formatPrice(product.price ?? 0)}
+                  {product.originalPrice && product.originalPrice > (product.price ?? 0)
+                    ? ` (정가 ${formatPrice(product.originalPrice)})`
+                    : ''}
+                </Text>
+                <Text style={styles.cardMeta}>
+                  색상 {product.colors.length} · 사이즈 {product.sizes.length}
+                </Text>
+              </View>
+            </Card>
+          </Pressable>
+        ))}
+      </View>
+    </Screen>
+  );
+}
+
+const styles = StyleSheet.create({
+  subtitle: {
+    fontSize: 13,
+    color: theme.colors.textSecondary,
+    marginBottom: theme.spacing.lg,
+  },
+  list: {
+  },
+  cardPressable: {
+    marginBottom: theme.spacing.md,
+  },
+  card: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  cardSelected: {
+    borderColor: theme.colors.primary,
+    backgroundColor: theme.colors.primarySoft,
+  },
+  thumbnail: {
+    width: 72,
+    height: 72,
+    borderRadius: theme.radius.md,
+    marginRight: theme.spacing.md,
+  },
+  cardBody: {
+    flex: 1,
+  },
+  cardTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: theme.colors.textPrimary,
+    marginBottom: 4,
+  },
+  cardMeta: {
+    fontSize: 12,
+    color: theme.colors.textSecondary,
+  },
+});
