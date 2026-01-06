@@ -52,8 +52,8 @@ export function MockupCanvas({
   const textOffsetX = textTransform?.offsetX ?? offsetX;
   const textOffsetY = textTransform?.offsetY ?? offsetY;
   const textRotation = textTransform?.rotation ?? rotation;
-  const textWidth = area.width * textScale;
-  const textHeight = area.height * textScale;
+  const textWidth = area.width;
+  const textHeight = area.height;
   const textLeft = area.left + area.width / 2 + textOffsetX * area.width - textWidth / 2;
   const textTop = area.top + area.height / 2 + textOffsetY * area.height - textHeight / 2;
   const colorValue = resolveColorValue(template.color);
@@ -122,7 +122,10 @@ export function MockupCanvas({
               top: textTop,
               width: textWidth,
               height: textHeight,
-              transform: [{ rotate: `${textRotation}deg` }],
+              transform: [
+                { scale: textScale },
+                { rotate: `${textRotation}deg` },
+              ],
             },
           ]}
         >

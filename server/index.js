@@ -27,11 +27,16 @@ const KAKAO_WEBHOOK_TOKEN = process.env.KAKAO_WEBHOOK_TOKEN || '';
 let s3Client;
 function getS3Client() {
   if (s3Client) return s3Client;
-  if (!process.env.AWS_REGION || !process.env.AWS_ACCESS_KEY_ID || !process.env.AWS_SECRET_ACCESS_KEY) {
+  if (!process.env.AWS_ACCESS_KEY_ID || !process.env.AWS_SECRET_ACCESS_KEY) {
     return null;
   }
+  const region = process.env.AWS_REGION || process.env.S3_REGION || 'us-east-1';
+  const endpoint = process.env.S3_ENDPOINT || '';
+  const forcePathStyle = String(process.env.S3_FORCE_PATH_STYLE || 'false') === 'true';
   s3Client = new S3Client({
-    region: process.env.AWS_REGION,
+    region,
+    ...(endpoint ? { endpoint } : {}),
+    forcePathStyle,
     credentials: {
       accessKeyId: process.env.AWS_ACCESS_KEY_ID,
       secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
@@ -302,6 +307,7 @@ app.post('/v1/images/generate', async (req, res) => {
 
     res.json({ images: results, size });
   } catch (error) {
+    console.error('image_generate_failed', error);
     res.status(500).json({ error: error.message || 'OpenAI image failed.' });
   }
 });

@@ -205,7 +205,7 @@ function Page() {
           />
         </View>
         <Text style={styles.canvasHint}>
-          드래그로 이동, 두 손가락으로 회전·확대 가능해요.
+          프린팅 영역을 꾹 누르면 드래그·핀치 편집이 활성화돼요.
         </Text>
         <View style={styles.sliderRow}>
           <Text style={styles.sliderLabel}>크기</Text>

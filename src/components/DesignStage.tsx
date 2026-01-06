@@ -1,4 +1,4 @@
-import React, { useMemo, useRef } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import { Image, PanResponder, StyleSheet, Text, View } from 'react-native';
 import type { MockupTemplate } from '../data/mockupTemplates';
 import type { LayerTransform, TextLayer } from '../context/catalog';
@@ -62,6 +62,10 @@ export function DesignStage({
   const updateTransform =
     activeLayer === 'text' ? onTextTransformChange : onImageTransformChange;
 
+  const [editing, setEditing] = useState(false);
+  const editingRef = useRef(false);
+  const holdTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const touchStartRef = useRef({ x: 0, y: 0 });
   const startRef = useRef({
     offsetX: 0,
     offsetY: 0,
@@ -70,6 +74,27 @@ export function DesignStage({
     distance: 0,
     angle: 0,
   });
+
+  const clearHoldTimer = () => {
+    if (holdTimerRef.current) {
+      clearTimeout(holdTimerRef.current);
+      holdTimerRef.current = null;
+    }
+  };
+
+  const beginEditing = () => {
+    if (editingRef.current) return;
+    editingRef.current = true;
+    setEditing(true);
+    onInteractionStart?.();
+  };
+
+  const finishEditing = () => {
+    if (!editingRef.current) return;
+    editingRef.current = false;
+    setEditing(false);
+    onInteractionEnd?.();
+  };
 
   const isWithinPrintArea = (x: number, y: number) =>
     x >= area.left - HIT_SLOP &&
@@ -81,16 +106,17 @@ export function DesignStage({
     () =>
       PanResponder.create({
         onStartShouldSetPanResponder: (evt) => {
+          if (!editingRef.current) return false;
           const { locationX, locationY } = evt.nativeEvent;
           return isWithinPrintArea(locationX, locationY);
         },
         onMoveShouldSetPanResponder: (evt) => {
+          if (!editingRef.current) return false;
           const { locationX, locationY } = evt.nativeEvent;
           return isWithinPrintArea(locationX, locationY);
         },
         onPanResponderTerminationRequest: () => false,
         onPanResponderGrant: (evt) => {
-          onInteractionStart?.();
           const { touches } = evt.nativeEvent;
           const a = touches[0];
           const b = touches[1];
@@ -148,13 +174,13 @@ export function DesignStage({
           }
         },
         onPanResponderRelease: () => {
-          onInteractionEnd?.();
+          finishEditing();
         },
         onPanResponderTerminate: () => {
-          onInteractionEnd?.();
+          finishEditing();
         },
       }),
-    [activeTransform, area.height, area.width, isWithinPrintArea, onInteractionEnd, onInteractionStart, updateTransform]
+    [activeTransform, area.height, area.width, isWithinPrintArea, updateTransform]
   );
 
   const buildLayerStyle = (transform: LayerTransform) => {
@@ -173,8 +199,57 @@ export function DesignStage({
     };
   };
 
+  const buildTextStyle = (transform: LayerTransform) => {
+    const widthPx = area.width;
+    const heightPx = area.height;
+    const left =
+      area.left + area.width / 2 + transform.offsetX * area.width - widthPx / 2;
+    const top =
+      area.top + area.height / 2 + transform.offsetY * area.height - heightPx / 2;
+    return {
+      left,
+      top,
+      width: widthPx,
+      height: heightPx,
+      transform: [
+        { scale: transform.scale },
+        { rotate: `${transform.rotation}deg` },
+      ],
+    };
+  };
+
   return (
-    <View style={[styles.container, { width, height }]} {...responder.panHandlers}>
+    <View
+      style={[styles.container, { width, height }]}
+      onTouchStart={(evt) => {
+        if (editingRef.current) return;
+        const { locationX, locationY } = evt.nativeEvent;
+        if (!isWithinPrintArea(locationX, locationY)) return;
+        touchStartRef.current = { x: locationX, y: locationY };
+        clearHoldTimer();
+        holdTimerRef.current = setTimeout(() => {
+          beginEditing();
+        }, 220);
+      }}
+      onTouchMove={(evt) => {
+        if (!holdTimerRef.current) return;
+        const { locationX, locationY } = evt.nativeEvent;
+        const dx = locationX - touchStartRef.current.x;
+        const dy = locationY - touchStartRef.current.y;
+        if (Math.hypot(dx, dy) > 10) {
+          clearHoldTimer();
+        }
+      }}
+      onTouchEnd={() => {
+        clearHoldTimer();
+        finishEditing();
+      }}
+      onTouchCancel={() => {
+        clearHoldTimer();
+        finishEditing();
+      }}
+      {...responder.panHandlers}
+    >
       <Image source={template.image} style={styles.image} resizeMode="cover" />
       <View
         pointerEvents="none"
@@ -203,7 +278,7 @@ export function DesignStage({
         <View style={[styles.designPlaceholder, buildLayerStyle(imageTransform)]} />
       )}
       {textLayer.enabled && textLayer.text ? (
-        <View style={[styles.textWrapper, buildLayerStyle(textTransform)]}>
+        <View style={[styles.textWrapper, buildTextStyle(textTransform)]}>
           <Text
             style={[
               styles.textLayer,
@@ -221,6 +296,11 @@ export function DesignStage({
           </Text>
         </View>
       ) : null}
+      {!editing && (
+        <View pointerEvents="none" style={styles.hintBadge}>
+          <Text style={styles.hintText}>꾹 눌러 편집</Text>
+        </View>
+      )}
     </View>
   );
 }
@@ -264,5 +344,19 @@ const styles = StyleSheet.create({
   textLayer: {
     textAlign: 'center',
     includeFontPadding: false,
+  },
+  hintBadge: {
+    position: 'absolute',
+    bottom: 12,
+    right: 12,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 999,
+    backgroundColor: 'rgba(15, 23, 42, 0.7)',
+  },
+  hintText: {
+    fontSize: 11,
+    color: '#FFFFFF',
+    fontWeight: '600',
   },
 });
