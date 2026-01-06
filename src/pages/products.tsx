@@ -12,6 +12,17 @@ export const Route = createRoute('/products', {
 function Page() {
   const navigation = Route.useNavigation();
   const { products, selectedProduct, setSelectedProductId } = useCatalog();
+  const categoryOrder = ['티셔츠', '후드', '맨투맨', '에코백'];
+  const grouped = products.reduce<Record<string, typeof products>>((acc, product) => {
+    const key = product.category;
+    acc[key] = acc[key] ?? [];
+    acc[key].push(product);
+    return acc;
+  }, {});
+  const categories = [
+    ...categoryOrder.filter((category) => grouped[category]?.length),
+    ...Object.keys(grouped).filter((category) => !categoryOrder.includes(category)),
+  ];
 
   const handleSelect = (id: string) => {
     setSelectedProductId(id);
@@ -27,33 +38,38 @@ function Page() {
       </Text>
 
       <View style={styles.list}>
-        {products.map((product) => (
-          <Pressable
-            key={product.id}
-            onPress={() => handleSelect(product.id)}
-            style={styles.cardPressable}
-          >
-            <Card
-              style={[
-                styles.card,
-                selectedProduct.id === product.id && styles.cardSelected,
-              ]}
-            >
-              <Image source={product.mainImage} style={styles.thumbnail} resizeMode="cover" />
-              <View style={styles.cardBody}>
-                <Text style={styles.cardTitle}>{product.name}</Text>
-                <Text style={styles.cardMeta}>
-                  {formatPrice(product.price ?? 0)}
-                  {product.originalPrice && product.originalPrice > (product.price ?? 0)
-                    ? ` (정가 ${formatPrice(product.originalPrice)})`
-                    : ''}
-                </Text>
-                <Text style={styles.cardMeta}>
-                  색상 {product.colors.length} · 사이즈 {product.sizes.length}
-                </Text>
-              </View>
-            </Card>
-          </Pressable>
+        {categories.map((category) => (
+          <View key={category} style={styles.categorySection}>
+            <Text style={styles.categoryTitle}>{category}</Text>
+            {(grouped[category] ?? []).map((product) => (
+              <Pressable
+                key={product.id}
+                onPress={() => handleSelect(product.id)}
+                style={styles.cardPressable}
+              >
+                <Card
+                  style={[
+                    styles.card,
+                    selectedProduct.id === product.id && styles.cardSelected,
+                  ]}
+                >
+                  <Image source={product.mainImage} style={styles.thumbnail} resizeMode="cover" />
+                  <View style={styles.cardBody}>
+                    <Text style={styles.cardTitle}>{product.name}</Text>
+                    <Text style={styles.cardMeta}>
+                      {formatPrice(product.price ?? 0)}
+                      {product.originalPrice && product.originalPrice > (product.price ?? 0)
+                        ? ` (정가 ${formatPrice(product.originalPrice)})`
+                        : ''}
+                    </Text>
+                    <Text style={styles.cardMeta}>
+                      색상 {product.colors.length} · 사이즈 {product.sizes.length}
+                    </Text>
+                  </View>
+                </Card>
+              </Pressable>
+            ))}
+          </View>
         ))}
       </View>
     </Screen>
@@ -67,6 +83,15 @@ const styles = StyleSheet.create({
     marginBottom: theme.spacing.lg,
   },
   list: {
+  },
+  categorySection: {
+    marginBottom: theme.spacing.lg,
+  },
+  categoryTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: theme.colors.textPrimary,
+    marginBottom: theme.spacing.sm,
   },
   cardPressable: {
     marginBottom: theme.spacing.md,

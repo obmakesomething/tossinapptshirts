@@ -9,6 +9,59 @@ CSV_PATH = ROOT / "data" / "customzone_products.csv"
 ASSETS_OUT = ROOT / "src" / "data" / "catalogAssets.ts"
 CATALOG_OUT = ROOT / "src" / "data" / "catalog.ts"
 
+PRODUCT_ORDER = [
+    "[프린트스타] 148 헤비 14수 라운드 반팔 (남녀공용)",
+    "[프린트스타] 085 17수 반팔 (남녀공용&아동용)",
+    "[프린트스타] 083 30수 반팔 (남녀공용&아동용)",
+    "[길단] 2000 18수 US핏 반팔 (남녀공용)",
+    "[길단] 76000 24수 반팔 (남녀공용)",
+    "[United Athle] UA 55001 (17수 하이퀄리티 반팔티셔츠)",
+    "[프린트스타] 188 헤비 후드 (남녀공용)",
+    "[프린트스타] 183 헤비 맨투맨 (남녀공용)",
+    "캔버스 에코백(35X40)",
+]
+
+PRODUCT_META = {
+    "[프린트스타] 148 헤비 14수 라운드 반팔 (남녀공용)": {
+        "category": "티셔츠",
+        "model_name": "Printstar 148 Heavy 14oz",
+    },
+    "[프린트스타] 085 17수 반팔 (남녀공용&아동용)": {
+        "category": "티셔츠",
+        "model_name": "Printstar 085",
+    },
+    "[프린트스타] 083 30수 반팔 (남녀공용&아동용)": {
+        "category": "티셔츠",
+        "model_name": "Printstar 083",
+    },
+    "[길단] 2000 18수 US핏 반팔 (남녀공용)": {
+        "category": "티셔츠",
+        "model_name": "Gildan 2000",
+    },
+    "[길단] 76000 24수 반팔 (남녀공용)": {
+        "category": "티셔츠",
+        "model_name": "Gildan 76000",
+    },
+    "[United Athle] UA 55001 (17수 하이퀄리티 반팔티셔츠)": {
+        "category": "티셔츠",
+        "model_name": "United Athle 55001",
+    },
+    "[프린트스타] 188 헤비 후드 (남녀공용)": {
+        "category": "후드",
+        "model_name": "Printstar 188 Heavy Hoodie",
+    },
+    "[프린트스타] 183 헤비 맨투맨 (남녀공용)": {
+        "category": "맨투맨",
+        "model_name": "Printstar 183 Heavy Sweatshirt",
+    },
+    "캔버스 에코백(35X40)": {
+        "category": "에코백",
+        "model_name": "Canvas Eco Bag 35x40",
+    },
+}
+
+FORCED_COLORS = ["화이트", "블랙"]
+
 
 def parse_prices(raw: str):
     numbers = [int(n.replace(",", "")) for n in re.findall(r"[0-9][0-9,]*", raw)]
@@ -79,6 +132,8 @@ def build_catalog(rows):
         "export type CatalogProduct = {",
         "  id: string;",
         "  name: string;",
+        "  category: string;",
+        "  modelName: string;",
         "  price: number | null;",
         "  originalPrice: number | null;",
         "  priceText: string;",
@@ -106,19 +161,22 @@ def build_catalog(rows):
 
     for index, row in enumerate(rows, start=1):
         name = row["Name"]
+        meta = PRODUCT_META[name]
         price, original = parse_prices(row["Price"])
         url = row["URL"]
         main_url = row["Main Image URL"]
         detail_url = row["Detail Image URLs"]
         main_local = row["Local Main Image"]
         detail_local = row["Local Detail Images"]
-        colors = parse_list(row["Colors"])
+        colors = FORCED_COLORS
         sizes = parse_sizes(row["Sizes"])
         tags = parse_list(row["Tags"])
         product_id = f"p-{index:03d}"
         lines.append("  {")
         lines.append(f"    id: '{product_id}',")
         lines.append(f"    name: {name!r},")
+        lines.append(f"    category: {meta['category']!r},")
+        lines.append(f"    modelName: {meta['model_name']!r},")
         lines.append(f"    price: {price if price is not None else 'null'},")
         lines.append(f"    originalPrice: {original if original is not None else 'null'},")
         lines.append("    priceText: formatPrice(")
@@ -140,7 +198,10 @@ def build_catalog(rows):
 def main():
     with CSV_PATH.open("r", encoding="utf-8-sig", newline="") as f:
         reader = csv.DictReader(f)
-        rows = list(reader)
+        rows = [row for row in reader if row["Name"] in PRODUCT_META]
+
+    order_index = {name: idx for idx, name in enumerate(PRODUCT_ORDER)}
+    rows.sort(key=lambda row: order_index.get(row["Name"], 999))
 
     ASSETS_OUT.parent.mkdir(parents=True, exist_ok=True)
     build_assets_map(rows)

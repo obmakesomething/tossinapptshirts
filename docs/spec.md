@@ -6,7 +6,7 @@
 - Image inputs: upload or Imagen generation.
 - Background removal via Google Cloud Run service.
 - Mockups generated via template compositing (server-side).
-- Product catalog sourced from Customzone CSV + local images.
+- Product catalog sourced from Customzone CSV, filtered to core SKUs.
 
 ## Non-goals
 - No Toss Login / Toss Pay / push / promotion APIs (mTLS not required).
@@ -37,13 +37,14 @@
 - Results grid (1-4) + select one
 
 ### Product & Edit
-- Product: catalog selection
+- Product: catalog selection (티셔츠 / 후드 / 맨투맨 / 에코백)
 - Color swatches (from CSV)
 - Size selector (from CSV)
 - Print size selector with pricing tiers
 - Print area overlay
 - Transform: scale/rotate/drag
 - Quality warnings (low-res)
+- Detail: show printing model name per SKU
 
 ### Mockup Preview
 - Carousel (front/back, 2-3 shots)
@@ -99,7 +100,8 @@
 
 ## Data source
 - `data/customzone_products.csv` is the source of products, colors, sizes, and prices.
-- `data/downloads/**` contains local product images.
+- `scripts/build_catalog.py` filters to core SKUs and forces colors to white/black.
+- `data/downloads/**` contains local product images for dev only.
 - Run `python scripts/build_catalog.py` after CSV changes.
 
 ## Pricing (print-only)

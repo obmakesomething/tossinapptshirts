@@ -63,6 +63,9 @@ function Page() {
             <Text style={styles.productDesc}>
               제품가 {formatPrice(selectedProduct.price ?? 0)}
             </Text>
+            <Text style={styles.productMeta}>
+              모델명 {selectedProduct.modelName}
+            </Text>
             {selectedProduct.originalPrice &&
             selectedProduct.originalPrice > (selectedProduct.price ?? 0) ? (
               <Text style={styles.productOriginal}>
@@ -222,6 +225,11 @@ const styles = StyleSheet.create({
   productDesc: {
     fontSize: 13,
     color: theme.colors.textSecondary,
+  },
+  productMeta: {
+    fontSize: 12,
+    color: theme.colors.textSecondary,
+    marginTop: 4,
   },
   productOriginal: {
     fontSize: 12,
