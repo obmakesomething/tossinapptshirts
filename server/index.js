@@ -283,7 +283,6 @@ app.post('/v1/images/generate', async (req, res) => {
       prompt,
       size,
       n: count,
-      response_format: 'b64_json',
     });
 
     const results = [];

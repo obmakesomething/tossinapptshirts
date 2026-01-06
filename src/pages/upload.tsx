@@ -1,7 +1,6 @@
 import { createRoute } from '@granite-js/react-native';
 import React, { useState } from 'react';
-import { StyleSheet, Text, View, Image, ActivityIndicator } from 'react-native';
-import { launchImageLibrary } from 'react-native-image-picker';
+import { StyleSheet, Text, View, Image, ActivityIndicator, Pressable } from 'react-native';
 import {
   Card,
   PrimaryButton,
@@ -12,6 +11,7 @@ import {
 } from '../components/ui';
 import { API_BASE_URL } from '../config';
 import { useCatalog } from '../context/catalog';
+import { fetchAlbumPhotos, ImageResponse } from '@apps-in-toss/native-modules';
 
 export const Route = createRoute('/upload', {
   component: Page,
@@ -21,6 +21,8 @@ function Page() {
   const navigation = Route.useNavigation();
   const { designImageUri, setDesignImageUri } = useCatalog();
   const [uploading, setUploading] = useState(false);
+  const [loadingAlbum, setLoadingAlbum] = useState(false);
+  const [albumPhotos, setAlbumPhotos] = useState<ImageResponse[]>([]);
   const [error, setError] = useState('');
 
   const goNext = () => {
@@ -31,29 +33,15 @@ function Page() {
     navigation.navigate('/generate');
   };
 
-  const handlePick = async () => {
-    setError('');
-    const result = await launchImageLibrary({
-      mediaType: 'photo',
-      selectionLimit: 1,
-      includeBase64: true,
-      quality: 0.92,
-    });
-    if (result.didCancel) return;
-    const asset = result.assets?.[0];
-    if (!asset?.base64) {
-      setError('이미지 선택에 실패했어요.');
-      return;
-    }
+  const uploadDataUrl = async (dataUrl: string, filename: string) => {
     setUploading(true);
     try {
       const response = await fetch(`${API_BASE_URL}/v1/images/upload`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          filename: asset.fileName || 'upload',
-          base64: asset.base64,
-          contentType: asset.type || 'image/jpeg',
+          filename,
+          dataUrl,
         }),
       });
       if (!response.ok) {
@@ -71,13 +59,44 @@ function Page() {
     }
   };
 
+  const handlePick = async () => {
+    setError('');
+    setLoadingAlbum(true);
+    try {
+      const permission = await fetchAlbumPhotos.getPermission();
+      if (permission !== 'allowed') {
+        const next = await fetchAlbumPhotos.openPermissionDialog();
+        if (next !== 'allowed') {
+          setError('사진 접근 권한이 필요해요.');
+          return;
+        }
+      }
+      const photos = await fetchAlbumPhotos({ maxCount: 30, maxWidth: 1024 });
+      setAlbumPhotos(photos);
+      if (!photos.length) {
+        setError('앨범에서 사진을 찾지 못했어요.');
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '앨범을 불러오지 못했어요.');
+    } finally {
+      setLoadingAlbum(false);
+    }
+  };
+
+  const handleSelectPhoto = async (photo: ImageResponse) => {
+    const dataUrl = photo.dataUri.startsWith('data:')
+      ? photo.dataUri
+      : `data:image/jpeg;base64,${photo.dataUri}`;
+    await uploadDataUrl(dataUrl, `album-${photo.id}`);
+  };
+
   return (
     <Screen>
       <TopBar title="이미지 업로드" onBack={() => navigation.goBack()} />
 
       <Text style={styles.title}>파일을 선택해 바로 목업을 만들어요</Text>
       <Text style={styles.subtitle}>
-        PNG/JPG 최대 10MB, 가로 4096px 이하 권장
+        앨범에서 이미지를 골라 바로 업로드하세요.
       </Text>
 
       <Card style={styles.uploadCard}>
@@ -89,11 +108,17 @@ function Page() {
           )}
         </View>
         <SecondaryButton
-          label={uploading ? '업로드 중...' : '파일 선택'}
+          label={loadingAlbum ? '앨범 불러오는 중...' : '앨범 불러오기'}
           onPress={handlePick}
-          disabled={uploading}
+          disabled={uploading || loadingAlbum}
           style={styles.urlButton}
         />
+        {loadingAlbum ? (
+          <View style={styles.loadingRow}>
+            <ActivityIndicator color={theme.colors.primary} />
+            <Text style={styles.loadingText}>앨범 불러오는 중...</Text>
+          </View>
+        ) : null}
         {uploading ? (
           <View style={styles.loadingRow}>
             <ActivityIndicator color={theme.colors.primary} />
@@ -105,6 +130,23 @@ function Page() {
         </Text>
       </Card>
       {error ? <Text style={styles.errorText}>{error}</Text> : null}
+
+      {albumPhotos.length ? (
+        <View style={styles.albumSection}>
+          <Text style={styles.albumTitle}>앨범 사진</Text>
+          <View style={styles.albumGrid}>
+            {albumPhotos.map((photo) => (
+              <Pressable
+                key={photo.id}
+                style={styles.albumItem}
+                onPress={() => handleSelectPhoto(photo)}
+              >
+                <Image source={{ uri: photo.dataUri }} style={styles.albumImage} />
+              </Pressable>
+            ))}
+          </View>
+        </View>
+      ) : null}
 
       <View style={styles.actionRow}>
         <PrimaryButton label="편집으로 이동" onPress={goNext} style={styles.actionButton} />
@@ -185,6 +227,33 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#DC2626',
     marginBottom: theme.spacing.sm,
+  },
+  albumSection: {
+    marginTop: theme.spacing.lg,
+    marginBottom: theme.spacing.lg,
+  },
+  albumTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: theme.colors.textPrimary,
+    marginBottom: theme.spacing.sm,
+  },
+  albumGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+  },
+  albumItem: {
+    width: '48%',
+    borderRadius: theme.radius.md,
+    overflow: 'hidden',
+    marginBottom: theme.spacing.sm,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+  },
+  albumImage: {
+    width: '100%',
+    height: 120,
   },
   actionRow: {
     marginTop: theme.spacing.sm,

@@ -15,7 +15,12 @@ export default defineConfig({
         primaryColor: '#3182F6',
         icon: '',
       },
-      permissions: [],
+      permissions: [
+        {
+          name: 'photos',
+          access: 'read',
+        },
+      ],
     }),
   ],
 });
