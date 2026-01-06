@@ -1,5 +1,5 @@
 {
-  "name": "tshirts-maker",
+  "name": "merchandisegpt",
   "private": true,
   "scripts": {
     "dev": "granite dev",
