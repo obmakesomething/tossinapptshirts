@@ -3,6 +3,11 @@ const cors = require('cors');
 const nodemailer = require('nodemailer');
 const PDFDocument = require('pdfkit');
 const { S3Client, PutObjectCommand } = require('@aws-sdk/client-s3');
+const OpenAI = require('openai');
+const fs = require('fs');
+const fsp = require('fs/promises');
+const path = require('path');
+const { runPrintPipeline } = require('./printPipeline');
 
 const app = express();
 app.use(cors({ origin: true }));
@@ -13,8 +18,11 @@ const IMAGE_BUCKET = process.env.S3_BUCKET || '';
 const IMAGE_BASE_URL = process.env.S3_PUBLIC_BASE_URL || '';
 const IMAGE_PREFIX = process.env.S3_IMAGE_PREFIX || 'uploads';
 const PDF_PREFIX = process.env.S3_PDF_PREFIX || 'orders';
-const IMAGEN_MODEL = process.env.IMAGEN_MODEL || 'imagen-4.0-generate-001';
-const IMAGEN_API_VERSION = process.env.IMAGEN_API_VERSION || 'v1beta';
+const OPENAI_IMAGE_MODEL = process.env.OPENAI_IMAGE_MODEL || 'gpt-image-1';
+const ORDER_OUTPUT_DIR = process.env.ORDER_OUTPUT_DIR || path.join(process.cwd(), 'order-output');
+const CLIPDROP_API_KEY = process.env.CLIPDROP_API_KEY || '';
+const KAKAO_WEBHOOK_URL = process.env.KAKAO_WEBHOOK_URL || '';
+const KAKAO_WEBHOOK_TOKEN = process.env.KAKAO_WEBHOOK_TOKEN || '';
 
 let s3Client;
 function getS3Client() {
@@ -30,6 +38,17 @@ function getS3Client() {
     },
   });
   return s3Client;
+}
+
+let openaiClient;
+function getOpenAIClient() {
+  if (openaiClient) return openaiClient;
+  const apiKey = process.env.OPENAI_API_KEY;
+  if (!apiKey) {
+    throw new Error('OPENAI_API_KEY is required for image generation.');
+  }
+  openaiClient = new OpenAI({ apiKey });
+  return openaiClient;
 }
 
 function buildPublicUrl(key) {
@@ -53,19 +72,53 @@ async function uploadToS3({ key, body, contentType }) {
   return buildPublicUrl(key);
 }
 
-async function getGenAI() {
-  const { GoogleGenAI } = await import('@google/genai');
-  const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
-  if (!apiKey) {
-    throw new Error('GEMINI_API_KEY is required for Imagen.');
-  }
-  return new GoogleGenAI({ apiKey, apiVersion: IMAGEN_API_VERSION });
-}
-
 function decodeDataUrl(dataUrl) {
   const match = dataUrl.match(/^data:(.+);base64,(.*)$/);
   if (!match) return null;
   return { mimeType: match[1], buffer: Buffer.from(match[2], 'base64') };
+}
+
+async function downloadToFile(url, destPath) {
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error('download_failed');
+  }
+  const buffer = Buffer.from(await response.arrayBuffer());
+  await fsp.writeFile(destPath, buffer);
+  return destPath;
+}
+
+async function sendKakaoNotification(payload) {
+  if (!KAKAO_WEBHOOK_URL) return;
+  await fetch(KAKAO_WEBHOOK_URL, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(KAKAO_WEBHOOK_TOKEN ? { Authorization: `Bearer ${KAKAO_WEBHOOK_TOKEN}` } : {}),
+    },
+    body: JSON.stringify(payload),
+  });
+}
+
+async function removeBackgroundClipdrop({ sourcePath, apiKey, outputPath }) {
+  const endpoint = 'https://clipdrop-api.co/remove-background/v1';
+  const form = new FormData();
+  const buffer = await fsp.readFile(sourcePath);
+  form.append('image_file', new Blob([buffer]), path.basename(sourcePath));
+  const response = await fetch(endpoint, {
+    method: 'POST',
+    headers: {
+      'x-api-key': apiKey,
+    },
+    body: form,
+  });
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(`clipdrop_remove_bg_failed: ${text}`);
+  }
+  const result = Buffer.from(await response.arrayBuffer());
+  await fsp.writeFile(outputPath, result);
+  return outputPath;
 }
 
 function buildOrderPdf(order) {
@@ -125,6 +178,11 @@ function buildOrderPdf(order) {
       doc.text(`- Print Size: ${item.print?.sizeLabel || ''}`);
       doc.text(`- Print Dimension: ${item.print?.sizeCm || ''}`);
       doc.text(`- Design URL: ${item.designUrl || ''}`);
+      if (item.text?.text) {
+        doc.text(
+          `- Text Layer: "${item.text.text}" (${item.text.fontWeight || ''}, ${item.text.fontSize || ''}px)`
+        );
+      }
       if (Array.isArray(item.mockupUrls) && item.mockupUrls.length > 0) {
         doc.text(`- Mockups: ${item.mockupUrls.join(', ')}`);
       }
@@ -140,6 +198,12 @@ function buildOrderPdf(order) {
       doc.text(`Shipping: ${order.pricing.shipping || ''}`);
       doc.text(`Total: ${order.pricing.total || ''}`);
     }
+
+    doc.moveDown();
+    doc.fontSize(11).fillColor('#6B7280');
+    doc.text(
+      '※ 출력 이미지에 대한 최종 판단은 주문자가 진행합니다. 시안 확인 후 승인 부탁드립니다.'
+    );
 
     doc.end();
   });
@@ -188,37 +252,65 @@ app.post('/v1/images/upload', async (req, res) => {
 
 app.post('/v1/images/generate', async (req, res) => {
   try {
-    const { prompt, numberOfImages = 4, aspectRatio = '1:1', imageSize = '1K', personGeneration = 'allow_adult' } =
-      req.body || {};
+    const { prompt, numberOfImages = 4, aspectRatio = '1:1' } = req.body || {};
     if (!prompt) return res.status(400).json({ error: 'Prompt is required.' });
+    const count = Math.max(1, Math.min(4, Number(numberOfImages) || 1));
+    const sizeMap = {
+      '1:1': '1024x1024',
+      '4:3': '1536x1024',
+      '3:4': '1024x1536',
+    };
+    const size = sizeMap[aspectRatio] || '1024x1024';
 
-    const ai = await getGenAI();
-    const response = await ai.models.generateImages({
-      model: IMAGEN_MODEL,
+    const client = getOpenAIClient();
+    const response = await client.images.generate({
+      model: OPENAI_IMAGE_MODEL,
       prompt,
-      config: {
-        numberOfImages,
-        aspectRatio,
-        imageSize,
-        personGeneration,
-      },
+      size,
+      n: count,
+      response_format: 'b64_json',
     });
 
-    const generated = response.generatedImages || [];
     const results = [];
+    const generated = response?.data || [];
     for (const item of generated) {
-      const imageBytes = item.image?.imageBytes;
-      const mimeType = item.image?.mimeType || 'image/png';
-      if (!imageBytes) continue;
-      const buffer = Buffer.from(imageBytes, 'base64');
-      const key = `${IMAGE_PREFIX}/imagen-${Date.now()}-${Math.random().toString(36).slice(2)}.png`;
+      let buffer = null;
+      let mimeType = 'image/png';
+      if (item.b64_json) {
+        buffer = Buffer.from(item.b64_json, 'base64');
+      } else if (item.url) {
+        const imageResponse = await fetch(item.url);
+        if (!imageResponse.ok) continue;
+        mimeType = imageResponse.headers.get('content-type') || mimeType;
+        buffer = Buffer.from(await imageResponse.arrayBuffer());
+      }
+      if (!buffer) continue;
+      const key = `${IMAGE_PREFIX}/openai-${Date.now()}-${Math.random().toString(36).slice(2)}.png`;
       const url = await uploadToS3({ key, body: buffer, contentType: mimeType });
       results.push({ url, mimeType });
     }
 
-    res.json({ images: results });
+    res.json({ images: results, size });
   } catch (error) {
-    res.status(500).json({ error: error.message || 'Imagen failed.' });
+    res.status(500).json({ error: error.message || 'OpenAI image failed.' });
+  }
+});
+
+app.post('/v1/print-files/process', async (req, res) => {
+  try {
+    const payload = req.body || {};
+    const result = await runPrintPipeline({
+      master_png_path: payload.master_png_path,
+      order_id: payload.order_id,
+      target_width_px: payload.target_width_px,
+      target_height_px: payload.target_height_px,
+      clipdrop_api_key: payload.clipdrop_api_key || CLIPDROP_API_KEY,
+      output_dir: payload.output_dir || ORDER_OUTPUT_DIR,
+      allow_warn_to_pass: Boolean(payload.allow_warn_to_pass),
+    });
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({ error: error.message || 'pipeline_failed' });
   }
 });
 
@@ -230,6 +322,46 @@ app.post('/v1/orders/submit', async (req, res) => {
       return res.status(500).json({ error: 'SMTP configuration is missing.' });
     }
 
+    let pipelineResult = null;
+    if (order.pipeline?.enabled) {
+      const orderId = order.orderId || String(Date.now());
+      const workDir = path.join(ORDER_OUTPUT_DIR, orderId);
+      await fsp.mkdir(workDir, { recursive: true });
+      let masterPath = order.pipeline.masterPngPath || null;
+      if (!masterPath) {
+        const sourceUrl =
+          order.pipeline.masterPngUrl ||
+          order.masterPngUrl ||
+          order.items?.[0]?.designUrl ||
+          '';
+        if (sourceUrl) {
+          const downloadPath = path.join(workDir, 'master_input.png');
+          await downloadToFile(sourceUrl, downloadPath);
+          masterPath = downloadPath;
+        }
+      }
+      if (masterPath) {
+        if (order.pipeline.removeBackground) {
+          const cleanedPath = path.join(workDir, 'master_nobg.png');
+          await removeBackgroundClipdrop({
+            sourcePath: masterPath,
+            apiKey: CLIPDROP_API_KEY,
+            outputPath: cleanedPath,
+          });
+          masterPath = cleanedPath;
+        }
+        pipelineResult = await runPrintPipeline({
+          master_png_path: masterPath,
+          order_id: orderId,
+          target_width_px: order.pipeline.targetWidthPx,
+          target_height_px: order.pipeline.targetHeightPx,
+          clipdrop_api_key: CLIPDROP_API_KEY,
+          output_dir: ORDER_OUTPUT_DIR,
+          allow_warn_to_pass: Boolean(order.pipeline.allowWarnToPass),
+        });
+      }
+    }
+
     const pdfBuffer = await buildOrderPdf(order);
     const pdfName = `order-${order.orderId || Date.now()}.pdf`;
 
@@ -239,14 +371,25 @@ app.post('/v1/orders/submit', async (req, res) => {
       pdfUrl = await uploadToS3({ key, body: pdfBuffer, contentType: 'application/pdf' });
     }
 
-    const to = process.env.ORDER_EMAIL_TO;
-    if (!to) return res.status(500).json({ error: 'ORDER_EMAIL_TO is required.' });
+    const adminTo = process.env.ORDER_EMAIL_TO;
+    if (!adminTo) return res.status(500).json({ error: 'ORDER_EMAIL_TO is required.' });
+
+    const customerEmail = order.customer?.email || '';
+    const baseSubject = `Order ${order.orderId || ''} - ${order.customer?.name || ''}`;
+    const note =
+      '출력 이미지에 대한 최종 판단은 주문자가 진행합니다. 시안 확인 후 승인 부탁드립니다.';
+    const pipelineLine = pipelineResult
+      ? `Pipeline: ${pipelineResult.status} (QC: ${pipelineResult.qc?.status || ''})`
+      : 'Pipeline: not run';
+    const bodyText = `New order submitted.\n${note}\n${pipelineLine}\nPDF attached.\n${
+      pdfUrl ? `PDF URL: ${pdfUrl}` : ''
+    }`;
 
     await mailer.sendMail({
       from: process.env.SMTP_FROM || process.env.SMTP_USER,
-      to,
-      subject: `Order ${order.orderId || ''} - ${order.customer?.name || ''}`,
-      text: `New order submitted.\nPDF attached.\n${pdfUrl ? `PDF URL: ${pdfUrl}` : ''}`,
+      to: adminTo,
+      subject: baseSubject,
+      text: bodyText,
       attachments: [
         {
           filename: pdfName,
@@ -255,7 +398,29 @@ app.post('/v1/orders/submit', async (req, res) => {
       ],
     });
 
-    res.json({ ok: true, pdfUrl });
+    if (customerEmail) {
+      await mailer.sendMail({
+        from: process.env.SMTP_FROM || process.env.SMTP_USER,
+        to: customerEmail,
+        subject: `[고객용] ${baseSubject}`,
+        text: bodyText,
+        attachments: [
+          {
+            filename: pdfName,
+            content: pdfBuffer,
+          },
+        ],
+      });
+    }
+
+    await sendKakaoNotification({
+      order_id: order.orderId || '',
+      customer: order.customer?.name || '',
+      total: order.pricing?.total || '',
+      status: 'submitted',
+    });
+
+    res.json({ ok: true, pdfUrl, pipeline: pipelineResult });
   } catch (error) {
     res.status(500).json({ error: error.message || 'Order submit failed.' });
   }

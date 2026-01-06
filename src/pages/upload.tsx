@@ -1,6 +1,6 @@
 import { createRoute } from '@granite-js/react-native';
 import React, { useState } from 'react';
-import { StyleSheet, Switch, Text, View } from 'react-native';
+import { StyleSheet, Switch, Text, View, TextInput, Image } from 'react-native';
 import {
   Card,
   PrimaryButton,
@@ -9,6 +9,7 @@ import {
   TopBar,
   theme,
 } from '../components/ui';
+import { useCatalog } from '../context/catalog';
 
 export const Route = createRoute('/upload', {
   component: Page,
@@ -17,6 +18,8 @@ export const Route = createRoute('/upload', {
 function Page() {
   const navigation = Route.useNavigation();
   const [removeBackground, setRemoveBackground] = useState(true);
+  const { designImageUri, setDesignImageUri } = useCatalog();
+  const [imageUrl, setImageUrl] = useState(designImageUri ?? '');
 
   const goNext = () => {
     navigation.navigate('/editor');
@@ -36,9 +39,28 @@ function Page() {
       </Text>
 
       <Card style={styles.uploadCard}>
-        <View style={styles.uploadPreview} />
-        <SecondaryButton label="파일 선택" onPress={() => {}} />
-        <Text style={styles.helperText}>투명 배경 PNG면 자동 유지돼요.</Text>
+        <View style={styles.uploadPreview}>
+          {designImageUri ? (
+            <Image source={{ uri: designImageUri }} style={styles.previewImage} />
+          ) : (
+            <Text style={styles.previewText}>이미지를 선택해 주세요</Text>
+          )}
+        </View>
+        <TextInput
+          style={styles.urlInput}
+          placeholder="이미지 URL을 붙여 넣어주세요"
+          placeholderTextColor={theme.colors.muted}
+          value={imageUrl}
+          onChangeText={setImageUrl}
+        />
+        <SecondaryButton
+          label="URL 적용"
+          onPress={() => setDesignImageUri(imageUrl.trim() || null)}
+          style={styles.urlButton}
+        />
+        <Text style={styles.helperText}>
+          투명 배경 PNG면 자동 유지돼요.
+        </Text>
       </Card>
 
       <Card style={styles.optionCard}>
@@ -71,7 +93,7 @@ function Page() {
 
       <View style={styles.actionRow}>
         <PrimaryButton label="편집으로 이동" onPress={goNext} style={styles.actionButton} />
-        <SecondaryButton label="Imagen으로 생성" onPress={goGenerate} />
+        <SecondaryButton label="AI로 생성" onPress={goGenerate} />
       </View>
     </Screen>
   );
@@ -101,6 +123,33 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: theme.colors.border,
     marginBottom: theme.spacing.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  previewImage: {
+    width: '100%',
+    height: '100%',
+    resizeMode: 'cover',
+  },
+  previewText: {
+    fontSize: 12,
+    color: theme.colors.textSecondary,
+  },
+  urlInput: {
+    width: '100%',
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    borderRadius: theme.radius.md,
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.sm,
+    fontSize: 13,
+    color: theme.colors.textPrimary,
+    backgroundColor: theme.colors.surface,
+    marginBottom: theme.spacing.sm,
+  },
+  urlButton: {
+    alignSelf: 'stretch',
   },
   helperText: {
     fontSize: 12,

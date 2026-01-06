@@ -1,6 +1,6 @@
 import { createRoute } from '@granite-js/react-native';
-import React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import React, { useMemo } from 'react';
+import { StyleSheet, Text, View, TextInput, Pressable, Switch } from 'react-native';
 import {
   Card,
   Chip,
@@ -11,12 +11,14 @@ import {
   TopBar,
   theme,
 } from '../components/ui';
-import { MockupCanvas } from '../components/MockupCanvas';
+import { DesignStage } from '../components/DesignStage';
+import { ScaleSlider } from '../components/ScaleSlider';
 import { buildTemplate } from '../data/mockupTemplates';
 import type { Placement } from '../data/mockupTemplates';
 import { useCatalog } from '../context/catalog';
 import { resolveColorValue } from '../data/colorMap';
 import { printOptions } from '../data/printOptions';
+import { calcPricing, FREE_SHIPPING_THRESHOLD } from '../data/pricing';
 import { formatPrice } from '../utils/format';
 
 export const Route = createRoute('/editor', {
@@ -36,10 +38,21 @@ function Page() {
     selectedSize,
     selectedPlacement,
     selectedPrint,
+    quantity,
+    designImageUri,
+    imageTransform,
+    textTransform,
+    activeLayer,
+    textLayer,
     setSelectedColor,
     setSelectedSizeLabel,
     setSelectedPlacement,
     setSelectedPrintId,
+    setQuantity,
+    setImageTransform,
+    setTextTransform,
+    setActiveLayer,
+    setTextLayer,
   } = useCatalog();
 
   const goPreview = () => {
@@ -50,7 +63,22 @@ function Page() {
   const selectedPrintOption = selectedPrint;
   const sizeExtra = selectedSize?.extraPrice ?? 0;
   const basePrice = selectedProduct.price ?? 0;
-  const totalPrice = basePrice + sizeExtra + selectedPrintOption.price;
+  const itemBase = basePrice + sizeExtra + selectedPrintOption.price;
+  const pricing = calcPricing(itemBase, quantity);
+
+  const activeTransform = activeLayer === 'text' ? textTransform : imageTransform;
+  const updateActiveTransform = (next: typeof activeTransform) => {
+    if (activeLayer === 'text') {
+      setTextTransform(next);
+    } else {
+      setImageTransform(next);
+    }
+  };
+
+  const textSizeLabel = useMemo(
+    () => `${Math.round(textLayer.fontSize)}px`,
+    [textLayer.fontSize]
+  );
 
   return (
     <Screen>
@@ -106,15 +134,24 @@ function Page() {
                   )})`
                 : size.label;
             return (
-            <Chip
-              key={size.label}
-              label={label}
-              selected={selectedSize?.label === size.label}
-              onPress={() => setSelectedSizeLabel(size.label)}
-              style={styles.chipSpacing}
-            />
-          );
+              <Chip
+                key={size.label}
+                label={label}
+                selected={selectedSize?.label === size.label}
+                onPress={() => setSelectedSizeLabel(size.label)}
+                style={styles.chipSpacing}
+              />
+            );
           })}
+        </View>
+      </View>
+
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>수량</Text>
+        <View style={styles.quantityRow}>
+          <SecondaryButton label="-" onPress={() => setQuantity(Math.max(1, quantity - 1))} />
+          <Text style={styles.quantityValue}>{quantity}</Text>
+          <SecondaryButton label="+" onPress={() => setQuantity(quantity + 1)} />
         </View>
       </View>
 
@@ -162,32 +199,160 @@ function Page() {
         <Text style={styles.canvasTitle}>
           {selectedPlacement === 'back' ? '뒷면' : '앞면'} 프린트 영역
         </Text>
+        <View style={styles.layerRow}>
+          <Chip
+            label="이미지"
+            selected={activeLayer === 'image'}
+            onPress={() => setActiveLayer('image')}
+            style={styles.chipSpacing}
+          />
+          <Chip
+            label="텍스트"
+            selected={activeLayer === 'text'}
+            onPress={() => setActiveLayer('text')}
+          />
+        </View>
         <View style={styles.canvas}>
-          <MockupCanvas
+          <DesignStage
             template={template}
-            width={220}
-            height={280}
+            width={240}
+            height={300}
             showPrintArea
-            showDesign
-            designScale={selectedPrintOption.designScale}
+            imageUri={designImageUri}
+            imageTransform={imageTransform}
+            textLayer={textLayer}
+            textTransform={textTransform}
+            activeLayer={activeLayer}
+            onImageTransformChange={setImageTransform}
+            onTextTransformChange={setTextTransform}
           />
         </View>
         <Text style={styles.canvasHint}>
-          권장 해상도: 3600 x 4800px (12x16in @300DPI)
+          드래그로 이동, 두 손가락으로 회전·확대 가능해요.
         </Text>
+        <View style={styles.sliderRow}>
+          <Text style={styles.sliderLabel}>크기</Text>
+          <ScaleSlider
+            min={0.2}
+            max={1.6}
+            value={activeTransform.scale}
+            onChange={(scale) =>
+              updateActiveTransform({ ...activeTransform, scale })
+            }
+          />
+        </View>
         <View style={styles.toolRow}>
-          <SecondaryButton label="중앙 맞춤" onPress={() => {}} style={styles.toolButton} />
-          <SecondaryButton label="크기 100%" onPress={() => {}} style={styles.toolButton} />
-          <SecondaryButton label="회전" onPress={() => {}} />
+          <SecondaryButton
+            label="중앙 맞춤"
+            onPress={() =>
+              updateActiveTransform({ ...activeTransform, offsetX: 0, offsetY: 0 })
+            }
+            style={styles.toolButton}
+          />
+          <SecondaryButton
+            label="회전 초기화"
+            onPress={() =>
+              updateActiveTransform({ ...activeTransform, rotation: 0 })
+            }
+            style={styles.toolButton}
+          />
+          <SecondaryButton
+            label="크기 초기화"
+            onPress={() =>
+              updateActiveTransform({
+                ...activeTransform,
+                scale: activeLayer === 'text' ? 0.45 : selectedPrintOption.designScale,
+              })
+            }
+          />
+        </View>
+      </Card>
+
+      <Card style={styles.textCard}>
+        <View style={styles.optionRow}>
+          <Text style={styles.optionTitle}>텍스트 추가</Text>
+          <Switch
+            value={textLayer.enabled}
+            onValueChange={(value) =>
+              setTextLayer({ ...textLayer, enabled: value })
+            }
+            trackColor={{ false: theme.colors.border, true: theme.colors.primary }}
+            thumbColor="#FFFFFF"
+          />
+        </View>
+        <TextInput
+          style={styles.textInput}
+          value={textLayer.text}
+          onChangeText={(value) => setTextLayer({ ...textLayer, text: value })}
+          placeholder="예: MERCH STUDIO"
+          placeholderTextColor={theme.colors.muted}
+          editable={textLayer.enabled}
+        />
+        <View style={styles.fontRow}>
+          <Text style={styles.fontLabel}>굵기</Text>
+          <View style={styles.fontButtons}>
+            {['regular', 'bold'].map((weight) => (
+              <Pressable
+                key={weight}
+                onPress={() => setTextLayer({ ...textLayer, fontWeight: weight as 'regular' | 'bold' })}
+                style={[
+                  styles.fontButton,
+                  textLayer.fontWeight === weight && styles.fontButtonSelected,
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.fontButtonText,
+                    textLayer.fontWeight === weight && styles.fontButtonTextSelected,
+                  ]}
+                >
+                  {weight === 'regular' ? 'Regular' : 'Bold'}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+        </View>
+        <View style={styles.sliderRow}>
+          <Text style={styles.sliderLabel}>폰트 크기</Text>
+          <ScaleSlider
+            min={14}
+            max={72}
+            value={textLayer.fontSize}
+            onChange={(fontSize) =>
+              setTextLayer({ ...textLayer, fontSize })
+            }
+          />
+          <Text style={styles.sliderValue}>{textSizeLabel}</Text>
+        </View>
+        <View style={styles.colorRow}>
+          <Text style={styles.fontLabel}>색상</Text>
+          {['#0F172A', '#FFFFFF'].map((color) => (
+            <Pressable
+              key={color}
+              onPress={() => setTextLayer({ ...textLayer, color })}
+              style={[
+                styles.colorChip,
+                { backgroundColor: color },
+                textLayer.color === color && styles.colorChipSelected,
+              ]}
+            />
+          ))}
         </View>
       </Card>
 
       <Card style={styles.priceCard}>
         <Text style={styles.priceTitle}>예상 비용</Text>
-        <Text style={styles.priceValue}>{formatPrice(totalPrice)}</Text>
+        <Text style={styles.priceValue}>{formatPrice(pricing.customerTotal)}</Text>
         <Text style={styles.priceNote}>
           제품가 {formatPrice(basePrice)} + 프린트 {formatPrice(selectedPrintOption.price)}
-          {sizeExtra !== 0 ? ` + 사이즈 ${formatPrice(sizeExtra)}` : ''}
+          {sizeExtra !== 0 ? ` + 사이즈 ${formatPrice(sizeExtra)}` : ''} × {quantity}
+        </Text>
+        <Text style={styles.priceNote}>
+          배송비 {pricing.shippingFee === 0 ? '무료' : formatPrice(pricing.shippingFee)} ·
+          {` ${formatPrice(FREE_SHIPPING_THRESHOLD)} 이상 무료배송`}
+        </Text>
+        <Text style={styles.priceNote}>
+          수수료 포함 {formatPrice(pricing.marginAmount)} ({Math.round(pricing.marginRate * 100)}%)
         </Text>
       </Card>
 
@@ -254,6 +419,16 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
   },
+  quantityRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  quantityValue: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: theme.colors.textPrimary,
+    marginHorizontal: theme.spacing.lg,
+  },
   printOptionList: {
   },
   printOption: {
@@ -299,6 +474,10 @@ const styles = StyleSheet.create({
     color: theme.colors.textPrimary,
     marginBottom: theme.spacing.sm,
   },
+  layerRow: {
+    flexDirection: 'row',
+    marginBottom: theme.spacing.sm,
+  },
   canvas: {
     height: 300,
     borderRadius: theme.radius.lg,
@@ -312,6 +491,19 @@ const styles = StyleSheet.create({
   canvasHint: {
     fontSize: 12,
     color: theme.colors.textSecondary,
+  },
+  sliderRow: {
+    marginTop: theme.spacing.md,
+  },
+  sliderLabel: {
+    fontSize: 12,
+    color: theme.colors.textSecondary,
+    marginBottom: 8,
+  },
+  sliderValue: {
+    fontSize: 12,
+    color: theme.colors.textSecondary,
+    marginTop: 6,
   },
   toolRow: {
     flexDirection: 'row',
@@ -336,6 +528,80 @@ const styles = StyleSheet.create({
   warningDesc: {
     fontSize: 13,
     color: '#A16207',
+  },
+  textCard: {
+    marginBottom: theme.spacing.lg,
+  },
+  optionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: theme.spacing.md,
+  },
+  optionTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: theme.colors.textPrimary,
+  },
+  textInput: {
+    minHeight: 48,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    borderRadius: theme.radius.md,
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.sm,
+    fontSize: 14,
+    fontFamily: 'NotoSansKR-Regular',
+    color: theme.colors.textPrimary,
+    backgroundColor: theme.colors.surface,
+  },
+  fontRow: {
+    marginTop: theme.spacing.md,
+  },
+  fontLabel: {
+    fontSize: 12,
+    color: theme.colors.textSecondary,
+    marginBottom: theme.spacing.sm,
+  },
+  fontButtons: {
+    flexDirection: 'row',
+  },
+  fontButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    marginRight: theme.spacing.sm,
+    backgroundColor: theme.colors.surface,
+  },
+  fontButtonSelected: {
+    borderColor: theme.colors.primary,
+    backgroundColor: theme.colors.primarySoft,
+  },
+  fontButtonText: {
+    fontSize: 12,
+    color: theme.colors.textSecondary,
+  },
+  fontButtonTextSelected: {
+    color: theme.colors.primary,
+  },
+  colorRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: theme.spacing.md,
+  },
+  colorChip: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    marginRight: theme.spacing.sm,
+  },
+  colorChipSelected: {
+    borderColor: theme.colors.primary,
+    borderWidth: 2,
   },
   priceCard: {
     marginBottom: theme.spacing.lg,

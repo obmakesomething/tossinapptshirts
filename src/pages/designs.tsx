@@ -24,7 +24,7 @@ const designs: { id: string; title: string; meta: string; color: string }[] = [
 
 function Page() {
   const navigation = Route.useNavigation();
-  const { selectedProduct } = useCatalog();
+  const { selectedProduct, designImageUri, imageTransform, textLayer, textTransform } = useCatalog();
 
   const goHome = () => {
     navigation.navigate('/');
@@ -48,6 +48,10 @@ function Page() {
               width={72}
               height={90}
               showDesign
+              designImageUri={designImageUri}
+              imageTransform={imageTransform}
+              textLayer={textLayer}
+              textTransform={textTransform}
             />
             <View style={styles.cardBody}>
               <Text style={styles.cardTitle}>{item.title}</Text>

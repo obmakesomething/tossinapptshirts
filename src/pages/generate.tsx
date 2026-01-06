@@ -1,7 +1,9 @@
 import { createRoute } from '@granite-js/react-native';
 import React, { useState } from 'react';
-import { StyleSheet, Text, TextInput, View, Pressable } from 'react-native';
+import { StyleSheet, Text, TextInput, View, Pressable, Image, ActivityIndicator } from 'react-native';
 import { Chip, PrimaryButton, Screen, TopBar, theme, Card } from '../components/ui';
+import { API_BASE_URL } from '../config';
+import { useCatalog } from '../context/catalog';
 
 export const Route = createRoute('/generate', {
   component: Page,
@@ -9,21 +11,66 @@ export const Route = createRoute('/generate', {
 
 const styleOptions = ['미니멀', '라인아트', '그래픽'];
 const ratioOptions = ['1:1', '4:3', '3:4'];
+const stylePromptMap: Record<string, string> = {
+  미니멀: 'minimal',
+  라인아트: 'line art',
+  그래픽: 'graphic',
+};
 
 function Page() {
   const navigation = Route.useNavigation();
+  const { setDesignImageUri, setDesignPrompt } = useCatalog();
   const [prompt, setPrompt] = useState('');
   const [style, setStyle] = useState(styleOptions[0]);
   const [ratio, setRatio] = useState(ratioOptions[0]);
   const [selectedIndex, setSelectedIndex] = useState(0);
+  const [results, setResults] = useState<string[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
   const goNext = () => {
-    navigation.navigate('/editor');
+    const selected = results[selectedIndex];
+    if (selected) {
+      setDesignImageUri(selected);
+      navigation.navigate('/editor');
+    }
+  };
+
+  const handleGenerate = async () => {
+    if (!prompt.trim()) {
+      setError('프롬프트를 입력해 주세요.');
+      return;
+    }
+    setError('');
+    setLoading(true);
+    setDesignPrompt(prompt.trim());
+    try {
+      const response = await fetch(`${API_BASE_URL}/v1/images/generate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          prompt: `${prompt.trim()} (${stylePromptMap[style] || style})`,
+          numberOfImages: 4,
+          aspectRatio: ratio,
+        }),
+      });
+      if (!response.ok) {
+        throw new Error('이미지 생성에 실패했어요.');
+      }
+      const data = await response.json();
+      const urls = (data.images || []).map((item: { url: string }) => item.url);
+      setResults(urls);
+      setSelectedIndex(0);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '이미지 생성에 실패했어요.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
     <Screen>
-      <TopBar title="Imagen 생성" onBack={() => navigation.goBack()} />
+      <TopBar title="AI 이미지 생성" onBack={() => navigation.goBack()} />
 
       <Text style={styles.title}>이미지를 생성할 프롬프트를 입력하세요</Text>
       <TextInput
@@ -66,12 +113,19 @@ function Page() {
         </View>
       </View>
 
-      <PrimaryButton label="생성하기" onPress={() => {}} />
+      <PrimaryButton label="생성하기" onPress={handleGenerate} disabled={loading} />
+      {loading ? (
+        <View style={styles.loadingRow}>
+          <ActivityIndicator color={theme.colors.primary} />
+          <Text style={styles.loadingText}>이미지를 생성 중이에요...</Text>
+        </View>
+      ) : null}
+      {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>생성 결과</Text>
         <View style={styles.grid}>
-          {Array.from({ length: 4 }).map((_, index) => (
+          {(results.length ? results : Array.from({ length: 4 })).map((item, index) => (
             <Pressable
               key={`result-${index}`}
               onPress={() => setSelectedIndex(index)}
@@ -81,14 +135,18 @@ function Page() {
               ]}
             >
               <Card style={styles.gridCard}>
-                <Text style={styles.gridLabel}>Result {index + 1}</Text>
+                {typeof item === 'string' ? (
+                  <Image source={{ uri: item }} style={styles.resultImage} />
+                ) : (
+                  <Text style={styles.gridLabel}>Result {index + 1}</Text>
+                )}
               </Card>
             </Pressable>
           ))}
         </View>
       </View>
 
-      <PrimaryButton label="선택 완료" onPress={goNext} />
+      <PrimaryButton label="선택 완료" onPress={goNext} disabled={!results.length} />
     </Screen>
   );
 }
@@ -153,8 +211,28 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  resultImage: {
+    width: '100%',
+    height: '100%',
+    borderRadius: theme.radius.md,
+  },
   gridLabel: {
     fontSize: 12,
     color: theme.colors.textSecondary,
+  },
+  loadingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: theme.spacing.sm,
+  },
+  loadingText: {
+    fontSize: 12,
+    color: theme.colors.textSecondary,
+    marginLeft: theme.spacing.sm,
+  },
+  errorText: {
+    fontSize: 12,
+    color: '#DC2626',
+    marginTop: theme.spacing.sm,
   },
 });

@@ -1,7 +1,8 @@
 import React from 'react';
-import { Image, StyleSheet, View, type ViewStyle } from 'react-native';
+import { Image, StyleSheet, View, Text, type ViewStyle } from 'react-native';
 import { theme } from './ui';
 import type { MockupTemplate } from '../data/mockupTemplates';
+import type { LayerTransform, TextLayer } from '../context/catalog';
 
 type MockupCanvasProps = {
   template: MockupTemplate;
@@ -10,6 +11,10 @@ type MockupCanvasProps = {
   showPrintArea?: boolean;
   showDesign?: boolean;
   designScale?: number;
+  designImageUri?: string | null;
+  imageTransform?: LayerTransform;
+  textLayer?: TextLayer;
+  textTransform?: LayerTransform;
   style?: ViewStyle;
 };
 
@@ -20,6 +25,10 @@ export function MockupCanvas({
   showPrintArea = false,
   showDesign = false,
   designScale = 0.7,
+  designImageUri,
+  imageTransform,
+  textLayer,
+  textTransform,
   style,
 }: MockupCanvasProps) {
   const area = {
@@ -29,10 +38,23 @@ export function MockupCanvas({
     height: height * template.printArea.height,
   };
 
-  const designWidth = area.width * designScale;
-  const designHeight = area.height * designScale;
-  const designLeft = area.left + (area.width - designWidth) / 2;
-  const designTop = area.top + (area.height - designHeight) / 2;
+  const scale = imageTransform?.scale ?? designScale;
+  const offsetX = imageTransform?.offsetX ?? 0;
+  const offsetY = imageTransform?.offsetY ?? 0;
+  const rotation = imageTransform?.rotation ?? 0;
+  const designWidth = area.width * scale;
+  const designHeight = area.height * scale;
+  const designLeft = area.left + area.width / 2 + offsetX * area.width - designWidth / 2;
+  const designTop = area.top + area.height / 2 + offsetY * area.height - designHeight / 2;
+
+  const textScale = textTransform?.scale ?? scale;
+  const textOffsetX = textTransform?.offsetX ?? offsetX;
+  const textOffsetY = textTransform?.offsetY ?? offsetY;
+  const textRotation = textTransform?.rotation ?? rotation;
+  const textWidth = area.width * textScale;
+  const textHeight = area.height * textScale;
+  const textLeft = area.left + area.width / 2 + textOffsetX * area.width - textWidth / 2;
+  const textTop = area.top + area.height / 2 + textOffsetY * area.height - textHeight / 2;
 
   return (
     <View style={[styles.container, { width, height }, style]}>
@@ -50,19 +72,65 @@ export function MockupCanvas({
           ]}
         />
       )}
-      {showDesign && (
+      {showDesign &&
+        (designImageUri ? (
+          <Image
+            source={{ uri: designImageUri }}
+            style={[
+              styles.designImage,
+              {
+                left: designLeft,
+                top: designTop,
+                width: designWidth,
+                height: designHeight,
+                transform: [{ rotate: `${rotation}deg` }],
+              },
+            ]}
+            resizeMode="contain"
+          />
+        ) : (
+          <View
+            style={[
+              styles.designPlaceholder,
+              {
+                left: designLeft,
+                top: designTop,
+                width: designWidth,
+                height: designHeight,
+              },
+            ]}
+          />
+        ))}
+      {showDesign && textLayer?.enabled && textLayer.text ? (
         <View
           style={[
-            styles.design,
+            styles.textWrapper,
             {
-              left: designLeft,
-              top: designTop,
-              width: designWidth,
-              height: designHeight,
+              left: textLeft,
+              top: textTop,
+              width: textWidth,
+              height: textHeight,
+              transform: [{ rotate: `${textRotation}deg` }],
             },
           ]}
-        />
-      )}
+        >
+          <Text
+            style={[
+              styles.textLayer,
+              {
+                fontSize: textLayer.fontSize,
+                color: textLayer.color,
+                fontFamily:
+                  textLayer.fontWeight === 'bold'
+                    ? 'NotoSansKR-Bold'
+                    : 'NotoSansKR-Regular',
+              },
+            ]}
+          >
+            {textLayer.text}
+          </Text>
+        </View>
+      ) : null}
     </View>
   );
 }
@@ -85,9 +153,21 @@ const styles = StyleSheet.create({
     borderStyle: 'dashed',
     borderRadius: 10,
   },
-  design: {
+  designPlaceholder: {
     position: 'absolute',
     borderRadius: 10,
     backgroundColor: theme.colors.primarySoft,
+  },
+  designImage: {
+    position: 'absolute',
+  },
+  textWrapper: {
+    position: 'absolute',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  textLayer: {
+    textAlign: 'center',
+    includeFontPadding: false,
   },
 });

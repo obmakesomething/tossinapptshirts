@@ -23,7 +23,16 @@ const mockupShots = ['Front', 'Back'];
 
 function Page() {
   const navigation = Route.useNavigation();
-  const { selectedProduct, selectedColor, selectedPrint, setSelectedColor } = useCatalog();
+  const {
+    selectedProduct,
+    selectedColor,
+    selectedPrint,
+    setSelectedColor,
+    designImageUri,
+    imageTransform,
+    textLayer,
+    textTransform,
+  } = useCatalog();
   const [placement, setPlacement] = useState<'front' | 'back' | 'both'>('both');
 
   const filteredShots =
@@ -35,6 +44,10 @@ function Page() {
 
   const goDesigns = () => {
     navigation.navigate('/designs');
+  };
+
+  const goOrder = () => {
+    navigation.navigate('/order');
   };
 
   return (
@@ -83,6 +96,10 @@ function Page() {
               height={220}
               showDesign
               designScale={selectedPrint.designScale}
+              designImageUri={designImageUri}
+              imageTransform={imageTransform}
+              textLayer={textLayer}
+              textTransform={textTransform}
             />
             <Text style={styles.mockupLabel}>{label} · Flat</Text>
           </Card>
@@ -112,7 +129,8 @@ function Page() {
       </Card>
 
       <View style={styles.actionRow}>
-        <PrimaryButton label="저장하기" onPress={goDesigns} style={styles.actionButton} />
+        <PrimaryButton label="주문 요청" onPress={goOrder} style={styles.actionButton} />
+        <SecondaryButton label="저장하기" onPress={goDesigns} style={styles.actionButton} />
         <SecondaryButton label="공유하기" onPress={() => {}} />
       </View>
     </Screen>

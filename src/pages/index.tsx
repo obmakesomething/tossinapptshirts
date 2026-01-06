@@ -13,7 +13,7 @@ export const Route = createRoute('/', {
 
 function Page() {
   const navigation = Route.useNavigation();
-  const { selectedProduct, selectedColor } = useCatalog();
+  const { selectedProduct, selectedColor, designImageUri, imageTransform, textLayer, textTransform } = useCatalog();
 
   const steps = [
     { title: '이미지 준비', desc: '업로드 또는 생성' },
@@ -42,12 +42,12 @@ function Page() {
       <View style={styles.hero}>
         <Text style={styles.heroTitle}>티셔츠 목업 스튜디오</Text>
         <Text style={styles.heroSubtitle}>
-          이미지 업로드 또는 Imagen 생성으로 바로 목업을 만들고 저장하세요.
+          이미지 업로드 또는 AI 생성으로 바로 목업을 만들고 저장하세요.
         </Text>
         <View style={styles.heroActions}>
           <PrimaryButton label="이미지 업로드" onPress={goToUpload} style={styles.actionButton} />
           <SecondaryButton
-            label="Imagen으로 생성"
+            label="AI로 생성"
             onPress={goToGenerate}
             style={styles.actionButton}
           />
@@ -104,6 +104,10 @@ function Page() {
             width={56}
             height={72}
             showDesign
+            designImageUri={designImageUri}
+            imageTransform={imageTransform}
+            textLayer={textLayer}
+            textTransform={textTransform}
           />
           <View style={styles.recentText}>
             <Text style={styles.recentTitle}>Ocean Wave Tee</Text>
