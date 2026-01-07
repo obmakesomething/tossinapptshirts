@@ -12,7 +12,16 @@ export const Route = createRoute('/', {
 
 function Page() {
   const navigation = Route.useNavigation();
-  const { selectedProduct, selectedColor, designImageUri, imageTransform, textLayer, textTransform } = useCatalog();
+  const {
+    products,
+    selectedProduct,
+    selectedColor,
+    designImageUri,
+    imageTransform,
+    textLayer,
+    textTransform,
+  } = useCatalog();
+  const exampleProducts = products.slice(0, 3);
 
   const steps = [
     { title: '이미지 준비', desc: '업로드 또는 생성' },
@@ -43,11 +52,6 @@ function Page() {
         <Text style={styles.heroSubtitle}>
           이미지 업로드 또는 AI 생성으로 바로 제작을 시작하세요.
         </Text>
-        <Image
-          source={{ uri: 'https://static.toss.im/3d-common/tds-kv-text-hero.png' }}
-          style={styles.heroImage}
-          resizeMode="contain"
-        />
         <View style={styles.heroActions}>
           <PrimaryButton label="이미지 업로드" onPress={goToUpload} style={styles.actionButton} />
           <SecondaryButton
@@ -55,6 +59,20 @@ function Page() {
             onPress={goToGenerate}
             style={styles.actionButton}
           />
+        </View>
+      </View>
+
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>예시 제품</Text>
+        <View style={styles.exampleRow}>
+          {exampleProducts.map((product) => (
+            <Card key={product.id} style={styles.exampleCard}>
+              <Image source={product.mainImage} style={styles.exampleImage} />
+              <Text style={styles.exampleLabel} numberOfLines={2}>
+                {product.name}
+              </Text>
+            </Card>
+          ))}
         </View>
       </View>
 
@@ -147,11 +165,6 @@ const styles = StyleSheet.create({
   heroActions: {
     marginTop: theme.spacing.xs,
   },
-  heroImage: {
-    width: '100%',
-    height: 140,
-    marginBottom: theme.spacing.lg,
-  },
   actionButton: {
     marginBottom: theme.spacing.sm,
   },
@@ -176,6 +189,27 @@ const styles = StyleSheet.create({
   },
   stepGrid: {
     marginTop: theme.spacing.sm,
+  },
+  exampleRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  exampleCard: {
+    width: '31%',
+    padding: theme.spacing.sm,
+    alignItems: 'center',
+  },
+  exampleImage: {
+    width: '100%',
+    height: 80,
+    resizeMode: 'cover',
+    borderRadius: theme.radius.sm,
+    marginBottom: theme.spacing.sm,
+  },
+  exampleLabel: {
+    fontSize: 11,
+    color: theme.colors.textSecondary,
+    textAlign: 'center',
   },
   stepCard: {
     paddingVertical: theme.spacing.lg,

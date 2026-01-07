@@ -90,6 +90,7 @@ function Page() {
       ? photo.dataUri
       : `data:image/jpeg;base64,${photo.dataUri}`;
     await uploadDataUrl(dataUrl, `album-${photo.id}`);
+    setAlbumPhotos([]);
   };
 
   const handleRemoveBackground = async () => {
@@ -159,10 +160,21 @@ function Page() {
           disabled={!designImageUri || removingBg}
           style={styles.urlButton}
         />
+        {designImageUri ? (
+          <SecondaryButton
+            label="사진 다시 선택"
+            onPress={() => {
+              setDesignImageUri(null);
+              handlePick();
+            }}
+            disabled={loadingAlbum}
+            style={styles.urlButton}
+          />
+        ) : null}
       </Card>
       {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
-      {albumPhotos.length ? (
+      {!designImageUri && albumPhotos.length ? (
         <View style={styles.albumSection}>
           <Text style={styles.albumTitle}>앨범 사진</Text>
           <View style={styles.albumGrid}>

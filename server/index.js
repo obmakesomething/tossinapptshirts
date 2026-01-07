@@ -50,7 +50,13 @@ function getS3Client() {
     return null;
   }
   const region = process.env.AWS_REGION || process.env.S3_REGION || 'us-east-1';
-  const endpoint = process.env.S3_ENDPOINT || '';
+  let endpoint = process.env.S3_ENDPOINT || '';
+  if (!endpoint) {
+    const baseUrl = IMAGE_BASE_URL.replace(/\/$/, '');
+    if (baseUrl.includes('storage.railway.app')) {
+      endpoint = 'https://storage.railway.app';
+    }
+  }
   const forcePathStyle = String(process.env.S3_FORCE_PATH_STYLE || 'false') === 'true';
   s3Client = new S3Client({
     region,
@@ -76,7 +82,16 @@ function getOpenAIClient() {
 }
 
 function resolveBaseUrl() {
-  if (IMAGE_BASE_URL) return IMAGE_BASE_URL.replace(/\/$/, '');
+  if (IMAGE_BASE_URL) {
+    const trimmed = IMAGE_BASE_URL.replace(/\/$/, '');
+    if (
+      trimmed === 'https://storage.railway.app' ||
+      trimmed === 'http://storage.railway.app'
+    ) {
+      return IMAGE_BUCKET ? `https://${IMAGE_BUCKET}.storage.railway.app` : trimmed;
+    }
+    return trimmed;
+  }
   const endpoint = process.env.S3_ENDPOINT || '';
   if (IMAGE_BUCKET && endpoint.includes('storage.railway.app')) {
     return `https://${IMAGE_BUCKET}.storage.railway.app`;
