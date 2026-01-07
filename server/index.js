@@ -44,12 +44,7 @@ const KAKAO_WEBHOOK_URL = process.env.KAKAO_WEBHOOK_URL || '';
 const KAKAO_WEBHOOK_TOKEN = process.env.KAKAO_WEBHOOK_TOKEN || '';
 
 let s3Client;
-function getS3Client() {
-  if (s3Client) return s3Client;
-  if (!process.env.AWS_ACCESS_KEY_ID || !process.env.AWS_SECRET_ACCESS_KEY) {
-    return null;
-  }
-  const region = process.env.AWS_REGION || process.env.S3_REGION || 'us-east-1';
+function resolveS3Endpoint() {
   let endpoint = process.env.S3_ENDPOINT || '';
   if (!endpoint) {
     const baseUrl = IMAGE_BASE_URL.replace(/\/$/, '');
@@ -57,6 +52,18 @@ function getS3Client() {
       endpoint = 'https://storage.railway.app';
     }
   }
+  return endpoint;
+}
+
+let cachedS3Endpoint;
+function getS3Client() {
+  if (s3Client) return s3Client;
+  if (!process.env.AWS_ACCESS_KEY_ID || !process.env.AWS_SECRET_ACCESS_KEY) {
+    return null;
+  }
+  const region = process.env.AWS_REGION || process.env.S3_REGION || 'us-east-1';
+  const endpoint = resolveS3Endpoint();
+  cachedS3Endpoint = endpoint;
   const forcePathStyle = String(process.env.S3_FORCE_PATH_STYLE || 'false') === 'true';
   s3Client = new S3Client({
     region,
@@ -143,6 +150,11 @@ function decodeDataUrl(dataUrl) {
 async function downloadToFile(url, destPath) {
   const response = await fetch(url);
   if (!response.ok) {
+    console.error('download_failed', {
+      url,
+      status: response.status,
+      statusText: response.statusText,
+    });
     throw new Error('download_failed');
   }
   const buffer = Buffer.from(await response.arrayBuffer());
@@ -401,6 +413,7 @@ app.post('/v1/images/remove-background', async (req, res) => {
     console.log('remove_background_request', {
       requestId: req.requestId,
       sourceType: imageUrl ? 'url' : 'dataUrl',
+      imageHost: imageUrl ? new URL(imageUrl).host : '',
       filename: filename || '',
     });
     const tempDir = path.join(ORDER_OUTPUT_DIR, 'temp');
@@ -583,7 +596,7 @@ app.listen(PORT, () => {
   console.log('server_config', {
     port: PORT,
     s3Bucket: IMAGE_BUCKET,
-    s3Endpoint: process.env.S3_ENDPOINT || '',
+    s3Endpoint: cachedS3Endpoint || process.env.S3_ENDPOINT || resolveS3Endpoint() || '',
     s3BaseUrl: resolveBaseUrl(),
     s3ForcePathStyle: String(process.env.S3_FORCE_PATH_STYLE || 'false'),
     openaiModel: OPENAI_IMAGE_MODEL,
