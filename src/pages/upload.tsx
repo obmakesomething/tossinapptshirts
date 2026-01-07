@@ -26,6 +26,8 @@ function Page() {
   const [lastDataUrl, setLastDataUrl] = useState<string | null>(null);
   const [error, setError] = useState('');
 
+  const previewUri = designImageUri ?? lastDataUrl;
+
   const goNext = () => {
     navigation.navigate('/editor');
   };
@@ -78,6 +80,7 @@ function Page() {
       const dataUrl = photo.dataUri.startsWith('data:')
         ? photo.dataUri
         : `data:image/jpeg;base64,${photo.dataUri}`;
+      setDesignImageUri(null);
       setLastDataUrl(dataUrl);
       await uploadDataUrl(dataUrl, `album-${photo.id}`);
     } catch (err) {
@@ -88,7 +91,7 @@ function Page() {
   };
 
   const handleRemoveBackground = async () => {
-    if (!designImageUri) return;
+    if (!designImageUri && !lastDataUrl) return;
     setRemovingBg(true);
     setError('');
     try {
@@ -107,6 +110,7 @@ function Page() {
         throw new Error('배경 제거 결과가 올바르지 않아요.');
       }
       setDesignImageUri(data.url);
+      setLastDataUrl(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : '배경 제거에 실패했어요.');
     } finally {
@@ -118,13 +122,13 @@ function Page() {
     <Screen>
       <TopBar title="이미지 업로드" onBack={() => navigation.goBack()} />
 
-      <Text style={styles.title}>이미지를 선택해 바로 시작하세요</Text>
-      <Text style={styles.subtitle}>가져오기를 눌러 사진을 불러오세요.</Text>
+      <Text style={styles.title}>사진을 먼저 가져와 주세요</Text>
+      <Text style={styles.subtitle}>아래 + 박스를 눌러 앨범에서 선택해요.</Text>
 
       <Card style={styles.uploadCard}>
         <Pressable style={styles.uploadPreview} onPress={handlePick}>
-          {designImageUri ? (
-            <Image source={{ uri: designImageUri }} style={styles.previewImage} />
+          {previewUri ? (
+            <Image source={{ uri: previewUri }} style={styles.previewImage} />
           ) : (
             <View style={styles.previewPlaceholder}>
               <Text style={styles.plusText}>+</Text>
@@ -151,7 +155,7 @@ function Page() {
         <SecondaryButton
           label={removingBg ? '배경 제거 중...' : '배경 제거하기'}
           onPress={handleRemoveBackground}
-          disabled={!designImageUri || removingBg}
+          disabled={!(lastDataUrl || designImageUri) || removingBg}
           style={styles.actionButton}
         />
         <PrimaryButton

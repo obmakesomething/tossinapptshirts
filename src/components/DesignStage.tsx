@@ -106,18 +106,24 @@ export function DesignStage({
     () =>
       PanResponder.create({
         onStartShouldSetPanResponder: (evt) => {
-          if (!editingRef.current) return false;
           const { locationX, locationY } = evt.nativeEvent;
           return isWithinPrintArea(locationX, locationY);
         },
         onMoveShouldSetPanResponder: (evt) => {
-          if (!editingRef.current) return false;
           const { locationX, locationY } = evt.nativeEvent;
           return isWithinPrintArea(locationX, locationY);
         },
         onPanResponderTerminationRequest: () => false,
         onPanResponderGrant: (evt) => {
           const touches = evt.nativeEvent.touches ?? [];
+          const { locationX, locationY } = evt.nativeEvent;
+          if (!editingRef.current) {
+            touchStartRef.current = { x: locationX, y: locationY };
+            clearHoldTimer();
+            holdTimerRef.current = setTimeout(() => {
+              beginEditing();
+            }, 220);
+          }
           const a = touches[0];
           const b = touches[1];
           const distance =
@@ -133,6 +139,15 @@ export function DesignStage({
           };
         },
         onPanResponderMove: (evt, gestureState) => {
+          if (!editingRef.current) {
+            const { locationX, locationY } = evt.nativeEvent;
+            const dx = locationX - touchStartRef.current.x;
+            const dy = locationY - touchStartRef.current.y;
+            if (Math.hypot(dx, dy) > 10) {
+              clearHoldTimer();
+            }
+            return;
+          }
           const touches = evt.nativeEvent.touches ?? [];
           if (touches.length >= 2 && touches[0] && touches[1]) {
             const [a, b] = touches;
@@ -173,13 +188,13 @@ export function DesignStage({
           }
         },
         onPanResponderRelease: () => {
-          finishEditing();
+          clearHoldTimer();
         },
         onPanResponderTerminate: () => {
-          finishEditing();
+          clearHoldTimer();
         },
       }),
-    [activeTransform, area.height, area.width, isWithinPrintArea, updateTransform]
+    [activeTransform, area.height, area.width, beginEditing, isWithinPrintArea, updateTransform]
   );
 
   const buildLayerStyle = (transform: LayerTransform) => {
@@ -221,31 +236,16 @@ export function DesignStage({
     <View
       style={[styles.container, { width, height }]}
       onTouchStart={(evt) => {
-        if (editingRef.current) return;
         const { locationX, locationY } = evt.nativeEvent;
-        if (!isWithinPrintArea(locationX, locationY)) return;
-        touchStartRef.current = { x: locationX, y: locationY };
-        clearHoldTimer();
-        holdTimerRef.current = setTimeout(() => {
-          beginEditing();
-        }, 220);
-      }}
-      onTouchMove={(evt) => {
-        if (!holdTimerRef.current) return;
-        const { locationX, locationY } = evt.nativeEvent;
-        const dx = locationX - touchStartRef.current.x;
-        const dy = locationY - touchStartRef.current.y;
-        if (Math.hypot(dx, dy) > 10) {
-          clearHoldTimer();
+        if (editingRef.current && !isWithinPrintArea(locationX, locationY)) {
+          finishEditing();
         }
       }}
       onTouchEnd={() => {
         clearHoldTimer();
-        finishEditing();
       }}
       onTouchCancel={() => {
         clearHoldTimer();
-        finishEditing();
       }}
       {...responder.panHandlers}
     >

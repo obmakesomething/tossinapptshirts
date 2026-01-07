@@ -109,7 +109,7 @@ function Page() {
     <Screen>
       <TopBar title="AI 이미지 생성" onBack={() => navigation.goBack()} />
 
-      <Text style={styles.title}>이미지를 생성할 프롬프트를 입력하세요</Text>
+      <Text style={styles.title}>AI로 이미지를 만들어 보세요</Text>
       <TextInput
         style={styles.input}
         placeholder="예: A clean vector-style illustration of a wave..."
@@ -124,7 +124,7 @@ function Page() {
         }}
         multiline
       />
-      <Text style={styles.helperText}>영문 프롬프트 기준으로 가장 품질이 좋아요.</Text>
+      <Text style={styles.helperText}>짧고 명확하게 적어 주세요. 영문이 가장 잘 나와요.</Text>
       {showExamples ? (
         <View style={styles.exampleSection}>
           <Text style={styles.sectionTitle}>프롬프트 예시</Text>
@@ -185,9 +185,13 @@ function Page() {
         <View style={styles.resultCenter}>
           <Card style={styles.resultCard}>
             {resultUrl ? (
-              <Image source={{ uri: resultUrl }} style={styles.resultImage} />
+              <Image
+                source={{ uri: resultUrl }}
+                style={styles.resultImage}
+                resizeMode="contain"
+              />
             ) : (
-              <Text style={styles.resultPlaceholder}>생성된 이미지가 여기에 표시돼요</Text>
+              <Text style={styles.resultPlaceholder}>생성 결과가 여기에 보여요</Text>
             )}
           </Card>
         </View>

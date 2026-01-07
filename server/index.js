@@ -14,6 +14,23 @@ const app = express();
 app.use(cors({ origin: true }));
 app.use(express.json({ limit: '15mb' }));
 
+const logEvent = (level, event, payload) => {
+  const entry = {
+    ts: new Date().toISOString(),
+    level,
+    event,
+    ...payload,
+  };
+  console.log(JSON.stringify(entry));
+};
+
+const formatError = (error) => ({
+  message: error?.message || 'unknown_error',
+  stack: error?.stack ? String(error.stack).split('\n').slice(0, 4).join(' | ') : undefined,
+  name: error?.name,
+  code: error?.code,
+});
+
 app.use((req, res, next) => {
   const incomingId = req.headers['x-request-id'];
   const requestId =
@@ -22,11 +39,22 @@ app.use((req, res, next) => {
       : crypto.randomUUID();
   req.requestId = requestId;
   res.setHeader('x-request-id', requestId);
-  console.log('request_in', {
+  req._startAt = process.hrtime.bigint();
+  logEvent('info', 'request_in', {
     requestId,
     method: req.method,
     path: req.path,
     userAgent: req.headers['user-agent'] || '',
+  });
+  res.on('finish', () => {
+    const durationNs = process.hrtime.bigint() - req._startAt;
+    logEvent('info', 'request_out', {
+      requestId,
+      method: req.method,
+      path: req.path,
+      status: res.statusCode,
+      durationMs: Number(durationNs / BigInt(1e6)),
+    });
   });
   next();
 });
@@ -127,14 +155,14 @@ async function uploadToS3({ key, body, contentType }) {
       })
     );
   } catch (error) {
-    console.error('s3_upload_failed', {
+    logEvent('error', 's3_upload_failed', {
       bucket: IMAGE_BUCKET,
       key,
-      endpoint: process.env.S3_ENDPOINT || '',
+      endpoint: cachedS3Endpoint || process.env.S3_ENDPOINT || resolveS3Endpoint() || '',
       baseUrl: resolveBaseUrl(),
       forcePathStyle: String(process.env.S3_FORCE_PATH_STYLE || 'false'),
       region: process.env.AWS_REGION || process.env.S3_REGION || 'us-east-1',
-      message: error.message || 'unknown_error',
+      ...formatError(error),
     });
     throw error;
   }
@@ -150,7 +178,7 @@ function decodeDataUrl(dataUrl) {
 async function downloadToFile(url, destPath) {
   const response = await fetch(url);
   if (!response.ok) {
-    console.error('download_failed', {
+    logEvent('error', 'download_failed', {
       url,
       status: response.status,
       statusText: response.statusText,
@@ -328,11 +356,17 @@ app.post('/v1/images/upload', async (req, res) => {
       .toString(36)
       .slice(2)}-${safeName || 'upload'}.${extension}`;
     const url = await uploadToS3({ key, body: buffer, contentType: mimeType });
+    logEvent('info', 'image_upload_result', {
+      requestId: req.requestId,
+      url,
+      bytes: buffer.length,
+      mimeType,
+    });
     res.json({ url, requestId: req.requestId });
   } catch (error) {
-    console.error('image_upload_failed', {
+    logEvent('error', 'image_upload_failed', {
       requestId: req.requestId,
-      message: error.message || 'Upload failed.',
+      ...formatError(error),
     });
     res.status(500).json({ error: error.message || 'Upload failed.', requestId: req.requestId });
   }
@@ -351,13 +385,14 @@ app.post('/v1/images/generate', async (req, res) => {
     const size = sizeMap[aspectRatio] || '1024x1024';
 
     const client = getOpenAIClient();
-    console.log('image_generate_request', {
+    logEvent('info', 'image_generate_request', {
       requestId: req.requestId,
       model: OPENAI_IMAGE_MODEL,
       quality: OPENAI_IMAGE_QUALITY,
       size,
       count,
       promptLength: prompt.length,
+      promptSnippet: prompt.slice(0, 120),
     });
 
     const response = await client.images.generate({
@@ -386,16 +421,23 @@ app.post('/v1/images/generate', async (req, res) => {
       const url = await uploadToS3({ key, body: buffer, contentType: mimeType });
       results.push({ url, mimeType });
     }
+    if (!results.length) {
+      throw new Error('image_generate_empty');
+    }
 
+    logEvent('info', 'image_generate_result', {
+      requestId: req.requestId,
+      imageCount: results.length,
+      firstUrl: results[0]?.url || '',
+    });
     res.json({ images: results, size, requestId: req.requestId });
   } catch (error) {
-    console.error('image_generate_failed', {
+    logEvent('error', 'image_generate_failed', {
       requestId: req.requestId,
-      message: error.message || 'OpenAI image failed.',
       status: error.status,
-      code: error.code,
       param: error.param,
       type: error.type,
+      ...formatError(error),
     });
     res.status(500).json({ error: error.message || 'OpenAI image failed.', requestId: req.requestId });
   }
@@ -410,7 +452,7 @@ app.post('/v1/images/remove-background', async (req, res) => {
     if (!imageUrl && !dataUrl) {
       return res.status(400).json({ error: 'imageUrl or dataUrl is required.' });
     }
-    console.log('remove_background_request', {
+    logEvent('info', 'remove_background_request', {
       requestId: req.requestId,
       sourceType: imageUrl ? 'url' : 'dataUrl',
       imageHost: imageUrl ? new URL(imageUrl).host : '',
@@ -441,11 +483,16 @@ app.post('/v1/images/remove-background', async (req, res) => {
       .toString(36)
       .slice(2)}-${baseName}.png`;
     const url = await uploadToS3({ key, body: outputBuffer, contentType: 'image/png' });
+    logEvent('info', 'remove_background_result', {
+      requestId: req.requestId,
+      url,
+      bytes: outputBuffer.length,
+    });
     res.json({ url, requestId: req.requestId });
   } catch (error) {
-    console.error('remove_background_failed', {
+    logEvent('error', 'remove_background_failed', {
       requestId: req.requestId,
-      message: error.message || 'Remove background failed.',
+      ...formatError(error),
     });
     res.status(500).json({ error: error.message || 'Remove background failed.', requestId: req.requestId });
   }
@@ -454,7 +501,7 @@ app.post('/v1/images/remove-background', async (req, res) => {
 app.post('/v1/print-files/process', async (req, res) => {
   try {
     const payload = req.body || {};
-    console.log('print_pipeline_request', {
+    logEvent('info', 'print_pipeline_request', {
       requestId: req.requestId,
       orderId: payload.order_id || '',
       targetWidth: payload.target_width_px,
@@ -471,9 +518,9 @@ app.post('/v1/print-files/process', async (req, res) => {
     });
     res.json({ ...result, requestId: req.requestId });
   } catch (error) {
-    console.error('print_pipeline_failed', {
+    logEvent('error', 'print_pipeline_failed', {
       requestId: req.requestId,
-      message: error.message || 'pipeline_failed',
+      ...formatError(error),
     });
     res.status(500).json({ error: error.message || 'pipeline_failed', requestId: req.requestId });
   }
@@ -482,7 +529,7 @@ app.post('/v1/print-files/process', async (req, res) => {
 app.post('/v1/orders/submit', async (req, res) => {
   try {
     const order = req.body || {};
-    console.log('order_submit_request', {
+    logEvent('info', 'order_submit_request', {
       requestId: req.requestId,
       orderId: order.orderId || '',
       totalQuantity: order.pricing?.quantity || 0,
@@ -584,16 +631,16 @@ app.post('/v1/orders/submit', async (req, res) => {
 
     res.json({ ok: true, pdfUrl, pipeline: pipelineResult, requestId: req.requestId });
   } catch (error) {
-    console.error('order_submit_failed', {
+    logEvent('error', 'order_submit_failed', {
       requestId: req.requestId,
-      message: error.message || 'Order submit failed.',
+      ...formatError(error),
     });
     res.status(500).json({ error: error.message || 'Order submit failed.', requestId: req.requestId });
   }
 });
 
 app.listen(PORT, () => {
-  console.log('server_config', {
+  logEvent('info', 'server_config', {
     port: PORT,
     s3Bucket: IMAGE_BUCKET,
     s3Endpoint: cachedS3Endpoint || process.env.S3_ENDPOINT || resolveS3Endpoint() || '',
