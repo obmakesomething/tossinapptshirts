@@ -167,11 +167,6 @@ export function CatalogProvider({ children }: { children: React.ReactNode }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedPrint.id]);
 
-  // Load saved designs on mount
-  useEffect(() => {
-    refreshSavedDesigns();
-  }, []);
-
   const refreshSavedDesigns = useCallback(async () => {
     try {
       const stored = await Storage.getItem(DESIGNS_STORAGE_KEY);
@@ -183,6 +178,10 @@ export function CatalogProvider({ children }: { children: React.ReactNode }) {
       // Ignore parse errors
     }
   }, []);
+
+  useEffect(() => {
+    refreshSavedDesigns();
+  }, [refreshSavedDesigns]);
 
   const saveCurrentDesign = useCallback(async (title: string) => {
     const newDesign: SavedDesign = {
@@ -197,10 +196,12 @@ export function CatalogProvider({ children }: { children: React.ReactNode }) {
       textTransform,
       textLayer,
     };
-    const updated = [newDesign, ...savedDesigns];
-    setSavedDesigns(updated);
-    await Storage.setItem(DESIGNS_STORAGE_KEY, JSON.stringify(updated));
-  }, [selectedProductId, selectedColor, designImageUri, designPrompt, imageTransform, textTransform, textLayer, savedDesigns]);
+    setSavedDesigns((prev) => {
+      const updated = [newDesign, ...prev];
+      Storage.setItem(DESIGNS_STORAGE_KEY, JSON.stringify(updated));
+      return updated;
+    });
+  }, [selectedProductId, selectedColor, designImageUri, designPrompt, imageTransform, textTransform, textLayer]);
 
   const loadDesign = useCallback((design: SavedDesign) => {
     setSelectedProductId(design.productId);
@@ -213,10 +214,12 @@ export function CatalogProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const deleteDesign = useCallback(async (designId: string) => {
-    const updated = savedDesigns.filter((d) => d.id !== designId);
-    setSavedDesigns(updated);
-    await Storage.setItem(DESIGNS_STORAGE_KEY, JSON.stringify(updated));
-  }, [savedDesigns]);
+    setSavedDesigns((prev) => {
+      const updated = prev.filter((d) => d.id !== designId);
+      Storage.setItem(DESIGNS_STORAGE_KEY, JSON.stringify(updated));
+      return updated;
+    });
+  }, []);
 
   const setPrintBackEnabled = (enabled: boolean) => {
     setPrintBackEnabledState(enabled);

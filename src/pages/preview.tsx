@@ -122,7 +122,7 @@ function Page() {
 
       <View style={styles.actionRow}>
         <PrimaryButton label="주문 요청" onPress={goOrder} style={styles.actionButton} />
-        <SecondaryButton label={saving ? '저장 중...' : '저장하기'} onPress={handleSave} style={styles.actionButton} />
+        <SecondaryButton label={saving ? '저장 중...' : '저장하기'} onPress={handleSave} disabled={saving} style={styles.actionButton} />
         <SecondaryButton label="공유하기" onPress={handleShare} />
       </View>
     </Screen>

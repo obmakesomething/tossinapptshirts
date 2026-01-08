@@ -68,7 +68,13 @@ function Page() {
       {
         text: '삭제',
         style: 'destructive',
-        onPress: () => deleteDesign(design.id),
+        onPress: async () => {
+          try {
+            await deleteDesign(design.id);
+          } catch {
+            Alert.alert('삭제 실패', '다시 시도해주세요.');
+          }
+        },
       },
     ]);
   };
