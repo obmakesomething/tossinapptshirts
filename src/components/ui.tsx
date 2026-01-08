@@ -141,6 +141,24 @@ export function SecondaryButton({ label, onPress, disabled, style }: ButtonProps
   );
 }
 
+export function DangerButton({ label, onPress, disabled, style }: ButtonProps) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      onPress={onPress}
+      disabled={disabled}
+      style={({ pressed }) => [
+        styles.dangerButton,
+        pressed && styles.dangerButtonPressed,
+        disabled && styles.buttonDisabled,
+        style,
+      ]}
+    >
+      <Text style={styles.dangerButtonText}>{label}</Text>
+    </Pressable>
+  );
+}
+
 type ChipProps = {
   label: string;
   selected?: boolean;
@@ -265,6 +283,22 @@ const styles = StyleSheet.create({
   },
   secondaryButtonText: {
     color: theme.colors.textPrimary,
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  dangerButton: {
+    borderWidth: 1,
+    borderColor: '#FCA5A5',
+    paddingVertical: 14,
+    borderRadius: theme.radius.md,
+    alignItems: 'center',
+    backgroundColor: '#FEF2F2',
+  },
+  dangerButtonPressed: {
+    backgroundColor: '#FECACA',
+  },
+  dangerButtonText: {
+    color: '#DC2626',
     fontSize: 16,
     fontWeight: '600',
   },

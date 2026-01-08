@@ -1,6 +1,7 @@
 import { createRoute } from '@granite-js/react-native';
-import React from 'react';
-import { StyleSheet, Text, View, ScrollView } from 'react-native';
+import React, { useState } from 'react';
+import { StyleSheet, Text, View, ScrollView, Alert } from 'react-native';
+import { share } from '@apps-in-toss/framework';
 import {
   Card,
   ColorSwatch,
@@ -33,11 +34,34 @@ function Page() {
     imageTransform,
     textLayer,
     textTransform,
+    saveCurrentDesign,
   } = useCatalog();
+  const [saving, setSaving] = useState(false);
   const filteredShots = printBackEnabled ? mockupShots : mockupShots.slice(0, 1);
 
-  const goDesigns = () => {
-    navigation.navigate('/designs');
+  const handleSave = async () => {
+    if (saving) return;
+    setSaving(true);
+    try {
+      const title = `${selectedProduct.name} - ${selectedColor}`;
+      await saveCurrentDesign(title);
+      Alert.alert('저장 완료', '디자인이 저장되었습니다.');
+      navigation.navigate('/designs');
+    } catch {
+      Alert.alert('저장 실패', '다시 시도해주세요.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleShare = async () => {
+    try {
+      await share({
+        message: `${selectedProduct.name} 디자인을 확인해보세요! 🎨`,
+      });
+    } catch {
+      // User cancelled or share failed - ignore
+    }
   };
 
   const goOrder = () => {
@@ -98,8 +122,8 @@ function Page() {
 
       <View style={styles.actionRow}>
         <PrimaryButton label="주문 요청" onPress={goOrder} style={styles.actionButton} />
-        <SecondaryButton label="저장하기" onPress={goDesigns} style={styles.actionButton} />
-        <SecondaryButton label="공유하기" onPress={() => {}} />
+        <SecondaryButton label={saving ? '저장 중...' : '저장하기'} onPress={handleSave} style={styles.actionButton} />
+        <SecondaryButton label="공유하기" onPress={handleShare} />
       </View>
     </Screen>
   );

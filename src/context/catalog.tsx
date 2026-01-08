@@ -1,7 +1,23 @@
-import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import React, { createContext, useContext, useEffect, useMemo, useState, useCallback } from 'react';
+import { Storage } from '@apps-in-toss/framework';
 import { catalogProducts, type CatalogProduct } from '../data/catalog';
 import { printOptions, type PrintOption } from '../data/printOptions';
 import type { Placement } from '../data/mockupTemplates';
+
+const DESIGNS_STORAGE_KEY = 'saved_designs';
+
+export type SavedDesign = {
+  id: string;
+  title: string;
+  createdAt: string;
+  productId: string;
+  color: string;
+  designImageUri: string | null;
+  designPrompt: string;
+  imageTransform: LayerTransform;
+  textTransform: LayerTransform;
+  textLayer: TextLayer;
+};
 
 export type LayerTransform = {
   offsetX: number;
@@ -39,6 +55,7 @@ type CatalogContextValue = {
   textTransform: LayerTransform;
   activeLayer: 'image' | 'text';
   textLayer: TextLayer;
+  savedDesigns: SavedDesign[];
   setSelectedProductId: (id: string) => void;
   setSelectedColor: (color: string) => void;
   addOrderLine: (sizeLabel: string) => void;
@@ -53,6 +70,10 @@ type CatalogContextValue = {
   setTextTransform: (transform: LayerTransform) => void;
   setActiveLayer: (layer: 'image' | 'text') => void;
   setTextLayer: (layer: TextLayer) => void;
+  saveCurrentDesign: (title: string) => Promise<void>;
+  loadDesign: (design: SavedDesign) => void;
+  deleteDesign: (designId: string) => Promise<void>;
+  refreshSavedDesigns: () => Promise<void>;
 };
 
 const CatalogContext = createContext<CatalogContextValue | null>(null);
@@ -111,6 +132,7 @@ export function CatalogProvider({ children }: { children: React.ReactNode }) {
   );
   const [activeLayer, setActiveLayer] = useState<'image' | 'text'>('image');
   const [textLayer, setTextLayer] = useState<TextLayer>(defaultTextLayer);
+  const [savedDesigns, setSavedDesigns] = useState<SavedDesign[]>([]);
 
   const selectedProduct = useMemo(
     () => products.find((product) => product.id === selectedProductId) ?? fallbackProduct,
@@ -142,7 +164,59 @@ export function CatalogProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     setImageTransform((prev) => ({ ...prev, scale: selectedPrint.designScale }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedPrint.id]);
+
+  // Load saved designs on mount
+  useEffect(() => {
+    refreshSavedDesigns();
+  }, []);
+
+  const refreshSavedDesigns = useCallback(async () => {
+    try {
+      const stored = await Storage.getItem(DESIGNS_STORAGE_KEY);
+      if (stored) {
+        const parsed = JSON.parse(stored) as SavedDesign[];
+        setSavedDesigns(parsed);
+      }
+    } catch {
+      // Ignore parse errors
+    }
+  }, []);
+
+  const saveCurrentDesign = useCallback(async (title: string) => {
+    const newDesign: SavedDesign = {
+      id: `design-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+      title,
+      createdAt: new Date().toISOString(),
+      productId: selectedProductId,
+      color: selectedColor,
+      designImageUri,
+      designPrompt,
+      imageTransform,
+      textTransform,
+      textLayer,
+    };
+    const updated = [newDesign, ...savedDesigns];
+    setSavedDesigns(updated);
+    await Storage.setItem(DESIGNS_STORAGE_KEY, JSON.stringify(updated));
+  }, [selectedProductId, selectedColor, designImageUri, designPrompt, imageTransform, textTransform, textLayer, savedDesigns]);
+
+  const loadDesign = useCallback((design: SavedDesign) => {
+    setSelectedProductId(design.productId);
+    setSelectedColor(design.color);
+    setDesignImageUri(design.designImageUri);
+    setDesignPrompt(design.designPrompt);
+    setImageTransform(design.imageTransform);
+    setTextTransform(design.textTransform);
+    setTextLayer(design.textLayer);
+  }, []);
+
+  const deleteDesign = useCallback(async (designId: string) => {
+    const updated = savedDesigns.filter((d) => d.id !== designId);
+    setSavedDesigns(updated);
+    await Storage.setItem(DESIGNS_STORAGE_KEY, JSON.stringify(updated));
+  }, [savedDesigns]);
 
   const setPrintBackEnabled = (enabled: boolean) => {
     setPrintBackEnabledState(enabled);
@@ -206,6 +280,11 @@ export function CatalogProvider({ children }: { children: React.ReactNode }) {
     setTextTransform,
     setActiveLayer,
     setTextLayer,
+    savedDesigns,
+    saveCurrentDesign,
+    loadDesign,
+    deleteDesign,
+    refreshSavedDesigns,
   };
 
   return <CatalogContext.Provider value={value}>{children}</CatalogContext.Provider>;
