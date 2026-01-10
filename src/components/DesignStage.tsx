@@ -1,4 +1,4 @@
-import React, { useMemo, useRef, useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { Image, PanResponder, StyleSheet, Text, View } from 'react-native';
 import type { MockupTemplate } from '../data/mockupTemplates';
 import type { LayerTransform, TextLayer } from '../context/catalog';
@@ -67,6 +67,15 @@ export function DesignStage({
     angle: 0,
   });
 
+  // Store latest values in refs for PanResponder closure
+  const activeTransformRef = useRef(activeTransform);
+  const updateTransformRef = useRef(updateTransform);
+  const areaRef = useRef(area);
+
+  activeTransformRef.current = activeTransform;
+  updateTransformRef.current = updateTransform;
+  areaRef.current = area;
+
   const clearHoldTimer = () => {
     if (holdTimerRef.current) {
       clearTimeout(holdTimerRef.current);
@@ -88,106 +97,111 @@ export function DesignStage({
     onInteractionEnd?.();
   };
 
-  const isWithinPrintArea = (x: number, y: number) =>
-    x >= area.left - HIT_SLOP &&
-    x <= area.left + area.width + HIT_SLOP &&
-    y >= area.top - HIT_SLOP &&
-    y <= area.top + area.height + HIT_SLOP;
+  const isWithinPrintArea = (x: number, y: number) => {
+    const currentArea = areaRef.current;
+    return (
+      x >= currentArea.left - HIT_SLOP &&
+      x <= currentArea.left + currentArea.width + HIT_SLOP &&
+      y >= currentArea.top - HIT_SLOP &&
+      y <= currentArea.top + currentArea.height + HIT_SLOP
+    );
+  };
 
-  const responder = useMemo(
-    () =>
-      PanResponder.create({
-        onStartShouldSetPanResponder: (evt) => {
-          const { locationX, locationY } = evt.nativeEvent;
-          return isWithinPrintArea(locationX, locationY);
-        },
-        onMoveShouldSetPanResponder: () => true,
-        onPanResponderTerminationRequest: () => false,
-        onPanResponderGrant: (evt) => {
-          const touches = evt.nativeEvent.touches ?? [];
-          const { locationX, locationY } = evt.nativeEvent;
+  const responderRef = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: (evt) => {
+        const { locationX, locationY } = evt.nativeEvent;
+        return isWithinPrintArea(locationX, locationY);
+      },
+      onMoveShouldSetPanResponder: () => true,
+      onPanResponderTerminationRequest: () => false,
+      onPanResponderGrant: (evt) => {
+        const touches = evt.nativeEvent.touches ?? [];
+        const { locationX, locationY } = evt.nativeEvent;
 
-          if (!editingRef.current) {
-            touchStartRef.current = { x: locationX, y: locationY };
+        if (!editingRef.current) {
+          touchStartRef.current = { x: locationX, y: locationY };
+          clearHoldTimer();
+          holdTimerRef.current = setTimeout(() => {
+            beginEditing();
+          }, 150);
+        }
+
+        const a = touches[0];
+        const b = touches[1];
+        const distance =
+          a && b ? Math.hypot(b.pageX - a.pageX, b.pageY - a.pageY) : 0;
+        const angle = a && b ? Math.atan2(b.pageY - a.pageY, b.pageX - a.pageX) : 0;
+        const currentTransform = activeTransformRef.current;
+        startRef.current = {
+          offsetX: currentTransform.offsetX,
+          offsetY: currentTransform.offsetY,
+          scale: currentTransform.scale,
+          rotation: currentTransform.rotation,
+          distance,
+          angle,
+        };
+      },
+      onPanResponderMove: (evt, gestureState) => {
+        if (!editingRef.current) {
+          const { locationX, locationY } = evt.nativeEvent;
+          const dx = locationX - touchStartRef.current.x;
+          const dy = locationY - touchStartRef.current.y;
+          if (Math.hypot(dx, dy) > 10) {
             clearHoldTimer();
-            holdTimerRef.current = setTimeout(() => {
-              beginEditing();
-            }, 150);
           }
+          return;
+        }
 
-          const a = touches[0];
-          const b = touches[1];
-          const distance =
-            a && b ? Math.hypot(b.pageX - a.pageX, b.pageY - a.pageY) : 0;
-          const angle = a && b ? Math.atan2(b.pageY - a.pageY, b.pageX - a.pageX) : 0;
-          startRef.current = {
-            offsetX: activeTransform.offsetX,
-            offsetY: activeTransform.offsetY,
-            scale: activeTransform.scale,
-            rotation: activeTransform.rotation,
-            distance,
-            angle,
-          };
-        },
-        onPanResponderMove: (evt, gestureState) => {
-          if (!editingRef.current) {
-            const { locationX, locationY } = evt.nativeEvent;
-            const dx = locationX - touchStartRef.current.x;
-            const dy = locationY - touchStartRef.current.y;
-            if (Math.hypot(dx, dy) > 10) {
-              clearHoldTimer();
-            }
-            return;
-          }
+        const touches = evt.nativeEvent.touches ?? [];
+        const currentArea = areaRef.current;
+        const updateFn = updateTransformRef.current;
 
-          const touches = evt.nativeEvent.touches ?? [];
-          if (touches.length >= 2 && touches[0] && touches[1]) {
-            const [a, b] = touches;
-            const distance = Math.hypot(b.pageX - a.pageX, b.pageY - a.pageY);
-            const angle = Math.atan2(b.pageY - a.pageY, b.pageX - a.pageX);
-            const scaleDelta = startRef.current.distance
-              ? distance / startRef.current.distance
-              : 1;
-            const rotationDelta = (angle - startRef.current.angle) * (180 / Math.PI);
-            const nextScale = clamp(
-              startRef.current.scale * scaleDelta,
-              MIN_SCALE,
-              MAX_SCALE
-            );
-            updateTransform({
-              offsetX: startRef.current.offsetX,
-              offsetY: startRef.current.offsetY,
-              scale: nextScale,
-              rotation: startRef.current.rotation + rotationDelta,
-            });
-          } else {
-            const nextOffsetX = clamp(
-              startRef.current.offsetX + gestureState.dx / area.width,
-              -MAX_OFFSET,
-              MAX_OFFSET
-            );
-            const nextOffsetY = clamp(
-              startRef.current.offsetY + gestureState.dy / area.height,
-              -MAX_OFFSET,
-              MAX_OFFSET
-            );
-            updateTransform({
-              scale: startRef.current.scale,
-              rotation: startRef.current.rotation,
-              offsetX: nextOffsetX,
-              offsetY: nextOffsetY,
-            });
-          }
-        },
-        onPanResponderRelease: () => {
-          clearHoldTimer();
-        },
-        onPanResponderTerminate: () => {
-          clearHoldTimer();
-        },
-      }),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    []
+        if (touches.length >= 2 && touches[0] && touches[1]) {
+          const [a, b] = touches;
+          const distance = Math.hypot(b.pageX - a.pageX, b.pageY - a.pageY);
+          const angle = Math.atan2(b.pageY - a.pageY, b.pageX - a.pageX);
+          const scaleDelta = startRef.current.distance
+            ? distance / startRef.current.distance
+            : 1;
+          const rotationDelta = (angle - startRef.current.angle) * (180 / Math.PI);
+          const nextScale = clamp(
+            startRef.current.scale * scaleDelta,
+            MIN_SCALE,
+            MAX_SCALE
+          );
+          updateFn({
+            offsetX: startRef.current.offsetX,
+            offsetY: startRef.current.offsetY,
+            scale: nextScale,
+            rotation: startRef.current.rotation + rotationDelta,
+          });
+        } else {
+          const nextOffsetX = clamp(
+            startRef.current.offsetX + gestureState.dx / currentArea.width,
+            -MAX_OFFSET,
+            MAX_OFFSET
+          );
+          const nextOffsetY = clamp(
+            startRef.current.offsetY + gestureState.dy / currentArea.height,
+            -MAX_OFFSET,
+            MAX_OFFSET
+          );
+          updateFn({
+            scale: startRef.current.scale,
+            rotation: startRef.current.rotation,
+            offsetX: nextOffsetX,
+            offsetY: nextOffsetY,
+          });
+        }
+      },
+      onPanResponderRelease: () => {
+        clearHoldTimer();
+      },
+      onPanResponderTerminate: () => {
+        clearHoldTimer();
+      },
+    })
   );
 
   const buildLayerStyle = (transform: LayerTransform) => {
@@ -240,7 +254,7 @@ export function DesignStage({
       onTouchCancel={() => {
         clearHoldTimer();
       }}
-      {...responder.panHandlers}
+      {...responderRef.current.panHandlers}
     >
       <Image source={template.image} style={styles.image} resizeMode="cover" />
       {showPrintArea ? (
