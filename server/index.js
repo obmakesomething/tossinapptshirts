@@ -390,6 +390,9 @@ app.post('/v1/images/generate', async (req, res) => {
     };
     const size = sizeMap[aspectRatio] || '1024x1024';
 
+    // Add white background instruction to prompt for easier background removal
+    const enhancedPrompt = `${prompt}, on a plain white background`;
+
     const client = getOpenAIClient();
     logEvent('info', 'image_generate_request', {
       requestId: req.requestId,
@@ -397,14 +400,16 @@ app.post('/v1/images/generate', async (req, res) => {
       quality: OPENAI_IMAGE_QUALITY,
       size,
       count,
-      promptLength: prompt.length,
-      promptSnippet: prompt.slice(0, 120),
+      originalPrompt: prompt,
+      enhancedPrompt: enhancedPrompt,
+      promptLength: enhancedPrompt.length,
+      promptSnippet: enhancedPrompt.slice(0, 120),
       returnBase64: !!returnBase64,
     });
 
     const response = await client.images.generate({
       model: OPENAI_IMAGE_MODEL,
-      prompt,
+      prompt: enhancedPrompt,
       size,
       n: count,
       ...(OPENAI_IMAGE_QUALITY ? { quality: OPENAI_IMAGE_QUALITY } : {}),

@@ -163,13 +163,13 @@ function Page() {
           />
         </View>
         <Text style={styles.canvasHint}>
-          프린팅 영역을 꾹 누르면 드래그·핀치 편집이 활성화돼요.
+          프린팅 영역을 드래그하거나 두 손가락으로 크기·회전 조절하세요.
         </Text>
         <View style={styles.sliderRow}>
           <Text style={styles.sliderLabel}>크기</Text>
           <ScaleSlider
             min={0.2}
-            max={1.6}
+            max={1.0}
             value={activeTransform.scale}
             onChange={(scale) =>
               updateActiveTransform({ ...activeTransform, scale })
