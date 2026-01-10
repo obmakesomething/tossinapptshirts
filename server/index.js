@@ -65,7 +65,7 @@ const IMAGE_BASE_URL = process.env.S3_PUBLIC_BASE_URL || '';
 const IMAGE_PREFIX = process.env.S3_IMAGE_PREFIX || 'uploads';
 const PDF_PREFIX = process.env.S3_PDF_PREFIX || 'orders';
 const OPENAI_IMAGE_MODEL = process.env.OPENAI_IMAGE_MODEL || 'gpt-image-1';
-const OPENAI_IMAGE_QUALITY = process.env.OPENAI_IMAGE_QUALITY || 'auto';
+const OPENAI_IMAGE_QUALITY = process.env.OPENAI_IMAGE_QUALITY || 'medium';
 const ORDER_OUTPUT_DIR = process.env.ORDER_OUTPUT_DIR || path.join(process.cwd(), 'order-output');
 const CLIPDROP_API_KEY = process.env.CLIPDROP_API_KEY || '';
 const KAKAO_WEBHOOK_URL = process.env.KAKAO_WEBHOOK_URL || '';
@@ -407,6 +407,7 @@ app.post('/v1/images/generate', async (req, res) => {
       prompt,
       size,
       n: count,
+      response_format: 'b64_json',
       ...(OPENAI_IMAGE_QUALITY ? { quality: OPENAI_IMAGE_QUALITY } : {}),
     });
 

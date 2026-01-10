@@ -105,24 +105,21 @@ export function DesignStage({
   const responder = useMemo(
     () =>
       PanResponder.create({
-        onStartShouldSetPanResponder: (evt) => {
-          const { locationX, locationY } = evt.nativeEvent;
-          return isWithinPrintArea(locationX, locationY);
-        },
-        onMoveShouldSetPanResponder: (evt) => {
-          const { locationX, locationY } = evt.nativeEvent;
-          return isWithinPrintArea(locationX, locationY);
-        },
+        onStartShouldSetPanResponder: () => true,
+        onMoveShouldSetPanResponder: () => editingRef.current,
         onPanResponderTerminationRequest: () => false,
         onPanResponderGrant: (evt) => {
           const touches = evt.nativeEvent.touches ?? [];
           const { locationX, locationY } = evt.nativeEvent;
+          if (!isWithinPrintArea(locationX, locationY)) {
+            return;
+          }
           if (!editingRef.current) {
             touchStartRef.current = { x: locationX, y: locationY };
             clearHoldTimer();
             holdTimerRef.current = setTimeout(() => {
               beginEditing();
-            }, 220);
+            }, 150);
           }
           const a = touches[0];
           const b = touches[1];
@@ -194,7 +191,7 @@ export function DesignStage({
           clearHoldTimer();
         },
       }),
-    [activeTransform, area.height, area.width, beginEditing, isWithinPrintArea, updateTransform]
+    [activeTransform, area.height, area.width, area.left, area.top]
   );
 
   const buildLayerStyle = (transform: LayerTransform) => {
