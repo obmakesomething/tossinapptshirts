@@ -407,7 +407,6 @@ app.post('/v1/images/generate', async (req, res) => {
       prompt,
       size,
       n: count,
-      response_format: 'b64_json',
       ...(OPENAI_IMAGE_QUALITY ? { quality: OPENAI_IMAGE_QUALITY } : {}),
     });
 
@@ -415,21 +414,24 @@ app.post('/v1/images/generate', async (req, res) => {
     const generated = response?.data || [];
     for (const item of generated) {
       let buffer = null;
-      let mimeType = 'image/png';
       if (item.b64_json) {
         buffer = Buffer.from(item.b64_json, 'base64');
       } else if (item.url) {
         const imageResponse = await fetch(item.url);
         if (!imageResponse.ok) continue;
-        mimeType = imageResponse.headers.get('content-type') || mimeType;
         buffer = Buffer.from(await imageResponse.arrayBuffer());
       }
       if (!buffer) continue;
+
+      // Convert to PNG using sharp
+      const pngBuffer = await sharp(buffer).png().toBuffer();
+      const mimeType = 'image/png';
+
       const key = `${IMAGE_PREFIX}/openai-${Date.now()}-${Math.random().toString(36).slice(2)}.png`;
-      const url = await uploadToS3({ key, body: buffer, contentType: mimeType });
+      const url = await uploadToS3({ key, body: pngBuffer, contentType: mimeType });
       const result = { url, mimeType };
       if (returnBase64) {
-        result.dataUrl = `data:${mimeType};base64,${buffer.toString('base64')}`;
+        result.dataUrl = `data:${mimeType};base64,${pngBuffer.toString('base64')}`;
       }
       results.push(result);
     }
