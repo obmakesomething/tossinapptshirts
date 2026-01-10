@@ -51,11 +51,12 @@ export const catalogProducts: CatalogProduct[] = [
     mainImage: resolveImage('https://www.customzone.co.kr/wp-content/uploads/2022/05/메인_148-헤비-14수-라운드-반팔.jpg'),
     detailImage: resolveImage('https://www.customzone.co.kr/wp-content/uploads/2022/05/프린트스타-148-헤비-14수-라운드-반팔-남녀공용-1.jpg'),
     colorImages: {
-      '화이트': {
+      '블랙': {
         main: resolveImage('https://www.customzone.co.kr/wp-content/uploads/2022/05/메인_148-헤비-14수-라운드-반팔.jpg'),
         detail: resolveImage('https://www.customzone.co.kr/wp-content/uploads/2022/05/프린트스타-148-헤비-14수-라운드-반팔-남녀공용-1.jpg'),
       },
-      '블랙': {
+      '화이트': {
+        // TODO: Need actual white tshirt images from customzone
         main: resolveImage('https://www.customzone.co.kr/wp-content/uploads/2022/05/메인_148-헤비-14수-라운드-반팔.jpg'),
         detail: resolveImage('https://www.customzone.co.kr/wp-content/uploads/2022/05/프린트스타-148-헤비-14수-라운드-반팔-남녀공용-1.jpg'),
       },
