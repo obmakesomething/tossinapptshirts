@@ -329,7 +329,7 @@ app.get('/health', (_req, res) => {
 
 app.post('/v1/images/upload', async (req, res) => {
   try {
-    const { filename, dataUrl, base64, contentType } = req.body || {};
+    const { filename, dataUrl, base64, contentType, returnBase64 } = req.body || {};
     let buffer = null;
     let mimeType = contentType || 'image/jpeg';
 
@@ -361,8 +361,14 @@ app.post('/v1/images/upload', async (req, res) => {
       url,
       bytes: buffer.length,
       mimeType,
+      returnBase64: !!returnBase64,
     });
-    res.json({ url, requestId: req.requestId });
+
+    const result = { url, requestId: req.requestId };
+    if (returnBase64) {
+      result.dataUrl = `data:${mimeType};base64,${buffer.toString('base64')}`;
+    }
+    res.json(result);
   } catch (error) {
     logEvent('error', 'image_upload_failed', {
       requestId: req.requestId,
@@ -374,7 +380,7 @@ app.post('/v1/images/upload', async (req, res) => {
 
 app.post('/v1/images/generate', async (req, res) => {
   try {
-    const { prompt, numberOfImages = 1, aspectRatio = '1:1' } = req.body || {};
+    const { prompt, numberOfImages = 1, aspectRatio = '1:1', returnBase64 } = req.body || {};
     if (!prompt) return res.status(400).json({ error: 'Prompt is required.' });
     const count = Math.max(1, Math.min(4, Number(numberOfImages) || 1));
     const sizeMap = {
@@ -393,6 +399,7 @@ app.post('/v1/images/generate', async (req, res) => {
       count,
       promptLength: prompt.length,
       promptSnippet: prompt.slice(0, 120),
+      returnBase64: !!returnBase64,
     });
 
     const response = await client.images.generate({
@@ -419,7 +426,11 @@ app.post('/v1/images/generate', async (req, res) => {
       if (!buffer) continue;
       const key = `${IMAGE_PREFIX}/openai-${Date.now()}-${Math.random().toString(36).slice(2)}.png`;
       const url = await uploadToS3({ key, body: buffer, contentType: mimeType });
-      results.push({ url, mimeType });
+      const result = { url, mimeType };
+      if (returnBase64) {
+        result.dataUrl = `data:${mimeType};base64,${buffer.toString('base64')}`;
+      }
+      results.push(result);
     }
     if (!results.length) {
       throw new Error('image_generate_empty');
@@ -445,7 +456,7 @@ app.post('/v1/images/generate', async (req, res) => {
 
 app.post('/v1/images/remove-background', async (req, res) => {
   try {
-    const { imageUrl, dataUrl, filename } = req.body || {};
+    const { imageUrl, dataUrl, filename, returnBase64 } = req.body || {};
     if (!CLIPDROP_API_KEY) {
       return res.status(500).json({ error: 'CLIPDROP_API_KEY is required.' });
     }
@@ -457,6 +468,7 @@ app.post('/v1/images/remove-background', async (req, res) => {
       sourceType: imageUrl ? 'url' : 'dataUrl',
       imageHost: imageUrl ? new URL(imageUrl).host : '',
       filename: filename || '',
+      returnBase64: !!returnBase64,
     });
     const tempDir = path.join(ORDER_OUTPUT_DIR, 'temp');
     await fsp.mkdir(tempDir, { recursive: true });
@@ -488,7 +500,12 @@ app.post('/v1/images/remove-background', async (req, res) => {
       url,
       bytes: outputBuffer.length,
     });
-    res.json({ url, requestId: req.requestId });
+
+    const result = { url, requestId: req.requestId };
+    if (returnBase64) {
+      result.dataUrl = `data:image/png;base64,${outputBuffer.toString('base64')}`;
+    }
+    res.json(result);
   } catch (error) {
     logEvent('error', 'remove_background_failed', {
       requestId: req.requestId,
@@ -554,7 +571,17 @@ app.post('/v1/orders/submit', async (req, res) => {
           '';
         if (sourceUrl) {
           const downloadPath = path.join(workDir, 'master_input.png');
-          await downloadToFile(sourceUrl, downloadPath);
+          // Handle both HTTP URLs and data URLs
+          if (sourceUrl.startsWith('data:')) {
+            const decoded = decodeDataUrl(sourceUrl);
+            if (decoded) {
+              await fsp.writeFile(downloadPath, decoded.buffer);
+            } else {
+              throw new Error('Invalid dataUrl for pipeline master image.');
+            }
+          } else {
+            await downloadToFile(sourceUrl, downloadPath);
+          }
           masterPath = downloadPath;
         }
       }

@@ -62,13 +62,14 @@ function Page() {
           prompt: `${prompt.trim()} (${stylePromptMap[style] || style})`,
           numberOfImages: 1,
           aspectRatio: ratio,
+          returnBase64: true,
         }),
       });
       if (!response.ok) {
         throw new Error('이미지 생성에 실패했어요.');
       }
       const data = await response.json();
-      const nextUrl = data.images?.[0]?.url || '';
+      const nextUrl = data.images?.[0]?.dataUrl || '';
       if (!nextUrl) {
         throw new Error('이미지 생성 결과가 비어 있어요.');
       }
@@ -88,16 +89,16 @@ function Page() {
       const response = await fetch(`${API_BASE_URL}/v1/images/remove-background`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ imageUrl: resultUrl }),
+        body: JSON.stringify({ dataUrl: resultUrl, returnBase64: true }),
       });
       if (!response.ok) {
         throw new Error('배경 제거에 실패했어요.');
       }
       const data = await response.json();
-      if (!data.url) {
+      if (!data.dataUrl) {
         throw new Error('배경 제거 결과가 올바르지 않아요.');
       }
-      setResultUrl(data.url);
+      setResultUrl(data.dataUrl);
     } catch (err) {
       setError(err instanceof Error ? err.message : '배경 제거에 실패했어요.');
     } finally {

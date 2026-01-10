@@ -42,16 +42,17 @@ function Page() {
         body: JSON.stringify({
           filename,
           dataUrl,
+          returnBase64: true,
         }),
       });
       if (!response.ok) {
         throw new Error('업로드에 실패했어요.');
       }
       const data = await response.json();
-      if (!data.url) {
+      if (!data.dataUrl) {
         throw new Error('업로드 결과가 올바르지 않아요.');
       }
-      setDesignImageUri(data.url);
+      setDesignImageUri(data.dataUrl);
     } catch (err) {
       setError(err instanceof Error ? err.message : '업로드에 실패했어요.');
     } finally {
@@ -99,17 +100,19 @@ function Page() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(
-          lastDataUrl ? { dataUrl: lastDataUrl, filename: 'upload' } : { imageUrl: designImageUri }
+          lastDataUrl
+            ? { dataUrl: lastDataUrl, filename: 'upload', returnBase64: true }
+            : { dataUrl: designImageUri, filename: 'upload', returnBase64: true }
         ),
       });
       if (!response.ok) {
         throw new Error('배경 제거에 실패했어요.');
       }
       const data = await response.json();
-      if (!data.url) {
+      if (!data.dataUrl) {
         throw new Error('배경 제거 결과가 올바르지 않아요.');
       }
-      setDesignImageUri(data.url);
+      setDesignImageUri(data.dataUrl);
       setLastDataUrl(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : '배경 제거에 실패했어요.');
