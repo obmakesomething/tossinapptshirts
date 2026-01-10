@@ -62,7 +62,8 @@ export function MockupCanvas({
       parseInt(colorValue.slice(3, 5), 16) * 0.587 +
       parseInt(colorValue.slice(5, 7), 16) * 0.114) /
     255;
-  const overlayOpacity = lightness < 0.5 ? 0.28 : 0.1;
+  // Higher opacity for dark colors (e.g., black), lower for light colors
+  const overlayOpacity = lightness < 0.3 ? 0.75 : lightness < 0.5 ? 0.5 : 0.15;
 
   return (
     <View style={[styles.container, { width, height }, style]}>

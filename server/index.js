@@ -414,16 +414,31 @@ app.post('/v1/images/generate', async (req, res) => {
     const generated = response?.data || [];
     for (const item of generated) {
       let buffer = null;
+      let actualMimeType = 'unknown';
       if (item.b64_json) {
         buffer = Buffer.from(item.b64_json, 'base64');
       } else if (item.url) {
         const imageResponse = await fetch(item.url);
         if (!imageResponse.ok) continue;
+        actualMimeType = imageResponse.headers.get('content-type') || 'unknown';
         buffer = Buffer.from(await imageResponse.arrayBuffer());
       }
       if (!buffer) continue;
 
-      // gpt-image-1 returns PNG by default
+      // Check actual format from buffer signature
+      const isPNG = buffer[0] === 0x89 && buffer[1] === 0x50 && buffer[2] === 0x4E && buffer[3] === 0x47;
+      const isJPEG = buffer[0] === 0xFF && buffer[1] === 0xD8;
+      const detectedFormat = isPNG ? 'PNG' : isJPEG ? 'JPEG' : 'unknown';
+
+      logEvent('info', 'openai_image_format', {
+        requestId: req.requestId,
+        actualMimeType,
+        detectedFormat,
+        isPNG,
+        bufferHeader: buffer.slice(0, 4).toString('hex'),
+      });
+
+      // Force PNG mime type for storage
       const mimeType = 'image/png';
 
       const key = `${IMAGE_PREFIX}/openai-${Date.now()}-${Math.random().toString(36).slice(2)}.png`;

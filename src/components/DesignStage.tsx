@@ -56,7 +56,8 @@ export function DesignStage({
       parseInt(colorValue.slice(3, 5), 16) * 0.587 +
       parseInt(colorValue.slice(5, 7), 16) * 0.114) /
     255;
-  const overlayOpacity = lightness < 0.5 ? 0.28 : 0.1;
+  // Higher opacity for dark colors (e.g., black), lower for light colors
+  const overlayOpacity = lightness < 0.3 ? 0.75 : lightness < 0.5 ? 0.5 : 0.15;
 
   const activeTransform = activeLayer === 'text' ? textTransform : imageTransform;
   const updateTransform =
@@ -105,15 +106,16 @@ export function DesignStage({
   const responder = useMemo(
     () =>
       PanResponder.create({
-        onStartShouldSetPanResponder: () => true,
-        onMoveShouldSetPanResponder: () => editingRef.current,
+        onStartShouldSetPanResponder: (evt) => {
+          const { locationX, locationY } = evt.nativeEvent;
+          return isWithinPrintArea(locationX, locationY);
+        },
+        onMoveShouldSetPanResponder: () => true,
         onPanResponderTerminationRequest: () => false,
         onPanResponderGrant: (evt) => {
           const touches = evt.nativeEvent.touches ?? [];
           const { locationX, locationY } = evt.nativeEvent;
-          if (!isWithinPrintArea(locationX, locationY)) {
-            return;
-          }
+
           if (!editingRef.current) {
             touchStartRef.current = { x: locationX, y: locationY };
             clearHoldTimer();
@@ -121,6 +123,7 @@ export function DesignStage({
               beginEditing();
             }, 150);
           }
+
           const a = touches[0];
           const b = touches[1];
           const distance =
@@ -145,6 +148,7 @@ export function DesignStage({
             }
             return;
           }
+
           const touches = evt.nativeEvent.touches ?? [];
           if (touches.length >= 2 && touches[0] && touches[1]) {
             const [a, b] = touches;
@@ -191,7 +195,8 @@ export function DesignStage({
           clearHoldTimer();
         },
       }),
-    [activeTransform, area.height, area.width, area.left, area.top]
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    []
   );
 
   const buildLayerStyle = (transform: LayerTransform) => {
