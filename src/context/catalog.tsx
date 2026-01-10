@@ -228,6 +228,14 @@ export function CatalogProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const handleSetDesignImageUri = (uri: string | null) => {
+    setDesignImageUri(uri);
+    // Reset image transform when new image is loaded
+    if (uri) {
+      setImageTransform(defaultImageTransform);
+    }
+  };
+
   const addOrderLine = (sizeLabel: string) => {
     setOrderLines((lines) => [...lines, createOrderLine(sizeLabel, 1)]);
   };
@@ -277,7 +285,7 @@ export function CatalogProvider({ children }: { children: React.ReactNode }) {
     setOrderLineQuantity,
     setSelectedPlacement,
     setPrintBackEnabled,
-    setDesignImageUri,
+    setDesignImageUri: handleSetDesignImageUri,
     setDesignPrompt,
     setImageTransform,
     setTextTransform,

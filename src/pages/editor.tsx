@@ -163,7 +163,7 @@ function Page() {
           />
         </View>
         <Text style={styles.canvasHint}>
-          프린팅 영역을 드래그하거나 두 손가락으로 크기·회전 조절하세요.
+          아래 슬라이더로 크기·위치·회전을 조절하세요.
         </Text>
         <View style={styles.sliderRow}>
           <Text style={styles.sliderLabel}>크기</Text>
@@ -176,27 +176,48 @@ function Page() {
             }
           />
         </View>
+        <View style={styles.sliderRow}>
+          <Text style={styles.sliderLabel}>가로 위치</Text>
+          <ScaleSlider
+            min={-0.55}
+            max={0.55}
+            value={activeTransform.offsetX}
+            onChange={(offsetX) =>
+              updateActiveTransform({ ...activeTransform, offsetX })
+            }
+          />
+        </View>
+        <View style={styles.sliderRow}>
+          <Text style={styles.sliderLabel}>세로 위치</Text>
+          <ScaleSlider
+            min={-0.55}
+            max={0.55}
+            value={activeTransform.offsetY}
+            onChange={(offsetY) =>
+              updateActiveTransform({ ...activeTransform, offsetY })
+            }
+          />
+        </View>
+        <View style={styles.sliderRow}>
+          <Text style={styles.sliderLabel}>회전</Text>
+          <ScaleSlider
+            min={-180}
+            max={180}
+            value={activeTransform.rotation}
+            onChange={(rotation) =>
+              updateActiveTransform({ ...activeTransform, rotation })
+            }
+          />
+        </View>
         <View style={styles.toolRow}>
           <SecondaryButton
-            label="중앙 맞춤"
-            onPress={() =>
-              updateActiveTransform({ ...activeTransform, offsetX: 0, offsetY: 0 })
-            }
-            style={styles.toolButton}
-          />
-          <SecondaryButton
-            label="회전 초기화"
-            onPress={() =>
-              updateActiveTransform({ ...activeTransform, rotation: 0 })
-            }
-            style={styles.toolButton}
-          />
-          <SecondaryButton
-            label="크기 초기화"
+            label="전체 초기화"
             onPress={() =>
               updateActiveTransform({
-                ...activeTransform,
+                offsetX: 0,
+                offsetY: 0,
                 scale: activeLayer === 'text' ? 0.45 : selectedPrint.designScale,
+                rotation: 0,
               })
             }
           />
