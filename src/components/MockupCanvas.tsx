@@ -3,7 +3,6 @@ import { Image, StyleSheet, View, Text, type ViewStyle } from 'react-native';
 import { theme } from './ui';
 import type { MockupTemplate } from '../data/mockupTemplates';
 import type { LayerTransform, TextLayer } from '../context/catalog';
-import { resolveColorValue } from '../data/colorMap';
 
 type MockupCanvasProps = {
   template: MockupTemplate;
@@ -56,22 +55,10 @@ export function MockupCanvas({
   const textHeight = area.height;
   const textLeft = area.left + area.width / 2 + textOffsetX * area.width - textWidth / 2;
   const textTop = area.top + area.height / 2 + textOffsetY * area.height - textHeight / 2;
-  const colorValue = resolveColorValue(template.color);
-  const lightness =
-    (parseInt(colorValue.slice(1, 3), 16) * 0.299 +
-      parseInt(colorValue.slice(3, 5), 16) * 0.587 +
-      parseInt(colorValue.slice(5, 7), 16) * 0.114) /
-    255;
-  // Higher opacity for dark colors (e.g., black), lower for light colors
-  const overlayOpacity = lightness < 0.3 ? 0.75 : lightness < 0.5 ? 0.5 : 0.15;
 
   return (
     <View style={[styles.container, { width, height }, style]}>
       <Image source={template.image} style={styles.image} resizeMode="cover" />
-      <View
-        pointerEvents="none"
-        style={[styles.colorOverlay, { backgroundColor: colorValue, opacity: overlayOpacity }]}
-      />
       {showPrintArea && (
         <View
           style={[
@@ -160,9 +147,6 @@ const styles = StyleSheet.create({
     borderColor: theme.colors.border,
   },
   image: {
-    ...StyleSheet.absoluteFillObject,
-  },
-  colorOverlay: {
     ...StyleSheet.absoluteFillObject,
   },
   printArea: {

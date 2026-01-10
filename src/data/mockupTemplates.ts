@@ -32,7 +32,16 @@ export function buildTemplate(
   color: string,
   placement: Placement
 ): MockupTemplate {
-  const image = placement === 'back' ? product.detailImage : product.mainImage;
+  // Use color-specific images if available, otherwise fallback to default
+  let image: ImageSourcePropType;
+  if (product.colorImages && product.colorImages[color]) {
+    image = placement === 'back'
+      ? product.colorImages[color].detail
+      : product.colorImages[color].main;
+  } else {
+    image = placement === 'back' ? product.detailImage : product.mainImage;
+  }
+
   return {
     id: `${product.id}-${color}-${placement}`,
     productId: product.id,
