@@ -423,15 +423,14 @@ app.post('/v1/images/generate', async (req, res) => {
       }
       if (!buffer) continue;
 
-      // Convert to PNG using sharp
-      const pngBuffer = await sharp(buffer).png().toBuffer();
+      // gpt-image-1 returns PNG by default
       const mimeType = 'image/png';
 
       const key = `${IMAGE_PREFIX}/openai-${Date.now()}-${Math.random().toString(36).slice(2)}.png`;
-      const url = await uploadToS3({ key, body: pngBuffer, contentType: mimeType });
+      const url = await uploadToS3({ key, body: buffer, contentType: mimeType });
       const result = { url, mimeType };
       if (returnBase64) {
-        result.dataUrl = `data:${mimeType};base64,${pngBuffer.toString('base64')}`;
+        result.dataUrl = `data:${mimeType};base64,${buffer.toString('base64')}`;
       }
       results.push(result);
     }
