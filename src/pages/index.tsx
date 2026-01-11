@@ -57,22 +57,14 @@ function Page() {
   return (
     <Screen>
       <View style={styles.hero}>
-        <Text style={styles.heroTitle}>나만의 티셔츠 만들기</Text>
+        <Text style={styles.heroTitle}>나만의 굿즈 만들기</Text>
         <Text style={styles.heroSubtitle}>
-          이미지 업로드 또는 AI 생성으로 바로 제작을 시작하세요.
+          제품을 선택하고 이미지 업로드 또는 AI 생성으로 바로 제작을 시작하세요.
         </Text>
-        <View style={styles.heroActions}>
-          <PrimaryButton label="이미지 업로드" onPress={goToUpload} style={styles.actionButton} />
-          <SecondaryButton
-            label="AI로 생성"
-            onPress={goToGenerate}
-            style={styles.actionButton}
-          />
-        </View>
       </View>
 
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>제품 카테고리</Text>
+        <Text style={styles.sectionTitle}>제품 카테고리 선택</Text>
         <View style={styles.chipRow}>
           {categories.map((category) => (
             <Chip
@@ -86,55 +78,38 @@ function Page() {
         </View>
       </View>
 
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>예시 제품</Text>
-        <View style={styles.exampleRow}>
-          {exampleProducts.map((product) => (
-            <Card key={product.id} style={styles.exampleCard}>
-              <Image source={product.mainImage} style={styles.exampleImage} />
-              <Text style={styles.exampleLabel} numberOfLines={2}>
-                {product.name}
-              </Text>
-            </Card>
-          ))}
-        </View>
-      </View>
-
-      <View style={styles.section}>
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>선택된 상품</Text>
-          <Text style={styles.sectionAction} onPress={goToProducts}>
-            상품 변경
-          </Text>
-        </View>
-        <Card style={styles.productCard}>
+      <View style={styles.exampleSection}>
+        <View style={styles.exampleImageContainer}>
           <MockupCanvas
             template={buildTemplate(selectedProduct, selectedColor, 'front')}
-            width={90}
-            height={120}
+            width={180}
+            height={240}
+            showDesign
+            designImageUri={null}
+            textLayer={{
+              enabled: true,
+              text: 'MERCHANDISE\nGPT',
+              fontSize: 36,
+              fontWeight: 'bold',
+              color: selectedColor === '블랙' ? '#FFFFFF' : '#0F172A',
+            }}
+            textTransform={{
+              offsetX: 0,
+              offsetY: 0,
+              scale: 0.6,
+              rotation: 0,
+            }}
           />
-          <View style={styles.productText}>
-            <Text style={styles.productTitle}>{selectedProduct.name}</Text>
-            <Text style={styles.productMeta}>
-              모델명 {selectedProduct.modelName}
-            </Text>
-          </View>
-        </Card>
+        </View>
       </View>
 
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>빠른 시작</Text>
-        <View style={styles.stepGrid}>
-          {steps.map((step, index) => (
-            <Card
-              key={step.title}
-              style={[styles.stepCard, index < steps.length - 1 && styles.stepCardSpacing]}
-            >
-              <Text style={styles.stepTitle}>{step.title}</Text>
-              <Text style={styles.stepDesc}>{step.desc}</Text>
-            </Card>
-          ))}
-        </View>
+      <View style={styles.heroActions}>
+        <PrimaryButton label="이미지 업로드" onPress={goToUpload} style={styles.actionButton} />
+        <SecondaryButton
+          label="AI로 생성"
+          onPress={goToGenerate}
+          style={styles.actionButton}
+        />
       </View>
 
       <View style={styles.section}>
@@ -218,6 +193,14 @@ const styles = StyleSheet.create({
   chipSpacing: {
     marginRight: theme.spacing.sm,
     marginBottom: theme.spacing.sm,
+  },
+  exampleSection: {
+    marginBottom: theme.spacing.xl,
+    alignItems: 'center',
+  },
+  exampleImageContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   stepGrid: {
     marginTop: theme.spacing.sm,

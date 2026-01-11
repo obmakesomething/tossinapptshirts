@@ -269,11 +269,21 @@ function Page() {
       </Card>
 
       <Card style={styles.optionCard}>
-        <Text style={styles.sectionTitle}>사이즈 · 수량</Text>
-        <View style={styles.sizeGuide}>
-          <Text style={styles.sizeGuideTitle}>프린트 크기 가이드</Text>
-          <Text style={styles.sizeGuideText}>{selectedPrint.label}: {selectedPrint.description}</Text>
+        <Text style={styles.sectionTitle}>주문 정보</Text>
+        <View style={styles.infoRow}>
+          <Text style={styles.infoLabel}>색상</Text>
+          <Text style={styles.infoValue}>{selectedColor}</Text>
         </View>
+        <View style={styles.infoRow}>
+          <Text style={styles.infoLabel}>프린트 영역</Text>
+          <Text style={styles.infoValue}>{selectedPrint.label} ({selectedPrint.description})</Text>
+        </View>
+        <View style={styles.sizeGuide}>
+          <Text style={styles.sizeGuideTitle}>사이즈 가이드 (신장 기준)</Text>
+          <Text style={styles.sizeGuideText}>XS: 155-160cm / S: 160-165cm / M: 165-170cm / L: 170-175cm</Text>
+          <Text style={styles.sizeGuideText}>XL: 175-180cm / 2XL: 180-185cm / 3XL: 185-190cm</Text>
+        </View>
+        <Text style={[styles.sectionTitle, { marginTop: 16 }]}>사이즈 · 수량</Text>
         {orderLines.map((line) => (
           <View key={line.id} style={styles.lineRow}>
             <Pressable
@@ -353,17 +363,33 @@ function Page() {
           />
         </View>
         {printBackEnabled ? (
-          <View style={styles.chipRow}>
-            {placementOptions.map((placement) => (
-              <Chip
-                key={placement.value}
-                label={placement.label}
-                selected={selectedPlacement === placement.value}
-                onPress={() => setSelectedPlacement(placement.value)}
-                style={styles.chipSpacing}
-              />
-            ))}
-          </View>
+          <>
+            <View style={styles.chipRow}>
+              {placementOptions.map((placement) => (
+                <Chip
+                  key={placement.value}
+                  label={placement.label}
+                  selected={selectedPlacement === placement.value}
+                  onPress={() => setSelectedPlacement(placement.value)}
+                  style={styles.chipSpacing}
+                />
+              ))}
+            </View>
+            {!designImageUri && (
+              <View style={styles.imageActionRow}>
+                <SecondaryButton
+                  label="이미지 업로드"
+                  onPress={() => navigation.navigate('/upload')}
+                  style={styles.imageActionButton}
+                />
+                <SecondaryButton
+                  label="AI로 생성"
+                  onPress={() => navigation.navigate('/generate')}
+                  style={styles.imageActionButton}
+                />
+              </View>
+            )}
+          </>
         ) : null}
       </View>
 
@@ -509,6 +535,25 @@ const styles = StyleSheet.create({
   sizeGuideText: {
     fontSize: 12,
     color: theme.colors.textSecondary,
+    lineHeight: 18,
+  },
+  infoRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: theme.spacing.xs,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.border,
+    marginBottom: theme.spacing.xs,
+  },
+  infoLabel: {
+    fontSize: 14,
+    color: theme.colors.textSecondary,
+  },
+  infoValue: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: theme.colors.textPrimary,
   },
   swatchRow: {
     flexDirection: 'row',
@@ -572,6 +617,12 @@ const styles = StyleSheet.create({
   },
   chipSpacing: {
     marginRight: theme.spacing.sm,
+    marginBottom: theme.spacing.sm,
+  },
+  imageActionRow: {
+    marginTop: theme.spacing.sm,
+  },
+  imageActionButton: {
     marginBottom: theme.spacing.sm,
   },
   canvasCard: {
