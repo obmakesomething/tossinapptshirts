@@ -117,8 +117,12 @@ function Page() {
         <View style={styles.productHeader}>
           <View style={styles.productText}>
             <Text style={styles.productTitle}>{selectedProduct.name}</Text>
-            <Text style={styles.productMeta}>
-              모델명 {selectedProduct.modelName}
+            <Text style={styles.productMeta}>{selectedProduct.modelName}</Text>
+            <Text style={styles.productPrice}>
+              {selectedProduct.priceText}
+              {selectedProduct.originalPrice && selectedProduct.price ? (
+                <Text style={styles.productOriginalPrice}> {formatPrice(selectedProduct.originalPrice)}</Text>
+              ) : null}
             </Text>
           </View>
           <SecondaryButton
@@ -443,6 +447,18 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: theme.colors.textSecondary,
     marginTop: 4,
+  },
+  productPrice: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: theme.colors.textPrimary,
+    marginTop: 6,
+  },
+  productOriginalPrice: {
+    fontSize: 12,
+    fontWeight: '400',
+    color: theme.colors.textSecondary,
+    textDecorationLine: 'line-through',
   },
   section: {
     marginBottom: theme.spacing.lg,

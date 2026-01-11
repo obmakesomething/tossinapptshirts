@@ -39,7 +39,7 @@ const formatPrice = (value: number | null) => {
 export const catalogProducts: CatalogProduct[] = [
   {
     id: 'p-001',
-    name: '[프린트스타] 148 헤비 14수 라운드 반팔 (남녀공용)',
+    name: '티셔츠',
     category: '티셔츠',
     modelName: 'Printstar 148 Heavy 14oz',
     price: 9500,
@@ -66,7 +66,7 @@ export const catalogProducts: CatalogProduct[] = [
   },
   {
     id: 'p-002',
-    name: '[프린트스타] 188 헤비 후드 (남녀공용)',
+    name: '후드',
     category: '후드',
     modelName: 'Printstar 188 Heavy Hoodie',
     price: 23500,
@@ -83,7 +83,7 @@ export const catalogProducts: CatalogProduct[] = [
   },
   {
     id: 'p-003',
-    name: '[프린트스타] 183 헤비 맨투맨 (남녀공용)',
+    name: '맨투맨',
     category: '맨투맨',
     modelName: 'Printstar 183 Heavy Sweatshirt',
     price: 17000,
@@ -100,7 +100,7 @@ export const catalogProducts: CatalogProduct[] = [
   },
   {
     id: 'p-004',
-    name: '캔버스 에코백(35X40)',
+    name: '에코백',
     category: '에코백',
     modelName: 'Canvas Eco Bag 35x40',
     price: 5500,
