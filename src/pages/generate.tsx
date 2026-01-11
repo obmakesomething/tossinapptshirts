@@ -181,36 +181,32 @@ function Page() {
       ) : null}
       {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>생성 결과</Text>
-        <View style={styles.resultCenter}>
-          <Card style={styles.resultCard}>
-            {resultUrl ? (
+      {resultUrl ? (
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>생성 결과</Text>
+          <View style={styles.resultCenter}>
+            <Card style={styles.resultCard}>
               <Image
                 source={{ uri: resultUrl }}
                 style={styles.resultImage}
                 resizeMode="contain"
               />
-            ) : (
-              <Text style={styles.resultPlaceholder}>생성 결과가 여기에 보여요</Text>
-            )}
-          </Card>
-        </View>
-        <View style={styles.resultActions}>
+            </Card>
+          </View>
           <SecondaryButton
             label={removingBg ? '배경 제거 중...' : '배경 제거'}
             onPress={handleRemoveBackground}
-            disabled={!resultUrl || removingBg}
-            style={styles.resultButton}
-          />
-          <PrimaryButton
-            label="내 티셔츠 만들기"
-            onPress={goNext}
-            disabled={!resultUrl}
-            style={styles.resultButton}
+            disabled={removingBg}
+            style={styles.bgRemoveButton}
           />
         </View>
-      </View>
+      ) : null}
+
+      <PrimaryButton
+        label="내 굿즈 만들기"
+        onPress={goNext}
+        disabled={!resultUrl}
+      />
     </Screen>
   );
 }
@@ -218,6 +214,7 @@ function Page() {
 const styles = StyleSheet.create({
   title: {
     fontSize: 18,
+    lineHeight: 26,
     fontWeight: '700',
     color: theme.colors.textPrimary,
     marginBottom: theme.spacing.sm,
@@ -234,6 +231,7 @@ const styles = StyleSheet.create({
   },
   helperText: {
     fontSize: 12,
+    lineHeight: 18,
     color: theme.colors.textSecondary,
     marginTop: theme.spacing.sm,
     marginBottom: theme.spacing.lg,
@@ -246,6 +244,7 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontSize: 16,
+    lineHeight: 22,
     fontWeight: '700',
     color: theme.colors.textPrimary,
     marginBottom: theme.spacing.sm,
@@ -275,15 +274,13 @@ const styles = StyleSheet.create({
   },
   resultPlaceholder: {
     fontSize: 12,
+    lineHeight: 18,
     color: theme.colors.textSecondary,
     textAlign: 'center',
     paddingHorizontal: theme.spacing.md,
   },
-  resultActions: {
+  bgRemoveButton: {
     marginTop: theme.spacing.md,
-  },
-  resultButton: {
-    marginBottom: theme.spacing.sm,
   },
   loadingRow: {
     flexDirection: 'row',
@@ -292,11 +289,13 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     fontSize: 12,
+    lineHeight: 18,
     color: theme.colors.textSecondary,
     marginLeft: theme.spacing.sm,
   },
   errorText: {
     fontSize: 12,
+    lineHeight: 18,
     color: '#DC2626',
     marginTop: theme.spacing.sm,
   },

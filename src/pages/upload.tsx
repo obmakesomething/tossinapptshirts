@@ -128,7 +128,7 @@ function Page() {
       <TopBar title="이미지 업로드" onBack={() => navigation.goBack()} />
 
       <Text style={styles.title}>사진을 먼저 가져와 주세요</Text>
-      <Text style={styles.subtitle}>아래 + 박스를 눌러 앨범에서 선택해요.</Text>
+      <Text style={styles.subtitle}>아래 + 박스를 눌러 앨범에서 선택하세요.</Text>
 
       <Card style={styles.uploadCard}>
         <Pressable style={styles.uploadPreview} onPress={handlePick}>
@@ -153,22 +153,22 @@ function Page() {
             <Text style={styles.loadingText}>이미지 업로드 중...</Text>
           </View>
         ) : null}
+        {previewUri && (
+          <SecondaryButton
+            label={removingBg ? '배경 제거 중...' : '배경 제거하기'}
+            onPress={handleRemoveBackground}
+            disabled={removingBg}
+            style={styles.bgRemoveButton}
+          />
+        )}
       </Card>
       {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
-      <View style={styles.actionRow}>
-        <SecondaryButton
-          label={removingBg ? '배경 제거 중...' : '배경 제거하기'}
-          onPress={handleRemoveBackground}
-          disabled={!(lastDataUrl || designImageUri) || removingBg}
-          style={styles.actionButton}
-        />
-        <PrimaryButton
-          label="예상 이미지 만들기"
-          onPress={goNext}
-          disabled={!designImageUri}
-        />
-      </View>
+      <PrimaryButton
+        label="다음: 디자인 편집하기"
+        onPress={goNext}
+        disabled={!designImageUri}
+      />
     </Screen>
   );
 }
@@ -176,12 +176,14 @@ function Page() {
 const styles = StyleSheet.create({
   title: {
     fontSize: 18,
+    lineHeight: 26,
     fontWeight: '700',
     color: theme.colors.textPrimary,
     marginBottom: theme.spacing.xs,
   },
   subtitle: {
     fontSize: 13,
+    lineHeight: 20,
     color: theme.colors.textSecondary,
     marginBottom: theme.spacing.lg,
   },
@@ -206,9 +208,10 @@ const styles = StyleSheet.create({
   },
   plusText: {
     fontSize: 36,
+    lineHeight: 44,
     fontWeight: '700',
     color: theme.colors.primary,
-    marginBottom: 4,
+    marginBottom: theme.spacing.xs,
   },
   previewImage: {
     width: '100%',
@@ -217,6 +220,7 @@ const styles = StyleSheet.create({
   },
   previewText: {
     fontSize: 12,
+    lineHeight: 18,
     color: theme.colors.textSecondary,
   },
   loadingRow: {
@@ -226,18 +230,17 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     fontSize: 12,
+    lineHeight: 18,
     color: theme.colors.textSecondary,
     marginLeft: theme.spacing.sm,
   },
   errorText: {
     fontSize: 12,
+    lineHeight: 18,
     color: '#DC2626',
     marginBottom: theme.spacing.sm,
   },
-  actionRow: {
-    marginTop: theme.spacing.sm,
-  },
-  actionButton: {
-    marginBottom: theme.spacing.sm,
+  bgRemoveButton: {
+    marginTop: theme.spacing.md,
   },
 });

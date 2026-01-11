@@ -112,6 +112,7 @@ const styles = StyleSheet.create({
   subtitle: {
     fontSize: 13,
     color: theme.colors.textSecondary,
+    lineHeight: 20,
     marginBottom: theme.spacing.lg,
   },
   list: {
@@ -123,6 +124,7 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '700',
     color: theme.colors.textPrimary,
+    lineHeight: 22,
     marginBottom: theme.spacing.sm,
   },
   cardPressable: {
@@ -157,6 +159,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: theme.colors.textPrimary,
+    lineHeight: 20,
     marginBottom: theme.spacing.sm,
   },
   colorRow: {
@@ -174,10 +177,12 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '700',
     color: theme.colors.textPrimary,
-    marginBottom: 4,
+    lineHeight: 22,
+    marginBottom: theme.spacing.xs,
   },
   cardMeta: {
     fontSize: 12,
     color: theme.colors.textSecondary,
+    lineHeight: 18,
   },
 });

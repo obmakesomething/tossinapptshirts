@@ -59,7 +59,7 @@ function Page() {
       <View style={styles.hero}>
         <Text style={styles.heroTitle}>나만의 굿즈 만들기</Text>
         <Text style={styles.heroSubtitle}>
-          제품을 선택하고 이미지 업로드 또는 AI 생성으로 바로 제작을 시작하세요.
+          이미지를 업로드하거나 AI로 생성해서 나만의 굿즈를 만들어 보세요.
         </Text>
       </View>
 
@@ -153,6 +153,7 @@ const styles = StyleSheet.create({
     fontSize: 26,
     fontWeight: '800',
     color: theme.colors.textPrimary,
+    lineHeight: 34,
     marginBottom: theme.spacing.sm,
   },
   heroSubtitle: {
@@ -180,11 +181,13 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '700',
     color: theme.colors.textPrimary,
+    lineHeight: 26,
   },
   sectionAction: {
     fontSize: 14,
     color: theme.colors.primary,
     fontWeight: '600',
+    lineHeight: 20,
   },
   chipRow: {
     flexDirection: 'row',
@@ -225,6 +228,7 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: theme.colors.textSecondary,
     textAlign: 'center',
+    lineHeight: 18,
   },
   stepCard: {
     paddingVertical: theme.spacing.lg,
@@ -236,11 +240,13 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
     color: theme.colors.textPrimary,
+    lineHeight: 22,
     marginBottom: theme.spacing.xs,
   },
   stepDesc: {
     fontSize: 13,
     color: theme.colors.textSecondary,
+    lineHeight: 20,
   },
   productCard: {
     flexDirection: 'row',
@@ -254,11 +260,13 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '700',
     color: theme.colors.textPrimary,
-    marginBottom: 4,
+    lineHeight: 22,
+    marginBottom: theme.spacing.xs,
   },
   productMeta: {
     fontSize: 12,
     color: theme.colors.textSecondary,
+    lineHeight: 18,
   },
   recentCard: {
     flexDirection: 'row',
@@ -272,10 +280,12 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
     color: theme.colors.textPrimary,
-    marginBottom: 4,
+    lineHeight: 22,
+    marginBottom: theme.spacing.xs,
   },
   recentDesc: {
     fontSize: 13,
     color: theme.colors.textSecondary,
+    lineHeight: 20,
   },
 });

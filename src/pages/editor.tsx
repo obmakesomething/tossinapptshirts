@@ -198,77 +198,9 @@ function Page() {
             onPress={ensureTextLayer}
           />
         </View>
-        <View style={styles.canvas}>
-          <DesignStage
-            template={template}
-            width={240}
-            height={300}
-            showPrintArea
-            imageUri={designImageUri}
-            imageTransform={imageTransform}
-            textLayer={textLayer}
-            textTransform={textTransform}
-            activeLayer={activeLayer}
-            onImageTransformChange={setImageTransform}
-            onTextTransformChange={setTextTransform}
-            onInteractionStart={() => setScrollEnabled(false)}
-            onInteractionEnd={() => setScrollEnabled(true)}
-          />
-        </View>
-        <Text style={styles.canvasHint}>
-          아래 슬라이더로 크기·위치·회전을 조절하세요.
-        </Text>
-        <View style={styles.sliderRow}>
-          <Text style={styles.sliderLabel}>크기</Text>
-          <ScaleSlider
-            min={0.2}
-            max={1.0}
-            value={activeTransform.scale}
-            onChange={updateScale}
-          />
-        </View>
-        <View style={styles.sliderRow}>
-          <Text style={styles.sliderLabel}>가로 위치</Text>
-          <ScaleSlider
-            min={-0.55}
-            max={0.55}
-            value={activeTransform.offsetX}
-            onChange={updateOffsetX}
-          />
-        </View>
-        <View style={styles.sliderRow}>
-          <Text style={styles.sliderLabel}>세로 위치</Text>
-          <ScaleSlider
-            min={-0.55}
-            max={0.55}
-            value={activeTransform.offsetY}
-            onChange={updateOffsetY}
-          />
-        </View>
-        <View style={styles.sliderRow}>
-          <Text style={styles.sliderLabel}>회전</Text>
-          <ScaleSlider
-            min={-180}
-            max={180}
-            value={activeTransform.rotation}
-            onChange={updateRotation}
-          />
-        </View>
-        <View style={styles.toolRow}>
-          <SecondaryButton
-            label="전체 초기화"
-            onPress={() =>
-              updateActiveTransform({
-                offsetX: 0,
-                offsetY: 0,
-                scale: activeLayer === 'text' ? 0.45 : selectedPrint.designScale,
-                rotation: 0,
-              })
-            }
-          />
-        </View>
         {activeLayer === 'text' && textLayer.enabled ? (
           <View style={styles.textEditSection}>
+            <Text style={styles.textEditTitle}>텍스트 내용</Text>
             <TextInput
               style={styles.textInput}
               value={textLayer.text}
@@ -311,6 +243,77 @@ function Page() {
             />
           </View>
         ) : null}
+        <View style={styles.canvas}>
+          <DesignStage
+            template={template}
+            width={240}
+            height={300}
+            showPrintArea
+            imageUri={designImageUri}
+            imageTransform={imageTransform}
+            textLayer={textLayer}
+            textTransform={textTransform}
+            activeLayer={activeLayer}
+            onImageTransformChange={setImageTransform}
+            onTextTransformChange={setTextTransform}
+            onInteractionStart={() => setScrollEnabled(false)}
+            onInteractionEnd={() => setScrollEnabled(true)}
+          />
+        </View>
+        <View style={styles.transformSection}>
+          <Text style={styles.transformTitle}>위치 및 변형</Text>
+          <Text style={styles.transformHint}>
+            슬라이더로 {activeLayer === 'text' ? '텍스트' : '이미지'}의 크기·위치·회전을 조절하세요.
+          </Text>
+          <View style={styles.sliderRow}>
+            <Text style={styles.sliderLabel}>크기</Text>
+            <ScaleSlider
+              min={0.2}
+              max={1.0}
+              value={activeTransform.scale}
+              onChange={updateScale}
+            />
+          </View>
+          <View style={styles.sliderRow}>
+            <Text style={styles.sliderLabel}>가로 위치</Text>
+            <ScaleSlider
+              min={-0.55}
+              max={0.55}
+              value={activeTransform.offsetX}
+              onChange={updateOffsetX}
+            />
+          </View>
+          <View style={styles.sliderRow}>
+            <Text style={styles.sliderLabel}>세로 위치</Text>
+            <ScaleSlider
+              min={-0.55}
+              max={0.55}
+              value={activeTransform.offsetY}
+              onChange={updateOffsetY}
+            />
+          </View>
+          <View style={styles.sliderRow}>
+            <Text style={styles.sliderLabel}>회전</Text>
+            <ScaleSlider
+              min={-180}
+              max={180}
+              value={activeTransform.rotation}
+              onChange={updateRotation}
+            />
+          </View>
+          <SecondaryButton
+            label="초기화"
+            onPress={() =>
+              updateActiveTransform({
+                offsetX: 0,
+                offsetY: 0,
+                scale: activeLayer === 'text' ? 0.45 : selectedPrint.designScale,
+                rotation: 0,
+              })
+            }
+            style={styles.resetButton}
+          />
+        </View>
       </Card>
 
       <Card style={styles.optionCard}>
@@ -394,10 +397,14 @@ function Page() {
         />
       </Card>
 
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>프린팅 옵션</Text>
+      <Card style={styles.printingCard}>
         <View style={styles.optionRow}>
-          <Text style={styles.optionTitle}>뒷면 프린팅 추가</Text>
+          <View>
+            <Text style={styles.optionTitle}>뒷면 프린팅 추가</Text>
+            {printBackEnabled && (
+              <Text style={styles.optionHint}>뒷면 디자인을 추가해요</Text>
+            )}
+          </View>
           <Switch
             value={printBackEnabled}
             onValueChange={(enabled) => {
@@ -414,12 +421,11 @@ function Page() {
         </View>
         {printBackEnabled ? (
           <>
-            <Text style={styles.optionHint}>뒷면 디자인을 추가합니다</Text>
             <View style={styles.backPreviewContainer}>
               <MockupCanvas
                 template={buildTemplate(selectedProduct, selectedColor, 'back')}
-                width={120}
-                height={160}
+                width={140}
+                height={180}
                 showDesign
                 designImageUri={designImageUri}
                 imageTransform={imageTransform}
@@ -443,7 +449,7 @@ function Page() {
             )}
           </>
         ) : null}
-      </View>
+      </Card>
 
       <Card style={styles.priceCard}>
         <Text style={styles.priceTitle}>예상 결제 금액</Text>
@@ -474,23 +480,27 @@ const styles = StyleSheet.create({
   },
   productTitle: {
     fontSize: 17,
+    lineHeight: 24,
     fontWeight: '700',
     color: theme.colors.textPrimary,
-    marginBottom: 4,
+    marginBottom: theme.spacing.xs,
   },
   productMeta: {
     fontSize: 12,
+    lineHeight: 18,
     color: theme.colors.textSecondary,
-    marginTop: 4,
+    marginTop: theme.spacing.xs,
   },
   productPrice: {
     fontSize: 14,
+    lineHeight: 20,
     fontWeight: '700',
     color: theme.colors.textPrimary,
-    marginTop: 6,
+    marginTop: theme.spacing.sm,
   },
   productOriginalPrice: {
     fontSize: 12,
+    lineHeight: 18,
     fontWeight: '400',
     color: theme.colors.textSecondary,
     textDecorationLine: 'line-through',
@@ -500,6 +510,7 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontSize: 16,
+    lineHeight: 22,
     fontWeight: '700',
     color: theme.colors.textPrimary,
     marginBottom: theme.spacing.sm,
@@ -532,10 +543,12 @@ const styles = StyleSheet.create({
   },
   infoLabel: {
     fontSize: 14,
+    lineHeight: 20,
     color: theme.colors.textSecondary,
   },
   infoValue: {
     fontSize: 14,
+    lineHeight: 20,
     fontWeight: '600',
     color: theme.colors.textPrimary,
   },
@@ -570,6 +583,7 @@ const styles = StyleSheet.create({
   },
   lineBadgeText: {
     fontSize: 12,
+    lineHeight: 18,
     color: theme.colors.textSecondary,
   },
   lineBadgeTextActive: {
@@ -582,17 +596,20 @@ const styles = StyleSheet.create({
   },
   quantityValue: {
     fontSize: 16,
+    lineHeight: 22,
     fontWeight: '700',
     color: theme.colors.textPrimary,
     marginHorizontal: theme.spacing.lg,
   },
   removeText: {
     fontSize: 12,
+    lineHeight: 18,
     color: '#DC2626',
     fontWeight: '600',
   },
   subTitle: {
     fontSize: 13,
+    lineHeight: 20,
     color: theme.colors.textSecondary,
     marginBottom: theme.spacing.sm,
   },
@@ -610,22 +627,29 @@ const styles = StyleSheet.create({
     marginBottom: theme.spacing.sm,
   },
   textEditSection: {
-    marginTop: theme.spacing.md,
-    paddingTop: theme.spacing.md,
-    borderTopWidth: 1,
-    borderTopColor: theme.colors.border,
+    marginBottom: theme.spacing.md,
+    paddingBottom: theme.spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.border,
+  },
+  textEditTitle: {
+    fontSize: 14,
+    lineHeight: 20,
+    fontWeight: '600',
+    color: theme.colors.textPrimary,
+    marginBottom: theme.spacing.sm,
   },
   sizeHint: {
-    fontSize: 11,
+    fontSize: 12,
+    lineHeight: 18,
     color: theme.colors.textSecondary,
     marginTop: theme.spacing.xs,
-    lineHeight: 16,
   },
   optionHint: {
     fontSize: 12,
+    lineHeight: 18,
     color: theme.colors.textSecondary,
     marginTop: theme.spacing.xs,
-    marginBottom: theme.spacing.md,
   },
   backPreviewContainer: {
     alignItems: 'center',
@@ -636,13 +660,14 @@ const styles = StyleSheet.create({
   },
   canvasTitle: {
     fontSize: 16,
+    lineHeight: 22,
     fontWeight: '700',
     color: theme.colors.textPrimary,
     marginBottom: theme.spacing.sm,
   },
   layerRow: {
     flexDirection: 'row',
-    marginBottom: theme.spacing.sm,
+    marginBottom: theme.spacing.md,
   },
   canvas: {
     height: 300,
@@ -652,23 +677,37 @@ const styles = StyleSheet.create({
     borderColor: theme.colors.border,
     alignItems: 'center',
     justifyContent: 'center',
+    marginVertical: theme.spacing.md,
+  },
+  transformSection: {
+    marginTop: theme.spacing.md,
+    paddingTop: theme.spacing.md,
+    borderTopWidth: 1,
+    borderTopColor: theme.colors.border,
+  },
+  transformTitle: {
+    fontSize: 14,
+    lineHeight: 20,
+    fontWeight: '600',
+    color: theme.colors.textPrimary,
+    marginBottom: theme.spacing.xs,
+  },
+  transformHint: {
+    fontSize: 12,
+    lineHeight: 18,
+    color: theme.colors.textSecondary,
     marginBottom: theme.spacing.sm,
   },
-  canvasHint: {
-    fontSize: 12,
-    color: theme.colors.textSecondary,
-  },
   sliderRow: {
-    marginTop: theme.spacing.md,
+    marginTop: theme.spacing.sm,
   },
   sliderLabel: {
     fontSize: 12,
+    lineHeight: 18,
     color: theme.colors.textSecondary,
-    marginBottom: 8,
+    marginBottom: theme.spacing.sm,
   },
-  toolRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
+  resetButton: {
     marginTop: theme.spacing.md,
   },
   toolButton: {
@@ -684,8 +723,12 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginBottom: theme.spacing.md,
   },
+  printingCard: {
+    marginBottom: theme.spacing.lg,
+  },
   optionTitle: {
     fontSize: 16,
+    lineHeight: 22,
     fontWeight: '700',
     color: theme.colors.textPrimary,
   },
@@ -697,15 +740,18 @@ const styles = StyleSheet.create({
     paddingHorizontal: theme.spacing.md,
     paddingVertical: theme.spacing.sm,
     fontSize: 14,
+    lineHeight: 20,
     fontFamily: 'NotoSansKR-Regular',
     color: theme.colors.textPrimary,
     backgroundColor: theme.colors.surface,
   },
   fontRow: {
     marginTop: theme.spacing.md,
+    marginBottom: theme.spacing.md,
   },
   fontLabel: {
     fontSize: 12,
+    lineHeight: 18,
     color: theme.colors.textSecondary,
     marginBottom: theme.spacing.sm,
   },
@@ -727,6 +773,7 @@ const styles = StyleSheet.create({
   },
   fontButtonText: {
     fontSize: 12,
+    lineHeight: 18,
     color: theme.colors.textSecondary,
   },
   fontButtonTextSelected: {
@@ -755,19 +802,22 @@ const styles = StyleSheet.create({
     borderColor: '#BFDBFE',
   },
   priceTitle: {
-    fontSize: 15,
+    fontSize: 16,
+    lineHeight: 22,
     fontWeight: '700',
     color: theme.colors.textPrimary,
-    marginBottom: 6,
+    marginBottom: theme.spacing.sm,
   },
   priceValue: {
     fontSize: 20,
+    lineHeight: 28,
     fontWeight: '800',
     color: theme.colors.primary,
-    marginBottom: 4,
+    marginBottom: theme.spacing.xs,
   },
   priceNote: {
     fontSize: 12,
+    lineHeight: 18,
     color: theme.colors.textSecondary,
   },
 });

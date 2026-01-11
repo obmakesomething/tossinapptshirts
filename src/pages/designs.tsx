@@ -135,6 +135,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 15,
     color: theme.colors.textSecondary,
+    lineHeight: 22,
     marginBottom: theme.spacing.lg,
   },
   list: {
@@ -152,11 +153,13 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
     color: theme.colors.textPrimary,
-    marginBottom: 4,
+    lineHeight: 22,
+    marginBottom: theme.spacing.xs,
   },
   cardMeta: {
     fontSize: 12,
     color: theme.colors.textSecondary,
+    lineHeight: 18,
     marginBottom: theme.spacing.sm,
   },
   cardActions: {
@@ -175,10 +178,12 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: theme.colors.textPrimary,
+    lineHeight: 22,
     marginBottom: theme.spacing.xs,
   },
   emptySubtext: {
     fontSize: 14,
     color: theme.colors.textSecondary,
+    lineHeight: 20,
   },
 });

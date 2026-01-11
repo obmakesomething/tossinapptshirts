@@ -134,11 +134,13 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
     color: theme.colors.textPrimary,
+    lineHeight: 22,
   },
   subtitle: {
     fontSize: 13,
     color: theme.colors.textSecondary,
-    marginTop: 4,
+    lineHeight: 20,
+    marginTop: theme.spacing.xs,
     marginBottom: theme.spacing.md,
   },
   mockupCard: {
@@ -151,6 +153,7 @@ const styles = StyleSheet.create({
   mockupLabel: {
     fontSize: 13,
     color: theme.colors.textSecondary,
+    lineHeight: 20,
     marginTop: theme.spacing.sm,
   },
   section: {
@@ -160,6 +163,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
     color: theme.colors.textPrimary,
+    lineHeight: 22,
     marginBottom: theme.spacing.sm,
   },
   swatchRow: {
@@ -175,11 +179,13 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '700',
     color: theme.colors.success,
-    marginBottom: 4,
+    lineHeight: 22,
+    marginBottom: theme.spacing.xs,
   },
   infoDesc: {
     fontSize: 13,
     color: theme.colors.textSecondary,
+    lineHeight: 20,
   },
   actionRow: {
     marginTop: theme.spacing.lg,
