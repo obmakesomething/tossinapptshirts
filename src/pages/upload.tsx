@@ -114,6 +114,8 @@ function Page() {
       }
       setDesignImageUri(data.dataUrl);
       setLastDataUrl(null);
+      setError('✓ 배경 제거가 완료되었습니다.');
+      setTimeout(() => setError(null), 3000);
     } catch (err) {
       setError(err instanceof Error ? err.message : '배경 제거에 실패했어요.');
     } finally {

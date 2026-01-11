@@ -12,6 +12,7 @@ import {
   theme,
 } from '../components/ui';
 import { DesignStage } from '../components/DesignStage';
+import { MockupCanvas } from '../components/MockupCanvas';
 import { ScaleSlider } from '../components/ScaleSlider';
 import { buildTemplate } from '../data/mockupTemplates';
 import type { Placement } from '../data/mockupTemplates';
@@ -266,6 +267,50 @@ function Page() {
             }
           />
         </View>
+        {activeLayer === 'text' && textLayer.enabled ? (
+          <View style={styles.textEditSection}>
+            <TextInput
+              style={styles.textInput}
+              value={textLayer.text}
+              onChangeText={(value) => setTextLayer({ ...textLayer, text: value })}
+              placeholder="텍스트 입력"
+              placeholderTextColor={theme.colors.muted}
+            />
+            <View style={styles.fontRow}>
+              <Text style={styles.fontLabel}>굵기</Text>
+              <View style={styles.fontButtons}>
+                {['regular', 'bold'].map((weight) => (
+                  <Pressable
+                    key={weight}
+                    onPress={() =>
+                      setTextLayer({ ...textLayer, fontWeight: weight as 'regular' | 'bold' })
+                    }
+                    style={[
+                      styles.fontButton,
+                      textLayer.fontWeight === weight && styles.fontButtonSelected,
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.fontButtonText,
+                        textLayer.fontWeight === weight && styles.fontButtonTextSelected,
+                      ]}
+                    >
+                      {weight === 'regular' ? 'Regular' : 'Bold'}
+                    </Text>
+                  </Pressable>
+                ))}
+              </View>
+            </View>
+            <SecondaryButton
+              label="텍스트 삭제"
+              onPress={() => {
+                setTextLayer({ ...textLayer, enabled: false });
+                setActiveLayer('image');
+              }}
+            />
+          </View>
+        ) : null}
       </Card>
 
       <Card style={styles.optionCard}>
@@ -277,11 +322,6 @@ function Page() {
         <View style={styles.infoRow}>
           <Text style={styles.infoLabel}>프린트 영역</Text>
           <Text style={styles.infoValue}>{selectedPrint.label} ({selectedPrint.description})</Text>
-        </View>
-        <View style={styles.sizeGuide}>
-          <Text style={styles.sizeGuideTitle}>사이즈 가이드 (신장 기준)</Text>
-          <Text style={styles.sizeGuideText}>XS: 155-160cm / S: 160-165cm / M: 165-170cm / L: 170-175cm</Text>
-          <Text style={styles.sizeGuideText}>XL: 175-180cm / 2XL: 180-185cm / 3XL: 185-190cm</Text>
         </View>
         <Text style={[styles.sectionTitle, { marginTop: 16 }]}>사이즈 · 수량</Text>
         {orderLines.map((line) => (
@@ -338,6 +378,9 @@ function Page() {
                 />
               ))}
             </View>
+            <Text style={styles.sizeHint}>
+              신장 기준 • XS: 155-160cm, S: 160-165cm, M: 165-170cm, L: 170-175cm, XL: 175-180cm, 2XL: 180-185cm, 3XL: 185-190cm
+            </Text>
           </>
         ) : null}
         <SecondaryButton
@@ -357,23 +400,32 @@ function Page() {
           <Text style={styles.optionTitle}>뒷면 프린팅 추가</Text>
           <Switch
             value={printBackEnabled}
-            onValueChange={setPrintBackEnabled}
+            onValueChange={(enabled) => {
+              setPrintBackEnabled(enabled);
+              if (enabled) {
+                setSelectedPlacement('back');
+              } else {
+                setSelectedPlacement('front');
+              }
+            }}
             trackColor={{ false: theme.colors.border, true: theme.colors.primary }}
             thumbColor="#FFFFFF"
           />
         </View>
         {printBackEnabled ? (
           <>
-            <View style={styles.chipRow}>
-              {placementOptions.map((placement) => (
-                <Chip
-                  key={placement.value}
-                  label={placement.label}
-                  selected={selectedPlacement === placement.value}
-                  onPress={() => setSelectedPlacement(placement.value)}
-                  style={styles.chipSpacing}
-                />
-              ))}
+            <Text style={styles.optionHint}>뒷면 디자인을 추가합니다</Text>
+            <View style={styles.backPreviewContainer}>
+              <MockupCanvas
+                template={buildTemplate(selectedProduct, selectedColor, 'back')}
+                width={120}
+                height={160}
+                showDesign
+                designImageUri={designImageUri}
+                imageTransform={imageTransform}
+                textLayer={textLayer}
+                textTransform={textTransform}
+              />
             </View>
             {!designImageUri && (
               <View style={styles.imageActionRow}>
@@ -392,74 +444,6 @@ function Page() {
           </>
         ) : null}
       </View>
-
-      <Card style={styles.textCard}>
-        <View style={styles.optionRow}>
-          <Text style={styles.optionTitle}>텍스트 추가</Text>
-          <SecondaryButton
-            label={textLayer.enabled ? '텍스트 삭제' : '텍스트 생성'}
-            onPress={() => {
-              if (textLayer.enabled) {
-                setTextLayer({ ...textLayer, enabled: false });
-                setActiveLayer('image');
-              } else {
-                ensureTextLayer();
-              }
-            }}
-          />
-        </View>
-        {textLayer.enabled ? (
-          <>
-            <TextInput
-              style={styles.textInput}
-              value={textLayer.text}
-              onChangeText={(value) => setTextLayer({ ...textLayer, text: value })}
-              placeholder="예: MERCH STUDIO"
-              placeholderTextColor={theme.colors.muted}
-            />
-            <View style={styles.fontRow}>
-              <Text style={styles.fontLabel}>굵기</Text>
-              <View style={styles.fontButtons}>
-                {['regular', 'bold'].map((weight) => (
-                  <Pressable
-                    key={weight}
-                    onPress={() =>
-                      setTextLayer({ ...textLayer, fontWeight: weight as 'regular' | 'bold' })
-                    }
-                    style={[
-                      styles.fontButton,
-                      textLayer.fontWeight === weight && styles.fontButtonSelected,
-                    ]}
-                  >
-                    <Text
-                      style={[
-                        styles.fontButtonText,
-                        textLayer.fontWeight === weight && styles.fontButtonTextSelected,
-                      ]}
-                    >
-                      {weight === 'regular' ? 'Regular' : 'Bold'}
-                    </Text>
-                  </Pressable>
-                ))}
-              </View>
-            </View>
-            <View style={styles.colorRow}>
-              <Text style={styles.fontLabel}>색상</Text>
-              {['#0F172A', '#FFFFFF'].map((color) => (
-                <Pressable
-                  key={color}
-                  onPress={() => setTextLayer({ ...textLayer, color })}
-                  style={[
-                    styles.colorChip,
-                    { backgroundColor: color },
-                    textLayer.color === color && styles.colorChipSelected,
-                  ]}
-                />
-              ))}
-            </View>
-          </>
-        ) : null}
-      </Card>
 
       <Card style={styles.priceCard}>
         <Text style={styles.priceTitle}>예상 결제 금액</Text>
@@ -624,6 +608,28 @@ const styles = StyleSheet.create({
   },
   imageActionButton: {
     marginBottom: theme.spacing.sm,
+  },
+  textEditSection: {
+    marginTop: theme.spacing.md,
+    paddingTop: theme.spacing.md,
+    borderTopWidth: 1,
+    borderTopColor: theme.colors.border,
+  },
+  sizeHint: {
+    fontSize: 11,
+    color: theme.colors.textSecondary,
+    marginTop: theme.spacing.xs,
+    lineHeight: 16,
+  },
+  optionHint: {
+    fontSize: 12,
+    color: theme.colors.textSecondary,
+    marginTop: theme.spacing.xs,
+    marginBottom: theme.spacing.md,
+  },
+  backPreviewContainer: {
+    alignItems: 'center',
+    marginVertical: theme.spacing.md,
   },
   canvasCard: {
     marginBottom: theme.spacing.lg,
