@@ -33,7 +33,7 @@ function Page() {
       <TopBar title="상품 선택" onBack={() => navigation.goBack()} />
 
       <Text style={styles.subtitle}>
-        커스텀존 카탈로그에서 제품을 선택하세요.
+        원하는 제품을 선택하세요.
       </Text>
 
       <View style={styles.list}>

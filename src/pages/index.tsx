@@ -1,7 +1,7 @@
 import { createRoute } from '@granite-js/react-native';
 import React from 'react';
 import { StyleSheet, Text, View, Image } from 'react-native';
-import { Card, PrimaryButton, Screen, SecondaryButton, theme } from '../components/ui';
+import { Card, Chip, PrimaryButton, Screen, SecondaryButton, theme } from '../components/ui';
 import { MockupCanvas } from '../components/MockupCanvas';
 import { buildTemplate } from '../data/mockupTemplates';
 import { useCatalog } from '../context/catalog';
@@ -20,8 +20,17 @@ function Page() {
     imageTransform,
     textLayer,
     textTransform,
+    setSelectedProductId,
   } = useCatalog();
-  const exampleProducts = products.slice(0, 3);
+  const [selectedCategory, setSelectedCategory] = React.useState<string>('티셔츠');
+
+  const categories = ['티셔츠', '후드', '맨투맨', '에코백'];
+
+  const filteredProducts = selectedCategory === '티셔츠'
+    ? products.filter(p => p.category === '티셔츠')
+    : products.filter(p => p.category === selectedCategory);
+
+  const exampleProducts = filteredProducts.slice(0, 3);
 
   const steps = [
     { title: '이미지 준비', desc: '업로드 또는 생성' },
@@ -59,6 +68,21 @@ function Page() {
             onPress={goToGenerate}
             style={styles.actionButton}
           />
+        </View>
+      </View>
+
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>제품 카테고리</Text>
+        <View style={styles.chipRow}>
+          {categories.map((category) => (
+            <Chip
+              key={category}
+              label={category}
+              selected={selectedCategory === category}
+              onPress={() => setSelectedCategory(category)}
+              style={styles.chipSpacing}
+            />
+          ))}
         </View>
       </View>
 
@@ -186,6 +210,14 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: theme.colors.primary,
     fontWeight: '600',
+  },
+  chipRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+  },
+  chipSpacing: {
+    marginRight: theme.spacing.sm,
+    marginBottom: theme.spacing.sm,
   },
   stepGrid: {
     marginTop: theme.spacing.sm,

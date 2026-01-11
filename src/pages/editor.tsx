@@ -128,6 +128,21 @@ function Page() {
         </View>
       </Card>
 
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>색상</Text>
+        <View style={styles.swatchRow}>
+          {selectedProduct.colors.map((color) => (
+            <ColorSwatch
+              key={color}
+              label={color}
+              color={resolveColorValue(color)}
+              selected={selectedColor === color}
+              onPress={() => setSelectedColor(color)}
+            />
+          ))}
+        </View>
+      </View>
+
       <Card style={styles.canvasCard}>
         <Text style={styles.canvasTitle}>
           {selectedPlacement === 'back' ? '뒷면' : '앞면'} 프린트 영역
@@ -224,23 +239,12 @@ function Page() {
         </View>
       </Card>
 
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>색상</Text>
-        <View style={styles.swatchRow}>
-          {selectedProduct.colors.map((color) => (
-            <ColorSwatch
-              key={color}
-              label={color}
-              color={resolveColorValue(color)}
-              selected={selectedColor === color}
-              onPress={() => setSelectedColor(color)}
-            />
-          ))}
-        </View>
-      </View>
-
       <Card style={styles.optionCard}>
         <Text style={styles.sectionTitle}>사이즈 · 수량</Text>
+        <View style={styles.sizeGuide}>
+          <Text style={styles.sizeGuideTitle}>프린트 크기 가이드</Text>
+          <Text style={styles.sizeGuideText}>{selectedPrint.label}: {selectedPrint.description}</Text>
+        </View>
         {orderLines.map((line) => (
           <View key={line.id} style={styles.lineRow}>
             <Pressable
@@ -448,6 +452,22 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: theme.colors.textPrimary,
     marginBottom: theme.spacing.sm,
+  },
+  sizeGuide: {
+    padding: theme.spacing.sm,
+    backgroundColor: theme.colors.primarySoft,
+    borderRadius: theme.radius.sm,
+    marginBottom: theme.spacing.md,
+  },
+  sizeGuideTitle: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: theme.colors.textPrimary,
+    marginBottom: 4,
+  },
+  sizeGuideText: {
+    fontSize: 12,
+    color: theme.colors.textSecondary,
   },
   swatchRow: {
     flexDirection: 'row',
