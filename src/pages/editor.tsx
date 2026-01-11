@@ -98,6 +98,39 @@ function Page() {
     }
   };
 
+  // Individual transform property updaters to avoid closure issues
+  const updateScale = (scale: number) => {
+    if (activeLayer === 'text') {
+      setTextTransform(prev => ({ ...prev, scale }));
+    } else {
+      setImageTransform(prev => ({ ...prev, scale }));
+    }
+  };
+
+  const updateOffsetX = (offsetX: number) => {
+    if (activeLayer === 'text') {
+      setTextTransform(prev => ({ ...prev, offsetX }));
+    } else {
+      setImageTransform(prev => ({ ...prev, offsetX }));
+    }
+  };
+
+  const updateOffsetY = (offsetY: number) => {
+    if (activeLayer === 'text') {
+      setTextTransform(prev => ({ ...prev, offsetY }));
+    } else {
+      setImageTransform(prev => ({ ...prev, offsetY }));
+    }
+  };
+
+  const updateRotation = (rotation: number) => {
+    if (activeLayer === 'text') {
+      setTextTransform(prev => ({ ...prev, rotation }));
+    } else {
+      setImageTransform(prev => ({ ...prev, rotation }));
+    }
+  };
+
   const ensureTextLayer = () => {
     if (!textLayer.enabled) {
       setTextLayer({
@@ -190,9 +223,7 @@ function Page() {
             min={0.2}
             max={1.0}
             value={activeTransform.scale}
-            onChange={(scale) =>
-              updateActiveTransform({ ...activeTransform, scale })
-            }
+            onChange={updateScale}
           />
         </View>
         <View style={styles.sliderRow}>
@@ -201,9 +232,7 @@ function Page() {
             min={-0.55}
             max={0.55}
             value={activeTransform.offsetX}
-            onChange={(offsetX) =>
-              updateActiveTransform({ ...activeTransform, offsetX })
-            }
+            onChange={updateOffsetX}
           />
         </View>
         <View style={styles.sliderRow}>
@@ -212,9 +241,7 @@ function Page() {
             min={-0.55}
             max={0.55}
             value={activeTransform.offsetY}
-            onChange={(offsetY) =>
-              updateActiveTransform({ ...activeTransform, offsetY })
-            }
+            onChange={updateOffsetY}
           />
         </View>
         <View style={styles.sliderRow}>
@@ -223,9 +250,7 @@ function Page() {
             min={-180}
             max={180}
             value={activeTransform.rotation}
-            onChange={(rotation) =>
-              updateActiveTransform({ ...activeTransform, rotation })
-            }
+            onChange={updateRotation}
           />
         </View>
         <View style={styles.toolRow}>

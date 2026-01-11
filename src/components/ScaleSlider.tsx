@@ -16,35 +16,49 @@ export function ScaleSlider({ min, max, value, onChange }: ScaleSliderProps) {
   const [trackWidth, setTrackWidth] = useState(1);
   const startValue = useRef(value);
 
+  // Store latest values in refs for PanResponder closure
+  const valueRef = useRef(value);
+  const onChangeRef = useRef(onChange);
+  const trackWidthRef = useRef(trackWidth);
+  const minRef = useRef(min);
+  const maxRef = useRef(max);
+
+  valueRef.current = value;
+  onChangeRef.current = onChange;
+  trackWidthRef.current = trackWidth;
+  minRef.current = min;
+  maxRef.current = max;
+
   const normalized = clamp((value - min) / (max - min), 0, 1);
   const knobLeft = normalized * trackWidth;
 
-  const responder = useMemo(
-    () =>
-      PanResponder.create({
-        onStartShouldSetPanResponder: () => true,
-        onMoveShouldSetPanResponder: () => true,
-        onPanResponderGrant: () => {
-          startValue.current = value;
-        },
-        onPanResponderMove: (_evt, gestureState) => {
-          const delta = gestureState.dx / trackWidth;
-          const next = clamp(
-            startValue.current + delta * (max - min),
-            min,
-            max
-          );
-          onChange(next);
-        },
-      }),
-    [max, min, onChange, trackWidth, value]
+  const responder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: () => true,
+      onPanResponderGrant: () => {
+        startValue.current = valueRef.current;
+      },
+      onPanResponderMove: (_evt, gestureState) => {
+        const currentTrackWidth = trackWidthRef.current;
+        const currentMin = minRef.current;
+        const currentMax = maxRef.current;
+        const delta = gestureState.dx / currentTrackWidth;
+        const next = clamp(
+          startValue.current + delta * (currentMax - currentMin),
+          currentMin,
+          currentMax
+        );
+        onChangeRef.current(next);
+      },
+    })
   );
 
   return (
     <View
       style={styles.slider}
       onLayout={(event) => setTrackWidth(event.nativeEvent.layout.width)}
-      {...responder.panHandlers}
+      {...responder.current.panHandlers}
     >
       <View style={styles.track} />
       <View style={[styles.trackActive, { width: knobLeft }]} />
