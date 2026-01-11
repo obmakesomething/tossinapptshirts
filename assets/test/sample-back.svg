@@ -1,0 +1,16 @@
+<svg width="400" height="400" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background -->
+  <rect width="400" height="400" fill="#f0f0f0"/>
+
+  <!-- Back Label -->
+  <text x="200" y="60" font-family="Arial, sans-serif" font-size="32" font-weight="bold" text-anchor="middle" fill="#333">BACK</text>
+
+  <!-- Decorative Square -->
+  <rect x="80" y="80" width="240" height="240" fill="none" stroke="#10B981" stroke-width="4" rx="12"/>
+
+  <!-- Diamond Shape -->
+  <path d="M200,100 L280,200 L200,300 L120,200 Z" fill="#10B981" opacity="0.7"/>
+
+  <!-- Text -->
+  <text x="200" y="340" font-family="Arial, sans-serif" font-size="18" text-anchor="middle" fill="#666">Test Design Back</text>
+</svg>

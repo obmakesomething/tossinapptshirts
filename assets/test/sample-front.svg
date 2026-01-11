@@ -1,0 +1,16 @@
+<svg width="400" height="400" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background -->
+  <rect width="400" height="400" fill="#f0f0f0"/>
+
+  <!-- Front Label -->
+  <text x="200" y="60" font-family="Arial, sans-serif" font-size="32" font-weight="bold" text-anchor="middle" fill="#333">FRONT</text>
+
+  <!-- Decorative Circle -->
+  <circle cx="200" cy="200" r="120" fill="none" stroke="#4F46E5" stroke-width="4"/>
+
+  <!-- Star Shape -->
+  <path d="M200,120 L220,170 L275,175 L232,215 L245,270 L200,242 L155,270 L168,215 L125,175 L180,170 Z" fill="#4F46E5" opacity="0.7"/>
+
+  <!-- Text -->
+  <text x="200" y="340" font-family="Arial, sans-serif" font-size="18" text-anchor="middle" fill="#666">Test Design Front</text>
+</svg>

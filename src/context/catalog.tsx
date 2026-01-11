@@ -117,22 +117,33 @@ export function CatalogProvider({ children }: { children: React.ReactNode }) {
   const [selectedProductId, setSelectedProductId] = useState(fallbackProduct.id);
   const [selectedColor, setSelectedColor] = useState('');
   const [orderLines, setOrderLines] = useState<OrderLine[]>([]);
-  const [selectedPlacement, setSelectedPlacement] = useState<Placement>('front');
+  const [selectedPlacement, setSelectedPlacementState] = useState<Placement>('front');
   const [printBackEnabled, setPrintBackEnabledState] = useState(false);
   const [selectedPrintId, setSelectedPrintId] = useState<PrintOption['id']>(
     resolveAutoPrint(fallbackProduct).id
   );
-  const [designImageUri, setDesignImageUri] = useState<string | null>(null);
+
+  // Front design state
+  const [frontDesignImageUri, setFrontDesignImageUri] = useState<string | null>(null);
+  const [frontImageTransform, setFrontImageTransform] = useState<LayerTransform>(defaultImageTransform);
+  const [frontTextTransform, setFrontTextTransform] = useState<LayerTransform>(defaultTextTransform);
+  const [frontTextLayer, setFrontTextLayer] = useState<TextLayer>(defaultTextLayer);
+
+  // Back design state
+  const [backDesignImageUri, setBackDesignImageUri] = useState<string | null>(null);
+  const [backImageTransform, setBackImageTransform] = useState<LayerTransform>(defaultImageTransform);
+  const [backTextTransform, setBackTextTransform] = useState<LayerTransform>(defaultTextTransform);
+  const [backTextLayer, setBackTextLayer] = useState<TextLayer>(defaultTextLayer);
+
   const [designPrompt, setDesignPrompt] = useState('');
-  const [imageTransform, setImageTransform] = useState<LayerTransform>(
-    defaultImageTransform
-  );
-  const [textTransform, setTextTransform] = useState<LayerTransform>(
-    defaultTextTransform
-  );
   const [activeLayer, setActiveLayer] = useState<'image' | 'text'>('image');
-  const [textLayer, setTextLayer] = useState<TextLayer>(defaultTextLayer);
   const [savedDesigns, setSavedDesigns] = useState<SavedDesign[]>([]);
+
+  // Current placement design accessors
+  const designImageUri = selectedPlacement === 'front' ? frontDesignImageUri : backDesignImageUri;
+  const imageTransform = selectedPlacement === 'front' ? frontImageTransform : backImageTransform;
+  const textTransform = selectedPlacement === 'front' ? frontTextTransform : backTextTransform;
+  const textLayer = selectedPlacement === 'front' ? frontTextLayer : backTextLayer;
 
   const selectedProduct = useMemo(
     () => products.find((product) => product.id === selectedProductId) ?? fallbackProduct,
@@ -229,11 +240,45 @@ export function CatalogProvider({ children }: { children: React.ReactNode }) {
   };
 
   const handleSetDesignImageUri = (uri: string | null) => {
-    setDesignImageUri(uri);
-    // Reset image transform when new image is loaded
-    if (uri) {
-      setImageTransform(defaultImageTransform);
+    if (selectedPlacement === 'front') {
+      setFrontDesignImageUri(uri);
+      if (uri) {
+        setFrontImageTransform(defaultImageTransform);
+      }
+    } else {
+      setBackDesignImageUri(uri);
+      if (uri) {
+        setBackImageTransform(defaultImageTransform);
+      }
     }
+  };
+
+  const setImageTransform = (transform: LayerTransform) => {
+    if (selectedPlacement === 'front') {
+      setFrontImageTransform(transform);
+    } else {
+      setBackImageTransform(transform);
+    }
+  };
+
+  const setTextTransform = (transform: LayerTransform) => {
+    if (selectedPlacement === 'front') {
+      setFrontTextTransform(transform);
+    } else {
+      setBackTextTransform(transform);
+    }
+  };
+
+  const setTextLayer = (layer: TextLayer) => {
+    if (selectedPlacement === 'front') {
+      setFrontTextLayer(layer);
+    } else {
+      setBackTextLayer(layer);
+    }
+  };
+
+  const setSelectedPlacement = (placement: Placement) => {
+    setSelectedPlacementState(placement);
   };
 
   const addOrderLine = (sizeLabel: string) => {
