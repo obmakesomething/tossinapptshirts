@@ -29,9 +29,9 @@ export type CatalogProduct = {
   tags: string[];
 };
 
-// Mockup images are served from S3
+// Mockup images are served from production server static files
 const resolveMockup = (filename: string): ImageSourcePropType => ({
-  uri: `https://storage.railway.app/merch-tshirts-assets/mockups/${filename}`
+  uri: `https://tossinapptshirts-production.up.railway.app/mockups/${filename}`
 });
 
 const formatPrice = (value: number | null) => {
