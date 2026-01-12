@@ -1,6 +1,9 @@
 const crypto = require('crypto');
 const express = require('express');
 const cors = require('cors');
+const helmet = require('helmet');
+const compression = require('compression');
+const rateLimit = require('express-rate-limit');
 const nodemailer = require('nodemailer');
 const PDFDocument = require('pdfkit');
 const { S3Client, PutObjectCommand } = require('@aws-sdk/client-s3');
@@ -11,8 +14,40 @@ const path = require('path');
 const { runPrintPipeline } = require('./printPipeline');
 
 const app = express();
+
+// Security headers
+app.use(helmet({
+  contentSecurityPolicy: false, // Disable CSP for API server
+  crossOriginEmbedderPolicy: false,
+}));
+
+// Compression for responses
+app.use(compression());
+
+// CORS
 app.use(cors({ origin: true }));
+
+// Body parser with size limit
 app.use(express.json({ limit: '15mb' }));
+
+// Global rate limiter: 100 requests per 15 minutes per IP
+const globalLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100,
+  message: { error: 'Too many requests, please try again later.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+app.use(globalLimiter);
+
+// Strict rate limiter for expensive operations
+const strictLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 20, // 20 requests per 15 minutes
+  message: { error: 'Rate limit exceeded for this operation.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
 
 const logEvent = (level, event, payload) => {
   const entry = {
@@ -31,6 +66,23 @@ const formatError = (error) => ({
   code: error?.code,
 });
 
+// Request timeout middleware
+app.use((req, res, next) => {
+  req.setTimeout(REQUEST_TIMEOUT_MS, () => {
+    logEvent('error', 'request_timeout', {
+      requestId: req.requestId,
+      method: req.method,
+      path: req.path,
+      timeout: REQUEST_TIMEOUT_MS,
+    });
+    if (!res.headersSent) {
+      res.status(408).json({ error: 'Request timeout' });
+    }
+  });
+  next();
+});
+
+// Request ID and logging middleware
 app.use((req, res, next) => {
   const incomingId = req.headers['x-request-id'];
   const requestId =
@@ -60,6 +112,7 @@ app.use((req, res, next) => {
 });
 
 const PORT = process.env.PORT || 3000;
+const REQUEST_TIMEOUT_MS = Number(process.env.REQUEST_TIMEOUT_MS) || 120000; // 2 minutes default
 const IMAGE_BUCKET = process.env.S3_BUCKET || '';
 const IMAGE_BASE_URL = process.env.S3_PUBLIC_BASE_URL || '';
 const IMAGE_PREFIX = process.env.S3_IMAGE_PREFIX || 'uploads';
@@ -190,6 +243,26 @@ async function downloadToFile(url, destPath) {
   return destPath;
 }
 
+async function downloadToBuffer(url) {
+  try {
+    const response = await fetch(url);
+    if (!response.ok) {
+      logEvent('warn', 'download_to_buffer_failed', {
+        url,
+        status: response.status,
+      });
+      return null;
+    }
+    return Buffer.from(await response.arrayBuffer());
+  } catch (error) {
+    logEvent('warn', 'download_to_buffer_error', {
+      url,
+      error: error.message,
+    });
+    return null;
+  }
+}
+
 async function sendKakaoNotification(payload) {
   if (!KAKAO_WEBHOOK_URL) return;
   await fetch(KAKAO_WEBHOOK_URL, {
@@ -223,91 +296,187 @@ async function removeBackgroundClipdrop({ sourcePath, apiKey, outputPath }) {
   return outputPath;
 }
 
-function buildOrderPdf(order) {
-  return new Promise((resolve, reject) => {
-    const doc = new PDFDocument({ size: 'A4', margin: 48 });
-    const chunks = [];
-    doc.on('data', (chunk) => chunks.push(chunk));
-    doc.on('end', () => resolve(Buffer.concat(chunks)));
-    doc.on('error', reject);
+async function buildOrderPdf(order) {
+  return new Promise(async (resolve, reject) => {
+    try {
+      const doc = new PDFDocument({ size: 'A4', margin: 48 });
+      const chunks = [];
+      doc.on('data', (chunk) => chunks.push(chunk));
+      doc.on('end', () => resolve(Buffer.concat(chunks)));
+      doc.on('error', reject);
 
-    doc.fontSize(18).text('Order Summary', { align: 'left' });
-    doc.moveDown(0.5);
-    doc.fontSize(11).fillColor('#333');
-
-    const createdAt = order.createdAt || new Date().toISOString();
-    doc.text(`Order ID: ${order.orderId || 'N/A'}`);
-    doc.text(`Created At: ${createdAt}`);
-    doc.text(`Channel: ${order.channel || 'Toss Miniapp'}`);
-    doc.moveDown();
-
-    doc.fontSize(13).text('Customer');
-    doc.fontSize(11);
-    if (order.customer) {
-      doc.text(`Name: ${order.customer.name || ''}`);
-      doc.text(`Phone: ${order.customer.phone || ''}`);
-      doc.text(`Email: ${order.customer.email || ''}`);
-    }
-    doc.moveDown();
-
-    doc.fontSize(13).text('Shipping');
-    doc.fontSize(11);
-    if (order.shipping) {
-      doc.text(`Recipient: ${order.shipping.name || order.customer?.name || ''}`);
-      doc.text(`Phone: ${order.shipping.phone || order.customer?.phone || ''}`);
-      doc.text(`Address1: ${order.shipping.address1 || ''}`);
-      doc.text(`Address2: ${order.shipping.address2 || ''}`);
-      doc.text(`City: ${order.shipping.city || ''}`);
-      doc.text(`State: ${order.shipping.state || ''}`);
-      doc.text(`Zip: ${order.shipping.zip || ''}`);
-      doc.text(`Country: ${order.shipping.country || ''}`);
-      doc.text(`Memo: ${order.shipping.memo || ''}`);
-    }
-    doc.moveDown();
-
-    doc.fontSize(13).text('Items');
-    doc.fontSize(11);
-    const items = Array.isArray(order.items) ? order.items : [];
-    items.forEach((item, index) => {
-      doc.text(`Item ${index + 1}`);
-      doc.text(`- Product: ${item.productName || ''}`);
-      doc.text(`- Model: ${item.modelName || ''}`);
-      doc.text(`- Color: ${item.color || ''}`);
-      doc.text(`- Size: ${item.size || ''}`);
-      doc.text(`- Quantity: ${item.quantity || ''}`);
-      doc.text(`- Print Method: ${item.print?.method || ''}`);
-      doc.text(`- Print Placement: ${item.print?.placement || ''}`);
-      doc.text(`- Print Size: ${item.print?.sizeLabel || ''}`);
-      doc.text(`- Print Dimension: ${item.print?.sizeCm || ''}`);
-      doc.text(`- Design URL: ${item.designUrl || ''}`);
-      if (item.text?.text) {
-        doc.text(
-          `- Text Layer: "${item.text.text}" (${item.text.fontWeight || ''}, ${item.text.fontSize || ''}px)`
-        );
-      }
-      if (Array.isArray(item.mockupUrls) && item.mockupUrls.length > 0) {
-        doc.text(`- Mockups: ${item.mockupUrls.join(', ')}`);
-      }
+      // Header
+      doc.fontSize(18).text('Order Summary', { align: 'left' });
       doc.moveDown(0.5);
-    });
+      doc.fontSize(11).fillColor('#333');
 
-    doc.moveDown();
-    doc.fontSize(13).text('Pricing');
-    doc.fontSize(11);
-    if (order.pricing) {
-      doc.text(`Unit Price: ${order.pricing.unitPrice || ''}`);
-      doc.text(`Quantity: ${order.pricing.quantity || ''}`);
-      doc.text(`Shipping: ${order.pricing.shipping || ''}`);
-      doc.text(`Total: ${order.pricing.total || ''}`);
+      const createdAt = order.createdAt || new Date().toISOString();
+      doc.text(`Order ID: ${order.orderId || 'N/A'}`);
+      doc.text(`Created At: ${createdAt}`);
+      doc.text(`Channel: ${order.channel || 'Toss Miniapp'}`);
+      doc.moveDown();
+
+      // Customer Info
+      doc.fontSize(13).text('Customer');
+      doc.fontSize(11);
+      if (order.customer) {
+        doc.text(`Name: ${order.customer.name || ''}`);
+        doc.text(`Phone: ${order.customer.phone || ''}`);
+        doc.text(`Email: ${order.customer.email || ''}`);
+      }
+      doc.moveDown();
+
+      // Shipping Info
+      doc.fontSize(13).text('Shipping');
+      doc.fontSize(11);
+      if (order.shipping) {
+        doc.text(`Recipient: ${order.shipping.name || order.customer?.name || ''}`);
+        doc.text(`Phone: ${order.shipping.phone || order.customer?.phone || ''}`);
+        doc.text(`Address1: ${order.shipping.address1 || ''}`);
+        doc.text(`Address2: ${order.shipping.address2 || ''}`);
+        doc.text(`City: ${order.shipping.city || ''}`);
+        doc.text(`State: ${order.shipping.state || ''}`);
+        doc.text(`Zip: ${order.shipping.zip || ''}`);
+        doc.text(`Country: ${order.shipping.country || ''}`);
+        doc.text(`Memo: ${order.shipping.memo || ''}`);
+      }
+      doc.moveDown();
+
+      // Items with images
+      doc.fontSize(13).text('Items');
+      doc.fontSize(11);
+      const items = Array.isArray(order.items) ? order.items : [];
+
+      for (let index = 0; index < items.length; index++) {
+        const item = items[index];
+
+        // Check if we need a new page
+        if (doc.y > 650) {
+          doc.addPage();
+        }
+
+        doc.fontSize(12).fillColor('#000').text(`Item ${index + 1}`, { underline: true });
+        doc.fontSize(10).fillColor('#333');
+        doc.text(`- Product: ${item.productName || ''}`);
+        doc.text(`- Model: ${item.modelName || ''}`);
+        doc.text(`- Color: ${item.color || ''}`);
+        doc.text(`- Size: ${item.size || ''}`);
+        doc.text(`- Quantity: ${item.quantity || ''}`);
+        doc.text(`- Print Method: ${item.print?.method || ''}`);
+        doc.text(`- Print Placement: ${item.print?.placement || ''}`);
+        doc.text(`- Print Size: ${item.print?.sizeLabel || ''}`);
+        doc.text(`- Print Dimension: ${item.print?.sizeCm || ''}`);
+
+        if (item.text?.text) {
+          doc.text(
+            `- Text Layer: "${item.text.text}" (${item.text.fontWeight || ''}, ${item.text.fontSize || ''}px)`
+          );
+        }
+        doc.moveDown(0.5);
+
+        // Design Image
+        if (item.designUrl) {
+          const designBuffer = await downloadToBuffer(item.designUrl);
+          if (designBuffer) {
+            try {
+              doc.fontSize(11).fillColor('#1E40AF').text('Design Image:', { continued: false });
+              doc.moveDown(0.3);
+
+              const maxWidth = 250;
+              const maxHeight = 250;
+
+              if (doc.y + maxHeight > 750) {
+                doc.addPage();
+              }
+
+              doc.image(designBuffer, {
+                fit: [maxWidth, maxHeight],
+                align: 'left',
+              });
+              doc.moveDown(0.5);
+            } catch (err) {
+              logEvent('warn', 'pdf_image_embed_failed', {
+                orderId: order.orderId,
+                itemIndex: index,
+                type: 'design',
+                error: err.message,
+              });
+              doc.fontSize(10).fillColor('#DC2626').text(`Design URL: ${item.designUrl}`);
+            }
+          } else {
+            doc.fontSize(10).fillColor('#6B7280').text(`Design URL: ${item.designUrl}`);
+          }
+          doc.moveDown(0.5);
+        }
+
+        // Mockup Images
+        if (Array.isArray(item.mockupUrls) && item.mockupUrls.length > 0) {
+          doc.fontSize(11).fillColor('#1E40AF').text('Mockup Images:', { continued: false });
+          doc.moveDown(0.3);
+
+          for (let mi = 0; mi < item.mockupUrls.length; mi++) {
+            const mockupUrl = item.mockupUrls[mi];
+            const mockupBuffer = await downloadToBuffer(mockupUrl);
+
+            if (mockupBuffer) {
+              try {
+                const maxWidth = 200;
+                const maxHeight = 200;
+
+                if (doc.y + maxHeight > 750) {
+                  doc.addPage();
+                }
+
+                doc.fontSize(9).fillColor('#6B7280').text(`Mockup ${mi + 1}:`, { continued: false });
+                doc.moveDown(0.2);
+                doc.image(mockupBuffer, {
+                  fit: [maxWidth, maxHeight],
+                  align: 'left',
+                });
+                doc.moveDown(0.5);
+              } catch (err) {
+                logEvent('warn', 'pdf_mockup_embed_failed', {
+                  orderId: order.orderId,
+                  itemIndex: index,
+                  mockupIndex: mi,
+                  error: err.message,
+                });
+                doc.fontSize(9).fillColor('#DC2626').text(`Mockup ${mi + 1} URL: ${mockupUrl}`);
+              }
+            } else {
+              doc.fontSize(9).fillColor('#6B7280').text(`Mockup ${mi + 1} URL: ${mockupUrl}`);
+            }
+          }
+          doc.moveDown(0.5);
+        }
+
+        doc.moveDown(1);
+      }
+
+      // Pricing
+      if (doc.y > 700) {
+        doc.addPage();
+      }
+      doc.fontSize(13).fillColor('#000').text('Pricing');
+      doc.fontSize(11).fillColor('#333');
+      if (order.pricing) {
+        doc.text(`Unit Price: ${order.pricing.unitPrice || ''}`);
+        doc.text(`Quantity: ${order.pricing.quantity || ''}`);
+        doc.text(`Shipping: ${order.pricing.shipping || ''}`);
+        doc.text(`Total: ${order.pricing.total || ''}`);
+      }
+
+      // Footer note
+      doc.moveDown();
+      doc.fontSize(11).fillColor('#6B7280');
+      doc.text(
+        '※ 출력 이미지에 대한 최종 판단은 주문자가 진행합니다. 주문서 메일을 꼭 확인해 주세요.'
+      );
+
+      doc.end();
+    } catch (error) {
+      reject(error);
     }
-
-    doc.moveDown();
-    doc.fontSize(11).fillColor('#6B7280');
-    doc.text(
-      '※ 출력 이미지에 대한 최종 판단은 주문자가 진행합니다. 주문서 메일을 꼭 확인해 주세요.'
-    );
-
-    doc.end();
   });
 }
 
@@ -324,10 +493,31 @@ function getMailer() {
 }
 
 app.get('/health', (_req, res) => {
-  res.json({ ok: true });
+  const health = {
+    ok: true,
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime(),
+    memory: {
+      used: Math.round(process.memoryUsage().heapUsed / 1024 / 1024),
+      total: Math.round(process.memoryUsage().heapTotal / 1024 / 1024),
+      rss: Math.round(process.memoryUsage().rss / 1024 / 1024),
+    },
+    environment: {
+      nodeVersion: process.version,
+      platform: process.platform,
+      pid: process.pid,
+    },
+    services: {
+      s3: Boolean(getS3Client() && IMAGE_BUCKET),
+      openai: Boolean(process.env.OPENAI_API_KEY),
+      smtp: Boolean(process.env.SMTP_USER && process.env.SMTP_PASS),
+      clipdrop: Boolean(CLIPDROP_API_KEY),
+    },
+  };
+  res.json(health);
 });
 
-app.post('/v1/images/upload', async (req, res) => {
+app.post('/v1/images/upload', strictLimiter, async (req, res) => {
   try {
     const { filename, dataUrl, base64, contentType, returnBase64 } = req.body || {};
     let buffer = null;
@@ -378,7 +568,7 @@ app.post('/v1/images/upload', async (req, res) => {
   }
 });
 
-app.post('/v1/images/generate', async (req, res) => {
+app.post('/v1/images/generate', strictLimiter, async (req, res) => {
   try {
     const { prompt, numberOfImages = 1, aspectRatio = '1:1', returnBase64 } = req.body || {};
     if (!prompt) return res.status(400).json({ error: 'Prompt is required.' });
@@ -476,7 +666,7 @@ app.post('/v1/images/generate', async (req, res) => {
   }
 });
 
-app.post('/v1/images/remove-background', async (req, res) => {
+app.post('/v1/images/remove-background', strictLimiter, async (req, res) => {
   try {
     const { imageUrl, dataUrl, filename, returnBase64 } = req.body || {};
     if (!CLIPDROP_API_KEY) {
@@ -537,7 +727,7 @@ app.post('/v1/images/remove-background', async (req, res) => {
   }
 });
 
-app.post('/v1/print-files/process', async (req, res) => {
+app.post('/v1/print-files/process', strictLimiter, async (req, res) => {
   try {
     const payload = req.body || {};
     logEvent('info', 'print_pipeline_request', {
@@ -565,7 +755,7 @@ app.post('/v1/print-files/process', async (req, res) => {
   }
 });
 
-app.post('/v1/orders/submit', async (req, res) => {
+app.post('/v1/orders/submit', strictLimiter, async (req, res) => {
   try {
     const order = req.body || {};
     logEvent('info', 'order_submit_request', {
@@ -579,15 +769,49 @@ app.post('/v1/orders/submit', async (req, res) => {
       return res.status(500).json({ error: 'SMTP configuration is missing.' });
     }
 
+    // Calculate actual print sizes for all items
+    if (Array.isArray(order.items)) {
+      for (const item of order.items) {
+        // If item has scale value, calculate actual print size in cm
+        if (item.print?.scale !== undefined && item.productName && item.size) {
+          const category = getGarmentCategory(item.productName);
+          const measurements = getGarmentMeasurements(category, item.size);
+
+          if (measurements) {
+            const scale = Math.max(0, Math.min(1, Number(item.print.scale)));
+            const widthCm = Math.round(measurements.printableWidth * scale * 10) / 10;
+            const heightCm = Math.round(measurements.printableHeight * scale * 10) / 10;
+
+            // Add calculated size to item
+            item.print.sizeCm = `${widthCm}cm × ${heightCm}cm`;
+            item.print.calculatedWidth = widthCm;
+            item.print.calculatedHeight = heightCm;
+
+            logEvent('info', 'print_size_calculated', {
+              orderId: order.orderId,
+              itemProduct: item.productName,
+              scale,
+              sizeCm: item.print.sizeCm,
+            });
+          }
+        }
+      }
+    }
+
+    // Auto-enable pipeline for print-ready PNG generation and upscaling
+    const pipelineEnabled = order.pipeline?.enabled !== false; // Default: true
     let pipelineResult = null;
-    if (order.pipeline?.enabled) {
+
+    if (pipelineEnabled) {
       const orderId = order.orderId || String(Date.now());
       const workDir = path.join(ORDER_OUTPUT_DIR, orderId);
       await fsp.mkdir(workDir, { recursive: true });
-      let masterPath = order.pipeline.masterPngPath || null;
+
+      // Get source image URL (design with text embedded)
+      let masterPath = order.pipeline?.masterPngPath || null;
       if (!masterPath) {
         const sourceUrl =
-          order.pipeline.masterPngUrl ||
+          order.pipeline?.masterPngUrl ||
           order.masterPngUrl ||
           order.items?.[0]?.designUrl ||
           '';
@@ -607,16 +831,36 @@ app.post('/v1/orders/submit', async (req, res) => {
           masterPath = downloadPath;
         }
       }
+
       if (masterPath) {
-        pipelineResult = await runPrintPipeline({
-          master_png_path: masterPath,
-          order_id: orderId,
-          target_width_px: order.pipeline.targetWidthPx,
-          target_height_px: order.pipeline.targetHeightPx,
-          clipdrop_api_key: CLIPDROP_API_KEY,
-          output_dir: ORDER_OUTPUT_DIR,
-          allow_warn_to_pass: false,
-        });
+        try {
+          // Default upscaling dimensions for apparel printing (A4-sized print)
+          const targetWidth = order.pipeline?.targetWidthPx || 2480; // A4 width at 300 DPI
+          const targetHeight = order.pipeline?.targetHeightPx || 3508; // A4 height at 300 DPI
+
+          pipelineResult = await runPrintPipeline({
+            master_png_path: masterPath,
+            order_id: orderId,
+            target_width_px: targetWidth,
+            target_height_px: targetHeight,
+            clipdrop_api_key: CLIPDROP_API_KEY,
+            output_dir: ORDER_OUTPUT_DIR,
+            allow_warn_to_pass: true, // Allow warnings to pass, only fail on errors
+          });
+
+          logEvent('info', 'pipeline_completed', {
+            orderId,
+            status: pipelineResult.status,
+            qcStatus: pipelineResult.qc?.status,
+            outputPath: pipelineResult.output_path,
+          });
+        } catch (pipelineError) {
+          logEvent('error', 'pipeline_failed', {
+            orderId,
+            error: pipelineError.message,
+          });
+          // Continue with order even if pipeline fails
+        }
       }
     }
 
@@ -633,35 +877,162 @@ app.post('/v1/orders/submit', async (req, res) => {
     if (!adminTo) return res.status(500).json({ error: 'ORDER_EMAIL_TO is required.' });
 
     const customerEmail = order.customer?.email || '';
-    const baseSubject = `Order ${order.orderId || ''} - ${order.customer?.name || ''}`;
-    const note =
-      '출력 이미지에 대한 최종 판단은 주문자가 진행합니다. 주문서 메일을 꼭 확인해 주세요.';
-    const pipelineLine = pipelineResult
-      ? `Pipeline: ${pipelineResult.status} (QC: ${pipelineResult.qc?.status || ''})`
-      : 'Pipeline: not run';
-    const bodyText = `New order submitted.\n${note}\n${pipelineLine}\nPDF attached.\n${
-      pdfUrl ? `PDF URL: ${pdfUrl}` : ''
-    }`;
+    const customerName = order.customer?.name || '주문자';
+    const baseSubject = `🎽 새 주문: ${order.orderId || ''} - ${customerName}`;
+
+    // Build detailed email body for manufacturer
+    const shippingAddress = order.shipping
+      ? `${order.shipping.address1 || ''} ${order.shipping.address2 || ''}, ${order.shipping.city || ''} ${order.shipping.state || ''} ${order.shipping.zip || ''} ${order.shipping.country || ''}`
+      : '배송 주소 정보 없음';
+
+    const shippingRecipient = order.shipping?.name || customerName;
+    const shippingPhone = order.shipping?.phone || order.customer?.phone || '';
+    const shippingMemo = order.shipping?.memo || '';
+
+    const itemsSummary = (order.items || [])
+      .map((item, idx) => {
+        let line = `${idx + 1}. ${item.productName || '제품'} - ${item.modelName || ''} / ${item.color || ''} / ${item.size || ''} / ${item.quantity || 0}개`;
+
+        // Add print size if available
+        if (item.print?.sizeCm) {
+          line += `\n   프린팅 크기: ${item.print.sizeCm}`;
+        }
+        if (item.print?.placement) {
+          line += ` (${item.print.placement === 'front' ? '앞면' : '뒷면'})`;
+        }
+
+        return line;
+      })
+      .join('\n');
+
+    const pipelineInfo = pipelineResult
+      ? `\n인쇄 파일 처리: ${pipelineResult.status} (QC: ${pipelineResult.qc?.status || 'N/A'})`
+      : '';
+
+    const bodyText = `안녕하세요,
+
+새로운 주문이 접수되었습니다.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📦 주문 정보
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+주문번호: ${order.orderId || 'N/A'}
+주문일시: ${order.createdAt || new Date().toISOString()}
+주문자: ${customerName}
+연락처: ${order.customer?.phone || ''}
+이메일: ${customerEmail || ''}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📍 배송 정보
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+수령인: ${shippingRecipient}
+전화번호: ${shippingPhone}
+주소: ${shippingAddress}
+배송 메모: ${shippingMemo || '없음'}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🛍️ 주문 상품
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+${itemsSummary}
+
+총 수량: ${order.pricing?.quantity || 0}개
+총 금액: ${order.pricing?.total || ''}원
+${pipelineInfo}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📎 첨부 파일
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+- 주문서 PDF (상세 정보, 디자인 이미지, 목업 이미지 포함)${pipelineResult?.output_path ? '\n- 인쇄용 PNG 파일 (업스케일링 완료)' : ''}
+${pdfUrl ? `\n📄 PDF 다운로드: ${pdfUrl}` : ''}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+⚠️ 중요 안내
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+출력 이미지에 대한 최종 판단은 주문자가 진행합니다.
+첨부된 주문서를 꼭 확인해 주세요.
+
+※ 제작 완료 예정일과 발송 방법을 회신해 주시기 바랍니다.
+
+감사합니다.`;
+
+    // Prepare attachments
+    const attachments = [
+      {
+        filename: pdfName,
+        content: pdfBuffer,
+      },
+    ];
+
+    // Attach print-ready PNG if pipeline generated it
+    if (pipelineResult?.output_path && fs.existsSync(pipelineResult.output_path)) {
+      try {
+        const pngBuffer = await fsp.readFile(pipelineResult.output_path);
+        const pngName = `print-ready-${order.orderId || Date.now()}.png`;
+        attachments.push({
+          filename: pngName,
+          content: pngBuffer,
+        });
+      } catch (pngErr) {
+        logEvent('warn', 'png_attachment_failed', {
+          orderId: order.orderId,
+          error: pngErr.message,
+        });
+      }
+    }
 
     await mailer.sendMail({
       from: process.env.SMTP_FROM || process.env.SMTP_USER,
       to: adminTo,
       subject: baseSubject,
       text: bodyText,
-      attachments: [
-        {
-          filename: pdfName,
-          content: pdfBuffer,
-        },
-      ],
+      attachments,
     });
 
     if (customerEmail) {
+      const customerBodyText = `${customerName}님, 안녕하세요.
+
+주문이 정상적으로 접수되었습니다.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📦 주문 정보
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+주문번호: ${order.orderId || 'N/A'}
+주문일시: ${order.createdAt || new Date().toISOString()}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📍 배송 정보
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+수령인: ${shippingRecipient}
+전화번호: ${shippingPhone}
+주소: ${shippingAddress}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🛍️ 주문 상품
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+${itemsSummary}
+
+총 수량: ${order.pricing?.quantity || 0}개
+총 금액: ${order.pricing?.total || ''}원
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📎 첨부 파일
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+주문 내역서 PDF가 첨부되어 있습니다.
+${pdfUrl ? `\n📄 PDF 다운로드: ${pdfUrl}` : ''}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+⚠️ 안내사항
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+제작 완료 예정일은 거래처에서 회신 예정입니다.
+추가 문의사항이 있으시면 답장해 주세요.
+
+감사합니다.`;
+
       await mailer.sendMail({
         from: process.env.SMTP_FROM || process.env.SMTP_USER,
         to: customerEmail,
-        subject: `[고객용] ${baseSubject}`,
-        text: bodyText,
+        subject: `✅ 주문 접수 완료: ${order.orderId || ''}`,
+        text: customerBodyText,
         attachments: [
           {
             filename: pdfName,
@@ -685,6 +1056,273 @@ app.post('/v1/orders/submit', async (req, res) => {
       ...formatError(error),
     });
     res.status(500).json({ error: error.message || 'Order submit failed.', requestId: req.requestId });
+  }
+});
+
+// ============================================
+// Print Size Calculator Data & Functions
+// ============================================
+
+const garmentSizesData = {
+  tshirt: [
+    { size: 'XS', chestWidth: 44, bodyLength: 63, printableWidth: 28, printableHeight: 35 },
+    { size: 'S', chestWidth: 47, bodyLength: 66, printableWidth: 30, printableHeight: 37 },
+    { size: 'M', chestWidth: 50, bodyLength: 69, printableWidth: 32, printableHeight: 40 },
+    { size: 'L', chestWidth: 53, bodyLength: 72, printableWidth: 34, printableHeight: 42 },
+    { size: 'XL', chestWidth: 56, bodyLength: 75, printableWidth: 36, printableHeight: 44 },
+    { size: '2XL', chestWidth: 59, bodyLength: 78, printableWidth: 38, printableHeight: 46 },
+    { size: '3XL', chestWidth: 62, bodyLength: 81, printableWidth: 40, printableHeight: 48 },
+    { size: '4XL', chestWidth: 65, bodyLength: 84, printableWidth: 42, printableHeight: 50 },
+  ],
+  hoodie: [
+    { size: 'S', chestWidth: 52, bodyLength: 68, printableWidth: 32, printableHeight: 38 },
+    { size: 'M', chestWidth: 55, bodyLength: 71, printableWidth: 34, printableHeight: 41 },
+    { size: 'L', chestWidth: 58, bodyLength: 74, printableWidth: 36, printableHeight: 43 },
+    { size: 'XL', chestWidth: 61, bodyLength: 77, printableWidth: 38, printableHeight: 45 },
+    { size: '2XL', chestWidth: 64, bodyLength: 80, printableWidth: 40, printableHeight: 47 },
+    { size: '3XL', chestWidth: 67, bodyLength: 83, printableWidth: 42, printableHeight: 49 },
+    { size: '4XL', chestWidth: 70, bodyLength: 86, printableWidth: 44, printableHeight: 51 },
+  ],
+  sweatshirt: [
+    { size: 'S', chestWidth: 52, bodyLength: 68, printableWidth: 32, printableHeight: 38 },
+    { size: 'M', chestWidth: 55, bodyLength: 71, printableWidth: 34, printableHeight: 41 },
+    { size: 'L', chestWidth: 58, bodyLength: 74, printableWidth: 36, printableHeight: 43 },
+    { size: 'XL', chestWidth: 61, bodyLength: 77, printableWidth: 38, printableHeight: 45 },
+    { size: '2XL', chestWidth: 64, bodyLength: 80, printableWidth: 40, printableHeight: 47 },
+    { size: '3XL', chestWidth: 67, bodyLength: 83, printableWidth: 42, printableHeight: 49 },
+    { size: '4XL', chestWidth: 70, bodyLength: 86, printableWidth: 44, printableHeight: 51 },
+  ],
+  ecobag: [
+    { size: 'ONE SIZE', chestWidth: 35, bodyLength: 40, printableWidth: 28, printableHeight: 32 },
+  ],
+};
+
+const printOptionsData = [
+  { id: 'logo', label: '로고 (10cm 미만)', description: '작은 로고·심플', price: 2500, designScale: 0.35 },
+  { id: 'a5', label: 'A5 (10~15cm)', description: '중간 크기', price: 5500, designScale: 0.5 },
+  { id: 'a4', label: 'A4 (15~28cm)', description: '일반 포스터 크기', price: 7500, designScale: 0.7 },
+  { id: 'a3', label: 'A3 (최대)', description: '큰 전면 인쇄', price: 9500, designScale: 0.9 },
+];
+
+function getGarmentCategory(productName) {
+  const name = (productName || '').toLowerCase();
+  if (name.includes('후드') || name.includes('hoodie')) return 'hoodie';
+  if (name.includes('맨투맨') || name.includes('sweatshirt')) return 'sweatshirt';
+  if (name.includes('에코백') || name.includes('ecobag') || name.includes('bag')) return 'ecobag';
+  return 'tshirt';
+}
+
+function getGarmentMeasurements(category, size) {
+  const sizeList = garmentSizesData[category];
+  if (!sizeList) return null;
+  return sizeList.find((s) => s.size === size) || null;
+}
+
+function calculatePrintSize(garmentMeasurements, printOption, placement = 'front') {
+  const { printableWidth, printableHeight } = garmentMeasurements;
+  const { designScale, label } = printOption;
+
+  const widthCm = Math.round(printableWidth * designScale * 10) / 10;
+  const heightCm = Math.round(printableHeight * designScale * 10) / 10;
+
+  const warnings = [];
+
+  if (widthCm > printableWidth - 2) {
+    warnings.push('프린팅 영역이 최대 크기에 가깝습니다.');
+  }
+
+  if (widthCm < 8) {
+    warnings.push('프린팅이 너무 작아 세부 사항이 흐릿할 수 있습니다.');
+  }
+
+  if (placement === 'back') {
+    warnings.push('뒷면 인쇄는 앞면보다 위치 조정이 제한적일 수 있습니다.');
+  }
+
+  const description = `${label} 크기로 ${garmentMeasurements.size} 사이즈에 프린팅 시 약 ${widthCm}cm × ${heightCm}cm 크기로 인쇄됩니다.`;
+
+  return {
+    widthCm,
+    heightCm,
+    description,
+    warnings,
+    printableArea: {
+      maxWidthCm: printableWidth,
+      maxHeightCm: printableHeight,
+    },
+  };
+}
+
+// ============================================
+// Print Size Calculation API
+// ============================================
+
+app.post('/v1/print/calculate-size', (req, res) => {
+  try {
+    const { productName, garmentSize, printOptionId, scale, placement } = req.body || {};
+
+    logEvent('info', 'print_size_calc_request', {
+      requestId: req.requestId,
+      productName,
+      garmentSize,
+      printOptionId,
+      scale,
+      placement,
+    });
+
+    // Validate required fields
+    if (!productName || !garmentSize) {
+      return res.status(400).json({
+        error: 'Missing required fields: productName, garmentSize',
+      });
+    }
+
+    if (!printOptionId && (scale === undefined || scale === null)) {
+      return res.status(400).json({
+        error: 'Either printOptionId or scale (0.0-1.0) is required',
+      });
+    }
+
+    // Get garment category and measurements
+    const category = getGarmentCategory(productName);
+    const garmentMeasurements = getGarmentMeasurements(category, garmentSize);
+
+    if (!garmentMeasurements) {
+      return res.status(404).json({
+        error: `Size '${garmentSize}' not found for category '${category}'`,
+        availableSizes: (garmentSizesData[category] || []).map((s) => s.size),
+      });
+    }
+
+    let designScale;
+    let printOptionLabel = '';
+    let printOptionPrice = 0;
+
+    // Use scale directly if provided (free scaling mode)
+    if (scale !== undefined && scale !== null) {
+      designScale = Math.max(0, Math.min(1, Number(scale))); // Clamp to 0-1
+      printOptionLabel = `사용자 지정 (${Math.round(designScale * 100)}%)`;
+
+      // Calculate price based on scale (approximate)
+      if (designScale <= 0.4) {
+        printOptionPrice = 2500; // logo price
+      } else if (designScale <= 0.6) {
+        printOptionPrice = 5500; // a5 price
+      } else if (designScale <= 0.8) {
+        printOptionPrice = 7500; // a4 price
+      } else {
+        printOptionPrice = 9500; // a3 price
+      }
+    } else {
+      // Use print option (backward compatibility)
+      const printOption = printOptionsData.find((opt) => opt.id === printOptionId);
+
+      if (!printOption) {
+        return res.status(404).json({
+          error: `Print option '${printOptionId}' not found`,
+          availableOptions: printOptionsData.map((opt) => opt.id),
+        });
+      }
+
+      designScale = printOption.designScale;
+      printOptionLabel = printOption.label;
+      printOptionPrice = printOption.price;
+    }
+
+    // Calculate print size
+    const { printableWidth, printableHeight } = garmentMeasurements;
+    const widthCm = Math.round(printableWidth * designScale * 10) / 10;
+    const heightCm = Math.round(printableHeight * designScale * 10) / 10;
+
+    const warnings = [];
+
+    if (widthCm > printableWidth - 2) {
+      warnings.push('프린팅 영역이 최대 크기에 가깝습니다.');
+    }
+
+    if (widthCm < 8) {
+      warnings.push('프린팅이 너무 작아 세부 사항이 흐릿할 수 있습니다.');
+    }
+
+    if (placement === 'back') {
+      warnings.push('뒷면 인쇄는 앞면보다 위치 조정이 제한적일 수 있습니다.');
+    }
+
+    const description = `${printOptionLabel} 크기로 ${garmentMeasurements.size} 사이즈에 프린팅 시 약 ${widthCm}cm × ${heightCm}cm 크기로 인쇄됩니다.`;
+
+    logEvent('info', 'print_size_calc_result', {
+      requestId: req.requestId,
+      widthCm,
+      heightCm,
+      scale: designScale,
+    });
+
+    res.json({
+      widthCm,
+      heightCm,
+      description,
+      warnings,
+      printableArea: {
+        maxWidthCm: printableWidth,
+        maxHeightCm: printableHeight,
+      },
+      garmentCategory: category,
+      garmentSize,
+      scale: designScale,
+      printOption: {
+        id: printOptionId || 'custom',
+        label: printOptionLabel,
+        price: printOptionPrice,
+      },
+      garmentMeasurements: {
+        chestWidth: garmentMeasurements.chestWidth,
+        bodyLength: garmentMeasurements.bodyLength,
+      },
+      requestId: req.requestId,
+    });
+  } catch (error) {
+    logEvent('error', 'print_size_calc_failed', {
+      requestId: req.requestId,
+      ...formatError(error),
+    });
+    res.status(500).json({ error: error.message || 'Print size calculation failed.' });
+  }
+});
+
+// Get all available sizes for a product
+app.get('/v1/print/sizes', (req, res) => {
+  try {
+    const { productName } = req.query;
+
+    if (!productName) {
+      return res.status(400).json({ error: 'Missing productName query parameter' });
+    }
+
+    const category = getGarmentCategory(productName);
+    const sizes = garmentSizesData[category] || [];
+
+    res.json({
+      category,
+      sizes: sizes.map((s) => ({
+        size: s.size,
+        chestWidth: s.chestWidth,
+        bodyLength: s.bodyLength,
+        printableWidth: s.printableWidth,
+        printableHeight: s.printableHeight,
+      })),
+      printOptions: printOptionsData.map((opt) => ({
+        id: opt.id,
+        label: opt.label,
+        description: opt.description,
+        price: opt.price,
+      })),
+    });
+  } catch (error) {
+    logEvent('error', 'get_sizes_failed', {
+      requestId: req.requestId,
+      ...formatError(error),
+    });
+    res.status(500).json({ error: error.message });
   }
 });
 
