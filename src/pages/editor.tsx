@@ -69,7 +69,12 @@ function Page() {
   };
 
   const template = buildTemplate(selectedProduct, selectedColor, selectedPlacement);
-  const pricing = calcPricing(totalQuantity);
+  const pricing = calcPricing({
+    product: selectedProduct,
+    orderLines,
+    printOption: selectedPrint,
+    printBackEnabled,
+  });
 
   // Reset draft state when product changes
   useEffect(() => {
@@ -509,11 +514,27 @@ function Page() {
 
       <Card style={styles.priceCard}>
         <Text style={styles.priceTitle}>예상 결제 금액</Text>
+        <View style={styles.priceBreakdown}>
+          <View style={styles.priceRow}>
+            <Text style={styles.priceLabel}>상품 금액</Text>
+            <Text style={styles.priceAmount}>{formatPrice(pricing.itemsSubtotal)}</Text>
+          </View>
+          <View style={styles.priceRow}>
+            <Text style={styles.priceLabel}>
+              프린팅 ({printBackEnabled ? '앞면+뒷면' : '앞면'})
+            </Text>
+            <Text style={styles.priceAmount}>{formatPrice(pricing.printingCost)}</Text>
+          </View>
+          <View style={styles.priceRow}>
+            <Text style={styles.priceLabel}>배송비</Text>
+            <Text style={styles.priceAmount}>
+              {pricing.shippingFee === 0 ? '무료' : formatPrice(pricing.shippingFee)}
+            </Text>
+          </View>
+        </View>
+        <View style={styles.priceDivider} />
         <Text style={styles.priceValue}>{formatPrice(pricing.total)}</Text>
-        <Text style={styles.priceNote}>
-          배송비 {pricing.shippingFee === 0 ? '무료' : formatPrice(pricing.shippingFee)} · 총{' '}
-          {totalQuantity}개
-        </Text>
+        <Text style={styles.priceNote}>총 {totalQuantity}개</Text>
       </Card>
 
       <PrimaryButton label="완성 미리보기" onPress={goPreview} />
@@ -882,7 +903,32 @@ const styles = StyleSheet.create({
     lineHeight: 22,
     fontWeight: '700',
     color: theme.colors.textPrimary,
-    marginBottom: theme.spacing.sm,
+    marginBottom: theme.spacing.md,
+  },
+  priceBreakdown: {
+    marginBottom: theme.spacing.md,
+  },
+  priceRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: theme.spacing.xs,
+  },
+  priceLabel: {
+    fontSize: 13,
+    lineHeight: 20,
+    color: theme.colors.textSecondary,
+  },
+  priceAmount: {
+    fontSize: 13,
+    lineHeight: 20,
+    fontWeight: '600',
+    color: theme.colors.textPrimary,
+  },
+  priceDivider: {
+    height: 1,
+    backgroundColor: theme.colors.border,
+    marginVertical: theme.spacing.md,
   },
   priceValue: {
     fontSize: 20,

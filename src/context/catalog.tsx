@@ -94,15 +94,13 @@ export function CatalogProvider({ children }: { children: React.ReactNode }) {
   if (!fallbackProduct) {
     throw new Error('Catalog products are missing.');
   }
-  const fallbackPrint = printOptions[2] ?? printOptions[0];
+  const fallbackPrint = printOptions[0];
   if (!fallbackPrint) {
     throw new Error('Print options are missing.');
   }
   const resolveAutoPrint = (product: CatalogProduct) => {
-    if (product.category === '에코백') {
-      return printOptions.find((option) => option.id === 'a5') ?? fallbackPrint;
-    }
-    return printOptions.find((option) => option.id === 'a4') ?? fallbackPrint;
+    // 기본값은 standard (A4 미만)
+    return printOptions.find((option) => option.id === 'standard') ?? fallbackPrint;
   };
   const defaultImageTransform: LayerTransform = {
     offsetX: 0,
