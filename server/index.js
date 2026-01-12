@@ -972,6 +972,214 @@ ${pdfUrl ? `\n📄 PDF 다운로드: ${pdfUrl}` : ''}
   }
 });
 
+// ============================================
+// Print Size Calculator Data & Functions
+// ============================================
+
+const garmentSizesData = {
+  tshirt: [
+    { size: 'XS', chestWidth: 44, bodyLength: 63, printableWidth: 28, printableHeight: 35 },
+    { size: 'S', chestWidth: 47, bodyLength: 66, printableWidth: 30, printableHeight: 37 },
+    { size: 'M', chestWidth: 50, bodyLength: 69, printableWidth: 32, printableHeight: 40 },
+    { size: 'L', chestWidth: 53, bodyLength: 72, printableWidth: 34, printableHeight: 42 },
+    { size: 'XL', chestWidth: 56, bodyLength: 75, printableWidth: 36, printableHeight: 44 },
+    { size: '2XL', chestWidth: 59, bodyLength: 78, printableWidth: 38, printableHeight: 46 },
+    { size: '3XL', chestWidth: 62, bodyLength: 81, printableWidth: 40, printableHeight: 48 },
+    { size: '4XL', chestWidth: 65, bodyLength: 84, printableWidth: 42, printableHeight: 50 },
+  ],
+  hoodie: [
+    { size: 'S', chestWidth: 52, bodyLength: 68, printableWidth: 32, printableHeight: 38 },
+    { size: 'M', chestWidth: 55, bodyLength: 71, printableWidth: 34, printableHeight: 41 },
+    { size: 'L', chestWidth: 58, bodyLength: 74, printableWidth: 36, printableHeight: 43 },
+    { size: 'XL', chestWidth: 61, bodyLength: 77, printableWidth: 38, printableHeight: 45 },
+    { size: '2XL', chestWidth: 64, bodyLength: 80, printableWidth: 40, printableHeight: 47 },
+    { size: '3XL', chestWidth: 67, bodyLength: 83, printableWidth: 42, printableHeight: 49 },
+    { size: '4XL', chestWidth: 70, bodyLength: 86, printableWidth: 44, printableHeight: 51 },
+  ],
+  sweatshirt: [
+    { size: 'S', chestWidth: 52, bodyLength: 68, printableWidth: 32, printableHeight: 38 },
+    { size: 'M', chestWidth: 55, bodyLength: 71, printableWidth: 34, printableHeight: 41 },
+    { size: 'L', chestWidth: 58, bodyLength: 74, printableWidth: 36, printableHeight: 43 },
+    { size: 'XL', chestWidth: 61, bodyLength: 77, printableWidth: 38, printableHeight: 45 },
+    { size: '2XL', chestWidth: 64, bodyLength: 80, printableWidth: 40, printableHeight: 47 },
+    { size: '3XL', chestWidth: 67, bodyLength: 83, printableWidth: 42, printableHeight: 49 },
+    { size: '4XL', chestWidth: 70, bodyLength: 86, printableWidth: 44, printableHeight: 51 },
+  ],
+  ecobag: [
+    { size: 'ONE SIZE', chestWidth: 35, bodyLength: 40, printableWidth: 28, printableHeight: 32 },
+  ],
+};
+
+const printOptionsData = [
+  { id: 'logo', label: '로고 (10cm 미만)', description: '작은 로고·심플', price: 2500, designScale: 0.35 },
+  { id: 'a5', label: 'A5 (10~15cm)', description: '중간 크기', price: 5500, designScale: 0.5 },
+  { id: 'a4', label: 'A4 (15~28cm)', description: '일반 포스터 크기', price: 7500, designScale: 0.7 },
+  { id: 'a3', label: 'A3 (최대)', description: '큰 전면 인쇄', price: 9500, designScale: 0.9 },
+];
+
+function getGarmentCategory(productName) {
+  const name = (productName || '').toLowerCase();
+  if (name.includes('후드') || name.includes('hoodie')) return 'hoodie';
+  if (name.includes('맨투맨') || name.includes('sweatshirt')) return 'sweatshirt';
+  if (name.includes('에코백') || name.includes('ecobag') || name.includes('bag')) return 'ecobag';
+  return 'tshirt';
+}
+
+function getGarmentMeasurements(category, size) {
+  const sizeList = garmentSizesData[category];
+  if (!sizeList) return null;
+  return sizeList.find((s) => s.size === size) || null;
+}
+
+function calculatePrintSize(garmentMeasurements, printOption, placement = 'front') {
+  const { printableWidth, printableHeight } = garmentMeasurements;
+  const { designScale, label } = printOption;
+
+  const widthCm = Math.round(printableWidth * designScale * 10) / 10;
+  const heightCm = Math.round(printableHeight * designScale * 10) / 10;
+
+  const warnings = [];
+
+  if (widthCm > printableWidth - 2) {
+    warnings.push('프린팅 영역이 최대 크기에 가깝습니다.');
+  }
+
+  if (widthCm < 8) {
+    warnings.push('프린팅이 너무 작아 세부 사항이 흐릿할 수 있습니다.');
+  }
+
+  if (placement === 'back') {
+    warnings.push('뒷면 인쇄는 앞면보다 위치 조정이 제한적일 수 있습니다.');
+  }
+
+  const description = `${label} 크기로 ${garmentMeasurements.size} 사이즈에 프린팅 시 약 ${widthCm}cm × ${heightCm}cm 크기로 인쇄됩니다.`;
+
+  return {
+    widthCm,
+    heightCm,
+    description,
+    warnings,
+    printableArea: {
+      maxWidthCm: printableWidth,
+      maxHeightCm: printableHeight,
+    },
+  };
+}
+
+// ============================================
+// Print Size Calculation API
+// ============================================
+
+app.post('/v1/print/calculate-size', (req, res) => {
+  try {
+    const { productName, garmentSize, printOptionId, placement } = req.body || {};
+
+    logEvent('info', 'print_size_calc_request', {
+      requestId: req.requestId,
+      productName,
+      garmentSize,
+      printOptionId,
+      placement,
+    });
+
+    // Validate required fields
+    if (!productName || !garmentSize || !printOptionId) {
+      return res.status(400).json({
+        error: 'Missing required fields: productName, garmentSize, printOptionId',
+      });
+    }
+
+    // Get garment category and measurements
+    const category = getGarmentCategory(productName);
+    const garmentMeasurements = getGarmentMeasurements(category, garmentSize);
+
+    if (!garmentMeasurements) {
+      return res.status(404).json({
+        error: `Size '${garmentSize}' not found for category '${category}'`,
+        availableSizes: (garmentSizesData[category] || []).map((s) => s.size),
+      });
+    }
+
+    // Get print option
+    const printOption = printOptionsData.find((opt) => opt.id === printOptionId);
+
+    if (!printOption) {
+      return res.status(404).json({
+        error: `Print option '${printOptionId}' not found`,
+        availableOptions: printOptionsData.map((opt) => opt.id),
+      });
+    }
+
+    // Calculate print size
+    const result = calculatePrintSize(garmentMeasurements, printOption, placement);
+
+    logEvent('info', 'print_size_calc_result', {
+      requestId: req.requestId,
+      widthCm: result.widthCm,
+      heightCm: result.heightCm,
+    });
+
+    res.json({
+      ...result,
+      garmentCategory: category,
+      garmentSize,
+      printOption: {
+        id: printOption.id,
+        label: printOption.label,
+        price: printOption.price,
+      },
+      garmentMeasurements: {
+        chestWidth: garmentMeasurements.chestWidth,
+        bodyLength: garmentMeasurements.bodyLength,
+      },
+      requestId: req.requestId,
+    });
+  } catch (error) {
+    logEvent('error', 'print_size_calc_failed', {
+      requestId: req.requestId,
+      ...formatError(error),
+    });
+    res.status(500).json({ error: error.message || 'Print size calculation failed.' });
+  }
+});
+
+// Get all available sizes for a product
+app.get('/v1/print/sizes', (req, res) => {
+  try {
+    const { productName } = req.query;
+
+    if (!productName) {
+      return res.status(400).json({ error: 'Missing productName query parameter' });
+    }
+
+    const category = getGarmentCategory(productName);
+    const sizes = garmentSizesData[category] || [];
+
+    res.json({
+      category,
+      sizes: sizes.map((s) => ({
+        size: s.size,
+        chestWidth: s.chestWidth,
+        bodyLength: s.bodyLength,
+        printableWidth: s.printableWidth,
+        printableHeight: s.printableHeight,
+      })),
+      printOptions: printOptionsData.map((opt) => ({
+        id: opt.id,
+        label: opt.label,
+        description: opt.description,
+        price: opt.price,
+      })),
+    });
+  } catch (error) {
+    logEvent('error', 'get_sizes_failed', {
+      requestId: req.requestId,
+      ...formatError(error),
+    });
+    res.status(500).json({ error: error.message });
+  }
+});
+
 app.listen(PORT, () => {
   logEvent('info', 'server_config', {
     port: PORT,
