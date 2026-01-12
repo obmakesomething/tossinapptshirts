@@ -1,4 +1,5 @@
 import type { ImageSourcePropType } from 'react-native';
+import { MOCKUP_CONFIG } from '../config/mockups';
 
 export type SizeOption = {
   label: string;
@@ -29,9 +30,9 @@ export type CatalogProduct = {
   tags: string[];
 };
 
-// Mockup images are served from production server static files
+// Mockup images are served from configured base URL (server or S3)
 const resolveMockup = (filename: string): ImageSourcePropType => ({
-  uri: `https://tossinapptshirts-production.up.railway.app/mockups/${filename}`
+  uri: `${MOCKUP_CONFIG.baseUrl}/${filename}`
 });
 
 const formatPrice = (value: number | null) => {
