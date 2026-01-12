@@ -45,7 +45,7 @@ function Page() {
     try {
       const title = `${selectedProduct.name} - ${selectedColor}`;
       await saveCurrentDesign(title);
-      Alert.alert('저장 완료', '디자인이 저장되었습니다.');
+      Alert.alert('저장 완료', '디자인을 저장했어요.');
       navigation.navigate('/designs');
     } catch {
       Alert.alert('저장 실패', '다시 시도해주세요.');
@@ -172,8 +172,8 @@ const styles = StyleSheet.create({
   },
   infoCard: {
     marginTop: theme.spacing.lg,
-    backgroundColor: '#ECFDF3',
-    borderColor: '#BBF7D0',
+    backgroundColor: theme.colors.successSoft,
+    borderColor: theme.colors.successBorder,
   },
   infoTitle: {
     fontSize: 15,

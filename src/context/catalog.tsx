@@ -3,6 +3,7 @@ import { Storage } from '@apps-in-toss/framework';
 import { catalogProducts, type CatalogProduct } from '../data/catalog';
 import { printOptions, type PrintOption } from '../data/printOptions';
 import type { Placement } from '../data/mockupTemplates';
+import { theme } from '../components/ui';
 
 const DESIGNS_STORAGE_KEY = 'saved_designs';
 
@@ -111,7 +112,7 @@ export function CatalogProvider({ children }: { children: React.ReactNode }) {
     text: '텍스트',
     fontSize: 32,
     fontWeight: 'regular',
-    color: '#0F172A',
+    color: theme.colors.textPrimary,
   };
 
   const [selectedProductId, setSelectedProductId] = useState(fallbackProduct.id);

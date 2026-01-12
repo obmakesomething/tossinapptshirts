@@ -294,7 +294,8 @@ const styles = StyleSheet.create({
   },
   errorText: {
     fontSize: 12,
-    color: '#DC2626',
+    lineHeight: 18,
+    color: theme.colors.error,
     marginBottom: theme.spacing.sm,
   },
   successText: {

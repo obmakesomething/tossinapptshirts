@@ -91,7 +91,7 @@ function Page() {
               text: 'MERCHANDISE\nGPT',
               fontSize: 36,
               fontWeight: 'bold',
-              color: selectedColor === '블랙' ? '#FFFFFF' : '#0F172A',
+              color: selectedColor === '블랙' ? theme.colors.surface : theme.colors.textPrimary,
             }}
             textTransform={{
               offsetX: 0,

@@ -416,7 +416,7 @@ function Page() {
               }
             }}
             trackColor={{ false: theme.colors.border, true: theme.colors.primary }}
-            thumbColor="#FFFFFF"
+            thumbColor={theme.colors.surface}
           />
         </View>
         {printBackEnabled ? (
@@ -570,8 +570,8 @@ const styles = StyleSheet.create({
     marginBottom: theme.spacing.sm,
   },
   lineBadge: {
-    paddingHorizontal: 10,
-    paddingVertical: 6,
+    paddingHorizontal: theme.spacing.sm,
+    paddingVertical: theme.spacing.xs + 2,
     borderRadius: 999,
     borderWidth: 1,
     borderColor: theme.colors.border,
@@ -604,7 +604,7 @@ const styles = StyleSheet.create({
   removeText: {
     fontSize: 12,
     lineHeight: 18,
-    color: '#DC2626',
+    color: theme.colors.error,
     fontWeight: '600',
   },
   subTitle: {
@@ -759,8 +759,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
   },
   fontButton: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.sm,
     borderRadius: 999,
     borderWidth: 1,
     borderColor: theme.colors.border,
@@ -798,8 +798,8 @@ const styles = StyleSheet.create({
   },
   priceCard: {
     marginBottom: theme.spacing.lg,
-    backgroundColor: '#EFF6FF',
-    borderColor: '#BFDBFE',
+    backgroundColor: theme.colors.infoSoft,
+    borderColor: theme.colors.infoBorder,
   },
   priceTitle: {
     fontSize: 16,
