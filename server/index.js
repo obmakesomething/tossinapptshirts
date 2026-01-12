@@ -730,6 +730,147 @@ app.post('/v1/images/remove-background', strictLimiter, async (req, res) => {
   }
 });
 
+// Image crop endpoint
+app.post('/v1/images/crop', strictLimiter, async (req, res) => {
+  try {
+    const { dataUrl, crop, returnBase64 } = req.body || {};
+
+    if (!dataUrl) {
+      return res.status(400).json({ error: 'dataUrl is required.' });
+    }
+    if (!crop || typeof crop.x !== 'number' || typeof crop.y !== 'number' ||
+        typeof crop.width !== 'number' || typeof crop.height !== 'number') {
+      return res.status(400).json({ error: 'crop object with x, y, width, height is required.' });
+    }
+
+    logEvent('info', 'crop_request', {
+      requestId: req.requestId,
+      crop,
+      returnBase64: !!returnBase64,
+    });
+
+    const decoded = decodeDataUrl(dataUrl);
+    if (!decoded) {
+      return res.status(400).json({ error: 'Invalid dataUrl.' });
+    }
+
+    const sharp = require('sharp');
+
+    // Crop the image
+    const croppedBuffer = await sharp(decoded.buffer)
+      .extract({
+        left: Math.round(crop.x),
+        top: Math.round(crop.y),
+        width: Math.round(crop.width),
+        height: Math.round(crop.height),
+      })
+      .png()
+      .toBuffer();
+
+    // Upload to S3
+    const key = `${IMAGE_PREFIX}/${Date.now()}-${Math.random().toString(36).slice(2)}-cropped.png`;
+    const url = await uploadToS3({ key, body: croppedBuffer, contentType: 'image/png' });
+
+    logEvent('info', 'crop_result', {
+      requestId: req.requestId,
+      url,
+      bytes: croppedBuffer.length,
+    });
+
+    const result = { url, requestId: req.requestId };
+    if (returnBase64) {
+      result.dataUrl = `data:image/png;base64,${croppedBuffer.toString('base64')}`;
+    }
+    res.json(result);
+  } catch (error) {
+    logEvent('error', 'crop_failed', {
+      requestId: req.requestId,
+      ...formatError(error),
+    });
+    res.status(500).json({ error: error.message || 'Crop failed.', requestId: req.requestId });
+  }
+});
+
+// Style transfer endpoint using OpenAI DALL-E
+app.post('/v1/images/style-transfer', strictLimiter, async (req, res) => {
+  try {
+    const { dataUrl, style, returnBase64 } = req.body || {};
+
+    if (!dataUrl) {
+      return res.status(400).json({ error: 'dataUrl is required.' });
+    }
+    if (!style) {
+      return res.status(400).json({ error: 'style is required.' });
+    }
+    if (!OPENAI_API_KEY) {
+      return res.status(500).json({ error: 'OPENAI_API_KEY is required.' });
+    }
+
+    logEvent('info', 'style_transfer_request', {
+      requestId: req.requestId,
+      style,
+      returnBase64: !!returnBase64,
+    });
+
+    const openai = new OpenAI({ apiKey: OPENAI_API_KEY });
+
+    // Base prompt to preserve original shape
+    const stylePrompts = {
+      'watercolor': '수채화 스타일로 변환. 원본의 형상과 구도를 정확히 유지하되 부드러운 수채화 질감을 적용.',
+      'sketch': '연필 스케치 스타일로 변환. 원본의 형상과 구도를 정확히 유지하되 흑백 스케치 느낌을 적용.',
+      'cartoon': '만화/카툰 스타일로 변환. 원본의 형상과 구도를 정확히 유지하되 선명한 윤곽선과 단순한 색상을 적용.',
+      'pixel': '픽셀 아트 스타일로 변환. 원본의 형상과 구도를 정확히 유지하되 8비트 픽셀 느낌을 적용.',
+      'oil': '유화 스타일로 변환. 원본의 형상과 구도를 정확히 유지하되 유화 질감과 붓터치를 적용.',
+      'minimal': '미니멀 라인아트 스타일로 변환. 원본의 핵심 형상만 유지하고 단순한 선으로 표현.',
+    };
+
+    const prompt = stylePrompts[style] || stylePrompts['watercolor'];
+
+    // Call OpenAI DALL-E for style transfer (using edit endpoint)
+    const response = await openai.images.edit({
+      image: Buffer.from(dataUrl.split(',')[1], 'base64'),
+      prompt: prompt,
+      n: 1,
+      size: '1024x1024',
+    });
+
+    const generatedUrl = response.data[0]?.url;
+    if (!generatedUrl) {
+      throw new Error('No image generated from OpenAI.');
+    }
+
+    // Download the generated image
+    const tempDir = path.join(ORDER_OUTPUT_DIR, 'temp');
+    await fsp.mkdir(tempDir, { recursive: true });
+    const tempPath = path.join(tempDir, `style-${Date.now()}.png`);
+    await downloadToFile(generatedUrl, tempPath);
+    const styledBuffer = await fsp.readFile(tempPath);
+
+    // Upload to S3
+    const key = `${IMAGE_PREFIX}/${Date.now()}-${Math.random().toString(36).slice(2)}-styled.png`;
+    const url = await uploadToS3({ key, body: styledBuffer, contentType: 'image/png' });
+
+    logEvent('info', 'style_transfer_result', {
+      requestId: req.requestId,
+      style,
+      url,
+      bytes: styledBuffer.length,
+    });
+
+    const result = { url, requestId: req.requestId };
+    if (returnBase64) {
+      result.dataUrl = `data:image/png;base64,${styledBuffer.toString('base64')}`;
+    }
+    res.json(result);
+  } catch (error) {
+    logEvent('error', 'style_transfer_failed', {
+      requestId: req.requestId,
+      ...formatError(error),
+    });
+    res.status(500).json({ error: error.message || 'Style transfer failed.', requestId: req.requestId });
+  }
+});
+
 app.post('/v1/print-files/process', strictLimiter, async (req, res) => {
   try {
     const payload = req.body || {};

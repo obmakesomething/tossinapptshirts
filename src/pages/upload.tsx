@@ -1,8 +1,9 @@
 import { createRoute } from '@granite-js/react-native';
 import React, { useState } from 'react';
-import { StyleSheet, Text, View, Image, ActivityIndicator, Pressable } from 'react-native';
+import { StyleSheet, Text, View, Image, ActivityIndicator, Pressable, Modal } from 'react-native';
 import {
   Card,
+  Chip,
   PrimaryButton,
   Screen,
   SecondaryButton,
@@ -26,6 +27,8 @@ function Page() {
   const [lastDataUrl, setLastDataUrl] = useState<string | null>(null);
   const [error, setError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
+  const [stylingImage, setStylingImage] = useState(false);
+  const [showStyleOptions, setShowStyleOptions] = useState(false);
 
   const previewUri = designImageUri ?? lastDataUrl;
 
@@ -125,6 +128,40 @@ function Page() {
     }
   };
 
+  const handleStyleTransfer = async (style: string) => {
+    if (!designImageUri && !lastDataUrl) return;
+    setStylingImage(true);
+    setError('');
+    setSuccessMessage('');
+    setShowStyleOptions(false);
+    try {
+      const response = await fetch(`${API_BASE_URL}/v1/images/style-transfer`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          dataUrl: designImageUri || lastDataUrl,
+          style,
+          returnBase64: true,
+        }),
+      });
+      if (!response.ok) {
+        throw new Error('스타일 변환에 실패했어요.');
+      }
+      const data = await response.json();
+      if (!data.dataUrl) {
+        throw new Error('스타일 변환 결과가 올바르지 않아요.');
+      }
+      setDesignImageUri(data.dataUrl);
+      setLastDataUrl(null);
+      setSuccessMessage('✓ 스타일 변환이 완료되었습니다.');
+      setTimeout(() => setSuccessMessage(''), 3000);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '스타일 변환에 실패했어요.');
+    } finally {
+      setStylingImage(false);
+    }
+  };
+
   return (
     <Screen>
       <TopBar title="이미지 업로드" onBack={() => navigation.goBack()} />
@@ -156,16 +193,79 @@ function Page() {
           </View>
         ) : null}
         {previewUri && (
-          <SecondaryButton
-            label={removingBg ? '배경 제거 중...' : '배경 제거하기'}
-            onPress={handleRemoveBackground}
-            disabled={removingBg}
-            style={styles.bgRemoveButton}
-          />
+          <>
+            <SecondaryButton
+              label={removingBg ? '배경 제거 중...' : '배경 제거하기'}
+              onPress={handleRemoveBackground}
+              disabled={removingBg || stylingImage}
+              style={styles.bgRemoveButton}
+            />
+            <SecondaryButton
+              label={stylingImage ? '스타일 변환 중...' : '내 이미지 스타일 바꾸기'}
+              onPress={() => setShowStyleOptions(true)}
+              disabled={removingBg || stylingImage}
+              style={styles.bgRemoveButton}
+            />
+          </>
         )}
       </Card>
       {error ? <Text style={styles.errorText}>{error}</Text> : null}
       {successMessage ? <Text style={styles.successText}>{successMessage}</Text> : null}
+
+      {/* Style Options Modal */}
+      <Modal
+        visible={showStyleOptions}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowStyleOptions(false)}
+      >
+        <Pressable
+          style={styles.modalOverlay}
+          onPress={() => setShowStyleOptions(false)}
+        >
+          <Pressable style={styles.modalContent} onPress={(e) => e.stopPropagation()}>
+            <Text style={styles.modalTitle}>스타일 선택</Text>
+            <Text style={styles.modalSubtitle}>원본 이미지의 형상을 유지하면서 스타일만 변환합니다</Text>
+            <View style={styles.styleGrid}>
+              <Chip
+                label="수채화"
+                onPress={() => handleStyleTransfer('watercolor')}
+                style={styles.styleChip}
+              />
+              <Chip
+                label="스케치"
+                onPress={() => handleStyleTransfer('sketch')}
+                style={styles.styleChip}
+              />
+              <Chip
+                label="카툰"
+                onPress={() => handleStyleTransfer('cartoon')}
+                style={styles.styleChip}
+              />
+              <Chip
+                label="픽셀아트"
+                onPress={() => handleStyleTransfer('pixel')}
+                style={styles.styleChip}
+              />
+              <Chip
+                label="유화"
+                onPress={() => handleStyleTransfer('oil')}
+                style={styles.styleChip}
+              />
+              <Chip
+                label="미니멀"
+                onPress={() => handleStyleTransfer('minimal')}
+                style={styles.styleChip}
+              />
+            </View>
+            <SecondaryButton
+              label="취소"
+              onPress={() => setShowStyleOptions(false)}
+              style={styles.modalCancelButton}
+            />
+          </Pressable>
+        </Pressable>
+      </Modal>
 
       <PrimaryButton
         label="다음: 디자인 편집하기"
@@ -252,5 +352,45 @@ const styles = StyleSheet.create({
   },
   bgRemoveButton: {
     marginTop: theme.spacing.md,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: theme.spacing.lg,
+  },
+  modalContent: {
+    backgroundColor: theme.colors.surface,
+    borderRadius: theme.radius.lg,
+    padding: theme.spacing.xl,
+    width: '100%',
+    maxWidth: 400,
+  },
+  modalTitle: {
+    fontSize: 18,
+    lineHeight: 26,
+    fontWeight: '700',
+    color: theme.colors.textPrimary,
+    marginBottom: theme.spacing.xs,
+  },
+  modalSubtitle: {
+    fontSize: 13,
+    lineHeight: 20,
+    color: theme.colors.textSecondary,
+    marginBottom: theme.spacing.lg,
+  },
+  styleGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: theme.spacing.sm,
+    marginBottom: theme.spacing.lg,
+  },
+  styleChip: {
+    marginRight: theme.spacing.sm,
+    marginBottom: theme.spacing.sm,
+  },
+  modalCancelButton: {
+    marginTop: theme.spacing.sm,
   },
 });
