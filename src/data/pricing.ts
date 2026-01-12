@@ -7,7 +7,7 @@ export const FREE_SHIPPING_THRESHOLD = 60000;
 
 // 카테고리별 기본 가격 (프린팅 포함)
 export const BASE_PRICES: Record<string, number> = {
-  '티셔츠': 19000,
+  '티셔츠': 30000,
   '맨투맨': 40000,
   '후드': 45000,
   '에코백': 15000,
