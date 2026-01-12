@@ -514,27 +514,18 @@ function Page() {
 
       <Card style={styles.priceCard}>
         <Text style={styles.priceTitle}>예상 결제 금액</Text>
-        <View style={styles.priceBreakdown}>
-          <View style={styles.priceRow}>
-            <Text style={styles.priceLabel}>상품 금액</Text>
-            <Text style={styles.priceAmount}>{formatPrice(pricing.itemsSubtotal)}</Text>
-          </View>
-          <View style={styles.priceRow}>
-            <Text style={styles.priceLabel}>
-              프린팅 ({printBackEnabled ? '앞면+뒷면' : '앞면'})
-            </Text>
-            <Text style={styles.priceAmount}>{formatPrice(pricing.printingCost)}</Text>
-          </View>
-          <View style={styles.priceRow}>
-            <Text style={styles.priceLabel}>배송비</Text>
-            <Text style={styles.priceAmount}>
-              {pricing.shippingFee === 0 ? '무료' : formatPrice(pricing.shippingFee)}
-            </Text>
-          </View>
-        </View>
-        <View style={styles.priceDivider} />
         <Text style={styles.priceValue}>{formatPrice(pricing.total)}</Text>
-        <Text style={styles.priceNote}>총 {totalQuantity}개</Text>
+        <View style={styles.priceOptions}>
+          {pricing.backPrintingFee > 0 && (
+            <Text style={styles.priceOption}>뒷면 프린팅 +{formatPrice(pricing.backPrintingFee)} 포함</Text>
+          )}
+          {pricing.largePrintFee > 0 && (
+            <Text style={styles.priceOption}>대형 프린팅 +{formatPrice(pricing.largePrintFee)} 포함</Text>
+          )}
+          <Text style={styles.priceNote}>
+            배송비 {pricing.shippingFee === 0 ? '무료' : formatPrice(pricing.shippingFee)} · 총 {totalQuantity}개
+          </Text>
+        </View>
       </Card>
 
       <PrimaryButton label="완성 미리보기" onPress={goPreview} />
@@ -903,43 +894,27 @@ const styles = StyleSheet.create({
     lineHeight: 22,
     fontWeight: '700',
     color: theme.colors.textPrimary,
-    marginBottom: theme.spacing.md,
-  },
-  priceBreakdown: {
-    marginBottom: theme.spacing.md,
-  },
-  priceRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: theme.spacing.xs,
-  },
-  priceLabel: {
-    fontSize: 13,
-    lineHeight: 20,
-    color: theme.colors.textSecondary,
-  },
-  priceAmount: {
-    fontSize: 13,
-    lineHeight: 20,
-    fontWeight: '600',
-    color: theme.colors.textPrimary,
-  },
-  priceDivider: {
-    height: 1,
-    backgroundColor: theme.colors.border,
-    marginVertical: theme.spacing.md,
+    marginBottom: theme.spacing.sm,
   },
   priceValue: {
-    fontSize: 20,
-    lineHeight: 28,
+    fontSize: 24,
+    lineHeight: 32,
     fontWeight: '800',
     color: theme.colors.primary,
-    marginBottom: theme.spacing.xs,
+    marginBottom: theme.spacing.sm,
+  },
+  priceOptions: {
+    gap: theme.spacing.xs,
+  },
+  priceOption: {
+    fontSize: 12,
+    lineHeight: 18,
+    color: theme.colors.textSecondary,
   },
   priceNote: {
     fontSize: 12,
     lineHeight: 18,
     color: theme.colors.textSecondary,
+    marginTop: theme.spacing.xs,
   },
 });
