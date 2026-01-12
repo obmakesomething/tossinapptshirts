@@ -5,7 +5,10 @@ nixPkgs = ['nodejs_20', 'python3']
 cmds = ['npm ci']
 
 [phases.build]
-cmds = ['npm run build']
+cmds = [
+  'npm run build',
+  'node scripts/upload-mockups.js || echo "Mockup upload failed, using server static files"'
+]
 
 [start]
 cmd = 'npm run start'
