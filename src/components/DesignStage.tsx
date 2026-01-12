@@ -201,7 +201,13 @@ export function DesignStage({
       style={[styles.container, { width, height }]}
       {...responderRef.current.panHandlers}
     >
-      <Image source={template.image} style={styles.image} resizeMode="cover" />
+      <Image
+        source={template.image}
+        style={styles.image}
+        resizeMode="cover"
+        onError={(e) => console.error('[DesignStage] Image load error:', e.nativeEvent.error, 'Source:', template.image)}
+        onLoad={() => console.log('[DesignStage] Image loaded successfully:', template.image)}
+      />
       {showPrintArea ? (
         <View
           style={[

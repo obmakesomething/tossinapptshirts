@@ -31,9 +31,11 @@ export type CatalogProduct = {
 };
 
 // Mockup images are served from configured base URL (server or S3)
-const resolveMockup = (filename: string): ImageSourcePropType => ({
-  uri: `${MOCKUP_CONFIG.baseUrl}/${filename}`
-});
+const resolveMockup = (filename: string): ImageSourcePropType => {
+  const uri = `${MOCKUP_CONFIG.baseUrl}/${filename}`;
+  console.log('[DEBUG] Mockup URI:', uri);
+  return { uri };
+};
 
 const formatPrice = (value: number | null) => {
   if (value == null) return '';

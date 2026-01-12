@@ -58,7 +58,13 @@ export function MockupCanvas({
 
   return (
     <View style={[styles.container, { width, height }, style]}>
-      <Image source={template.image} style={styles.image} resizeMode="cover" />
+      <Image
+        source={template.image}
+        style={styles.image}
+        resizeMode="cover"
+        onError={(e) => console.error('[MockupCanvas] Image load error:', e.nativeEvent.error, 'Source:', template.image)}
+        onLoad={() => console.log('[MockupCanvas] Image loaded successfully:', template.image)}
+      />
       {showPrintArea && (
         <View
           style={[
