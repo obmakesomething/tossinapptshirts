@@ -730,6 +730,35 @@ app.post('/v1/orders/submit', strictLimiter, async (req, res) => {
       return res.status(500).json({ error: 'SMTP configuration is missing.' });
     }
 
+    // Calculate actual print sizes for all items
+    if (Array.isArray(order.items)) {
+      for (const item of order.items) {
+        // If item has scale value, calculate actual print size in cm
+        if (item.print?.scale !== undefined && item.productName && item.size) {
+          const category = getGarmentCategory(item.productName);
+          const measurements = getGarmentMeasurements(category, item.size);
+
+          if (measurements) {
+            const scale = Math.max(0, Math.min(1, Number(item.print.scale)));
+            const widthCm = Math.round(measurements.printableWidth * scale * 10) / 10;
+            const heightCm = Math.round(measurements.printableHeight * scale * 10) / 10;
+
+            // Add calculated size to item
+            item.print.sizeCm = `${widthCm}cm × ${heightCm}cm`;
+            item.print.calculatedWidth = widthCm;
+            item.print.calculatedHeight = heightCm;
+
+            logEvent('info', 'print_size_calculated', {
+              orderId: order.orderId,
+              itemProduct: item.productName,
+              scale,
+              sizeCm: item.print.sizeCm,
+            });
+          }
+        }
+      }
+    }
+
     // Auto-enable pipeline for print-ready PNG generation and upscaling
     const pipelineEnabled = order.pipeline?.enabled !== false; // Default: true
     let pipelineResult = null;
@@ -812,10 +841,19 @@ app.post('/v1/orders/submit', strictLimiter, async (req, res) => {
     const shippingMemo = order.shipping?.memo || '';
 
     const itemsSummary = (order.items || [])
-      .map(
-        (item, idx) =>
-          `${idx + 1}. ${item.productName || '제품'} - ${item.modelName || ''} / ${item.color || ''} / ${item.size || ''} / ${item.quantity || 0}개`
-      )
+      .map((item, idx) => {
+        let line = `${idx + 1}. ${item.productName || '제품'} - ${item.modelName || ''} / ${item.color || ''} / ${item.size || ''} / ${item.quantity || 0}개`;
+
+        // Add print size if available
+        if (item.print?.sizeCm) {
+          line += `\n   프린팅 크기: ${item.print.sizeCm}`;
+        }
+        if (item.print?.placement) {
+          line += ` (${item.print.placement === 'front' ? '앞면' : '뒷면'})`;
+        }
+
+        return line;
+      })
       .join('\n');
 
     const pipelineInfo = pipelineResult
@@ -1072,20 +1110,27 @@ function calculatePrintSize(garmentMeasurements, printOption, placement = 'front
 
 app.post('/v1/print/calculate-size', (req, res) => {
   try {
-    const { productName, garmentSize, printOptionId, placement } = req.body || {};
+    const { productName, garmentSize, printOptionId, scale, placement } = req.body || {};
 
     logEvent('info', 'print_size_calc_request', {
       requestId: req.requestId,
       productName,
       garmentSize,
       printOptionId,
+      scale,
       placement,
     });
 
     // Validate required fields
-    if (!productName || !garmentSize || !printOptionId) {
+    if (!productName || !garmentSize) {
       return res.status(400).json({
-        error: 'Missing required fields: productName, garmentSize, printOptionId',
+        error: 'Missing required fields: productName, garmentSize',
+      });
+    }
+
+    if (!printOptionId && (scale === undefined || scale === null)) {
+      return res.status(400).json({
+        error: 'Either printOptionId or scale (0.0-1.0) is required',
       });
     }
 
@@ -1100,33 +1145,85 @@ app.post('/v1/print/calculate-size', (req, res) => {
       });
     }
 
-    // Get print option
-    const printOption = printOptionsData.find((opt) => opt.id === printOptionId);
+    let designScale;
+    let printOptionLabel = '';
+    let printOptionPrice = 0;
 
-    if (!printOption) {
-      return res.status(404).json({
-        error: `Print option '${printOptionId}' not found`,
-        availableOptions: printOptionsData.map((opt) => opt.id),
-      });
+    // Use scale directly if provided (free scaling mode)
+    if (scale !== undefined && scale !== null) {
+      designScale = Math.max(0, Math.min(1, Number(scale))); // Clamp to 0-1
+      printOptionLabel = `사용자 지정 (${Math.round(designScale * 100)}%)`;
+
+      // Calculate price based on scale (approximate)
+      if (designScale <= 0.4) {
+        printOptionPrice = 2500; // logo price
+      } else if (designScale <= 0.6) {
+        printOptionPrice = 5500; // a5 price
+      } else if (designScale <= 0.8) {
+        printOptionPrice = 7500; // a4 price
+      } else {
+        printOptionPrice = 9500; // a3 price
+      }
+    } else {
+      // Use print option (backward compatibility)
+      const printOption = printOptionsData.find((opt) => opt.id === printOptionId);
+
+      if (!printOption) {
+        return res.status(404).json({
+          error: `Print option '${printOptionId}' not found`,
+          availableOptions: printOptionsData.map((opt) => opt.id),
+        });
+      }
+
+      designScale = printOption.designScale;
+      printOptionLabel = printOption.label;
+      printOptionPrice = printOption.price;
     }
 
     // Calculate print size
-    const result = calculatePrintSize(garmentMeasurements, printOption, placement);
+    const { printableWidth, printableHeight } = garmentMeasurements;
+    const widthCm = Math.round(printableWidth * designScale * 10) / 10;
+    const heightCm = Math.round(printableHeight * designScale * 10) / 10;
+
+    const warnings = [];
+
+    if (widthCm > printableWidth - 2) {
+      warnings.push('프린팅 영역이 최대 크기에 가깝습니다.');
+    }
+
+    if (widthCm < 8) {
+      warnings.push('프린팅이 너무 작아 세부 사항이 흐릿할 수 있습니다.');
+    }
+
+    if (placement === 'back') {
+      warnings.push('뒷면 인쇄는 앞면보다 위치 조정이 제한적일 수 있습니다.');
+    }
+
+    const description = `${printOptionLabel} 크기로 ${garmentMeasurements.size} 사이즈에 프린팅 시 약 ${widthCm}cm × ${heightCm}cm 크기로 인쇄됩니다.`;
 
     logEvent('info', 'print_size_calc_result', {
       requestId: req.requestId,
-      widthCm: result.widthCm,
-      heightCm: result.heightCm,
+      widthCm,
+      heightCm,
+      scale: designScale,
     });
 
     res.json({
-      ...result,
+      widthCm,
+      heightCm,
+      description,
+      warnings,
+      printableArea: {
+        maxWidthCm: printableWidth,
+        maxHeightCm: printableHeight,
+      },
       garmentCategory: category,
       garmentSize,
+      scale: designScale,
       printOption: {
-        id: printOption.id,
-        label: printOption.label,
-        price: printOption.price,
+        id: printOptionId || 'custom',
+        label: printOptionLabel,
+        price: printOptionPrice,
       },
       garmentMeasurements: {
         chestWidth: garmentMeasurements.chestWidth,
