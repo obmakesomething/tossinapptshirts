@@ -1,0 +1,25 @@
+[phases.setup]
+nixPkgs = ['nodejs_20', 'python3']
+
+[phases.install]
+cmds = ['npm ci']
+
+[phases.build]
+cmds = ['npm run build']
+
+[start]
+cmd = 'npm run start'
+
+[variables]
+# Node.js production settings
+NODE_ENV = 'production'
+
+# Enable clustering (number of worker processes)
+# Railway will set this based on available CPU cores
+# WEB_CONCURRENCY = '2'
+
+# Request timeout (2 minutes)
+REQUEST_TIMEOUT_MS = '120000'
+
+# Memory limits for Node.js (adjust based on your Railway plan)
+NODE_OPTIONS = '--max-old-space-size=512'

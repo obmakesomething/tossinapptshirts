@@ -1,6 +1,9 @@
 const crypto = require('crypto');
 const express = require('express');
 const cors = require('cors');
+const helmet = require('helmet');
+const compression = require('compression');
+const rateLimit = require('express-rate-limit');
 const nodemailer = require('nodemailer');
 const PDFDocument = require('pdfkit');
 const { S3Client, PutObjectCommand } = require('@aws-sdk/client-s3');
@@ -11,8 +14,40 @@ const path = require('path');
 const { runPrintPipeline } = require('./printPipeline');
 
 const app = express();
+
+// Security headers
+app.use(helmet({
+  contentSecurityPolicy: false, // Disable CSP for API server
+  crossOriginEmbedderPolicy: false,
+}));
+
+// Compression for responses
+app.use(compression());
+
+// CORS
 app.use(cors({ origin: true }));
+
+// Body parser with size limit
 app.use(express.json({ limit: '15mb' }));
+
+// Global rate limiter: 100 requests per 15 minutes per IP
+const globalLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100,
+  message: { error: 'Too many requests, please try again later.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+app.use(globalLimiter);
+
+// Strict rate limiter for expensive operations
+const strictLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 20, // 20 requests per 15 minutes
+  message: { error: 'Rate limit exceeded for this operation.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
 
 const logEvent = (level, event, payload) => {
   const entry = {
@@ -31,6 +66,23 @@ const formatError = (error) => ({
   code: error?.code,
 });
 
+// Request timeout middleware
+app.use((req, res, next) => {
+  req.setTimeout(REQUEST_TIMEOUT_MS, () => {
+    logEvent('error', 'request_timeout', {
+      requestId: req.requestId,
+      method: req.method,
+      path: req.path,
+      timeout: REQUEST_TIMEOUT_MS,
+    });
+    if (!res.headersSent) {
+      res.status(408).json({ error: 'Request timeout' });
+    }
+  });
+  next();
+});
+
+// Request ID and logging middleware
 app.use((req, res, next) => {
   const incomingId = req.headers['x-request-id'];
   const requestId =
@@ -60,6 +112,7 @@ app.use((req, res, next) => {
 });
 
 const PORT = process.env.PORT || 3000;
+const REQUEST_TIMEOUT_MS = Number(process.env.REQUEST_TIMEOUT_MS) || 120000; // 2 minutes default
 const IMAGE_BUCKET = process.env.S3_BUCKET || '';
 const IMAGE_BASE_URL = process.env.S3_PUBLIC_BASE_URL || '';
 const IMAGE_PREFIX = process.env.S3_IMAGE_PREFIX || 'uploads';
@@ -324,10 +377,31 @@ function getMailer() {
 }
 
 app.get('/health', (_req, res) => {
-  res.json({ ok: true });
+  const health = {
+    ok: true,
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime(),
+    memory: {
+      used: Math.round(process.memoryUsage().heapUsed / 1024 / 1024),
+      total: Math.round(process.memoryUsage().heapTotal / 1024 / 1024),
+      rss: Math.round(process.memoryUsage().rss / 1024 / 1024),
+    },
+    environment: {
+      nodeVersion: process.version,
+      platform: process.platform,
+      pid: process.pid,
+    },
+    services: {
+      s3: Boolean(getS3Client() && IMAGE_BUCKET),
+      openai: Boolean(process.env.OPENAI_API_KEY),
+      smtp: Boolean(process.env.SMTP_USER && process.env.SMTP_PASS),
+      clipdrop: Boolean(CLIPDROP_API_KEY),
+    },
+  };
+  res.json(health);
 });
 
-app.post('/v1/images/upload', async (req, res) => {
+app.post('/v1/images/upload', strictLimiter, async (req, res) => {
   try {
     const { filename, dataUrl, base64, contentType } = req.body || {};
     let buffer = null;
@@ -372,7 +446,7 @@ app.post('/v1/images/upload', async (req, res) => {
   }
 });
 
-app.post('/v1/images/generate', async (req, res) => {
+app.post('/v1/images/generate', strictLimiter, async (req, res) => {
   try {
     const { prompt, numberOfImages = 1, aspectRatio = '1:1' } = req.body || {};
     if (!prompt) return res.status(400).json({ error: 'Prompt is required.' });
@@ -443,7 +517,7 @@ app.post('/v1/images/generate', async (req, res) => {
   }
 });
 
-app.post('/v1/images/remove-background', async (req, res) => {
+app.post('/v1/images/remove-background', strictLimiter, async (req, res) => {
   try {
     const { imageUrl, dataUrl, filename } = req.body || {};
     if (!CLIPDROP_API_KEY) {
@@ -498,7 +572,7 @@ app.post('/v1/images/remove-background', async (req, res) => {
   }
 });
 
-app.post('/v1/print-files/process', async (req, res) => {
+app.post('/v1/print-files/process', strictLimiter, async (req, res) => {
   try {
     const payload = req.body || {};
     logEvent('info', 'print_pipeline_request', {
@@ -526,7 +600,7 @@ app.post('/v1/print-files/process', async (req, res) => {
   }
 });
 
-app.post('/v1/orders/submit', async (req, res) => {
+app.post('/v1/orders/submit', strictLimiter, async (req, res) => {
   try {
     const order = req.body || {};
     logEvent('info', 'order_submit_request', {
