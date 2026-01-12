@@ -58,7 +58,7 @@ export function MockupCanvas({
 
   return (
     <View style={[styles.container, { width, height }, style]}>
-      <Image source={template.image} style={styles.image} resizeMode="contain" />
+      <Image source={template.image} style={styles.image} resizeMode="cover" />
       {showPrintArea && (
         <View
           style={[
