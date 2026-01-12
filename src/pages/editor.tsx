@@ -60,6 +60,10 @@ function Page() {
   const [scrollEnabled, setScrollEnabled] = useState(true);
   const [activeLineId, setActiveLineId] = useState<string | null>(null);
 
+  // Draft state for current size/quantity selection (not yet confirmed)
+  const [draftSize, setDraftSize] = useState<string>(selectedProduct.sizes[0]?.label ?? '');
+  const [draftQuantity, setDraftQuantity] = useState<number>(1);
+
   const goPreview = () => {
     navigation.navigate('/preview');
   };
@@ -67,28 +71,19 @@ function Page() {
   const template = buildTemplate(selectedProduct, selectedColor, selectedPlacement);
   const pricing = calcPricing(totalQuantity);
 
+  // Reset draft state when product changes
   useEffect(() => {
-    const firstLine = orderLines[0];
-    if (firstLine && !activeLineId) {
-      setActiveLineId(firstLine.id);
-      return;
-    }
-    if (activeLineId && !orderLines.find((line) => line.id === activeLineId)) {
-      setActiveLineId(firstLine?.id ?? null);
-    }
-  }, [orderLines, activeLineId]);
+    setDraftSize(selectedProduct.sizes[0]?.label ?? '');
+    setDraftQuantity(1);
+  }, [selectedProduct.id]);
 
-  const activeLine = useMemo(
-    () => orderLines.find((line) => line.id === activeLineId) ?? orderLines[0],
-    [orderLines, activeLineId]
-  );
   const usedSizes = useMemo(
     () => new Set(orderLines.map((line) => line.sizeLabel)),
     [orderLines]
   );
-  const remainingSizes = selectedProduct.sizes.filter(
-    (size) => !usedSizes.has(size.label)
-  );
+
+  // Check if current draft size is already in confirmed orders
+  const isDraftSizeUsed = usedSizes.has(draftSize);
 
   const activeTransform = activeLayer === 'text' ? textTransform : imageTransform;
   const updateActiveTransform = (next: typeof activeTransform) => {
@@ -329,12 +324,8 @@ function Page() {
             <Chip
               key={size.label}
               label={size.label}
-              selected={activeLine?.sizeLabel === size.label}
-              onPress={() => {
-                if (activeLine) {
-                  setOrderLineSize(activeLine.id, size.label);
-                }
-              }}
+              selected={draftSize === size.label}
+              onPress={() => setDraftSize(size.label)}
               style={styles.chipSpacing}
             />
           ))}
@@ -344,29 +335,46 @@ function Page() {
         </Text>
 
         <Text style={[styles.sectionTitle, { marginTop: theme.spacing.lg }]}>수량 선택</Text>
-        {activeLine ? (
-          <View style={styles.quantityRow}>
-            <SecondaryButton
-              label="-"
-              onPress={() => setOrderLineQuantity(activeLine.id, activeLine.quantity - 1)}
-            />
-            <Text style={styles.quantityValue}>{activeLine.quantity}</Text>
-            <SecondaryButton
-              label="+"
-              onPress={() => setOrderLineQuantity(activeLine.id, activeLine.quantity + 1)}
-            />
-          </View>
-        ) : null}
+        <View style={styles.quantityRow}>
+          <SecondaryButton
+            label="-"
+            onPress={() => setDraftQuantity((q) => Math.max(1, q - 1))}
+          />
+          <Text style={styles.quantityValue}>{draftQuantity}</Text>
+          <SecondaryButton
+            label="+"
+            onPress={() => setDraftQuantity((q) => q + 1)}
+          />
+        </View>
 
         <SecondaryButton
           label="추가"
           onPress={() => {
-            const nextSize = remainingSizes[0]?.label || selectedProduct.sizes[0]?.label;
-            if (nextSize) addOrderLine(nextSize);
+            if (isDraftSizeUsed) return;
+
+            // Add new order line with draft size and quantity
+            addOrderLine(draftSize, draftQuantity);
+
+            // Reset draft to next available size
+            const nextAvailableSize = selectedProduct.sizes.find((size) =>
+              !usedSizes.has(size.label) && size.label !== draftSize
+            );
+            if (nextAvailableSize) {
+              setDraftSize(nextAvailableSize.label);
+            } else {
+              // If all sizes are used, reset to first size
+              setDraftSize(selectedProduct.sizes[0]?.label ?? '');
+            }
+            setDraftQuantity(1);
           }}
-          disabled={!remainingSizes.length}
+          disabled={isDraftSizeUsed}
           style={styles.addLineButton}
         />
+        {isDraftSizeUsed && (
+          <Text style={styles.sizeHint}>
+            {draftSize} 사이즈는 이미 추가되었습니다.
+          </Text>
+        )}
 
         {orderLines.length > 0 ? (
           <>
@@ -430,12 +438,12 @@ function Page() {
             {!designImageUri && (
               <View style={styles.imageActionRow}>
                 <SecondaryButton
-                  label="이미지 업로드"
+                  label="예상 이미지 만들기 (업로드)"
                   onPress={() => navigation.navigate('/upload')}
                   style={styles.imageActionButton}
                 />
                 <SecondaryButton
-                  label="AI로 생성"
+                  label="예상 이미지 만들기 (AI)"
                   onPress={() => navigation.navigate('/generate')}
                   style={styles.imageActionButton}
                 />

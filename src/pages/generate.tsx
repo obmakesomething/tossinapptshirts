@@ -33,6 +33,7 @@ function Page() {
   const [removingBg, setRemovingBg] = useState(false);
   const [showExamples, setShowExamples] = useState(true);
   const [error, setError] = useState('');
+  const [successMessage, setSuccessMessage] = useState('');
 
   const goNext = () => {
     if (resultUrl) {
@@ -85,6 +86,7 @@ function Page() {
     if (!resultUrl) return;
     setRemovingBg(true);
     setError('');
+    setSuccessMessage('');
     try {
       const response = await fetch(`${API_BASE_URL}/v1/images/remove-background`, {
         method: 'POST',
@@ -99,6 +101,8 @@ function Page() {
         throw new Error('배경 제거 결과가 올바르지 않아요.');
       }
       setResultUrl(data.dataUrl);
+      setSuccessMessage('✓ 배경 제거가 완료되었습니다.');
+      setTimeout(() => setSuccessMessage(''), 3000);
     } catch (err) {
       setError(err instanceof Error ? err.message : '배경 제거에 실패했어요.');
     } finally {
@@ -201,6 +205,7 @@ function Page() {
         </View>
       ) : null}
       {error ? <Text style={styles.errorText}>{error}</Text> : null}
+      {successMessage ? <Text style={styles.successText}>{successMessage}</Text> : null}
 
       <PrimaryButton
         label="내 굿즈 만들기"
@@ -305,5 +310,12 @@ const styles = StyleSheet.create({
     lineHeight: 18,
     color: theme.colors.error,
     marginTop: theme.spacing.sm,
+  },
+  successText: {
+    fontSize: 12,
+    lineHeight: 18,
+    color: theme.colors.success,
+    marginTop: theme.spacing.sm,
+    fontWeight: '600',
   },
 });

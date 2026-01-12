@@ -104,9 +104,9 @@ function Page() {
       </View>
 
       <View style={styles.heroActions}>
-        <PrimaryButton label="이미지 업로드" onPress={goToUpload} style={styles.actionButton} />
+        <PrimaryButton label="예상 이미지 만들기 (업로드)" onPress={goToUpload} style={styles.actionButton} />
         <SecondaryButton
-          label="AI로 생성"
+          label="예상 이미지 만들기 (AI)"
           onPress={goToGenerate}
           style={styles.actionButton}
         />

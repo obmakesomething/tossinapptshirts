@@ -30,10 +30,14 @@ function Page() {
     selectedPrint,
     printBackEnabled,
     setSelectedColor,
-    designImageUri,
-    imageTransform,
-    textLayer,
-    textTransform,
+    frontDesignImageUri,
+    frontImageTransform,
+    frontTextLayer,
+    frontTextTransform,
+    backDesignImageUri,
+    backImageTransform,
+    backTextLayer,
+    backTextTransform,
     saveCurrentDesign,
   } = useCatalog();
   const [saving, setSaving] = useState(false);
@@ -76,20 +80,28 @@ function Page() {
       <Text style={styles.subtitle}>색상별 미리보기를 확인하세요</Text>
 
       <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-        {filteredShots.map((label, index) => (
-          <Card key={label} style={[styles.mockupCard, index > 0 && styles.mockupSpacing]}>
-            <MockupCanvas
-              template={buildTemplate(
-                selectedProduct,
-                selectedColor,
-                label === 'Back' ? 'back' : 'front'
-              )}
-              width={180}
-              height={220}
-            />
-            <Text style={styles.mockupLabel}>{label} · Flat</Text>
-          </Card>
-        ))}
+        {filteredShots.map((label, index) => {
+          const isBack = label === 'Back';
+          return (
+            <Card key={label} style={[styles.mockupCard, index > 0 && styles.mockupSpacing]}>
+              <MockupCanvas
+                template={buildTemplate(
+                  selectedProduct,
+                  selectedColor,
+                  isBack ? 'back' : 'front'
+                )}
+                width={180}
+                height={220}
+                showDesign
+                designImageUri={isBack ? backDesignImageUri : frontDesignImageUri}
+                imageTransform={isBack ? backImageTransform : frontImageTransform}
+                textLayer={isBack ? backTextLayer : frontTextLayer}
+                textTransform={isBack ? backTextTransform : frontTextTransform}
+              />
+              <Text style={styles.mockupLabel}>{label} · Flat</Text>
+            </Card>
+          );
+        })}
       </ScrollView>
 
       <View style={styles.section}>

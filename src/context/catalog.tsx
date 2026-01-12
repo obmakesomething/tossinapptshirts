@@ -57,9 +57,18 @@ type CatalogContextValue = {
   activeLayer: 'image' | 'text';
   textLayer: TextLayer;
   savedDesigns: SavedDesign[];
+  // Front/back specific states for preview
+  frontDesignImageUri: string | null;
+  frontImageTransform: LayerTransform;
+  frontTextTransform: LayerTransform;
+  frontTextLayer: TextLayer;
+  backDesignImageUri: string | null;
+  backImageTransform: LayerTransform;
+  backTextTransform: LayerTransform;
+  backTextLayer: TextLayer;
   setSelectedProductId: (id: string) => void;
   setSelectedColor: (color: string) => void;
-  addOrderLine: (sizeLabel: string) => void;
+  addOrderLine: (sizeLabel: string, quantity?: number) => void;
   removeOrderLine: (lineId: string) => void;
   setOrderLineSize: (lineId: string, sizeLabel: string) => void;
   setOrderLineQuantity: (lineId: string, quantity: number) => void;
@@ -282,8 +291,8 @@ export function CatalogProvider({ children }: { children: React.ReactNode }) {
     setSelectedPlacementState(placement);
   };
 
-  const addOrderLine = (sizeLabel: string) => {
-    setOrderLines((lines) => [...lines, createOrderLine(sizeLabel, 1)]);
+  const addOrderLine = (sizeLabel: string, quantity = 1) => {
+    setOrderLines((lines) => [...lines, createOrderLine(sizeLabel, quantity)]);
   };
 
   const removeOrderLine = (lineId: string) => {
@@ -323,6 +332,14 @@ export function CatalogProvider({ children }: { children: React.ReactNode }) {
     textTransform,
     activeLayer,
     textLayer,
+    frontDesignImageUri,
+    frontImageTransform,
+    frontTextTransform,
+    frontTextLayer,
+    backDesignImageUri,
+    backImageTransform,
+    backTextTransform,
+    backTextLayer,
     setSelectedProductId,
     setSelectedColor,
     addOrderLine,

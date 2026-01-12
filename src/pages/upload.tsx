@@ -25,6 +25,7 @@ function Page() {
   const [removingBg, setRemovingBg] = useState(false);
   const [lastDataUrl, setLastDataUrl] = useState<string | null>(null);
   const [error, setError] = useState('');
+  const [successMessage, setSuccessMessage] = useState('');
 
   const previewUri = designImageUri ?? lastDataUrl;
 
@@ -95,6 +96,7 @@ function Page() {
     if (!designImageUri && !lastDataUrl) return;
     setRemovingBg(true);
     setError('');
+    setSuccessMessage('');
     try {
       const response = await fetch(`${API_BASE_URL}/v1/images/remove-background`, {
         method: 'POST',
@@ -114,8 +116,8 @@ function Page() {
       }
       setDesignImageUri(data.dataUrl);
       setLastDataUrl(null);
-      setError('✓ 배경 제거가 완료되었습니다.');
-      setTimeout(() => setError(null), 3000);
+      setSuccessMessage('✓ 배경 제거가 완료되었습니다.');
+      setTimeout(() => setSuccessMessage(''), 3000);
     } catch (err) {
       setError(err instanceof Error ? err.message : '배경 제거에 실패했어요.');
     } finally {
@@ -163,6 +165,7 @@ function Page() {
         )}
       </Card>
       {error ? <Text style={styles.errorText}>{error}</Text> : null}
+      {successMessage ? <Text style={styles.successText}>{successMessage}</Text> : null}
 
       <PrimaryButton
         label="다음: 디자인 편집하기"
@@ -239,6 +242,13 @@ const styles = StyleSheet.create({
     lineHeight: 18,
     color: theme.colors.error,
     marginBottom: theme.spacing.sm,
+  },
+  successText: {
+    fontSize: 12,
+    lineHeight: 18,
+    color: theme.colors.success,
+    marginBottom: theme.spacing.sm,
+    fontWeight: '600',
   },
   bgRemoveButton: {
     marginTop: theme.spacing.md,
