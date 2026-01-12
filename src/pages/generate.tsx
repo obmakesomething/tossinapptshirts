@@ -111,6 +111,27 @@ function Page() {
       <TopBar title="AI 이미지 생성" onBack={() => navigation.goBack()} />
 
       <Text style={styles.title}>AI로 이미지를 만들어 보세요</Text>
+
+      {resultUrl ? (
+        <View style={styles.resultSection}>
+          <View style={styles.resultCenter}>
+            <Card style={styles.resultCard}>
+              <Image
+                source={{ uri: resultUrl }}
+                style={styles.resultImage}
+                resizeMode="contain"
+              />
+            </Card>
+          </View>
+          <SecondaryButton
+            label={removingBg ? '배경 제거 중...' : '배경 제거'}
+            onPress={handleRemoveBackground}
+            disabled={removingBg}
+            style={styles.bgRemoveButton}
+          />
+        </View>
+      ) : null}
+
       <TextInput
         style={styles.input}
         placeholder="예: A clean vector-style illustration of a wave..."
@@ -181,31 +202,11 @@ function Page() {
       ) : null}
       {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
-      {resultUrl ? (
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>생성 결과</Text>
-          <View style={styles.resultCenter}>
-            <Card style={styles.resultCard}>
-              <Image
-                source={{ uri: resultUrl }}
-                style={styles.resultImage}
-                resizeMode="contain"
-              />
-            </Card>
-          </View>
-          <SecondaryButton
-            label={removingBg ? '배경 제거 중...' : '배경 제거'}
-            onPress={handleRemoveBackground}
-            disabled={removingBg}
-            style={styles.bgRemoveButton}
-          />
-        </View>
-      ) : null}
-
       <PrimaryButton
         label="내 굿즈 만들기"
         onPress={goNext}
         disabled={!resultUrl}
+        style={styles.nextButton}
       />
     </Screen>
   );
@@ -240,6 +241,12 @@ const styles = StyleSheet.create({
     marginBottom: theme.spacing.lg,
   },
   section: {
+    marginTop: theme.spacing.lg,
+  },
+  resultSection: {
+    marginBottom: theme.spacing.lg,
+  },
+  nextButton: {
     marginTop: theme.spacing.lg,
   },
   sectionTitle: {

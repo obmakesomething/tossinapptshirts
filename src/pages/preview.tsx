@@ -86,12 +86,6 @@ function Page() {
               )}
               width={180}
               height={220}
-              showDesign
-              designScale={selectedPrint.designScale}
-              designImageUri={designImageUri}
-              imageTransform={imageTransform}
-              textLayer={textLayer}
-              textTransform={textTransform}
             />
             <Text style={styles.mockupLabel}>{label} · Flat</Text>
           </Card>

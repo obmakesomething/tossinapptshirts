@@ -322,72 +322,44 @@ function Page() {
           <Text style={styles.infoLabel}>색상</Text>
           <Text style={styles.infoValue}>{selectedColor}</Text>
         </View>
-        <View style={styles.infoRow}>
-          <Text style={styles.infoLabel}>프린트 영역</Text>
-          <Text style={styles.infoValue}>{selectedPrint.label} ({selectedPrint.description})</Text>
+
+        <Text style={[styles.sectionTitle, { marginTop: theme.spacing.lg }]}>사이즈 선택</Text>
+        <View style={styles.chipRow}>
+          {selectedProduct.sizes.map((size) => (
+            <Chip
+              key={size.label}
+              label={size.label}
+              selected={activeLine?.sizeLabel === size.label}
+              onPress={() => {
+                if (activeLine) {
+                  setOrderLineSize(activeLine.id, size.label);
+                }
+              }}
+              style={styles.chipSpacing}
+            />
+          ))}
         </View>
-        <Text style={[styles.sectionTitle, { marginTop: 16 }]}>사이즈 · 수량</Text>
-        {orderLines.map((line) => (
-          <View key={line.id} style={styles.lineRow}>
-            <Pressable
-              style={[
-                styles.lineBadge,
-                activeLineId === line.id && styles.lineBadgeActive,
-              ]}
-              onPress={() => setActiveLineId(line.id)}
-            >
-              <Text
-                style={[
-                  styles.lineBadgeText,
-                  activeLineId === line.id && styles.lineBadgeTextActive,
-                ]}
-              >
-                {line.sizeLabel}
-              </Text>
-            </Pressable>
-            <View style={styles.quantityRow}>
-              <SecondaryButton
-                label="-"
-                onPress={() => setOrderLineQuantity(line.id, line.quantity - 1)}
-              />
-              <Text style={styles.quantityValue}>{line.quantity}</Text>
-              <SecondaryButton
-                label="+"
-                onPress={() => setOrderLineQuantity(line.id, line.quantity + 1)}
-              />
-            </View>
-            {orderLines.length > 1 ? (
-              <Pressable
-                onPress={() => removeOrderLine(line.id)}
-                accessibilityRole="button"
-                accessibilityLabel={`${line.sizeLabel} 삭제`}
-              >
-                <Text style={styles.removeText}>삭제</Text>
-              </Pressable>
-            ) : null}
-          </View>
-        ))}
+        <Text style={styles.sizeHint}>
+          신장 기준 • XS: 155-160cm, S: 160-165cm, M: 165-170cm, L: 170-175cm, XL: 175-180cm, 2XL: 180-185cm, 3XL: 185-190cm
+        </Text>
+
+        <Text style={[styles.sectionTitle, { marginTop: theme.spacing.lg }]}>수량 선택</Text>
         {activeLine ? (
-          <>
-            <Text style={styles.subTitle}>사이즈 변경</Text>
-            <View style={styles.chipRow}>
-              {selectedProduct.sizes.map((size) => (
-                <Chip
-                  key={size.label}
-                  label={size.label}
-                  selected={activeLine.sizeLabel === size.label}
-                  onPress={() => setOrderLineSize(activeLine.id, size.label)}
-                  style={styles.chipSpacing}
-                />
-              ))}
-            </View>
-            <Text style={styles.sizeHint}>
-              신장 기준 • XS: 155-160cm, S: 160-165cm, M: 165-170cm, L: 170-175cm, XL: 175-180cm, 2XL: 180-185cm, 3XL: 185-190cm
-            </Text>
-          </>
+          <View style={styles.quantityRow}>
+            <SecondaryButton
+              label="-"
+              onPress={() => setOrderLineQuantity(activeLine.id, activeLine.quantity - 1)}
+            />
+            <Text style={styles.quantityValue}>{activeLine.quantity}</Text>
+            <SecondaryButton
+              label="+"
+              onPress={() => setOrderLineQuantity(activeLine.id, activeLine.quantity + 1)}
+            />
+          </View>
         ) : null}
+
         <SecondaryButton
-          label="다른 사이즈 추가"
+          label="추가"
           onPress={() => {
             const nextSize = remainingSizes[0]?.label || selectedProduct.sizes[0]?.label;
             if (nextSize) addOrderLine(nextSize);
@@ -395,6 +367,28 @@ function Page() {
           disabled={!remainingSizes.length}
           style={styles.addLineButton}
         />
+
+        {orderLines.length > 0 ? (
+          <>
+            <Text style={[styles.sectionTitle, { marginTop: theme.spacing.lg }]}>확정 정보</Text>
+            {orderLines.map((line) => (
+              <View key={line.id} style={styles.confirmRow}>
+                <Text style={styles.confirmText}>
+                  {line.sizeLabel} × {line.quantity}개
+                </Text>
+                {orderLines.length > 1 ? (
+                  <Pressable
+                    onPress={() => removeOrderLine(line.id)}
+                    accessibilityRole="button"
+                    accessibilityLabel={`${line.sizeLabel} 삭제`}
+                  >
+                    <Text style={styles.removeText}>삭제</Text>
+                  </Pressable>
+                ) : null}
+              </View>
+            ))}
+          </>
+        ) : null}
       </Card>
 
       <Card style={styles.printingCard}>
@@ -447,6 +441,60 @@ function Page() {
                 />
               </View>
             )}
+            <View style={styles.backTransformSection}>
+              <Text style={styles.transformTitle}>뒷면 위치 및 변형</Text>
+              <Text style={styles.transformHint}>
+                슬라이더로 뒷면 디자인의 크기·위치·회전을 조절하세요.
+              </Text>
+              <View style={styles.sliderRow}>
+                <Text style={styles.sliderLabel}>크기</Text>
+                <ScaleSlider
+                  min={0.2}
+                  max={1.0}
+                  value={imageTransform.scale}
+                  onChange={updateScale}
+                />
+              </View>
+              <View style={styles.sliderRow}>
+                <Text style={styles.sliderLabel}>가로 위치</Text>
+                <ScaleSlider
+                  min={-0.55}
+                  max={0.55}
+                  value={imageTransform.offsetX}
+                  onChange={updateOffsetX}
+                />
+              </View>
+              <View style={styles.sliderRow}>
+                <Text style={styles.sliderLabel}>세로 위치</Text>
+                <ScaleSlider
+                  min={-0.55}
+                  max={0.55}
+                  value={imageTransform.offsetY}
+                  onChange={updateOffsetY}
+                />
+              </View>
+              <View style={styles.sliderRow}>
+                <Text style={styles.sliderLabel}>회전</Text>
+                <ScaleSlider
+                  min={-180}
+                  max={180}
+                  value={imageTransform.rotation}
+                  onChange={updateRotation}
+                />
+              </View>
+              <SecondaryButton
+                label="초기화"
+                onPress={() =>
+                  setImageTransform({
+                    offsetX: 0,
+                    offsetY: 0,
+                    scale: selectedPrint.designScale,
+                    rotation: 0,
+                  })
+                }
+                style={styles.resetButton}
+              />
+            </View>
           </>
         ) : null}
       </Card>
@@ -616,6 +664,20 @@ const styles = StyleSheet.create({
   addLineButton: {
     marginTop: theme.spacing.sm,
   },
+  confirmRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: theme.spacing.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.border,
+  },
+  confirmText: {
+    fontSize: 14,
+    lineHeight: 20,
+    color: theme.colors.textPrimary,
+    fontWeight: '600',
+  },
   chipSpacing: {
     marginRight: theme.spacing.sm,
     marginBottom: theme.spacing.sm,
@@ -654,6 +716,12 @@ const styles = StyleSheet.create({
   backPreviewContainer: {
     alignItems: 'center',
     marginVertical: theme.spacing.md,
+  },
+  backTransformSection: {
+    marginTop: theme.spacing.md,
+    paddingTop: theme.spacing.md,
+    borderTopWidth: 1,
+    borderTopColor: theme.colors.border,
   },
   canvasCard: {
     marginBottom: theme.spacing.lg,
