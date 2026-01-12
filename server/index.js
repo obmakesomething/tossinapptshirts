@@ -243,6 +243,26 @@ async function downloadToFile(url, destPath) {
   return destPath;
 }
 
+async function downloadToBuffer(url) {
+  try {
+    const response = await fetch(url);
+    if (!response.ok) {
+      logEvent('warn', 'download_to_buffer_failed', {
+        url,
+        status: response.status,
+      });
+      return null;
+    }
+    return Buffer.from(await response.arrayBuffer());
+  } catch (error) {
+    logEvent('warn', 'download_to_buffer_error', {
+      url,
+      error: error.message,
+    });
+    return null;
+  }
+}
+
 async function sendKakaoNotification(payload) {
   if (!KAKAO_WEBHOOK_URL) return;
   await fetch(KAKAO_WEBHOOK_URL, {
@@ -276,91 +296,187 @@ async function removeBackgroundClipdrop({ sourcePath, apiKey, outputPath }) {
   return outputPath;
 }
 
-function buildOrderPdf(order) {
-  return new Promise((resolve, reject) => {
-    const doc = new PDFDocument({ size: 'A4', margin: 48 });
-    const chunks = [];
-    doc.on('data', (chunk) => chunks.push(chunk));
-    doc.on('end', () => resolve(Buffer.concat(chunks)));
-    doc.on('error', reject);
+async function buildOrderPdf(order) {
+  return new Promise(async (resolve, reject) => {
+    try {
+      const doc = new PDFDocument({ size: 'A4', margin: 48 });
+      const chunks = [];
+      doc.on('data', (chunk) => chunks.push(chunk));
+      doc.on('end', () => resolve(Buffer.concat(chunks)));
+      doc.on('error', reject);
 
-    doc.fontSize(18).text('Order Summary', { align: 'left' });
-    doc.moveDown(0.5);
-    doc.fontSize(11).fillColor('#333');
-
-    const createdAt = order.createdAt || new Date().toISOString();
-    doc.text(`Order ID: ${order.orderId || 'N/A'}`);
-    doc.text(`Created At: ${createdAt}`);
-    doc.text(`Channel: ${order.channel || 'Toss Miniapp'}`);
-    doc.moveDown();
-
-    doc.fontSize(13).text('Customer');
-    doc.fontSize(11);
-    if (order.customer) {
-      doc.text(`Name: ${order.customer.name || ''}`);
-      doc.text(`Phone: ${order.customer.phone || ''}`);
-      doc.text(`Email: ${order.customer.email || ''}`);
-    }
-    doc.moveDown();
-
-    doc.fontSize(13).text('Shipping');
-    doc.fontSize(11);
-    if (order.shipping) {
-      doc.text(`Recipient: ${order.shipping.name || order.customer?.name || ''}`);
-      doc.text(`Phone: ${order.shipping.phone || order.customer?.phone || ''}`);
-      doc.text(`Address1: ${order.shipping.address1 || ''}`);
-      doc.text(`Address2: ${order.shipping.address2 || ''}`);
-      doc.text(`City: ${order.shipping.city || ''}`);
-      doc.text(`State: ${order.shipping.state || ''}`);
-      doc.text(`Zip: ${order.shipping.zip || ''}`);
-      doc.text(`Country: ${order.shipping.country || ''}`);
-      doc.text(`Memo: ${order.shipping.memo || ''}`);
-    }
-    doc.moveDown();
-
-    doc.fontSize(13).text('Items');
-    doc.fontSize(11);
-    const items = Array.isArray(order.items) ? order.items : [];
-    items.forEach((item, index) => {
-      doc.text(`Item ${index + 1}`);
-      doc.text(`- Product: ${item.productName || ''}`);
-      doc.text(`- Model: ${item.modelName || ''}`);
-      doc.text(`- Color: ${item.color || ''}`);
-      doc.text(`- Size: ${item.size || ''}`);
-      doc.text(`- Quantity: ${item.quantity || ''}`);
-      doc.text(`- Print Method: ${item.print?.method || ''}`);
-      doc.text(`- Print Placement: ${item.print?.placement || ''}`);
-      doc.text(`- Print Size: ${item.print?.sizeLabel || ''}`);
-      doc.text(`- Print Dimension: ${item.print?.sizeCm || ''}`);
-      doc.text(`- Design URL: ${item.designUrl || ''}`);
-      if (item.text?.text) {
-        doc.text(
-          `- Text Layer: "${item.text.text}" (${item.text.fontWeight || ''}, ${item.text.fontSize || ''}px)`
-        );
-      }
-      if (Array.isArray(item.mockupUrls) && item.mockupUrls.length > 0) {
-        doc.text(`- Mockups: ${item.mockupUrls.join(', ')}`);
-      }
+      // Header
+      doc.fontSize(18).text('Order Summary', { align: 'left' });
       doc.moveDown(0.5);
-    });
+      doc.fontSize(11).fillColor('#333');
 
-    doc.moveDown();
-    doc.fontSize(13).text('Pricing');
-    doc.fontSize(11);
-    if (order.pricing) {
-      doc.text(`Unit Price: ${order.pricing.unitPrice || ''}`);
-      doc.text(`Quantity: ${order.pricing.quantity || ''}`);
-      doc.text(`Shipping: ${order.pricing.shipping || ''}`);
-      doc.text(`Total: ${order.pricing.total || ''}`);
+      const createdAt = order.createdAt || new Date().toISOString();
+      doc.text(`Order ID: ${order.orderId || 'N/A'}`);
+      doc.text(`Created At: ${createdAt}`);
+      doc.text(`Channel: ${order.channel || 'Toss Miniapp'}`);
+      doc.moveDown();
+
+      // Customer Info
+      doc.fontSize(13).text('Customer');
+      doc.fontSize(11);
+      if (order.customer) {
+        doc.text(`Name: ${order.customer.name || ''}`);
+        doc.text(`Phone: ${order.customer.phone || ''}`);
+        doc.text(`Email: ${order.customer.email || ''}`);
+      }
+      doc.moveDown();
+
+      // Shipping Info
+      doc.fontSize(13).text('Shipping');
+      doc.fontSize(11);
+      if (order.shipping) {
+        doc.text(`Recipient: ${order.shipping.name || order.customer?.name || ''}`);
+        doc.text(`Phone: ${order.shipping.phone || order.customer?.phone || ''}`);
+        doc.text(`Address1: ${order.shipping.address1 || ''}`);
+        doc.text(`Address2: ${order.shipping.address2 || ''}`);
+        doc.text(`City: ${order.shipping.city || ''}`);
+        doc.text(`State: ${order.shipping.state || ''}`);
+        doc.text(`Zip: ${order.shipping.zip || ''}`);
+        doc.text(`Country: ${order.shipping.country || ''}`);
+        doc.text(`Memo: ${order.shipping.memo || ''}`);
+      }
+      doc.moveDown();
+
+      // Items with images
+      doc.fontSize(13).text('Items');
+      doc.fontSize(11);
+      const items = Array.isArray(order.items) ? order.items : [];
+
+      for (let index = 0; index < items.length; index++) {
+        const item = items[index];
+
+        // Check if we need a new page
+        if (doc.y > 650) {
+          doc.addPage();
+        }
+
+        doc.fontSize(12).fillColor('#000').text(`Item ${index + 1}`, { underline: true });
+        doc.fontSize(10).fillColor('#333');
+        doc.text(`- Product: ${item.productName || ''}`);
+        doc.text(`- Model: ${item.modelName || ''}`);
+        doc.text(`- Color: ${item.color || ''}`);
+        doc.text(`- Size: ${item.size || ''}`);
+        doc.text(`- Quantity: ${item.quantity || ''}`);
+        doc.text(`- Print Method: ${item.print?.method || ''}`);
+        doc.text(`- Print Placement: ${item.print?.placement || ''}`);
+        doc.text(`- Print Size: ${item.print?.sizeLabel || ''}`);
+        doc.text(`- Print Dimension: ${item.print?.sizeCm || ''}`);
+
+        if (item.text?.text) {
+          doc.text(
+            `- Text Layer: "${item.text.text}" (${item.text.fontWeight || ''}, ${item.text.fontSize || ''}px)`
+          );
+        }
+        doc.moveDown(0.5);
+
+        // Design Image
+        if (item.designUrl) {
+          const designBuffer = await downloadToBuffer(item.designUrl);
+          if (designBuffer) {
+            try {
+              doc.fontSize(11).fillColor('#1E40AF').text('Design Image:', { continued: false });
+              doc.moveDown(0.3);
+
+              const maxWidth = 250;
+              const maxHeight = 250;
+
+              if (doc.y + maxHeight > 750) {
+                doc.addPage();
+              }
+
+              doc.image(designBuffer, {
+                fit: [maxWidth, maxHeight],
+                align: 'left',
+              });
+              doc.moveDown(0.5);
+            } catch (err) {
+              logEvent('warn', 'pdf_image_embed_failed', {
+                orderId: order.orderId,
+                itemIndex: index,
+                type: 'design',
+                error: err.message,
+              });
+              doc.fontSize(10).fillColor('#DC2626').text(`Design URL: ${item.designUrl}`);
+            }
+          } else {
+            doc.fontSize(10).fillColor('#6B7280').text(`Design URL: ${item.designUrl}`);
+          }
+          doc.moveDown(0.5);
+        }
+
+        // Mockup Images
+        if (Array.isArray(item.mockupUrls) && item.mockupUrls.length > 0) {
+          doc.fontSize(11).fillColor('#1E40AF').text('Mockup Images:', { continued: false });
+          doc.moveDown(0.3);
+
+          for (let mi = 0; mi < item.mockupUrls.length; mi++) {
+            const mockupUrl = item.mockupUrls[mi];
+            const mockupBuffer = await downloadToBuffer(mockupUrl);
+
+            if (mockupBuffer) {
+              try {
+                const maxWidth = 200;
+                const maxHeight = 200;
+
+                if (doc.y + maxHeight > 750) {
+                  doc.addPage();
+                }
+
+                doc.fontSize(9).fillColor('#6B7280').text(`Mockup ${mi + 1}:`, { continued: false });
+                doc.moveDown(0.2);
+                doc.image(mockupBuffer, {
+                  fit: [maxWidth, maxHeight],
+                  align: 'left',
+                });
+                doc.moveDown(0.5);
+              } catch (err) {
+                logEvent('warn', 'pdf_mockup_embed_failed', {
+                  orderId: order.orderId,
+                  itemIndex: index,
+                  mockupIndex: mi,
+                  error: err.message,
+                });
+                doc.fontSize(9).fillColor('#DC2626').text(`Mockup ${mi + 1} URL: ${mockupUrl}`);
+              }
+            } else {
+              doc.fontSize(9).fillColor('#6B7280').text(`Mockup ${mi + 1} URL: ${mockupUrl}`);
+            }
+          }
+          doc.moveDown(0.5);
+        }
+
+        doc.moveDown(1);
+      }
+
+      // Pricing
+      if (doc.y > 700) {
+        doc.addPage();
+      }
+      doc.fontSize(13).fillColor('#000').text('Pricing');
+      doc.fontSize(11).fillColor('#333');
+      if (order.pricing) {
+        doc.text(`Unit Price: ${order.pricing.unitPrice || ''}`);
+        doc.text(`Quantity: ${order.pricing.quantity || ''}`);
+        doc.text(`Shipping: ${order.pricing.shipping || ''}`);
+        doc.text(`Total: ${order.pricing.total || ''}`);
+      }
+
+      // Footer note
+      doc.moveDown();
+      doc.fontSize(11).fillColor('#6B7280');
+      doc.text(
+        '※ 출력 이미지에 대한 최종 판단은 주문자가 진행합니다. 주문서 메일을 꼭 확인해 주세요.'
+      );
+
+      doc.end();
+    } catch (error) {
+      reject(error);
     }
-
-    doc.moveDown();
-    doc.fontSize(11).fillColor('#6B7280');
-    doc.text(
-      '※ 출력 이미지에 대한 최종 판단은 주문자가 진행합니다. 주문서 메일을 꼭 확인해 주세요.'
-    );
-
-    doc.end();
   });
 }
 
@@ -614,15 +730,20 @@ app.post('/v1/orders/submit', strictLimiter, async (req, res) => {
       return res.status(500).json({ error: 'SMTP configuration is missing.' });
     }
 
+    // Auto-enable pipeline for print-ready PNG generation and upscaling
+    const pipelineEnabled = order.pipeline?.enabled !== false; // Default: true
     let pipelineResult = null;
-    if (order.pipeline?.enabled) {
+
+    if (pipelineEnabled) {
       const orderId = order.orderId || String(Date.now());
       const workDir = path.join(ORDER_OUTPUT_DIR, orderId);
       await fsp.mkdir(workDir, { recursive: true });
-      let masterPath = order.pipeline.masterPngPath || null;
+
+      // Get source image URL (design with text embedded)
+      let masterPath = order.pipeline?.masterPngPath || null;
       if (!masterPath) {
         const sourceUrl =
-          order.pipeline.masterPngUrl ||
+          order.pipeline?.masterPngUrl ||
           order.masterPngUrl ||
           order.items?.[0]?.designUrl ||
           '';
@@ -632,16 +753,36 @@ app.post('/v1/orders/submit', strictLimiter, async (req, res) => {
           masterPath = downloadPath;
         }
       }
+
       if (masterPath) {
-        pipelineResult = await runPrintPipeline({
-          master_png_path: masterPath,
-          order_id: orderId,
-          target_width_px: order.pipeline.targetWidthPx,
-          target_height_px: order.pipeline.targetHeightPx,
-          clipdrop_api_key: CLIPDROP_API_KEY,
-          output_dir: ORDER_OUTPUT_DIR,
-          allow_warn_to_pass: false,
-        });
+        try {
+          // Default upscaling dimensions for apparel printing (A4-sized print)
+          const targetWidth = order.pipeline?.targetWidthPx || 2480; // A4 width at 300 DPI
+          const targetHeight = order.pipeline?.targetHeightPx || 3508; // A4 height at 300 DPI
+
+          pipelineResult = await runPrintPipeline({
+            master_png_path: masterPath,
+            order_id: orderId,
+            target_width_px: targetWidth,
+            target_height_px: targetHeight,
+            clipdrop_api_key: CLIPDROP_API_KEY,
+            output_dir: ORDER_OUTPUT_DIR,
+            allow_warn_to_pass: true, // Allow warnings to pass, only fail on errors
+          });
+
+          logEvent('info', 'pipeline_completed', {
+            orderId,
+            status: pipelineResult.status,
+            qcStatus: pipelineResult.qc?.status,
+            outputPath: pipelineResult.output_path,
+          });
+        } catch (pipelineError) {
+          logEvent('error', 'pipeline_failed', {
+            orderId,
+            error: pipelineError.message,
+          });
+          // Continue with order even if pipeline fails
+        }
       }
     }
 
@@ -658,35 +799,153 @@ app.post('/v1/orders/submit', strictLimiter, async (req, res) => {
     if (!adminTo) return res.status(500).json({ error: 'ORDER_EMAIL_TO is required.' });
 
     const customerEmail = order.customer?.email || '';
-    const baseSubject = `Order ${order.orderId || ''} - ${order.customer?.name || ''}`;
-    const note =
-      '출력 이미지에 대한 최종 판단은 주문자가 진행합니다. 주문서 메일을 꼭 확인해 주세요.';
-    const pipelineLine = pipelineResult
-      ? `Pipeline: ${pipelineResult.status} (QC: ${pipelineResult.qc?.status || ''})`
-      : 'Pipeline: not run';
-    const bodyText = `New order submitted.\n${note}\n${pipelineLine}\nPDF attached.\n${
-      pdfUrl ? `PDF URL: ${pdfUrl}` : ''
-    }`;
+    const customerName = order.customer?.name || '주문자';
+    const baseSubject = `🎽 새 주문: ${order.orderId || ''} - ${customerName}`;
+
+    // Build detailed email body for manufacturer
+    const shippingAddress = order.shipping
+      ? `${order.shipping.address1 || ''} ${order.shipping.address2 || ''}, ${order.shipping.city || ''} ${order.shipping.state || ''} ${order.shipping.zip || ''} ${order.shipping.country || ''}`
+      : '배송 주소 정보 없음';
+
+    const shippingRecipient = order.shipping?.name || customerName;
+    const shippingPhone = order.shipping?.phone || order.customer?.phone || '';
+    const shippingMemo = order.shipping?.memo || '';
+
+    const itemsSummary = (order.items || [])
+      .map(
+        (item, idx) =>
+          `${idx + 1}. ${item.productName || '제품'} - ${item.modelName || ''} / ${item.color || ''} / ${item.size || ''} / ${item.quantity || 0}개`
+      )
+      .join('\n');
+
+    const pipelineInfo = pipelineResult
+      ? `\n인쇄 파일 처리: ${pipelineResult.status} (QC: ${pipelineResult.qc?.status || 'N/A'})`
+      : '';
+
+    const bodyText = `안녕하세요,
+
+새로운 주문이 접수되었습니다.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📦 주문 정보
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+주문번호: ${order.orderId || 'N/A'}
+주문일시: ${order.createdAt || new Date().toISOString()}
+주문자: ${customerName}
+연락처: ${order.customer?.phone || ''}
+이메일: ${customerEmail || ''}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📍 배송 정보
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+수령인: ${shippingRecipient}
+전화번호: ${shippingPhone}
+주소: ${shippingAddress}
+배송 메모: ${shippingMemo || '없음'}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🛍️ 주문 상품
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+${itemsSummary}
+
+총 수량: ${order.pricing?.quantity || 0}개
+총 금액: ${order.pricing?.total || ''}원
+${pipelineInfo}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📎 첨부 파일
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+- 주문서 PDF (상세 정보, 디자인 이미지, 목업 이미지 포함)${pipelineResult?.output_path ? '\n- 인쇄용 PNG 파일 (업스케일링 완료)' : ''}
+${pdfUrl ? `\n📄 PDF 다운로드: ${pdfUrl}` : ''}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+⚠️ 중요 안내
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+출력 이미지에 대한 최종 판단은 주문자가 진행합니다.
+첨부된 주문서를 꼭 확인해 주세요.
+
+※ 제작 완료 예정일과 발송 방법을 회신해 주시기 바랍니다.
+
+감사합니다.`;
+
+    // Prepare attachments
+    const attachments = [
+      {
+        filename: pdfName,
+        content: pdfBuffer,
+      },
+    ];
+
+    // Attach print-ready PNG if pipeline generated it
+    if (pipelineResult?.output_path && fs.existsSync(pipelineResult.output_path)) {
+      try {
+        const pngBuffer = await fsp.readFile(pipelineResult.output_path);
+        const pngName = `print-ready-${order.orderId || Date.now()}.png`;
+        attachments.push({
+          filename: pngName,
+          content: pngBuffer,
+        });
+      } catch (pngErr) {
+        logEvent('warn', 'png_attachment_failed', {
+          orderId: order.orderId,
+          error: pngErr.message,
+        });
+      }
+    }
 
     await mailer.sendMail({
       from: process.env.SMTP_FROM || process.env.SMTP_USER,
       to: adminTo,
       subject: baseSubject,
       text: bodyText,
-      attachments: [
-        {
-          filename: pdfName,
-          content: pdfBuffer,
-        },
-      ],
+      attachments,
     });
 
     if (customerEmail) {
+      const customerBodyText = `${customerName}님, 안녕하세요.
+
+주문이 정상적으로 접수되었습니다.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📦 주문 정보
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+주문번호: ${order.orderId || 'N/A'}
+주문일시: ${order.createdAt || new Date().toISOString()}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📍 배송 정보
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+수령인: ${shippingRecipient}
+전화번호: ${shippingPhone}
+주소: ${shippingAddress}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🛍️ 주문 상품
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+${itemsSummary}
+
+총 수량: ${order.pricing?.quantity || 0}개
+총 금액: ${order.pricing?.total || ''}원
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📎 첨부 파일
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+주문 내역서 PDF가 첨부되어 있습니다.
+${pdfUrl ? `\n📄 PDF 다운로드: ${pdfUrl}` : ''}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+⚠️ 안내사항
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+제작 완료 예정일은 거래처에서 회신 예정입니다.
+추가 문의사항이 있으시면 답장해 주세요.
+
+감사합니다.`;
+
       await mailer.sendMail({
         from: process.env.SMTP_FROM || process.env.SMTP_USER,
         to: customerEmail,
-        subject: `[고객용] ${baseSubject}`,
-        text: bodyText,
+        subject: `✅ 주문 접수 완료: ${order.orderId || ''}`,
+        text: customerBodyText,
         attachments: [
           {
             filename: pdfName,
