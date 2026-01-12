@@ -492,6 +492,9 @@ function getMailer() {
   });
 }
 
+// Serve static mockup images
+app.use('/mockups', express.static(path.join(process.cwd(), 'public/mockups')));
+
 app.get('/health', (_req, res) => {
   const health = {
     ok: true,
