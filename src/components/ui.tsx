@@ -18,6 +18,7 @@ export const theme = {
     primarySoft: '#E8F1FF',
     textPrimary: '#0F172A',
     textSecondary: '#475569',
+    textTertiary: '#94A3B8',
     border: '#E2E8F0',
     muted: '#94A3B8',
     success: '#16A34A',
