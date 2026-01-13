@@ -26,6 +26,7 @@
     "nodemailer": "^7.0.12",
     "openai": "^4.104.0",
     "pdfkit": "^0.17.2",
+    "pg": "^8.16.3",
     "react": "18.2.0",
     "react-native": "0.72.6",
     "react-native-image-picker": "^7.1.2",

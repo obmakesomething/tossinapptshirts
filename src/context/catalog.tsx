@@ -1,9 +1,17 @@
-import React, { createContext, useContext, useEffect, useMemo, useState, useCallback } from 'react';
 import { Storage } from '@apps-in-toss/framework';
-import { catalogProducts, type CatalogProduct } from '../data/catalog';
-import { printOptions, type PrintOption } from '../data/printOptions';
-import type { Placement } from '../data/mockupTemplates';
+import type React from 'react';
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
 import { theme } from '../components/ui';
+import { type CatalogProduct, catalogProducts } from '../data/catalog';
+import type { Placement } from '../data/mockupTemplates';
+import { type PrintOption, printOptions } from '../data/printOptions';
 
 const DESIGNS_STORAGE_KEY = 'saved_designs';
 
@@ -100,7 +108,9 @@ export function CatalogProvider({ children }: { children: React.ReactNode }) {
   }
   const resolveAutoPrint = (product: CatalogProduct) => {
     // 기본값은 standard (A4 미만)
-    return printOptions.find((option) => option.id === 'standard') ?? fallbackPrint;
+    return (
+      printOptions.find((option) => option.id === 'standard') ?? fallbackPrint
+    );
   };
   const defaultImageTransform: LayerTransform = {
     offsetX: 0,
@@ -122,51 +132,75 @@ export function CatalogProvider({ children }: { children: React.ReactNode }) {
     color: theme.colors.textPrimary,
   };
 
-  const [selectedProductId, setSelectedProductId] = useState(fallbackProduct.id);
+  const [selectedProductId, setSelectedProductId] = useState(
+    fallbackProduct.id,
+  );
   const [selectedColor, setSelectedColor] = useState('');
   const [orderLines, setOrderLines] = useState<OrderLine[]>([]);
-  const [selectedPlacement, setSelectedPlacementState] = useState<Placement>('front');
+  const [selectedPlacement, setSelectedPlacementState] =
+    useState<Placement>('front');
   const [printBackEnabled, setPrintBackEnabledState] = useState(false);
   const [selectedPrintId, setSelectedPrintId] = useState<PrintOption['id']>(
-    resolveAutoPrint(fallbackProduct).id
+    resolveAutoPrint(fallbackProduct).id,
   );
 
   // Front design state
-  const [frontDesignImageUri, setFrontDesignImageUri] = useState<string | null>(null);
-  const [frontImageTransform, setFrontImageTransform] = useState<LayerTransform>(defaultImageTransform);
-  const [frontTextTransform, setFrontTextTransform] = useState<LayerTransform>(defaultTextTransform);
-  const [frontTextLayer, setFrontTextLayer] = useState<TextLayer>(defaultTextLayer);
+  const [frontDesignImageUri, setFrontDesignImageUri] = useState<string | null>(
+    null,
+  );
+  const [frontImageTransform, setFrontImageTransform] =
+    useState<LayerTransform>(defaultImageTransform);
+  const [frontTextTransform, setFrontTextTransform] =
+    useState<LayerTransform>(defaultTextTransform);
+  const [frontTextLayer, setFrontTextLayer] =
+    useState<TextLayer>(defaultTextLayer);
 
   // Back design state
-  const [backDesignImageUri, setBackDesignImageUri] = useState<string | null>(null);
-  const [backImageTransform, setBackImageTransform] = useState<LayerTransform>(defaultImageTransform);
-  const [backTextTransform, setBackTextTransform] = useState<LayerTransform>(defaultTextTransform);
-  const [backTextLayer, setBackTextLayer] = useState<TextLayer>(defaultTextLayer);
+  const [backDesignImageUri, setBackDesignImageUri] = useState<string | null>(
+    null,
+  );
+  const [backImageTransform, setBackImageTransform] = useState<LayerTransform>(
+    defaultImageTransform,
+  );
+  const [backTextTransform, setBackTextTransform] =
+    useState<LayerTransform>(defaultTextTransform);
+  const [backTextLayer, setBackTextLayer] =
+    useState<TextLayer>(defaultTextLayer);
 
   const [designPrompt, setDesignPrompt] = useState('');
   const [activeLayer, setActiveLayer] = useState<'image' | 'text'>('image');
   const [savedDesigns, setSavedDesigns] = useState<SavedDesign[]>([]);
 
   // Current placement design accessors
-  const designImageUri = selectedPlacement === 'front' ? frontDesignImageUri : backDesignImageUri;
-  const imageTransform = selectedPlacement === 'front' ? frontImageTransform : backImageTransform;
-  const textTransform = selectedPlacement === 'front' ? frontTextTransform : backTextTransform;
-  const textLayer = selectedPlacement === 'front' ? frontTextLayer : backTextLayer;
+  const designImageUri =
+    selectedPlacement === 'front' ? frontDesignImageUri : backDesignImageUri;
+  const imageTransform =
+    selectedPlacement === 'front' ? frontImageTransform : backImageTransform;
+  const textTransform =
+    selectedPlacement === 'front' ? frontTextTransform : backTextTransform;
+  const textLayer =
+    selectedPlacement === 'front' ? frontTextLayer : backTextLayer;
 
   const selectedProduct = useMemo(
-    () => products.find((product) => product.id === selectedProductId) ?? fallbackProduct,
-    [products, selectedProductId, fallbackProduct]
+    () =>
+      products.find((product) => product.id === selectedProductId) ??
+      fallbackProduct,
+    [products, selectedProductId, fallbackProduct],
   );
 
   const selectedPrint =
-    printOptions.find((option) => option.id === selectedPrintId) ?? fallbackPrint;
+    printOptions.find((option) => option.id === selectedPrintId) ??
+    fallbackPrint;
 
   const totalQuantity = useMemo(
     () => orderLines.reduce((sum, line) => sum + line.quantity, 0),
-    [orderLines]
+    [orderLines],
   );
 
-  const createOrderLine = (sizeLabel: string, quantityValue = 1): OrderLine => ({
+  const createOrderLine = (
+    sizeLabel: string,
+    quantityValue = 1,
+  ): OrderLine => ({
     id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
     sizeLabel,
     quantity: quantityValue,
@@ -182,7 +216,10 @@ export function CatalogProvider({ children }: { children: React.ReactNode }) {
   }, [selectedProduct?.id]);
 
   useEffect(() => {
-    setImageTransform((prev) => ({ ...prev, scale: selectedPrint.designScale }));
+    setImageTransform((prev) => ({
+      ...prev,
+      scale: selectedPrint.designScale,
+    }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedPrint.id]);
 
@@ -202,25 +239,36 @@ export function CatalogProvider({ children }: { children: React.ReactNode }) {
     refreshSavedDesigns();
   }, [refreshSavedDesigns]);
 
-  const saveCurrentDesign = useCallback(async (title: string) => {
-    const newDesign: SavedDesign = {
-      id: `design-${Date.now()}-${Math.random().toString(36).slice(2)}`,
-      title,
-      createdAt: new Date().toISOString(),
-      productId: selectedProductId,
-      color: selectedColor,
+  const saveCurrentDesign = useCallback(
+    async (title: string) => {
+      const newDesign: SavedDesign = {
+        id: `design-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+        title,
+        createdAt: new Date().toISOString(),
+        productId: selectedProductId,
+        color: selectedColor,
+        designImageUri,
+        designPrompt,
+        imageTransform,
+        textTransform,
+        textLayer,
+      };
+      setSavedDesigns((prev) => {
+        const updated = [newDesign, ...prev];
+        Storage.setItem(DESIGNS_STORAGE_KEY, JSON.stringify(updated));
+        return updated;
+      });
+    },
+    [
+      selectedProductId,
+      selectedColor,
       designImageUri,
       designPrompt,
       imageTransform,
       textTransform,
       textLayer,
-    };
-    setSavedDesigns((prev) => {
-      const updated = [newDesign, ...prev];
-      Storage.setItem(DESIGNS_STORAGE_KEY, JSON.stringify(updated));
-      return updated;
-    });
-  }, [selectedProductId, selectedColor, designImageUri, designPrompt, imageTransform, textTransform, textLayer]);
+    ],
+  );
 
   const loadDesign = useCallback((design: SavedDesign) => {
     setSelectedProductId(design.productId);
@@ -299,9 +347,7 @@ export function CatalogProvider({ children }: { children: React.ReactNode }) {
 
   const setOrderLineSize = (lineId: string, sizeLabel: string) => {
     setOrderLines((lines) =>
-      lines.map((line) =>
-        line.id === lineId ? { ...line, sizeLabel } : line
-      )
+      lines.map((line) => (line.id === lineId ? { ...line, sizeLabel } : line)),
     );
   };
 
@@ -310,8 +356,8 @@ export function CatalogProvider({ children }: { children: React.ReactNode }) {
       lines.map((line) =>
         line.id === lineId
           ? { ...line, quantity: Math.max(1, quantityValue) }
-          : line
-      )
+          : line,
+      ),
     );
   };
 
@@ -359,7 +405,9 @@ export function CatalogProvider({ children }: { children: React.ReactNode }) {
     refreshSavedDesigns,
   };
 
-  return <CatalogContext.Provider value={value}>{children}</CatalogContext.Provider>;
+  return (
+    <CatalogContext.Provider value={value}>{children}</CatalogContext.Provider>
+  );
 }
 
 export function useCatalog() {

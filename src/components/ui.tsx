@@ -1,12 +1,12 @@
-import React from 'react';
+import type React from 'react';
 import {
+  Pressable,
   SafeAreaView,
   ScrollView,
-  View,
-  Text,
-  Pressable,
-  StyleSheet,
   type StyleProp,
+  StyleSheet,
+  Text,
+  View,
   type ViewStyle,
 } from 'react-native';
 
@@ -54,7 +54,11 @@ type ScreenProps = {
   scrollEnabled?: boolean;
 };
 
-export function Screen({ children, contentStyle, scrollEnabled = true }: ScreenProps) {
+export function Screen({
+  children,
+  contentStyle,
+  scrollEnabled = true,
+}: ScreenProps) {
   return (
     <SafeAreaView style={styles.safe}>
       <ScrollView
@@ -75,7 +79,12 @@ type TopBarProps = {
   onRightPress?: () => void;
 };
 
-export function TopBar({ title, onBack, rightLabel, onRightPress }: TopBarProps) {
+export function TopBar({
+  title,
+  onBack,
+  rightLabel,
+  onRightPress,
+}: TopBarProps) {
   return (
     <View style={styles.topBar}>
       {onBack ? (
@@ -114,7 +123,12 @@ type ButtonProps = {
   style?: StyleProp<ViewStyle>;
 };
 
-export function PrimaryButton({ label, onPress, disabled, style }: ButtonProps) {
+export function PrimaryButton({
+  label,
+  onPress,
+  disabled,
+  style,
+}: ButtonProps) {
   return (
     <Pressable
       accessibilityRole="button"
@@ -132,7 +146,12 @@ export function PrimaryButton({ label, onPress, disabled, style }: ButtonProps) 
   );
 }
 
-export function SecondaryButton({ label, onPress, disabled, style }: ButtonProps) {
+export function SecondaryButton({
+  label,
+  onPress,
+  disabled,
+  style,
+}: ButtonProps) {
   return (
     <Pressable
       accessibilityRole="button"

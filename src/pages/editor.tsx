@@ -1,23 +1,30 @@
 import { createRoute } from '@granite-js/react-native';
 import React, { useEffect, useMemo, useState } from 'react';
-import { StyleSheet, Text, View, TextInput, Pressable, Switch } from 'react-native';
+import {
+  Pressable,
+  StyleSheet,
+  Switch,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
+import { DesignStage } from '../components/DesignStage';
+import { MockupCanvas } from '../components/MockupCanvas';
+import { ScaleSlider } from '../components/ScaleSlider';
 import {
   Card,
   Chip,
   ColorSwatch,
   PrimaryButton,
-  SecondaryButton,
   Screen,
+  SecondaryButton,
   TopBar,
   theme,
 } from '../components/ui';
-import { DesignStage } from '../components/DesignStage';
-import { MockupCanvas } from '../components/MockupCanvas';
-import { ScaleSlider } from '../components/ScaleSlider';
-import { buildTemplate } from '../data/mockupTemplates';
-import type { Placement } from '../data/mockupTemplates';
 import { useCatalog } from '../context/catalog';
 import { resolveColorValue } from '../data/colorMap';
+import { buildTemplate } from '../data/mockupTemplates';
+import type { Placement } from '../data/mockupTemplates';
 import { calcPricing } from '../data/pricing';
 import { formatPrice } from '../utils/format';
 
@@ -61,14 +68,20 @@ function Page() {
   const [activeLineId, setActiveLineId] = useState<string | null>(null);
 
   // Draft state for current size/quantity selection (not yet confirmed)
-  const [draftSize, setDraftSize] = useState<string>(selectedProduct.sizes[0]?.label ?? '');
+  const [draftSize, setDraftSize] = useState<string>(
+    selectedProduct.sizes[0]?.label ?? '',
+  );
   const [draftQuantity, setDraftQuantity] = useState<number>(1);
 
   const goPreview = () => {
     navigation.navigate('/preview');
   };
 
-  const template = buildTemplate(selectedProduct, selectedColor, selectedPlacement);
+  const template = buildTemplate(
+    selectedProduct,
+    selectedColor,
+    selectedPlacement,
+  );
   const pricing = calcPricing({
     product: selectedProduct,
     orderLines,
@@ -84,13 +97,14 @@ function Page() {
 
   const usedSizes = useMemo(
     () => new Set(orderLines.map((line) => line.sizeLabel)),
-    [orderLines]
+    [orderLines],
   );
 
   // Check if current draft size is already in confirmed orders
   const isDraftSizeUsed = usedSizes.has(draftSize);
 
-  const activeTransform = activeLayer === 'text' ? textTransform : imageTransform;
+  const activeTransform =
+    activeLayer === 'text' ? textTransform : imageTransform;
   const updateActiveTransform = (next: typeof activeTransform) => {
     if (activeLayer === 'text') {
       setTextTransform(next);
@@ -102,33 +116,33 @@ function Page() {
   // Individual transform property updaters to avoid closure issues
   const updateScale = (scale: number) => {
     if (activeLayer === 'text') {
-      setTextTransform(prev => ({ ...prev, scale }));
+      setTextTransform((prev) => ({ ...prev, scale }));
     } else {
-      setImageTransform(prev => ({ ...prev, scale }));
+      setImageTransform((prev) => ({ ...prev, scale }));
     }
   };
 
   const updateOffsetX = (offsetX: number) => {
     if (activeLayer === 'text') {
-      setTextTransform(prev => ({ ...prev, offsetX }));
+      setTextTransform((prev) => ({ ...prev, offsetX }));
     } else {
-      setImageTransform(prev => ({ ...prev, offsetX }));
+      setImageTransform((prev) => ({ ...prev, offsetX }));
     }
   };
 
   const updateOffsetY = (offsetY: number) => {
     if (activeLayer === 'text') {
-      setTextTransform(prev => ({ ...prev, offsetY }));
+      setTextTransform((prev) => ({ ...prev, offsetY }));
     } else {
-      setImageTransform(prev => ({ ...prev, offsetY }));
+      setImageTransform((prev) => ({ ...prev, offsetY }));
     }
   };
 
   const updateRotation = (rotation: number) => {
     if (activeLayer === 'text') {
-      setTextTransform(prev => ({ ...prev, rotation }));
+      setTextTransform((prev) => ({ ...prev, rotation }));
     } else {
-      setImageTransform(prev => ({ ...prev, rotation }));
+      setImageTransform((prev) => ({ ...prev, rotation }));
     }
   };
 
@@ -155,7 +169,10 @@ function Page() {
             <Text style={styles.productPrice}>
               {selectedProduct.priceText}
               {selectedProduct.originalPrice && selectedProduct.price ? (
-                <Text style={styles.productOriginalPrice}> {formatPrice(selectedProduct.originalPrice)}</Text>
+                <Text style={styles.productOriginalPrice}>
+                  {' '}
+                  {formatPrice(selectedProduct.originalPrice)}
+                </Text>
               ) : null}
             </Text>
           </View>
@@ -182,6 +199,33 @@ function Page() {
       </View>
 
       <Card style={styles.canvasCard}>
+        <View style={styles.placementRow}>
+          <Text style={styles.placementLabel}>프린팅 위치</Text>
+          <View style={styles.placementChips}>
+            <Chip
+              label="앞면"
+              selected={selectedPlacement === 'front'}
+              onPress={() => {
+                // If trying to disable the only active placement, prevent it
+                if (selectedPlacement === 'front' && !printBackEnabled) {
+                  return; // Cannot disable front if back is not enabled
+                }
+                setSelectedPlacement('front');
+              }}
+              style={styles.chipSpacing}
+            />
+            <Chip
+              label="뒷면"
+              selected={selectedPlacement === 'back'}
+              onPress={() => {
+                if (!printBackEnabled) {
+                  setPrintBackEnabled(true); // Enable back printing first
+                }
+                setSelectedPlacement('back');
+              }}
+            />
+          </View>
+        </View>
         <Text style={styles.canvasTitle}>
           {selectedPlacement === 'back' ? '뒷면' : '앞면'} 프린트 영역
         </Text>
@@ -204,7 +248,9 @@ function Page() {
             <TextInput
               style={styles.textInput}
               value={textLayer.text}
-              onChangeText={(value) => setTextLayer({ ...textLayer, text: value })}
+              onChangeText={(value) =>
+                setTextLayer({ ...textLayer, text: value })
+              }
               placeholder="텍스트 입력"
               placeholderTextColor={theme.colors.muted}
             />
@@ -215,20 +261,59 @@ function Page() {
                   <Pressable
                     key={weight}
                     onPress={() =>
-                      setTextLayer({ ...textLayer, fontWeight: weight as 'regular' | 'bold' })
+                      setTextLayer({
+                        ...textLayer,
+                        fontWeight: weight as 'regular' | 'bold',
+                      })
                     }
                     style={[
                       styles.fontButton,
-                      textLayer.fontWeight === weight && styles.fontButtonSelected,
+                      textLayer.fontWeight === weight &&
+                        styles.fontButtonSelected,
                     ]}
                   >
                     <Text
                       style={[
                         styles.fontButtonText,
-                        textLayer.fontWeight === weight && styles.fontButtonTextSelected,
+                        textLayer.fontWeight === weight &&
+                          styles.fontButtonTextSelected,
                       ]}
                     >
                       {weight === 'regular' ? 'Regular' : 'Bold'}
+                    </Text>
+                  </Pressable>
+                ))}
+              </View>
+            </View>
+            <View style={styles.fontRow}>
+              <Text style={styles.fontLabel}>색상</Text>
+              <View style={styles.fontButtons}>
+                {[
+                  { label: '블랙', value: '#000000' },
+                  { label: '화이트', value: '#FFFFFF' },
+                ].map((colorOption) => (
+                  <Pressable
+                    key={colorOption.value}
+                    onPress={() =>
+                      setTextLayer({
+                        ...textLayer,
+                        color: colorOption.value,
+                      })
+                    }
+                    style={[
+                      styles.fontButton,
+                      textLayer.color === colorOption.value &&
+                        styles.fontButtonSelected,
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.fontButtonText,
+                        textLayer.color === colorOption.value &&
+                          styles.fontButtonTextSelected,
+                      ]}
+                    >
+                      {colorOption.label}
                     </Text>
                   </Pressable>
                 ))}
@@ -263,7 +348,8 @@ function Page() {
         <View style={styles.transformSection}>
           <Text style={styles.transformTitle}>위치 및 변형</Text>
           <Text style={styles.transformHint}>
-            슬라이더로 {activeLayer === 'text' ? '텍스트' : '이미지'}의 크기·위치·회전을 조절하세요.
+            슬라이더로 {activeLayer === 'text' ? '텍스트' : '이미지'}의
+            크기·위치·회전을 조절하세요.
           </Text>
           <View style={styles.sliderRow}>
             <Text style={styles.sliderLabel}>크기</Text>
@@ -307,7 +393,8 @@ function Page() {
               updateActiveTransform({
                 offsetX: 0,
                 offsetY: 0,
-                scale: activeLayer === 'text' ? 0.45 : selectedPrint.designScale,
+                scale:
+                  activeLayer === 'text' ? 0.45 : selectedPrint.designScale,
                 rotation: 0,
               })
             }
@@ -323,7 +410,9 @@ function Page() {
           <Text style={styles.infoValue}>{selectedColor}</Text>
         </View>
 
-        <Text style={[styles.sectionTitle, { marginTop: theme.spacing.lg }]}>사이즈 선택</Text>
+        <Text style={[styles.sectionTitle, { marginTop: theme.spacing.lg }]}>
+          사이즈 선택
+        </Text>
         <View style={styles.chipRow}>
           {selectedProduct.sizes.map((size) => (
             <Chip
@@ -336,10 +425,13 @@ function Page() {
           ))}
         </View>
         <Text style={styles.sizeHint}>
-          신장 기준 • XS: 155-160cm, S: 160-165cm, M: 165-170cm, L: 170-175cm, XL: 175-180cm, 2XL: 180-185cm, 3XL: 185-190cm
+          신장 기준 • XS: 155-160cm, S: 160-165cm, M: 165-170cm, L: 170-175cm,
+          XL: 175-180cm, 2XL: 180-185cm, 3XL: 185-190cm
         </Text>
 
-        <Text style={[styles.sectionTitle, { marginTop: theme.spacing.lg }]}>수량 선택</Text>
+        <Text style={[styles.sectionTitle, { marginTop: theme.spacing.lg }]}>
+          수량 선택
+        </Text>
         <View style={styles.quantityRow}>
           <SecondaryButton
             label="-"
@@ -361,8 +453,8 @@ function Page() {
             addOrderLine(draftSize, draftQuantity);
 
             // Reset draft to next available size
-            const nextAvailableSize = selectedProduct.sizes.find((size) =>
-              !usedSizes.has(size.label) && size.label !== draftSize
+            const nextAvailableSize = selectedProduct.sizes.find(
+              (size) => !usedSizes.has(size.label) && size.label !== draftSize,
             );
             if (nextAvailableSize) {
               setDraftSize(nextAvailableSize.label);
@@ -383,7 +475,11 @@ function Page() {
 
         {orderLines.length > 0 ? (
           <>
-            <Text style={[styles.sectionTitle, { marginTop: theme.spacing.lg }]}>확정 정보</Text>
+            <Text
+              style={[styles.sectionTitle, { marginTop: theme.spacing.lg }]}
+            >
+              확정 정보
+            </Text>
             {orderLines.map((line) => (
               <View key={line.id} style={styles.confirmRow}>
                 <Text style={styles.confirmText}>
@@ -422,7 +518,10 @@ function Page() {
                 setSelectedPlacement('front');
               }
             }}
-            trackColor={{ false: theme.colors.border, true: theme.colors.primary }}
+            trackColor={{
+              false: theme.colors.border,
+              true: theme.colors.primary,
+            }}
             thumbColor={theme.colors.surface}
           />
         </View>
@@ -517,13 +616,21 @@ function Page() {
         <Text style={styles.priceValue}>{formatPrice(pricing.total)}</Text>
         <View style={styles.priceOptions}>
           {pricing.backPrintingFee > 0 && (
-            <Text style={styles.priceOption}>뒷면 프린팅 +{formatPrice(pricing.backPrintingFee)} 포함</Text>
+            <Text style={styles.priceOption}>
+              뒷면 프린팅 +{formatPrice(pricing.backPrintingFee)} 포함
+            </Text>
           )}
           {pricing.largePrintFee > 0 && (
-            <Text style={styles.priceOption}>대형 프린팅 +{formatPrice(pricing.largePrintFee)} 포함</Text>
+            <Text style={styles.priceOption}>
+              대형 프린팅 +{formatPrice(pricing.largePrintFee)} 포함
+            </Text>
           )}
           <Text style={styles.priceNote}>
-            배송비 {pricing.shippingFee === 0 ? '무료' : formatPrice(pricing.shippingFee)} · 총 {totalQuantity}개
+            배송비{' '}
+            {pricing.shippingFee === 0
+              ? '무료'
+              : formatPrice(pricing.shippingFee)}{' '}
+            · 총 {totalQuantity}개
           </Text>
         </View>
       </Card>
@@ -745,6 +852,21 @@ const styles = StyleSheet.create({
   },
   canvasCard: {
     marginBottom: theme.spacing.lg,
+  },
+  placementRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: theme.spacing.md,
+  },
+  placementLabel: {
+    fontSize: 14,
+    lineHeight: 20,
+    fontWeight: '600',
+    color: theme.colors.textPrimary,
+  },
+  placementChips: {
+    flexDirection: 'row',
   },
   canvasTitle: {
     fontSize: 16,

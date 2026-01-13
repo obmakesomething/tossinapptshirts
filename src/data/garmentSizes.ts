@@ -156,7 +156,7 @@ export const ecobagSizes: GarmentMeasurements[] = [
  */
 export function getGarmentMeasurements(
   category: GarmentCategory,
-  size: string
+  size: string,
 ): GarmentMeasurements | null {
   let sizeList: GarmentMeasurements[];
 
@@ -186,7 +186,13 @@ export function getGarmentMeasurements(
 export function getGarmentCategory(productName: string): GarmentCategory {
   const name = productName.toLowerCase();
   if (name.includes('후드') || name.includes('hoodie')) return 'hoodie';
-  if (name.includes('맨투맨') || name.includes('sweatshirt')) return 'sweatshirt';
-  if (name.includes('에코백') || name.includes('ecobag') || name.includes('bag')) return 'ecobag';
+  if (name.includes('맨투맨') || name.includes('sweatshirt'))
+    return 'sweatshirt';
+  if (
+    name.includes('에코백') ||
+    name.includes('ecobag') ||
+    name.includes('bag')
+  )
+    return 'ecobag';
   return 'tshirt'; // default
 }

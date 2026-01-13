@@ -47,11 +47,11 @@ export function ScaleSlider({ min, max, value, onChange }: ScaleSliderProps) {
         const next = clamp(
           startValue.current + delta * (currentMax - currentMin),
           currentMin,
-          currentMax
+          currentMax,
         );
         onChangeRef.current(next);
       },
-    })
+    }),
   );
 
   return (

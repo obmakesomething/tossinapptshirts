@@ -1,7 +1,22 @@
 import { createRoute } from '@granite-js/react-native';
 import React, { useState } from 'react';
-import { StyleSheet, Text, TextInput, View, Image, ActivityIndicator } from 'react-native';
-import { Chip, PrimaryButton, Screen, TopBar, theme, Card, SecondaryButton } from '../components/ui';
+import {
+  ActivityIndicator,
+  Image,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
+import {
+  Card,
+  Chip,
+  PrimaryButton,
+  Screen,
+  SecondaryButton,
+  TopBar,
+  theme,
+} from '../components/ui';
 import { API_BASE_URL } from '../config';
 import { useCatalog } from '../context/catalog';
 
@@ -76,7 +91,9 @@ function Page() {
       }
       setResultUrl(nextUrl);
     } catch (err) {
-      setError(err instanceof Error ? err.message : '이미지 생성에 실패했어요.');
+      setError(
+        err instanceof Error ? err.message : '이미지 생성에 실패했어요.',
+      );
     } finally {
       setLoading(false);
     }
@@ -88,11 +105,14 @@ function Page() {
     setError('');
     setSuccessMessage('');
     try {
-      const response = await fetch(`${API_BASE_URL}/v1/images/remove-background`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ dataUrl: resultUrl, returnBase64: true }),
-      });
+      const response = await fetch(
+        `${API_BASE_URL}/v1/images/remove-background`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ dataUrl: resultUrl, returnBase64: true }),
+        },
+      );
       if (!response.ok) {
         throw new Error('배경 제거에 실패했어요.');
       }
@@ -150,7 +170,9 @@ function Page() {
         }}
         multiline
       />
-      <Text style={styles.helperText}>짧고 명확하게 적어 주세요. 영문이 가장 잘 나와요.</Text>
+      <Text style={styles.helperText}>
+        짧고 명확하게 적어 주세요. 영문이 가장 잘 나와요.
+      </Text>
       {showExamples ? (
         <View style={styles.exampleSection}>
           <Text style={styles.sectionTitle}>프롬프트 예시</Text>
@@ -197,7 +219,11 @@ function Page() {
         </View>
       </View>
 
-      <PrimaryButton label="생성하기" onPress={handleGenerate} disabled={loading} />
+      <PrimaryButton
+        label="생성하기"
+        onPress={handleGenerate}
+        disabled={loading}
+      />
       {loading ? (
         <View style={styles.loadingRow}>
           <ActivityIndicator color={theme.colors.primary} />
@@ -205,7 +231,9 @@ function Page() {
         </View>
       ) : null}
       {error ? <Text style={styles.errorText}>{error}</Text> : null}
-      {successMessage ? <Text style={styles.successText}>{successMessage}</Text> : null}
+      {successMessage ? (
+        <Text style={styles.successText}>{successMessage}</Text>
+      ) : null}
 
       <PrimaryButton
         label="내 굿즈 만들기"

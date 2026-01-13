@@ -7,10 +7,10 @@ export const FREE_SHIPPING_THRESHOLD = 60000;
 
 // 카테고리별 기본 가격 (프린팅 포함)
 export const BASE_PRICES: Record<string, number> = {
-  '티셔츠': 30000,
-  '맨투맨': 40000,
-  '후드': 45000,
-  '에코백': 15000,
+  티셔츠: 30000,
+  맨투맨: 40000,
+  후드: 45000,
+  에코백: 15000,
 };
 
 export type OrderLine = {
@@ -42,7 +42,10 @@ export function calcPricing(input: PricingInput): PricingResult {
   const basePrice = BASE_PRICES[product.category] ?? 19000;
 
   // 총 수량
-  const totalQuantity = orderLines.reduce((sum, line) => sum + line.quantity, 0);
+  const totalQuantity = orderLines.reduce(
+    (sum, line) => sum + line.quantity,
+    0,
+  );
 
   // 기본 금액 계산 (사이즈 추가금 포함)
   let itemsTotal = 0;

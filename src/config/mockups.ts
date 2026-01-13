@@ -15,5 +15,5 @@ export const MOCKUP_CONFIG = {
     // After S3 upload completes, switch to S3
     return this.serverBaseUrl;
     // return `${this.s3BaseUrl}/${this.s3Bucket}/mockups`;
-  }
+  },
 };

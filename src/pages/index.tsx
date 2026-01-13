@@ -1,10 +1,18 @@
 import { createRoute } from '@granite-js/react-native';
 import React from 'react';
-import { StyleSheet, Text, View, Image } from 'react-native';
-import { Card, Chip, PrimaryButton, Screen, SecondaryButton, theme } from '../components/ui';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { MockupCanvas } from '../components/MockupCanvas';
-import { buildTemplate } from '../data/mockupTemplates';
+import {
+  Card,
+  Chip,
+  PrimaryButton,
+  Screen,
+  SecondaryButton,
+  theme,
+} from '../components/ui';
 import { useCatalog } from '../context/catalog';
+import { faqItems } from '../data/faq';
+import { buildTemplate } from '../data/mockupTemplates';
 
 export const Route = createRoute('/', {
   component: Page,
@@ -22,13 +30,15 @@ function Page() {
     textTransform,
     setSelectedProductId,
   } = useCatalog();
-  const [selectedCategory, setSelectedCategory] = React.useState<string>('티셔츠');
+  const [selectedCategory, setSelectedCategory] =
+    React.useState<string>('티셔츠');
 
-  const categories = ['티셔츠', '후드', '맨투맨', '에코백'];
+  const categories = ['티셔츠', '후드', '맨투맨'];
 
-  const filteredProducts = selectedCategory === '티셔츠'
-    ? products.filter(p => p.category === '티셔츠')
-    : products.filter(p => p.category === selectedCategory);
+  const filteredProducts =
+    selectedCategory === '티셔츠'
+      ? products.filter((p) => p.category === '티셔츠')
+      : products.filter((p) => p.category === selectedCategory);
 
   const exampleProducts = filteredProducts.slice(0, 3);
 
@@ -54,8 +64,23 @@ function Page() {
     navigation.navigate('/products');
   };
 
+  const goToFAQ = () => {
+    navigation.navigate('/faq');
+  };
+
+  const goToInquiry = () => {
+    navigation.navigate('/inquiry-create');
+  };
+
   return (
     <Screen>
+      <View style={styles.header}>
+        <Text style={styles.headerTitle}>티셔츠 메이커</Text>
+        <Pressable onPress={goToInquiry} style={styles.inquiryButton}>
+          <Text style={styles.inquiryButtonText}>문의</Text>
+        </Pressable>
+      </View>
+
       <View style={styles.hero}>
         <Text style={styles.heroTitle}>나만의 굿즈 만들기</Text>
         <Text style={styles.heroSubtitle}>
@@ -91,7 +116,10 @@ function Page() {
               text: 'MERCHANDISE\nGPT',
               fontSize: 36,
               fontWeight: 'bold',
-              color: selectedColor === '블랙' ? theme.colors.surface : theme.colors.textPrimary,
+              color:
+                selectedColor === '블랙'
+                  ? theme.colors.surface
+                  : theme.colors.textPrimary,
             }}
             textTransform={{
               offsetX: 0,
@@ -104,7 +132,11 @@ function Page() {
       </View>
 
       <View style={styles.heroActions}>
-        <PrimaryButton label="예상 이미지 만들기 (업로드)" onPress={goToUpload} style={styles.actionButton} />
+        <PrimaryButton
+          label="예상 이미지 만들기 (업로드)"
+          onPress={goToUpload}
+          style={styles.actionButton}
+        />
         <SecondaryButton
           label="예상 이미지 만들기 (AI)"
           onPress={goToGenerate}
@@ -114,10 +146,30 @@ function Page() {
 
       <View style={styles.section}>
         <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>자주 묻는 질문</Text>
+          <Pressable onPress={goToFAQ}>
+            <Text style={styles.sectionAction}>전체 보기</Text>
+          </Pressable>
+        </View>
+        {faqItems.slice(0, 3).map((item) => (
+          <Pressable key={item.id} onPress={goToFAQ}>
+            <Card style={styles.faqCard}>
+              <View style={styles.faqRow}>
+                <Text style={styles.faqQ}>Q</Text>
+                <Text style={styles.faqQuestion}>{item.question}</Text>
+                <Text style={styles.faqArrow}>›</Text>
+              </View>
+            </Card>
+          </Pressable>
+        ))}
+      </View>
+
+      <View style={styles.section}>
+        <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>최근 작업</Text>
-          <Text style={styles.sectionAction} onPress={goToDesigns}>
-            전체 보기
-          </Text>
+          <Pressable onPress={goToDesigns}>
+            <Text style={styles.sectionAction}>전체 보기</Text>
+          </Pressable>
         </View>
         <Card style={styles.recentCard}>
           <MockupCanvas
@@ -141,6 +193,28 @@ function Page() {
 }
 
 const styles = StyleSheet.create({
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: theme.spacing.lg,
+  },
+  headerTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: theme.colors.textPrimary,
+  },
+  inquiryButton: {
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.sm,
+    borderRadius: 999,
+    backgroundColor: theme.colors.primarySoft,
+  },
+  inquiryButtonText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: theme.colors.primary,
+  },
   hero: {
     backgroundColor: theme.colors.surface,
     borderRadius: theme.radius.lg,
@@ -287,5 +361,31 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: theme.colors.textSecondary,
     lineHeight: 20,
+  },
+  faqCard: {
+    marginBottom: theme.spacing.sm,
+  },
+  faqRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  faqQ: {
+    fontSize: 14,
+    lineHeight: 20,
+    fontWeight: '700',
+    color: theme.colors.primary,
+    marginRight: theme.spacing.sm,
+  },
+  faqQuestion: {
+    flex: 1,
+    fontSize: 14,
+    lineHeight: 20,
+    color: theme.colors.textPrimary,
+  },
+  faqArrow: {
+    fontSize: 20,
+    lineHeight: 20,
+    color: theme.colors.textSecondary,
+    marginLeft: theme.spacing.sm,
   },
 });

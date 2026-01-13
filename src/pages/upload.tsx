@@ -1,6 +1,15 @@
+import { fetchAlbumPhotos } from '@apps-in-toss/native-modules';
 import { createRoute } from '@granite-js/react-native';
 import React, { useState } from 'react';
-import { StyleSheet, Text, View, Image, ActivityIndicator, Pressable, Modal } from 'react-native';
+import {
+  ActivityIndicator,
+  Image,
+  Modal,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 import {
   Card,
   Chip,
@@ -12,7 +21,6 @@ import {
 } from '../components/ui';
 import { API_BASE_URL } from '../config';
 import { useCatalog } from '../context/catalog';
-import { fetchAlbumPhotos } from '@apps-in-toss/native-modules';
 
 export const Route = createRoute('/upload', {
   component: Page,
@@ -35,7 +43,6 @@ function Page() {
   const goNext = () => {
     navigation.navigate('/editor');
   };
-
 
   const uploadDataUrl = async (dataUrl: string, filename: string) => {
     setUploading(true);
@@ -76,7 +83,11 @@ function Page() {
           return;
         }
       }
-      const photos = await fetchAlbumPhotos({ maxCount: 1, maxWidth: 1024, base64: true });
+      const photos = await fetchAlbumPhotos({
+        maxCount: 1,
+        maxWidth: 1024,
+        base64: true,
+      });
       const photo = photos[0];
       if (!photo) {
         setError('앨범에서 사진을 찾지 못했어요.');
@@ -89,7 +100,9 @@ function Page() {
       setLastDataUrl(dataUrl);
       await uploadDataUrl(dataUrl, `album-${photo.id}`);
     } catch (err) {
-      setError(err instanceof Error ? err.message : '앨범을 불러오지 못했어요.');
+      setError(
+        err instanceof Error ? err.message : '앨범을 불러오지 못했어요.',
+      );
     } finally {
       setLoadingAlbum(false);
     }
@@ -101,15 +114,22 @@ function Page() {
     setError('');
     setSuccessMessage('');
     try {
-      const response = await fetch(`${API_BASE_URL}/v1/images/remove-background`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(
-          lastDataUrl
-            ? { dataUrl: lastDataUrl, filename: 'upload', returnBase64: true }
-            : { dataUrl: designImageUri, filename: 'upload', returnBase64: true }
-        ),
-      });
+      const response = await fetch(
+        `${API_BASE_URL}/v1/images/remove-background`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(
+            lastDataUrl
+              ? { dataUrl: lastDataUrl, filename: 'upload', returnBase64: true }
+              : {
+                  dataUrl: designImageUri,
+                  filename: 'upload',
+                  returnBase64: true,
+                },
+          ),
+        },
+      );
       if (!response.ok) {
         throw new Error('배경 제거에 실패했어요.');
       }
@@ -156,7 +176,9 @@ function Page() {
       setSuccessMessage('✓ 스타일 변환이 완료되었습니다.');
       setTimeout(() => setSuccessMessage(''), 3000);
     } catch (err) {
-      setError(err instanceof Error ? err.message : '스타일 변환에 실패했어요.');
+      setError(
+        err instanceof Error ? err.message : '스타일 변환에 실패했어요.',
+      );
     } finally {
       setStylingImage(false);
     }
@@ -167,7 +189,9 @@ function Page() {
       <TopBar title="이미지 업로드" onBack={() => navigation.goBack()} />
 
       <Text style={styles.title}>사진을 먼저 가져와 주세요</Text>
-      <Text style={styles.subtitle}>아래 + 박스를 눌러 앨범에서 선택하세요.</Text>
+      <Text style={styles.subtitle}>
+        아래 + 박스를 눌러 앨범에서 선택하세요.
+      </Text>
 
       <Card style={styles.uploadCard}>
         <Pressable style={styles.uploadPreview} onPress={handlePick}>
@@ -201,7 +225,9 @@ function Page() {
               style={styles.bgRemoveButton}
             />
             <SecondaryButton
-              label={stylingImage ? '스타일 변환 중...' : '내 이미지 스타일 바꾸기'}
+              label={
+                stylingImage ? '스타일 변환 중...' : '내 이미지 스타일 바꾸기'
+              }
               onPress={() => setShowStyleOptions(true)}
               disabled={removingBg || stylingImage}
               style={styles.bgRemoveButton}
@@ -210,7 +236,9 @@ function Page() {
         )}
       </Card>
       {error ? <Text style={styles.errorText}>{error}</Text> : null}
-      {successMessage ? <Text style={styles.successText}>{successMessage}</Text> : null}
+      {successMessage ? (
+        <Text style={styles.successText}>{successMessage}</Text>
+      ) : null}
 
       {/* Style Options Modal */}
       <Modal
@@ -223,9 +251,14 @@ function Page() {
           style={styles.modalOverlay}
           onPress={() => setShowStyleOptions(false)}
         >
-          <Pressable style={styles.modalContent} onPress={(e) => e.stopPropagation()}>
+          <Pressable
+            style={styles.modalContent}
+            onPress={(e) => e.stopPropagation()}
+          >
             <Text style={styles.modalTitle}>스타일 선택</Text>
-            <Text style={styles.modalSubtitle}>원본 이미지의 형상을 유지하면서 스타일만 변환합니다</Text>
+            <Text style={styles.modalSubtitle}>
+              원본 이미지의 형상을 유지하면서 스타일만 변환합니다
+            </Text>
             <View style={styles.styleGrid}>
               <Chip
                 label="수채화"

@@ -1,7 +1,8 @@
+import { share } from '@apps-in-toss/framework';
 import { createRoute } from '@granite-js/react-native';
 import React, { useState } from 'react';
-import { StyleSheet, Text, View, ScrollView, Alert } from 'react-native';
-import { share } from '@apps-in-toss/framework';
+import { Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { MockupCanvas } from '../components/MockupCanvas';
 import {
   Card,
   ColorSwatch,
@@ -11,10 +12,9 @@ import {
   TopBar,
   theme,
 } from '../components/ui';
-import { MockupCanvas } from '../components/MockupCanvas';
-import { buildTemplate } from '../data/mockupTemplates';
 import { useCatalog } from '../context/catalog';
 import { resolveColorValue } from '../data/colorMap';
+import { buildTemplate } from '../data/mockupTemplates';
 
 export const Route = createRoute('/preview', {
   component: Page,
@@ -41,7 +41,9 @@ function Page() {
     saveCurrentDesign,
   } = useCatalog();
   const [saving, setSaving] = useState(false);
-  const filteredShots = printBackEnabled ? mockupShots : mockupShots.slice(0, 1);
+  const filteredShots = printBackEnabled
+    ? mockupShots
+    : mockupShots.slice(0, 1);
 
   const handleSave = async () => {
     if (saving) return;
@@ -83,18 +85,25 @@ function Page() {
         {filteredShots.map((label, index) => {
           const isBack = label === 'Back';
           return (
-            <Card key={label} style={[styles.mockupCard, index > 0 && styles.mockupSpacing]}>
+            <Card
+              key={label}
+              style={[styles.mockupCard, index > 0 && styles.mockupSpacing]}
+            >
               <MockupCanvas
                 template={buildTemplate(
                   selectedProduct,
                   selectedColor,
-                  isBack ? 'back' : 'front'
+                  isBack ? 'back' : 'front',
                 )}
                 width={180}
                 height={220}
                 showDesign
-                designImageUri={isBack ? backDesignImageUri : frontDesignImageUri}
-                imageTransform={isBack ? backImageTransform : frontImageTransform}
+                designImageUri={
+                  isBack ? backDesignImageUri : frontDesignImageUri
+                }
+                imageTransform={
+                  isBack ? backImageTransform : frontImageTransform
+                }
                 textLayer={isBack ? backTextLayer : frontTextLayer}
                 textTransform={isBack ? backTextTransform : frontTextTransform}
               />
@@ -127,8 +136,17 @@ function Page() {
       </Card>
 
       <View style={styles.actionRow}>
-        <PrimaryButton label="주문 요청" onPress={goOrder} style={styles.actionButton} />
-        <SecondaryButton label={saving ? '저장 중...' : '저장하기'} onPress={handleSave} disabled={saving} style={styles.actionButton} />
+        <PrimaryButton
+          label="주문 요청"
+          onPress={goOrder}
+          style={styles.actionButton}
+        />
+        <SecondaryButton
+          label={saving ? '저장 중...' : '저장하기'}
+          onPress={handleSave}
+          disabled={saving}
+          style={styles.actionButton}
+        />
         <SecondaryButton label="공유하기" onPress={handleShare} />
       </View>
     </Screen>

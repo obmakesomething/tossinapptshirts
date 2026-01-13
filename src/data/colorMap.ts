@@ -57,10 +57,7 @@ const koreanMap: Record<string, string> = {
 const fallbackColor = '#E2E8F0';
 
 const normalizeKey = (value: string) =>
-  value
-    .toLowerCase()
-    .replace(/\s+/g, '')
-    .replace(/[-_]/g, '');
+  value.toLowerCase().replace(/\s+/g, '').replace(/[-_]/g, '');
 
 export function resolveColorValue(name: string) {
   const trimmed = name.trim();

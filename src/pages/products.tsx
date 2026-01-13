@@ -1,7 +1,15 @@
 import { createRoute } from '@granite-js/react-native';
 import React from 'react';
 import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
-import { Card, Chip, ColorSwatch, PrimaryButton, Screen, TopBar, theme } from '../components/ui';
+import {
+  Card,
+  Chip,
+  ColorSwatch,
+  PrimaryButton,
+  Screen,
+  TopBar,
+  theme,
+} from '../components/ui';
 import { useCatalog } from '../context/catalog';
 import { resolveColorValue } from '../data/colorMap';
 
@@ -11,22 +19,35 @@ export const Route = createRoute('/products', {
 
 function Page() {
   const navigation = Route.useNavigation();
-  const { products, selectedProduct, selectedColor, setSelectedProductId, setSelectedColor } = useCatalog();
-  const [expandedProductId, setExpandedProductId] = React.useState<string | null>(null);
+  const {
+    products,
+    selectedProduct,
+    selectedColor,
+    setSelectedProductId,
+    setSelectedColor,
+  } = useCatalog();
+  const [expandedProductId, setExpandedProductId] = React.useState<
+    string | null
+  >(null);
   const [tempColor, setTempColor] = React.useState<string>('');
   const categoryOrder = ['티셔츠', '후드', '맨투맨', '에코백'];
-  const grouped = products.reduce<Record<string, typeof products>>((acc, product) => {
-    const key = product.category;
-    acc[key] = acc[key] ?? [];
-    acc[key].push(product);
-    return acc;
-  }, {});
+  const grouped = products.reduce<Record<string, typeof products>>(
+    (acc, product) => {
+      const key = product.category;
+      acc[key] = acc[key] ?? [];
+      acc[key].push(product);
+      return acc;
+    },
+    {},
+  );
   const categories = [
     ...categoryOrder.filter((category) => grouped[category]?.length),
-    ...Object.keys(grouped).filter((category) => !categoryOrder.includes(category)),
+    ...Object.keys(grouped).filter(
+      (category) => !categoryOrder.includes(category),
+    ),
   ];
 
-  const handleProductClick = (product: typeof products[0]) => {
+  const handleProductClick = (product: (typeof products)[0]) => {
     if (expandedProductId === product.id) {
       setExpandedProductId(null);
     } else {
@@ -47,9 +68,7 @@ function Page() {
     <Screen>
       <TopBar title="상품 선택" onBack={() => navigation.goBack()} />
 
-      <Text style={styles.subtitle}>
-        원하는 제품을 선택하세요.
-      </Text>
+      <Text style={styles.subtitle}>원하는 제품을 선택하세요.</Text>
 
       <View style={styles.list}>
         {categories.map((category) => (
@@ -63,15 +82,21 @@ function Page() {
                     <Card
                       style={[
                         styles.card,
-                        selectedProduct.id === product.id && styles.cardSelected,
+                        selectedProduct.id === product.id &&
+                          styles.cardSelected,
                         isExpanded && styles.cardExpanded,
                       ]}
                     >
-                      <Image source={product.mainImage} style={styles.thumbnail} resizeMode="cover" />
+                      <Image
+                        source={product.mainImage}
+                        style={styles.thumbnail}
+                        resizeMode="cover"
+                      />
                       <View style={styles.cardBody}>
                         <Text style={styles.cardTitle}>{product.name}</Text>
                         <Text style={styles.cardMeta}>
-                          색상 {product.colors.length} · 사이즈 {product.sizes.length}
+                          색상 {product.colors.length} · 사이즈{' '}
+                          {product.sizes.length}
                         </Text>
                       </View>
                     </Card>
@@ -115,8 +140,7 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     marginBottom: theme.spacing.lg,
   },
-  list: {
-  },
+  list: {},
   categorySection: {
     marginBottom: theme.spacing.lg,
   },

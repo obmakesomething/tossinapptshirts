@@ -1,7 +1,8 @@
+import { share } from '@apps-in-toss/framework';
 import { createRoute } from '@granite-js/react-native';
 import React, { useEffect } from 'react';
-import { StyleSheet, Text, View, Alert } from 'react-native';
-import { share } from '@apps-in-toss/framework';
+import { Alert, StyleSheet, Text, View } from 'react-native';
+import { MockupCanvas } from '../components/MockupCanvas';
 import {
   Card,
   DangerButton,
@@ -11,10 +12,9 @@ import {
   TopBar,
   theme,
 } from '../components/ui';
-import { MockupCanvas } from '../components/MockupCanvas';
-import { buildTemplate } from '../data/mockupTemplates';
-import { useCatalog, type SavedDesign } from '../context/catalog';
+import { type SavedDesign, useCatalog } from '../context/catalog';
 import { catalogProducts } from '../data/catalog';
+import { buildTemplate } from '../data/mockupTemplates';
 
 export const Route = createRoute('/designs', {
   component: Page,
@@ -35,7 +35,8 @@ function formatTimeAgo(dateStr: string): string {
 
 function Page() {
   const navigation = Route.useNavigation();
-  const { savedDesigns, loadDesign, deleteDesign, refreshSavedDesigns } = useCatalog();
+  const { savedDesigns, loadDesign, deleteDesign, refreshSavedDesigns } =
+    useCatalog();
 
   useEffect(() => {
     refreshSavedDesigns();
@@ -83,24 +84,34 @@ function Page() {
     <Screen>
       <TopBar title="내 디자인" onBack={() => navigation.goBack()} />
 
-      <Text style={styles.title}>저장된 디자인을 다시 편집하거나 공유하세요</Text>
+      <Text style={styles.title}>
+        저장된 디자인을 다시 편집하거나 공유하세요
+      </Text>
 
       <View style={styles.list}>
         {savedDesigns.length === 0 ? (
           <Card style={styles.emptyCard}>
             <Text style={styles.emptyText}>저장된 디자인이 없습니다</Text>
-            <Text style={styles.emptySubtext}>미리보기 화면에서 디자인을 저장해보세요</Text>
+            <Text style={styles.emptySubtext}>
+              미리보기 화면에서 디자인을 저장해보세요
+            </Text>
           </Card>
         ) : (
           savedDesigns.map((design) => {
-            const product = catalogProducts.find((p) => p.id === design.productId);
+            const product = catalogProducts.find(
+              (p) => p.id === design.productId,
+            );
             const displayProduct = product ?? catalogProducts[0];
             if (!displayProduct) return null;
 
             return (
               <Card key={design.id} style={styles.designCard}>
                 <MockupCanvas
-                  template={buildTemplate(displayProduct, design.color, 'front')}
+                  template={buildTemplate(
+                    displayProduct,
+                    design.color,
+                    'front',
+                  )}
                   width={72}
                   height={90}
                   showDesign
@@ -115,9 +126,20 @@ function Page() {
                     {design.color} · {formatTimeAgo(design.createdAt)}
                   </Text>
                   <View style={styles.cardActions}>
-                    <SecondaryButton label="다시 편집" onPress={() => handleEdit(design)} style={styles.cardButton} />
-                    <SecondaryButton label="공유" onPress={() => handleShare(design)} style={styles.cardButton} />
-                    <DangerButton label="삭제" onPress={() => handleDelete(design)} />
+                    <SecondaryButton
+                      label="다시 편집"
+                      onPress={() => handleEdit(design)}
+                      style={styles.cardButton}
+                    />
+                    <SecondaryButton
+                      label="공유"
+                      onPress={() => handleShare(design)}
+                      style={styles.cardButton}
+                    />
+                    <DangerButton
+                      label="삭제"
+                      onPress={() => handleDelete(design)}
+                    />
                   </View>
                 </View>
               </Card>

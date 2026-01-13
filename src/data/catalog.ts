@@ -55,17 +55,25 @@ export const catalogProducts: CatalogProduct[] = [
     mainImage: resolveMockup('tshirt_black_front.jpg'),
     detailImage: resolveMockup('tshirt_black_back.jpg'),
     colorImages: {
-      '블랙': {
+      블랙: {
         main: resolveMockup('tshirt_black_front.jpg'),
         detail: resolveMockup('tshirt_black_back.jpg'),
       },
-      '화이트': {
+      화이트: {
         main: resolveMockup('tshirt_white_front.jpg'),
         detail: resolveMockup('tshirt_white_back.jpg'),
       },
     },
     colors: ['화이트', '블랙'],
-    sizes: [{'label': 'XS', 'extraPrice': 0}, {'label': 'S', 'extraPrice': 0}, {'label': 'M', 'extraPrice': 0}, {'label': 'L', 'extraPrice': 0}, {'label': 'XL', 'extraPrice': 0}, {'label': '2XL', 'extraPrice': 1000}, {'label': '3XL', 'extraPrice': 1000}],
+    sizes: [
+      { label: 'XS', extraPrice: 0 },
+      { label: 'S', extraPrice: 0 },
+      { label: 'M', extraPrice: 0 },
+      { label: 'L', extraPrice: 0 },
+      { label: 'XL', extraPrice: 0 },
+      { label: '2XL', extraPrice: 1000 },
+      { label: '3XL', extraPrice: 1000 },
+    ],
     tags: ['반팔티셔츠', '프린트스타 Printstar'],
   },
   {
@@ -75,24 +83,30 @@ export const catalogProducts: CatalogProduct[] = [
     modelName: 'Printstar 188 Heavy Hoodie',
     price: 23500,
     originalPrice: 24500,
-    priceText: formatPrice(
-      23500
-    ),
+    priceText: formatPrice(23500),
     url: 'https://www.customzone.co.kr/상품/%ed%94%84%eb%a6%b0%ed%8a%b8%ec%8a%a4%ed%83%80-188-%ed%97%a4%eb%b9%84-%ed%9b%84%eb%93%9c-%eb%82%a8%eb%85%80%ea%b3%b5%ec%9a%a9/',
-    mainImage: resolveMockup('tshirt_black_front.jpg'),
-    detailImage: resolveMockup('tshirt_black_back.jpg'),
+    mainImage: resolveMockup('hoodie_grey_front.jpg'),
+    detailImage: resolveMockup('hoodie_grey_front.jpg'),
     colorImages: {
-      '블랙': {
-        main: resolveMockup('tshirt_black_front.jpg'),
-        detail: resolveMockup('tshirt_black_back.jpg'),
+      블랙: {
+        main: resolveMockup('hoodie_black_front.jpg'),
+        detail: resolveMockup('hoodie_black_front.jpg'),
       },
-      '화이트': {
-        main: resolveMockup('tshirt_white_front.jpg'),
-        detail: resolveMockup('tshirt_white_back.jpg'),
+      그레이: {
+        main: resolveMockup('hoodie_grey_front.jpg'),
+        detail: resolveMockup('hoodie_grey_front.jpg'),
       },
     },
-    colors: ['화이트', '블랙'],
-    sizes: [{'label': 'S', 'extraPrice': 0}, {'label': 'M', 'extraPrice': 0}, {'label': 'L', 'extraPrice': 0}, {'label': 'XL', 'extraPrice': 0}, {'label': '2XL', 'extraPrice': 3500}, {'label': '3XL', 'extraPrice': 3500}, {'label': '4XL', 'extraPrice': 3500}],
+    colors: ['그레이', '블랙'],
+    sizes: [
+      { label: 'S', extraPrice: 0 },
+      { label: 'M', extraPrice: 0 },
+      { label: 'L', extraPrice: 0 },
+      { label: 'XL', extraPrice: 0 },
+      { label: '2XL', extraPrice: 3500 },
+      { label: '3XL', extraPrice: 3500 },
+      { label: '4XL', extraPrice: 3500 },
+    ],
     tags: ['후드', '프린트스타 Printstar'],
   },
   {
@@ -102,51 +116,30 @@ export const catalogProducts: CatalogProduct[] = [
     modelName: 'Printstar 183 Heavy Sweatshirt',
     price: 17000,
     originalPrice: 18000,
-    priceText: formatPrice(
-      17000
-    ),
+    priceText: formatPrice(17000),
     url: 'https://www.customzone.co.kr/상품/%ed%94%84%eb%a6%b0%ed%8a%b8%ec%8a%a4%ed%83%80-183-%ed%97%a4%eb%b9%84-%eb%a7%a8%ed%88%ac%eb%a7%a8-%eb%82%a8%eb%85%80%ea%b3%b5%ec%9a%a9/',
-    mainImage: resolveMockup('tshirt_black_front.jpg'),
-    detailImage: resolveMockup('tshirt_black_back.jpg'),
+    mainImage: resolveMockup('sweatshirt_grey_front.jpg'),
+    detailImage: resolveMockup('sweatshirt_grey_front.jpg'),
     colorImages: {
-      '블랙': {
-        main: resolveMockup('tshirt_black_front.jpg'),
-        detail: resolveMockup('tshirt_black_back.jpg'),
+      블랙: {
+        main: resolveMockup('sweatshirt_black_front.jpg'),
+        detail: resolveMockup('sweatshirt_black_front.jpg'),
       },
-      '화이트': {
-        main: resolveMockup('tshirt_white_front.jpg'),
-        detail: resolveMockup('tshirt_white_back.jpg'),
+      그레이: {
+        main: resolveMockup('sweatshirt_grey_front.jpg'),
+        detail: resolveMockup('sweatshirt_grey_front.jpg'),
       },
     },
-    colors: ['화이트', '블랙'],
-    sizes: [{'label': 'S', 'extraPrice': 0}, {'label': 'M', 'extraPrice': 0}, {'label': 'L', 'extraPrice': 0}, {'label': 'XL', 'extraPrice': 0}, {'label': '2XL', 'extraPrice': 3500}, {'label': '3XL', 'extraPrice': 3500}, {'label': '4XL', 'extraPrice': 3500}],
+    colors: ['그레이', '블랙'],
+    sizes: [
+      { label: 'S', extraPrice: 0 },
+      { label: 'M', extraPrice: 0 },
+      { label: 'L', extraPrice: 0 },
+      { label: 'XL', extraPrice: 0 },
+      { label: '2XL', extraPrice: 3500 },
+      { label: '3XL', extraPrice: 3500 },
+      { label: '4XL', extraPrice: 3500 },
+    ],
     tags: ['맨투맨', '프린트스타 Printstar'],
-  },
-  {
-    id: 'p-004',
-    name: '에코백',
-    category: '에코백',
-    modelName: 'Canvas Eco Bag 35x40',
-    price: 5500,
-    originalPrice: null,
-    priceText: formatPrice(
-      5500
-    ),
-    url: 'https://www.customzone.co.kr/상품/cz-5000a-canvas-ivory-ecobag/',
-    mainImage: resolveMockup('tshirt_white_front.jpg'),
-    detailImage: resolveMockup('tshirt_white_back.jpg'),
-    colorImages: {
-      '블랙': {
-        main: resolveMockup('tshirt_black_front.jpg'),
-        detail: resolveMockup('tshirt_black_back.jpg'),
-      },
-      '화이트': {
-        main: resolveMockup('tshirt_white_front.jpg'),
-        detail: resolveMockup('tshirt_white_back.jpg'),
-      },
-    },
-    colors: ['화이트', '블랙'],
-    sizes: [{'label': 'ONE SIZE', 'extraPrice': 0}],
-    tags: ['에코백/파우치', '에코백'],
   },
 ];

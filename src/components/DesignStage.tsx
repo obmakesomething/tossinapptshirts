@@ -1,7 +1,7 @@
 import React, { useRef } from 'react';
 import { Image, PanResponder, StyleSheet, Text, View } from 'react-native';
-import type { MockupTemplate } from '../data/mockupTemplates';
 import type { LayerTransform, TextLayer } from '../context/catalog';
+import type { MockupTemplate } from '../data/mockupTemplates';
 import { theme } from './ui';
 
 type DesignStageProps = {
@@ -50,7 +50,8 @@ export function DesignStage({
     height: height * template.printArea.height,
   };
 
-  const activeTransform = activeLayer === 'text' ? textTransform : imageTransform;
+  const activeTransform =
+    activeLayer === 'text' ? textTransform : imageTransform;
   const updateTransform =
     activeLayer === 'text' ? onTextTransformChange : onImageTransformChange;
 
@@ -98,7 +99,8 @@ export function DesignStage({
         const b = touches[1];
         const distance =
           a && b ? Math.hypot(b.pageX - a.pageX, b.pageY - a.pageY) : 0;
-        const angle = a && b ? Math.atan2(b.pageY - a.pageY, b.pageX - a.pageX) : 0;
+        const angle =
+          a && b ? Math.atan2(b.pageY - a.pageY, b.pageX - a.pageX) : 0;
         const currentTransform = activeTransformRef.current;
         startRef.current = {
           offsetX: currentTransform.offsetX,
@@ -121,11 +123,12 @@ export function DesignStage({
           const scaleDelta = startRef.current.distance
             ? distance / startRef.current.distance
             : 1;
-          const rotationDelta = (angle - startRef.current.angle) * (180 / Math.PI);
+          const rotationDelta =
+            (angle - startRef.current.angle) * (180 / Math.PI);
           const nextScale = clamp(
             startRef.current.scale * scaleDelta,
             MIN_SCALE,
-            MAX_SCALE
+            MAX_SCALE,
           );
           updateFn({
             offsetX: startRef.current.offsetX,
@@ -137,12 +140,12 @@ export function DesignStage({
           const nextOffsetX = clamp(
             startRef.current.offsetX + gestureState.dx / currentArea.width,
             -MAX_OFFSET,
-            MAX_OFFSET
+            MAX_OFFSET,
           );
           const nextOffsetY = clamp(
             startRef.current.offsetY + gestureState.dy / currentArea.height,
             -MAX_OFFSET,
-            MAX_OFFSET
+            MAX_OFFSET,
           );
           updateFn({
             scale: startRef.current.scale,
@@ -158,7 +161,7 @@ export function DesignStage({
       onPanResponderTerminate: () => {
         onInteractionEnd?.();
       },
-    })
+    }),
   );
 
   const buildLayerStyle = (transform: LayerTransform) => {
@@ -167,7 +170,10 @@ export function DesignStage({
     const left =
       area.left + area.width / 2 + transform.offsetX * area.width - widthPx / 2;
     const top =
-      area.top + area.height / 2 + transform.offsetY * area.height - heightPx / 2;
+      area.top +
+      area.height / 2 +
+      transform.offsetY * area.height -
+      heightPx / 2;
     return {
       left,
       top,
@@ -183,7 +189,10 @@ export function DesignStage({
     const left =
       area.left + area.width / 2 + transform.offsetX * area.width - widthPx / 2;
     const top =
-      area.top + area.height / 2 + transform.offsetY * area.height - heightPx / 2;
+      area.top +
+      area.height / 2 +
+      transform.offsetY * area.height -
+      heightPx / 2;
     return {
       left,
       top,
@@ -205,8 +214,20 @@ export function DesignStage({
         source={template.image}
         style={styles.image}
         resizeMode="cover"
-        onError={(e) => console.error('[DesignStage] Image load error:', e.nativeEvent.error, 'Source:', template.image)}
-        onLoad={() => console.log('[DesignStage] Image loaded successfully:', template.image)}
+        onError={(e) =>
+          console.error(
+            '[DesignStage] Image load error:',
+            e.nativeEvent.error,
+            'Source:',
+            template.image,
+          )
+        }
+        onLoad={() =>
+          console.log(
+            '[DesignStage] Image loaded successfully:',
+            template.image,
+          )
+        }
       />
       {showPrintArea ? (
         <View
@@ -228,7 +249,9 @@ export function DesignStage({
           style={[styles.designImage, buildLayerStyle(imageTransform)]}
         />
       ) : (
-        <View style={[styles.designPlaceholder, buildLayerStyle(imageTransform)]} />
+        <View
+          style={[styles.designPlaceholder, buildLayerStyle(imageTransform)]}
+        />
       )}
       {textLayer.enabled && textLayer.text ? (
         <View style={[styles.textWrapper, buildTextStyle(textTransform)]}>

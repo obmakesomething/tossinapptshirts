@@ -12,6 +12,7 @@ const fs = require('fs');
 const fsp = require('fs/promises');
 const path = require('path');
 const { runPrintPipeline } = require('./printPipeline');
+const { getPool, initializeDatabase } = require('./db');
 
 const app = express();
 
@@ -493,7 +494,7 @@ function getMailer() {
 }
 
 // Serve static mockup images
-app.use('/mockups', express.static(path.join(process.cwd(), 'public/mockups')));
+app.use('/mockups', express.static(path.join(process.cwd(), 'server-public/mockups')));
 
 app.get('/health', (_req, res) => {
   const health = {
@@ -812,26 +813,35 @@ app.post('/v1/images/style-transfer', strictLimiter, async (req, res) => {
       returnBase64: !!returnBase64,
     });
 
-    const openai = new OpenAI({ apiKey: OPENAI_API_KEY });
+    const client = getOpenAIClient();
 
-    // Base prompt to preserve original shape
+    // Style-specific prompts (generate from text description)
     const stylePrompts = {
-      'watercolor': '수채화 스타일로 변환. 원본의 형상과 구도를 정확히 유지하되 부드러운 수채화 질감을 적용.',
-      'sketch': '연필 스케치 스타일로 변환. 원본의 형상과 구도를 정확히 유지하되 흑백 스케치 느낌을 적용.',
-      'cartoon': '만화/카툰 스타일로 변환. 원본의 형상과 구도를 정확히 유지하되 선명한 윤곽선과 단순한 색상을 적용.',
-      'pixel': '픽셀 아트 스타일로 변환. 원본의 형상과 구도를 정확히 유지하되 8비트 픽셀 느낌을 적용.',
-      'oil': '유화 스타일로 변환. 원본의 형상과 구도를 정확히 유지하되 유화 질감과 붓터치를 적용.',
-      'minimal': '미니멀 라인아트 스타일로 변환. 원본의 핵심 형상만 유지하고 단순한 선으로 표현.',
+      'watercolor': 'watercolor painting style, soft and flowing watercolor textures, gentle color blending, artistic brush strokes, on white background',
+      'sketch': 'pencil sketch style, hand-drawn lines, black and white illustration, artistic sketching, on white background',
+      'cartoon': 'cartoon illustration style, bold outlines, vibrant colors, comic book art style, on white background',
+      'pixel': '8-bit pixel art style, retro video game graphics, pixelated design, digital pixel aesthetic, on white background',
+      'oil': 'oil painting style, thick paint texture, visible brush strokes, classical painting technique, on white background',
+      'minimal': 'minimal line art style, simple clean lines, minimalist design, elegant simplicity, on white background',
     };
 
-    const prompt = stylePrompts[style] || stylePrompts['watercolor'];
+    const styleDescription = stylePrompts[style] || stylePrompts['watercolor'];
+    const enhancedPrompt = `A t-shirt design in ${styleDescription}`;
 
-    // Call OpenAI DALL-E for style transfer (using edit endpoint)
-    const response = await openai.images.edit({
-      image: Buffer.from(dataUrl.split(',')[1], 'base64'),
-      prompt: prompt,
-      n: 1,
+    logEvent('info', 'style_transfer_generate', {
+      requestId: req.requestId,
+      style,
+      model: OPENAI_IMAGE_MODEL,
+      prompt: enhancedPrompt,
+    });
+
+    // Call OpenAI DALL-E for style transfer (using generate endpoint like existing code)
+    const response = await client.images.generate({
+      model: OPENAI_IMAGE_MODEL,
+      prompt: enhancedPrompt,
       size: '1024x1024',
+      n: 1,
+      ...(OPENAI_IMAGE_QUALITY ? { quality: OPENAI_IMAGE_QUALITY } : {}),
     });
 
     const generatedUrl = response.data[0]?.url;
@@ -1470,16 +1480,261 @@ app.get('/v1/print/sizes', (req, res) => {
   }
 });
 
-app.listen(PORT, () => {
-  logEvent('info', 'server_config', {
-    port: PORT,
-    s3Bucket: IMAGE_BUCKET,
-    s3Endpoint: cachedS3Endpoint || process.env.S3_ENDPOINT || resolveS3Endpoint() || '',
-    s3BaseUrl: resolveBaseUrl(),
-    s3ForcePathStyle: String(process.env.S3_FORCE_PATH_STYLE || 'false'),
-    openaiModel: OPENAI_IMAGE_MODEL,
-    openaiQuality: OPENAI_IMAGE_QUALITY,
-    clipdropEnabled: Boolean(CLIPDROP_API_KEY),
-  });
-  console.log(`server listening on ${PORT}`);
+// ============================================================================
+// Inquiry API Endpoints
+// ============================================================================
+
+// Create a new inquiry
+app.post('/v1/inquiries', async (req, res) => {
+  try {
+    const { userId, userName, title, content } = req.body || {};
+
+    if (!userId || !title || !content) {
+      return res.status(400).json({ error: 'userId, title, and content are required.' });
+    }
+
+    const pool = getPool();
+    if (!pool) {
+      return res.status(503).json({ error: 'Database not configured.' });
+    }
+
+    const result = await pool.query(
+      `INSERT INTO inquiries (user_id, user_name, title, content, status, created_at, updated_at)
+       VALUES ($1, $2, $3, $4, 'pending', NOW(), NOW())
+       RETURNING id, user_id, user_name, title, content, status, created_at`,
+      [userId, userName || null, title, content]
+    );
+
+    logEvent('info', 'inquiry_created', {
+      requestId: req.requestId,
+      inquiryId: result.rows[0].id,
+      userId,
+    });
+
+    res.json({ inquiry: result.rows[0], requestId: req.requestId });
+  } catch (error) {
+    logEvent('error', 'inquiry_create_failed', {
+      requestId: req.requestId,
+      ...formatError(error),
+    });
+    res.status(500).json({ error: error.message || 'Failed to create inquiry.', requestId: req.requestId });
+  }
 });
+
+// Get all inquiries for a user
+app.get('/v1/inquiries', async (req, res) => {
+  try {
+    const { userId } = req.query;
+
+    if (!userId) {
+      return res.status(400).json({ error: 'userId query parameter is required.' });
+    }
+
+    const pool = getPool();
+    if (!pool) {
+      return res.status(503).json({ error: 'Database not configured.' });
+    }
+
+    const result = await pool.query(
+      `SELECT id, user_id, user_name, title, content, status, created_at, updated_at
+       FROM inquiries
+       WHERE user_id = $1
+       ORDER BY created_at DESC`,
+      [userId]
+    );
+
+    res.json({ inquiries: result.rows, requestId: req.requestId });
+  } catch (error) {
+    logEvent('error', 'inquiries_fetch_failed', {
+      requestId: req.requestId,
+      ...formatError(error),
+    });
+    res.status(500).json({ error: error.message || 'Failed to fetch inquiries.', requestId: req.requestId });
+  }
+});
+
+// Get a single inquiry with replies
+app.get('/v1/inquiries/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { userId } = req.query;
+
+    if (!userId) {
+      return res.status(400).json({ error: 'userId query parameter is required.' });
+    }
+
+    const pool = getPool();
+    if (!pool) {
+      return res.status(503).json({ error: 'Database not configured.' });
+    }
+
+    // Get inquiry
+    const inquiryResult = await pool.query(
+      `SELECT id, user_id, user_name, title, content, status, created_at, updated_at
+       FROM inquiries
+       WHERE id = $1 AND user_id = $2`,
+      [id, userId]
+    );
+
+    if (inquiryResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Inquiry not found.' });
+    }
+
+    // Get replies
+    const repliesResult = await pool.query(
+      `SELECT id, admin_name, content, created_at
+       FROM inquiry_replies
+       WHERE inquiry_id = $1
+       ORDER BY created_at ASC`,
+      [id]
+    );
+
+    res.json({
+      inquiry: inquiryResult.rows[0],
+      replies: repliesResult.rows,
+      requestId: req.requestId,
+    });
+  } catch (error) {
+    logEvent('error', 'inquiry_detail_fetch_failed', {
+      requestId: req.requestId,
+      ...formatError(error),
+    });
+    res.status(500).json({ error: error.message || 'Failed to fetch inquiry.', requestId: req.requestId });
+  }
+});
+
+// Kakao Address Search API
+app.get('/v1/address/search', async (req, res) => {
+  try {
+    const { query } = req.query;
+
+    if (!query) {
+      return res.status(400).json({ error: 'query parameter is required.' });
+    }
+
+    const KAKAO_REST_API_KEY = process.env.KAKAO_REST_API_KEY;
+    if (!KAKAO_REST_API_KEY) {
+      return res.status(503).json({ error: 'Kakao API key not configured.' });
+    }
+
+    const kakaoUrl = `https://dapi.kakao.com/v2/local/search/address.json?query=${encodeURIComponent(query)}`;
+    const response = await fetch(kakaoUrl, {
+      headers: {
+        Authorization: `KakaoAK ${KAKAO_REST_API_KEY}`,
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error('Kakao API request failed.');
+    }
+
+    const data = await response.json();
+
+    logEvent('info', 'address_search', {
+      requestId: req.requestId,
+      query,
+      resultCount: data.documents?.length || 0,
+    });
+
+    res.json({ addresses: data.documents, meta: data.meta, requestId: req.requestId });
+  } catch (error) {
+    logEvent('error', 'address_search_failed', {
+      requestId: req.requestId,
+      ...formatError(error),
+    });
+    res.status(500).json({ error: error.message || 'Address search failed.', requestId: req.requestId });
+  }
+});
+
+// Middleware to verify Basic Auth for Toss disconnect callback
+function verifyTossCallbackAuth(req, res, next) {
+  const TOSS_CALLBACK_USERNAME = process.env.TOSS_CALLBACK_USERNAME;
+  const TOSS_CALLBACK_PASSWORD = process.env.TOSS_CALLBACK_PASSWORD;
+
+  // If credentials not configured, skip auth check (for testing)
+  if (!TOSS_CALLBACK_USERNAME || !TOSS_CALLBACK_PASSWORD) {
+    console.warn('TOSS_CALLBACK_USERNAME/PASSWORD not set - skipping Basic Auth');
+    return next();
+  }
+
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith('Basic ')) {
+    return res.status(401).json({ error: 'Unauthorized - Basic Auth required' });
+  }
+
+  const base64Credentials = authHeader.split(' ')[1];
+  const credentials = Buffer.from(base64Credentials, 'base64').toString('utf-8');
+  const [username, password] = credentials.split(':');
+
+  if (username === TOSS_CALLBACK_USERNAME && password === TOSS_CALLBACK_PASSWORD) {
+    next();
+  } else {
+    res.status(401).json({ error: 'Unauthorized - Invalid credentials' });
+  }
+}
+
+// Toss Apps-in-Toss - User disconnect callback endpoint
+// This endpoint receives events when users disconnect/withdraw from the app
+app.post('/v1/toss/disconnect', verifyTossCallbackAuth, express.json(), (req, res) => {
+  const { userId, eventType } = req.body || {};
+
+  logEvent('info', 'toss_user_disconnect', {
+    userId,
+    eventType,
+    requestId: req.requestId,
+  });
+
+  // TODO: Handle user data deletion according to your privacy policy
+  // - Remove user from database
+  // - Delete user's saved designs
+  // - Delete user's inquiries (or anonymize them)
+  // - Delete user's personal information
+
+  // For now, just log the event
+  console.log(`Toss user ${userId} disconnected (event: ${eventType})`);
+
+  // Always return success to Toss
+  res.json({ success: true });
+});
+
+// Toss Apps-in-Toss - User disconnect callback (GET method)
+app.get('/v1/toss/disconnect', verifyTossCallbackAuth, (req, res) => {
+  const { userId, eventType } = req.query || {};
+
+  logEvent('info', 'toss_user_disconnect_get', {
+    userId,
+    eventType,
+    requestId: req.requestId,
+  });
+
+  console.log(`Toss user ${userId} disconnected via GET (event: ${eventType})`);
+
+  res.json({ success: true });
+});
+
+// Initialize database and start server
+async function startServer() {
+  try {
+    await initializeDatabase();
+  } catch (error) {
+    console.error('Database initialization failed, but continuing:', error.message);
+  }
+
+  app.listen(PORT, () => {
+    logEvent('info', 'server_config', {
+      port: PORT,
+      s3Bucket: IMAGE_BUCKET,
+      s3Endpoint: cachedS3Endpoint || process.env.S3_ENDPOINT || resolveS3Endpoint() || '',
+      s3BaseUrl: resolveBaseUrl(),
+      s3ForcePathStyle: String(process.env.S3_FORCE_PATH_STYLE || 'false'),
+      openaiModel: OPENAI_IMAGE_MODEL,
+      openaiQuality: OPENAI_IMAGE_QUALITY,
+      clipdropEnabled: Boolean(CLIPDROP_API_KEY),
+      databaseEnabled: Boolean(process.env.DATABASE_URL),
+      kakaoApiEnabled: Boolean(process.env.KAKAO_REST_API_KEY),
+    });
+    console.log(`server listening on ${PORT}`);
+  });
+}
+
+startServer();

@@ -1,8 +1,8 @@
 import React from 'react';
-import { Image, StyleSheet, View, Text, type ViewStyle } from 'react-native';
-import { theme } from './ui';
-import type { MockupTemplate } from '../data/mockupTemplates';
+import { Image, StyleSheet, Text, View, type ViewStyle } from 'react-native';
 import type { LayerTransform, TextLayer } from '../context/catalog';
+import type { MockupTemplate } from '../data/mockupTemplates';
+import { theme } from './ui';
 
 type MockupCanvasProps = {
   template: MockupTemplate;
@@ -44,8 +44,10 @@ export function MockupCanvas({
   const rotation = imageTransform?.rotation ?? 0;
   const designWidth = area.width * scale;
   const designHeight = area.height * scale;
-  const designLeft = area.left + area.width / 2 + offsetX * area.width - designWidth / 2;
-  const designTop = area.top + area.height / 2 + offsetY * area.height - designHeight / 2;
+  const designLeft =
+    area.left + area.width / 2 + offsetX * area.width - designWidth / 2;
+  const designTop =
+    area.top + area.height / 2 + offsetY * area.height - designHeight / 2;
 
   const textScale = textTransform?.scale ?? scale;
   const textOffsetX = textTransform?.offsetX ?? offsetX;
@@ -53,8 +55,10 @@ export function MockupCanvas({
   const textRotation = textTransform?.rotation ?? rotation;
   const textWidth = area.width;
   const textHeight = area.height;
-  const textLeft = area.left + area.width / 2 + textOffsetX * area.width - textWidth / 2;
-  const textTop = area.top + area.height / 2 + textOffsetY * area.height - textHeight / 2;
+  const textLeft =
+    area.left + area.width / 2 + textOffsetX * area.width - textWidth / 2;
+  const textTop =
+    area.top + area.height / 2 + textOffsetY * area.height - textHeight / 2;
 
   return (
     <View style={[styles.container, { width, height }, style]}>
@@ -62,8 +66,20 @@ export function MockupCanvas({
         source={template.image}
         style={styles.image}
         resizeMode="cover"
-        onError={(e) => console.error('[MockupCanvas] Image load error:', e.nativeEvent.error, 'Source:', template.image)}
-        onLoad={() => console.log('[MockupCanvas] Image loaded successfully:', template.image)}
+        onError={(e) =>
+          console.error(
+            '[MockupCanvas] Image load error:',
+            e.nativeEvent.error,
+            'Source:',
+            template.image,
+          )
+        }
+        onLoad={() =>
+          console.log(
+            '[MockupCanvas] Image loaded successfully:',
+            template.image,
+          )
+        }
       />
       {showPrintArea && (
         <View

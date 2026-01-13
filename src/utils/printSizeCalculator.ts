@@ -1,5 +1,5 @@
-import type { PrintOption } from '../data/printOptions';
 import type { GarmentMeasurements } from '../data/garmentSizes';
+import type { PrintOption } from '../data/printOptions';
 
 export type PrintSizeResult = {
   widthCm: number;
@@ -14,7 +14,7 @@ export type PrintSizeResult = {
 export function calculatePrintSize(
   garmentMeasurements: GarmentMeasurements,
   printOption: PrintOption,
-  placement: 'front' | 'back' = 'front'
+  placement: 'front' | 'back' = 'front',
 ): PrintSizeResult {
   const { printableWidth, printableHeight } = garmentMeasurements;
   const { designScale, label } = printOption;
@@ -57,7 +57,7 @@ export function calculatePrintSize(
  */
 export function getRecommendedPrintOption(
   garmentMeasurements: GarmentMeasurements,
-  targetWidthCm?: number
+  targetWidthCm?: number,
 ): string {
   const { printableWidth } = garmentMeasurements;
 
@@ -84,7 +84,7 @@ export function getRecommendedPrintOption(
 export function validatePrintSize(
   widthCm: number,
   heightCm: number,
-  garmentMeasurements: GarmentMeasurements
+  garmentMeasurements: GarmentMeasurements,
 ): { valid: boolean; errors: string[] } {
   const errors: string[] = [];
 
@@ -96,13 +96,13 @@ export function validatePrintSize(
   // Maximum size check
   if (widthCm > garmentMeasurements.printableWidth) {
     errors.push(
-      `프린팅 너비가 최대 한계를 초과합니다 (최대: ${garmentMeasurements.printableWidth}cm).`
+      `프린팅 너비가 최대 한계를 초과합니다 (최대: ${garmentMeasurements.printableWidth}cm).`,
     );
   }
 
   if (heightCm > garmentMeasurements.printableHeight) {
     errors.push(
-      `프린팅 높이가 최대 한계를 초과합니다 (최대: ${garmentMeasurements.printableHeight}cm).`
+      `프린팅 높이가 최대 한계를 초과합니다 (최대: ${garmentMeasurements.printableHeight}cm).`,
     );
   }
 

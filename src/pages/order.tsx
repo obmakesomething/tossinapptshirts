@@ -44,7 +44,12 @@ function Page() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
 
-  const pricing = calcPricing(totalQuantity);
+  const pricing = calcPricing({
+    product: selectedProduct,
+    orderLines,
+    printOption: selectedPrint,
+    printBackEnabled,
+  });
   const sizeSummary = orderLines
     .map((line) => `${line.sizeLabel} ${line.quantity}개`)
     .join(' · ');
@@ -104,8 +109,11 @@ function Page() {
           })),
         ],
         pricing: {
-          unitPrice: formatPrice(pricing.unitPrice),
-          shipping: pricing.shippingFee === 0 ? '무료' : formatPrice(pricing.shippingFee),
+          subtotal: formatPrice(pricing.subtotal),
+          shipping:
+            pricing.shippingFee === 0
+              ? '무료'
+              : formatPrice(pricing.shippingFee),
           total: formatPrice(pricing.total),
           quantity: totalQuantity,
         },
@@ -145,7 +153,10 @@ function Page() {
         </Text>
         <Text style={styles.summaryMeta}>
           예상 결제 {formatPrice(pricing.total)} (배송비{' '}
-          {pricing.shippingFee === 0 ? '무료' : formatPrice(pricing.shippingFee)})
+          {pricing.shippingFee === 0
+            ? '무료'
+            : formatPrice(pricing.shippingFee)}
+          )
         </Text>
       </Card>
 
@@ -174,6 +185,16 @@ function Page() {
         />
 
         <Text style={styles.sectionTitle}>배송지</Text>
+        <SecondaryButton
+          label="주소 검색"
+          onPress={() => {
+            // TODO: Implement Kakao address search modal
+            setError(
+              '주소 검색 기능은 곧 추가됩니다. 지금은 직접 입력해 주세요.',
+            );
+          }}
+          style={styles.addressSearchButton}
+        />
         <TextInput
           style={styles.input}
           placeholder="주소"
@@ -222,11 +243,14 @@ function Page() {
       </Card>
 
       <Text style={styles.noticeText}>
-        출력 이미지에 대한 최종 판단은 주문자가 진행합니다. 주문서 메일을 꼭 확인해 주세요.
+        출력 이미지에 대한 최종 판단은 주문자가 진행합니다. 주문서 메일을 꼭
+        확인해 주세요.
       </Text>
 
       {error ? <Text style={styles.errorText}>{error}</Text> : null}
-      {success ? <Text style={styles.successText}>주문 요청이 접수되었습니다.</Text> : null}
+      {success ? (
+        <Text style={styles.successText}>주문 요청이 접수되었습니다.</Text>
+      ) : null}
 
       <View style={styles.actionRow}>
         <PrimaryButton
@@ -306,6 +330,9 @@ const styles = StyleSheet.create({
   noticeText: {
     fontSize: 12,
     color: theme.colors.textSecondary,
+    marginBottom: theme.spacing.sm,
+  },
+  addressSearchButton: {
     marginBottom: theme.spacing.sm,
   },
 });
