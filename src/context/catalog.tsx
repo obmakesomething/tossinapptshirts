@@ -56,6 +56,7 @@ type CatalogContextValue = {
   orderLines: OrderLine[];
   totalQuantity: number;
   selectedPlacement: Placement;
+  frontPrintEnabled: boolean;
   printBackEnabled: boolean;
   selectedPrint: PrintOption;
   designImageUri: string | null;
@@ -81,6 +82,7 @@ type CatalogContextValue = {
   setOrderLineSize: (lineId: string, sizeLabel: string) => void;
   setOrderLineQuantity: (lineId: string, quantity: number) => void;
   setSelectedPlacement: (placement: Placement) => void;
+  setFrontPrintEnabled: (enabled: boolean) => void;
   setPrintBackEnabled: (enabled: boolean) => void;
   setDesignImageUri: (uri: string | null) => void;
   setDesignPrompt: (prompt: string) => void;
@@ -139,6 +141,7 @@ export function CatalogProvider({ children }: { children: React.ReactNode }) {
   const [orderLines, setOrderLines] = useState<OrderLine[]>([]);
   const [selectedPlacement, setSelectedPlacementState] =
     useState<Placement>('front');
+  const [frontPrintEnabled, setFrontPrintEnabled] = useState(true);
   const [printBackEnabled, setPrintBackEnabledState] = useState(false);
   const [selectedPrintId, setSelectedPrintId] = useState<PrintOption['id']>(
     resolveAutoPrint(fallbackProduct).id,
@@ -368,6 +371,7 @@ export function CatalogProvider({ children }: { children: React.ReactNode }) {
     orderLines,
     totalQuantity,
     selectedPlacement,
+    frontPrintEnabled,
     printBackEnabled,
     selectedPrint,
     designImageUri,
@@ -391,6 +395,7 @@ export function CatalogProvider({ children }: { children: React.ReactNode }) {
     setOrderLineSize,
     setOrderLineQuantity,
     setSelectedPlacement,
+    setFrontPrintEnabled,
     setPrintBackEnabled,
     setDesignImageUri: handleSetDesignImageUri,
     setDesignPrompt,

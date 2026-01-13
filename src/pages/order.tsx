@@ -1,6 +1,6 @@
 import { createRoute } from '@granite-js/react-native';
 import { TossPay } from '@apps-in-toss/framework';
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { StyleSheet, Text, TextInput, View } from 'react-native';
 import {
   Card,
@@ -46,6 +46,31 @@ function Page() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
   const [postcodeModalVisible, setPostcodeModalVisible] = useState(false);
+  const [userKey, setUserKey] = useState<string>('');
+
+  // Get user key from Toss mini-app environment
+  useEffect(() => {
+    // In Toss mini-app, user key should be automatically available via SDK
+    // For development/testing, we'll use a fallback key
+    // TODO: In production, verify this is properly injected by Toss mini-app environment
+    const getTossUserKey = () => {
+      try {
+        // @ts-ignore - Toss may inject this in their environment
+        if (typeof global !== 'undefined' && global.tossUserKey) {
+          // @ts-ignore
+          return global.tossUserKey;
+        }
+      } catch (e) {
+        // Ignore error
+      }
+
+      // Fallback for development/testing
+      // In production, the Toss app environment should provide this automatically
+      return `toss-user-${Date.now()}`;
+    };
+
+    setUserKey(getTossUserKey());
+  }, []);
 
   const handleAddressSelect = (data: AddressData) => {
     setAddress1(data.roadAddress || data.jibunAddress);
@@ -145,6 +170,7 @@ function Page() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'x-toss-user-key': userKey,
         },
         body: JSON.stringify({
           orderNo: orderId,
@@ -173,6 +199,7 @@ function Page() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'x-toss-user-key': userKey,
         },
         body: JSON.stringify({
           payToken,

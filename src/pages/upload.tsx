@@ -186,7 +186,7 @@ function Page() {
 
   return (
     <Screen>
-      <TopBar title="이미지 업로드" onBack={() => navigation.goBack()} />
+      <TopBar title="내 이미지 업로드하기" onBack={() => navigation.goBack()} />
 
       <Text style={styles.title}>사진을 먼저 가져와 주세요</Text>
       <Text style={styles.subtitle}>

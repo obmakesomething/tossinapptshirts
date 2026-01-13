@@ -75,16 +75,16 @@ function Page() {
   return (
     <Screen>
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>티셔츠 메이커</Text>
+        <Text style={styles.headerTitle}>머천다이즈 GPT</Text>
         <Pressable onPress={goToInquiry} style={styles.inquiryButton}>
           <Text style={styles.inquiryButtonText}>문의</Text>
         </Pressable>
       </View>
 
       <View style={styles.hero}>
-        <Text style={styles.heroTitle}>나만의 굿즈 만들기</Text>
+        <Text style={styles.heroTitle}>AI로 나만의 굿즈 만들기</Text>
         <Text style={styles.heroSubtitle}>
-          이미지를 업로드하거나 AI로 생성해서 나만의 굿즈를 만들어 보세요.
+          내 이미지를 업로드하거나 AI로 이미지를 만들어 티셔츠·후디·맨투맨을 제작하세요.
         </Text>
       </View>
 
@@ -133,12 +133,12 @@ function Page() {
 
       <View style={styles.heroActions}>
         <PrimaryButton
-          label="예상 이미지 만들기 (업로드)"
+          label="내 이미지 업로드하기"
           onPress={goToUpload}
           style={styles.actionButton}
         />
         <SecondaryButton
-          label="예상 이미지 만들기 (AI)"
+          label="AI로 이미지 만들기"
           onPress={goToGenerate}
           style={styles.actionButton}
         />
@@ -266,13 +266,15 @@ const styles = StyleSheet.create({
   chipRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
+    marginTop: theme.spacing.md,
   },
   chipSpacing: {
-    marginRight: theme.spacing.sm,
-    marginBottom: theme.spacing.sm,
+    marginRight: theme.spacing.md,
+    marginBottom: theme.spacing.md,
   },
   exampleSection: {
     marginBottom: theme.spacing.xl,
+    marginTop: theme.spacing.xxl + theme.spacing.xl,
     alignItems: 'center',
   },
   exampleImageContainer: {

@@ -45,6 +45,7 @@ function Page() {
     orderLines,
     totalQuantity,
     selectedPlacement,
+    frontPrintEnabled,
     printBackEnabled,
     selectedPrint,
     designImageUri,
@@ -54,6 +55,7 @@ function Page() {
     textLayer,
     setSelectedColor,
     setSelectedPlacement,
+    setFrontPrintEnabled,
     setPrintBackEnabled,
     addOrderLine,
     removeOrderLine,
@@ -159,7 +161,7 @@ function Page() {
 
   return (
     <Screen scrollEnabled={scrollEnabled}>
-      <TopBar title="상품 편집" onBack={() => navigation.goBack()} />
+      <TopBar title="옷 위에 프린팅하기" onBack={() => navigation.goBack()} />
 
       <Card style={styles.productCard}>
         <View style={styles.productHeader}>
@@ -200,32 +202,63 @@ function Page() {
 
       <Card style={styles.canvasCard}>
         <View style={styles.placementRow}>
-          <Text style={styles.placementLabel}>프린팅 위치</Text>
+          <Text style={styles.placementLabel}>프린팅 활성화</Text>
           <View style={styles.placementChips}>
             <Chip
               label="앞면"
-              selected={selectedPlacement === 'front'}
+              selected={frontPrintEnabled}
               onPress={() => {
-                // If trying to disable the only active placement, prevent it
-                if (selectedPlacement === 'front' && !printBackEnabled) {
+                // At least one placement must be enabled
+                if (frontPrintEnabled && !printBackEnabled) {
                   return; // Cannot disable front if back is not enabled
                 }
-                setSelectedPlacement('front');
+                setFrontPrintEnabled(!frontPrintEnabled);
+                // If disabling front, switch to back
+                if (frontPrintEnabled && printBackEnabled) {
+                  setSelectedPlacement('back');
+                }
               }}
               style={styles.chipSpacing}
             />
             <Chip
               label="뒷면"
-              selected={selectedPlacement === 'back'}
+              selected={printBackEnabled}
               onPress={() => {
-                if (!printBackEnabled) {
-                  setPrintBackEnabled(true); // Enable back printing first
+                // At least one placement must be enabled
+                if (printBackEnabled && !frontPrintEnabled) {
+                  return; // Cannot disable back if front is not enabled
                 }
-                setSelectedPlacement('back');
+                setPrintBackEnabled(!printBackEnabled);
+                // If disabling back, switch to front
+                if (printBackEnabled && frontPrintEnabled) {
+                  setSelectedPlacement('front');
+                }
               }}
             />
           </View>
         </View>
+        {(frontPrintEnabled || printBackEnabled) && (
+          <View style={styles.editingRow}>
+            <Text style={styles.editingLabel}>현재 편집 중:</Text>
+            <View style={styles.editingChips}>
+              {frontPrintEnabled && (
+                <Chip
+                  label="앞면 편집"
+                  selected={selectedPlacement === 'front'}
+                  onPress={() => setSelectedPlacement('front')}
+                  style={styles.chipSpacing}
+                />
+              )}
+              {printBackEnabled && (
+                <Chip
+                  label="뒷면 편집"
+                  selected={selectedPlacement === 'back'}
+                  onPress={() => setSelectedPlacement('back')}
+                />
+              )}
+            </View>
+          </View>
+        )}
         <Text style={styles.canvasTitle}>
           {selectedPlacement === 'back' ? '뒷면' : '앞면'} 프린트 영역
         </Text>
@@ -542,12 +575,12 @@ function Page() {
             {!designImageUri && (
               <View style={styles.imageActionRow}>
                 <SecondaryButton
-                  label="예상 이미지 만들기 (업로드)"
+                  label="내 이미지 업로드하기"
                   onPress={() => navigation.navigate('/upload')}
                   style={styles.imageActionButton}
                 />
                 <SecondaryButton
-                  label="예상 이미지 만들기 (AI)"
+                  label="AI로 이미지 만들기"
                   onPress={() => navigation.navigate('/generate')}
                   style={styles.imageActionButton}
                 />
@@ -866,6 +899,24 @@ const styles = StyleSheet.create({
     color: theme.colors.textPrimary,
   },
   placementChips: {
+    flexDirection: 'row',
+  },
+  editingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: theme.spacing.md,
+    paddingTop: theme.spacing.sm,
+    borderTopWidth: 1,
+    borderTopColor: theme.colors.border,
+  },
+  editingLabel: {
+    fontSize: 13,
+    lineHeight: 20,
+    fontWeight: '600',
+    color: theme.colors.textSecondary,
+  },
+  editingChips: {
     flexDirection: 'row',
   },
   canvasTitle: {
