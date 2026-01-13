@@ -16,6 +16,9 @@ const { getPool, initializeDatabase } = require('./db');
 
 const app = express();
 
+// Trust proxy - required for Railway/reverse proxy environments
+app.set('trust proxy', true);
+
 // Security headers
 app.use(helmet({
   contentSecurityPolicy: false, // Disable CSP for API server
