@@ -1,4 +1,5 @@
 import { createRoute } from '@granite-js/react-native';
+import { TossPay } from '@apps-in-toss/framework';
 import React, { useMemo, useState } from 'react';
 import { StyleSheet, Text, TextInput, View } from 'react-native';
 import {
@@ -75,7 +76,9 @@ function Page() {
     setSubmitting(true);
     try {
       const orderId = `MG-${Date.now()}`;
-      const payload = {
+
+      // Build order data
+      const orderData = {
         orderId,
         channel: 'Toss Miniapp',
         storePdf: true,
@@ -125,17 +128,58 @@ function Page() {
         },
       };
 
-      const response = await fetch(`${API_BASE_URL}/v1/orders/submit`, {
+      // Build product description for payment
+      const productDesc = `${selectedProduct.name} ${selectedColor} ${totalQuantity}개`;
+
+      // Step 1: Create payment on server
+      const createResponse = await fetch(`${API_BASE_URL}/v1/payment/create`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          orderNo: orderId,
+          productDesc,
+          amount: pricing.total,
+          amountTaxFree: 0,
+        }),
       });
-      if (!response.ok) {
-        throw new Error('주문 요청에 실패했어요.');
+
+      if (!createResponse.ok) {
+        const errorData = await createResponse.json().catch(() => ({}));
+        throw new Error(errorData.error || '결제 생성에 실패했어요.');
       }
+
+      const { payToken } = await createResponse.json();
+
+      // Step 2: Open TossPay checkout for user authentication
+      const { success, reason } = await TossPay.checkoutPayment({ payToken });
+
+      if (!success) {
+        throw new Error(reason || '결제 인증이 취소되었어요.');
+      }
+
+      // Step 3: Execute payment on server
+      const executeResponse = await fetch(`${API_BASE_URL}/v1/payment/execute`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          payToken,
+          orderNo: orderId,
+          orderData,
+        }),
+      });
+
+      if (!executeResponse.ok) {
+        const errorData = await executeResponse.json().catch(() => ({}));
+        throw new Error(errorData.error || '결제 실행에 실패했어요.');
+      }
+
       setSuccess(true);
     } catch (err) {
-      setError(err instanceof Error ? err.message : '주문 요청에 실패했어요.');
+      setError(err instanceof Error ? err.message : '결제에 실패했어요.');
     } finally {
       setSubmitting(false);
     }
@@ -249,12 +293,12 @@ function Page() {
 
       {error ? <Text style={styles.errorText}>{error}</Text> : null}
       {success ? (
-        <Text style={styles.successText}>주문 요청이 접수되었습니다.</Text>
+        <Text style={styles.successText}>결제가 완료되었습니다. 주문서 이메일을 확인해 주세요.</Text>
       ) : null}
 
       <View style={styles.actionRow}>
         <PrimaryButton
-          label={submitting ? '전송 중...' : '주문 요청 보내기'}
+          label={submitting ? '결제 중...' : '토스페이로 결제하기'}
           onPress={handleSubmit}
           disabled={submitting}
           style={styles.actionButton}

@@ -1715,6 +1715,264 @@ app.get('/v1/toss/disconnect', verifyTossCallbackAuth, (req, res) => {
   res.json({ success: true });
 });
 
+// ========================================
+// TossPay Payment Endpoints
+// ========================================
+const TOSSPAY_API_URL = process.env.TOSSPAY_API_URL || 'https://pay-apps-in-toss-api.toss.im';
+const IS_TEST_PAYMENT = String(process.env.IS_TEST_PAYMENT || 'true') === 'true';
+
+// Create payment - Step 1 of payment flow
+app.post('/v1/payment/create', strictLimiter, async (req, res) => {
+  try {
+    const { orderNo, productDesc, amount, amountTaxFree = 0 } = req.body || {};
+    const userKey = req.headers['x-toss-user-key'];
+
+    if (!userKey) {
+      return res.status(400).json({ error: 'x-toss-user-key header is required.' });
+    }
+    if (!orderNo || !productDesc || amount === undefined) {
+      return res.status(400).json({ error: 'orderNo, productDesc, and amount are required.' });
+    }
+
+    logEvent('info', 'payment_create_request', {
+      requestId: req.requestId,
+      orderNo,
+      amount,
+      isTestPayment: IS_TEST_PAYMENT,
+    });
+
+    const response = await fetch(`${TOSSPAY_API_URL}/api-partner/v1/apps-in-toss/pay/make-payment`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-toss-user-key': userKey,
+      },
+      body: JSON.stringify({
+        orderNo,
+        productDesc,
+        amount: Number(amount),
+        amountTaxFree: Number(amountTaxFree),
+        isTestPayment: IS_TEST_PAYMENT,
+      }),
+    });
+
+    const data = await response.json();
+
+    if (data.resultType !== 'SUCCESS' || !data.success?.payToken) {
+      logEvent('error', 'payment_create_failed', {
+        requestId: req.requestId,
+        orderNo,
+        response: data,
+      });
+      return res.status(400).json({ 
+        error: data.error?.message || 'Payment creation failed.',
+        details: data,
+      });
+    }
+
+    logEvent('info', 'payment_create_success', {
+      requestId: req.requestId,
+      orderNo,
+      payToken: data.success.payToken,
+    });
+
+    res.json({ 
+      payToken: data.success.payToken,
+      orderNo,
+      requestId: req.requestId,
+    });
+  } catch (error) {
+    logEvent('error', 'payment_create_error', {
+      requestId: req.requestId,
+      ...formatError(error),
+    });
+    res.status(500).json({ error: error.message || 'Payment creation failed.', requestId: req.requestId });
+  }
+});
+
+// Execute payment - Step 3 of payment flow (after checkoutPayment SDK call)
+app.post('/v1/payment/execute', strictLimiter, async (req, res) => {
+  try {
+    const { payToken, orderNo, orderData } = req.body || {};
+    const userKey = req.headers['x-toss-user-key'];
+
+    if (!userKey) {
+      return res.status(400).json({ error: 'x-toss-user-key header is required.' });
+    }
+    if (!payToken) {
+      return res.status(400).json({ error: 'payToken is required.' });
+    }
+
+    logEvent('info', 'payment_execute_request', {
+      requestId: req.requestId,
+      payToken,
+      orderNo,
+      isTestPayment: IS_TEST_PAYMENT,
+    });
+
+    const response = await fetch(`${TOSSPAY_API_URL}/api-partner/v1/apps-in-toss/pay/execute-payment`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-toss-user-key': userKey,
+      },
+      body: JSON.stringify({
+        payToken,
+        orderNo,
+        isTestPayment: IS_TEST_PAYMENT,
+      }),
+    });
+
+    const data = await response.json();
+
+    if (data.resultType !== 'SUCCESS') {
+      logEvent('error', 'payment_execute_failed', {
+        requestId: req.requestId,
+        payToken,
+        response: data,
+      });
+      return res.status(400).json({ 
+        error: data.error?.message || 'Payment execution failed.',
+        details: data,
+      });
+    }
+
+    logEvent('info', 'payment_execute_success', {
+      requestId: req.requestId,
+      payToken,
+      orderNo: data.success?.orderNo,
+      amount: data.success?.amount,
+      paidAmount: data.success?.paidAmount,
+      payMethod: data.success?.payMethod,
+      transactionId: data.success?.transactionId,
+    });
+
+    // If orderData is provided, also process the order (send emails, PDF, etc.)
+    if (orderData) {
+      try {
+        // Set the order ID from payment if not set
+        orderData.orderId = orderData.orderId || orderNo || data.success?.orderNo;
+        orderData.paymentInfo = {
+          payToken,
+          transactionId: data.success?.transactionId,
+          amount: data.success?.amount,
+          paidAmount: data.success?.paidAmount,
+          payMethod: data.success?.payMethod,
+          approvalTime: data.success?.approvalTime,
+        };
+
+        // Process order similar to /v1/orders/submit
+        const mailer = getMailer();
+        if (mailer) {
+          const pdfBuffer = await buildOrderPdf(orderData);
+          const pdfName = `order-${orderData.orderId}.pdf`;
+          
+          let pdfUrl = '';
+          if (orderData.storePdf !== false) {
+            const key = `${PDF_PREFIX}/${pdfName}`;
+            pdfUrl = await uploadToS3({ key, body: pdfBuffer, contentType: 'application/pdf' });
+          }
+
+          const adminTo = process.env.ORDER_EMAIL_TO;
+          const customerEmail = orderData.customer?.email || '';
+          const customerName = orderData.customer?.name || '주문자';
+
+          if (adminTo) {
+            await mailer.sendMail({
+              from: process.env.SMTP_FROM || process.env.SMTP_USER,
+              to: adminTo,
+              subject: `🎽 결제 완료: ${orderData.orderId} - ${customerName}`,
+              text: `주문번호: ${orderData.orderId}\n결제금액: ${data.success?.paidAmount}원\n결제수단: ${data.success?.payMethod}`,
+              attachments: [{ filename: pdfName, content: pdfBuffer }],
+            });
+          }
+
+          if (customerEmail) {
+            await mailer.sendMail({
+              from: process.env.SMTP_FROM || process.env.SMTP_USER,
+              to: customerEmail,
+              subject: `[티셔츠메이커] 주문이 완료되었습니다 - ${orderData.orderId}`,
+              text: `안녕하세요 ${customerName}님,\n\n주문이 완료되었습니다.\n주문번호: ${orderData.orderId}\n결제금액: ${data.success?.paidAmount}원\n\n주문서를 첨부해 드립니다.`,
+              attachments: [{ filename: pdfName, content: pdfBuffer }],
+            });
+          }
+
+          logEvent('info', 'order_emails_sent', {
+            requestId: req.requestId,
+            orderId: orderData.orderId,
+          });
+        }
+      } catch (orderError) {
+        logEvent('error', 'order_processing_failed', {
+          requestId: req.requestId,
+          ...formatError(orderError),
+        });
+        // Don't fail the payment response even if order processing fails
+      }
+    }
+
+    res.json({ 
+      success: true,
+      payment: data.success,
+      requestId: req.requestId,
+    });
+  } catch (error) {
+    logEvent('error', 'payment_execute_error', {
+      requestId: req.requestId,
+      ...formatError(error),
+    });
+    res.status(500).json({ error: error.message || 'Payment execution failed.', requestId: req.requestId });
+  }
+});
+
+// Get payment status
+app.post('/v1/payment/status', async (req, res) => {
+  try {
+    const { payToken, orderNo } = req.body || {};
+    const userKey = req.headers['x-toss-user-key'];
+
+    if (!userKey) {
+      return res.status(400).json({ error: 'x-toss-user-key header is required.' });
+    }
+    if (!payToken || !orderNo) {
+      return res.status(400).json({ error: 'payToken and orderNo are required.' });
+    }
+
+    const response = await fetch(`${TOSSPAY_API_URL}/api-partner/v1/apps-in-toss/pay/get-payment-status`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-toss-user-key': userKey,
+      },
+      body: JSON.stringify({
+        payToken,
+        orderNo,
+        isTestPayment: IS_TEST_PAYMENT,
+      }),
+    });
+
+    const data = await response.json();
+
+    if (data.resultType !== 'SUCCESS') {
+      return res.status(400).json({ 
+        error: data.error?.message || 'Failed to get payment status.',
+        details: data,
+      });
+    }
+
+    res.json({ 
+      status: data.success,
+      requestId: req.requestId,
+    });
+  } catch (error) {
+    logEvent('error', 'payment_status_error', {
+      requestId: req.requestId,
+      ...formatError(error),
+    });
+    res.status(500).json({ error: error.message || 'Failed to get payment status.', requestId: req.requestId });
+  }
+});
+
 // Initialize database and start server
 async function startServer() {
   try {
