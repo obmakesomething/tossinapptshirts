@@ -1,8 +1,14 @@
 import { createRoute } from '@granite-js/react-native';
-import React, { useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import React, { useRef, useState } from 'react';
+import {
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 import { Card, Screen, TopBar, theme } from '../components/ui';
-import { faqItems } from '../data/faq';
+import { faqCategories, faqItems } from '../data/faq';
 
 export const Route = createRoute('/faq', {
   component: Page,
@@ -11,80 +17,145 @@ export const Route = createRoute('/faq', {
 function Page() {
   const navigation = Route.useNavigation();
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [selectedCategory, setSelectedCategory] = useState<string>('all');
+  const scrollViewRef = useRef<ScrollView>(null);
+  const categoryRefs = useRef<{ [key: string]: number }>({});
 
   const toggleExpand = (id: string) => {
     setExpandedId(expandedId === id ? null : id);
   };
 
-  // Group FAQs by category
-  const categories = [
-    '전체',
-    ...new Set(faqItems.map((item) => item.category).filter(Boolean)),
-  ];
-  const [selectedCategory, setSelectedCategory] = useState('전체');
+  const scrollToCategory = (categoryId: string) => {
+    setSelectedCategory(categoryId);
+    if (categoryId === 'all') {
+      scrollViewRef.current?.scrollTo({ y: 0, animated: true });
+    } else {
+      const yOffset = categoryRefs.current[categoryId];
+      if (yOffset !== undefined) {
+        scrollViewRef.current?.scrollTo({ y: yOffset - 10, animated: true });
+      }
+    }
+  };
+
+  const handleLayout = (categoryId: string, y: number) => {
+    categoryRefs.current[categoryId] = y;
+  };
 
   const filteredItems =
-    selectedCategory === '전체'
+    selectedCategory === 'all'
       ? faqItems
       : faqItems.filter((item) => item.category === selectedCategory);
+
+  const groupedItems = selectedCategory === 'all'
+    ? faqCategories.map((cat) => ({
+      ...cat,
+      items: faqItems.filter((item) => item.category === cat.id),
+    }))
+    : [
+      {
+        ...faqCategories.find((c) => c.id === selectedCategory)!,
+        items: filteredItems,
+      },
+    ];
 
   return (
     <Screen>
       <TopBar title="자주 묻는 질문" onBack={() => navigation.goBack()} />
 
-      <Text style={styles.subtitle}>궁금하신 내용을 확인해보세요</Text>
+      <Text style={styles.subtitle}>
+        궁금하신 내용을 확인해보세요
+      </Text>
 
-      {/* Category Filter */}
+      {/* Category Navigation Buttons */}
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
         style={styles.categoryScroll}
         contentContainerStyle={styles.categoryScrollContent}
       >
-        {categories.map((category) => (
+        <Pressable
+          style={[
+            styles.categoryChip,
+            selectedCategory === 'all' && styles.categoryChipActive,
+          ]}
+          onPress={() => scrollToCategory('all')}
+        >
+          <Text
+            style={[
+              styles.categoryText,
+              selectedCategory === 'all' && styles.categoryTextActive,
+            ]}
+          >
+            전체
+          </Text>
+        </Pressable>
+        {faqCategories.map((category) => (
           <Pressable
-            key={category}
+            key={category.id}
             style={[
               styles.categoryChip,
-              selectedCategory === category && styles.categoryChipActive,
+              selectedCategory === category.id && styles.categoryChipActive,
             ]}
-            onPress={() => setSelectedCategory(category)}
+            onPress={() => scrollToCategory(category.id)}
           >
             <Text
               style={[
                 styles.categoryText,
-                selectedCategory === category && styles.categoryTextActive,
+                selectedCategory === category.id && styles.categoryTextActive,
               ]}
             >
-              {category}
+              {category.icon} {category.title}
             </Text>
           </Pressable>
         ))}
       </ScrollView>
 
-      <ScrollView showsVerticalScrollIndicator={false}>
-        {filteredItems.map((item) => {
-          const isExpanded = expandedId === item.id;
-          return (
-            <Card key={item.id} style={styles.faqCard}>
-              <Pressable onPress={() => toggleExpand(item.id)}>
-                <View style={styles.questionRow}>
-                  <Text style={styles.qLabel}>Q</Text>
-                  <Text style={styles.questionText}>{item.question}</Text>
-                  <Text style={styles.expandIcon}>
-                    {isExpanded ? '−' : '+'}
-                  </Text>
-                </View>
-                {isExpanded && (
-                  <View style={styles.answerRow}>
-                    <Text style={styles.aLabel}>A</Text>
-                    <Text style={styles.answerText}>{item.answer}</Text>
-                  </View>
-                )}
-              </Pressable>
-            </Card>
-          );
-        })}
+      {/* FAQ Content */}
+      <ScrollView
+        ref={scrollViewRef}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.scrollContent}
+      >
+        {groupedItems.map((group) => (
+          <View
+            key={group.id}
+            onLayout={(e) => handleLayout(group.id, e.nativeEvent.layout.y)}
+          >
+            {/* Category Header */}
+            <View style={styles.categoryHeader}>
+              <Text style={styles.categoryHeaderIcon}>{group.icon}</Text>
+              <Text style={styles.categoryHeaderTitle}>{group.title}</Text>
+              <Text style={styles.categoryCount}>{group.items.length}개</Text>
+            </View>
+
+            {/* FAQ Items */}
+            {group.items.map((item) => {
+              const isExpanded = expandedId === item.id;
+              return (
+                <Card key={item.id} style={styles.faqCard}>
+                  <Pressable onPress={() => toggleExpand(item.id)}>
+                    <View style={styles.questionRow}>
+                      <Text style={styles.qLabel}>Q</Text>
+                      <Text style={styles.questionText}>{item.question}</Text>
+                      <Text style={styles.expandIcon}>
+                        {isExpanded ? '−' : '+'}
+                      </Text>
+                    </View>
+                    {isExpanded && (
+                      <View style={styles.answerRow}>
+                        <Text style={styles.aLabel}>A</Text>
+                        <Text style={styles.answerText}>{item.answer}</Text>
+                      </View>
+                    )}
+                  </Pressable>
+                </Card>
+              );
+            })}
+          </View>
+        ))}
+
+        {/* Bottom Padding */}
+        <View style={styles.bottomPadding} />
       </ScrollView>
     </Screen>
   );
@@ -98,15 +169,17 @@ const styles = StyleSheet.create({
     marginBottom: theme.spacing.md,
   },
   categoryScroll: {
+    maxHeight: 44,
     marginBottom: theme.spacing.md,
   },
   categoryScrollContent: {
     paddingRight: theme.spacing.md,
+    alignItems: 'center',
   },
   categoryChip: {
     paddingHorizontal: theme.spacing.md,
     paddingVertical: theme.spacing.sm,
-    borderRadius: theme.radius.full,
+    borderRadius: 20,
     backgroundColor: theme.colors.surface,
     borderWidth: 1,
     borderColor: theme.colors.border,
@@ -118,12 +191,43 @@ const styles = StyleSheet.create({
   },
   categoryText: {
     fontSize: 13,
-    lineHeight: 20,
+    lineHeight: 18,
     color: theme.colors.textSecondary,
     fontWeight: '500',
   },
   categoryTextActive: {
-    color: theme.colors.surface,
+    color: '#fff',
+  },
+  scrollContent: {
+    paddingBottom: theme.spacing.xl,
+  },
+  categoryHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: theme.spacing.lg,
+    marginBottom: theme.spacing.sm,
+    paddingBottom: theme.spacing.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.border,
+  },
+  categoryHeaderIcon: {
+    fontSize: 20,
+    marginRight: theme.spacing.sm,
+  },
+  categoryHeaderTitle: {
+    flex: 1,
+    fontSize: 16,
+    lineHeight: 24,
+    fontWeight: '700',
+    color: theme.colors.textPrimary,
+  },
+  categoryCount: {
+    fontSize: 12,
+    color: theme.colors.textSecondary,
+    backgroundColor: theme.colors.surface,
+    paddingHorizontal: theme.spacing.sm,
+    paddingVertical: 2,
+    borderRadius: 10,
   },
   faqCard: {
     marginBottom: theme.spacing.sm,
@@ -171,7 +275,10 @@ const styles = StyleSheet.create({
   answerText: {
     flex: 1,
     fontSize: 13,
-    lineHeight: 20,
+    lineHeight: 22,
     color: theme.colors.textSecondary,
+  },
+  bottomPadding: {
+    height: 40,
   },
 });
