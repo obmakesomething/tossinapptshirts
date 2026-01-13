@@ -37,6 +37,7 @@ function Page() {
   const [successMessage, setSuccessMessage] = useState('');
   const [stylingImage, setStylingImage] = useState(false);
   const [showStyleOptions, setShowStyleOptions] = useState(false);
+  const [cropping, setCropping] = useState(false);
 
   const previewUri = designImageUri ?? lastDataUrl;
 
@@ -184,6 +185,43 @@ function Page() {
     }
   };
 
+  const handleCropImage = async () => {
+    // TODO: Implement image cropping
+    // Option 1: Use expo-image-manipulator (if using Expo)
+    // Option 2: Use react-native-image-crop-picker
+    // Option 3: Use @react-native-community/image-editor
+
+    if (!previewUri) {
+      setError('크롭할 이미지를 먼저 선택해주세요.');
+      return;
+    }
+
+    setCropping(true);
+    setError('');
+
+    try {
+      // Placeholder: In a real implementation, open a crop modal/screen
+      // For now, just show a message that the feature needs a library
+      setError('크롭 기능은 곧 추가될 예정입니다. 라이브러리 설치가 필요합니다.');
+
+      // Example implementation with expo-image-manipulator:
+      // import * as ImageManipulator from 'expo-image-manipulator';
+      // const manipResult = await ImageManipulator.manipulateAsync(
+      //   previewUri,
+      //   [{ crop: { originX: 0, originY: 0, width: 1000, height: 1000 } }],
+      //   { format: ImageManipulator.SaveFormat.PNG }
+      // );
+      // setLastDataUrl(manipResult.uri);
+      // await uploadDataUrl(manipResult.uri, 'cropped.png');
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : '이미지 크롭에 실패했어요.',
+      );
+    } finally {
+      setCropping(false);
+    }
+  };
+
   return (
     <Screen>
       <TopBar title="내 이미지 업로드하기" onBack={() => navigation.goBack()} />
@@ -221,7 +259,13 @@ function Page() {
             <SecondaryButton
               label={removingBg ? '배경 제거 중...' : '배경 제거하기'}
               onPress={handleRemoveBackground}
-              disabled={removingBg || stylingImage}
+              disabled={removingBg || stylingImage || cropping}
+              style={styles.bgRemoveButton}
+            />
+            <SecondaryButton
+              label={cropping ? '크롭 중...' : '이미지 크롭하기'}
+              onPress={handleCropImage}
+              disabled={removingBg || stylingImage || cropping}
               style={styles.bgRemoveButton}
             />
             <SecondaryButton
@@ -229,7 +273,7 @@ function Page() {
                 stylingImage ? '스타일 변환 중...' : '내 이미지 스타일 바꾸기'
               }
               onPress={() => setShowStyleOptions(true)}
-              disabled={removingBg || stylingImage}
+              disabled={removingBg || stylingImage || cropping}
               style={styles.bgRemoveButton}
             />
           </>

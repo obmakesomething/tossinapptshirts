@@ -436,103 +436,6 @@ function Page() {
         </View>
       </Card>
 
-      <Card style={styles.optionCard}>
-        <Text style={styles.sectionTitle}>주문 정보</Text>
-        <View style={styles.infoRow}>
-          <Text style={styles.infoLabel}>색상</Text>
-          <Text style={styles.infoValue}>{selectedColor}</Text>
-        </View>
-
-        <Text style={[styles.sectionTitle, { marginTop: theme.spacing.lg }]}>
-          사이즈 선택
-        </Text>
-        <View style={styles.chipRow}>
-          {selectedProduct.sizes.map((size) => (
-            <Chip
-              key={size.label}
-              label={size.label}
-              selected={draftSize === size.label}
-              onPress={() => setDraftSize(size.label)}
-              style={styles.chipSpacing}
-            />
-          ))}
-        </View>
-        <Text style={styles.sizeHint}>
-          신장 기준 • XS: 155-160cm, S: 160-165cm, M: 165-170cm, L: 170-175cm,
-          XL: 175-180cm, 2XL: 180-185cm, 3XL: 185-190cm
-        </Text>
-
-        <Text style={[styles.sectionTitle, { marginTop: theme.spacing.lg }]}>
-          수량 선택
-        </Text>
-        <View style={styles.quantityRow}>
-          <SecondaryButton
-            label="-"
-            onPress={() => setDraftQuantity((q) => Math.max(1, q - 1))}
-          />
-          <Text style={styles.quantityValue}>{draftQuantity}</Text>
-          <SecondaryButton
-            label="+"
-            onPress={() => setDraftQuantity((q) => q + 1)}
-          />
-        </View>
-
-        <SecondaryButton
-          label="추가"
-          onPress={() => {
-            if (isDraftSizeUsed) return;
-
-            // Add new order line with draft size and quantity
-            addOrderLine(draftSize, draftQuantity);
-
-            // Reset draft to next available size
-            const nextAvailableSize = selectedProduct.sizes.find(
-              (size) => !usedSizes.has(size.label) && size.label !== draftSize,
-            );
-            if (nextAvailableSize) {
-              setDraftSize(nextAvailableSize.label);
-            } else {
-              // If all sizes are used, reset to first size
-              setDraftSize(selectedProduct.sizes[0]?.label ?? '');
-            }
-            setDraftQuantity(1);
-          }}
-          disabled={isDraftSizeUsed}
-          style={styles.addLineButton}
-        />
-        {isDraftSizeUsed && (
-          <Text style={styles.sizeHint}>
-            {draftSize} 사이즈는 이미 추가되었습니다.
-          </Text>
-        )}
-
-        {orderLines.length > 0 ? (
-          <>
-            <Text
-              style={[styles.sectionTitle, { marginTop: theme.spacing.lg }]}
-            >
-              확정 정보
-            </Text>
-            {orderLines.map((line) => (
-              <View key={line.id} style={styles.confirmRow}>
-                <Text style={styles.confirmText}>
-                  {line.sizeLabel} × {line.quantity}개
-                </Text>
-                {orderLines.length > 1 ? (
-                  <Pressable
-                    onPress={() => removeOrderLine(line.id)}
-                    accessibilityRole="button"
-                    accessibilityLabel={`${line.sizeLabel} 삭제`}
-                  >
-                    <Text style={styles.removeText}>삭제</Text>
-                  </Pressable>
-                ) : null}
-              </View>
-            ))}
-          </>
-        ) : null}
-      </Card>
-
       <Card style={styles.printingCard}>
         <View style={styles.optionRow}>
           <View>
@@ -640,6 +543,103 @@ function Page() {
                 style={styles.resetButton}
               />
             </View>
+          </>
+        ) : null}
+      </Card>
+
+      <Card style={styles.optionCard}>
+        <Text style={styles.sectionTitle}>주문 정보</Text>
+        <View style={styles.infoRow}>
+          <Text style={styles.infoLabel}>색상</Text>
+          <Text style={styles.infoValue}>{selectedColor}</Text>
+        </View>
+
+        <Text style={[styles.sectionTitle, { marginTop: theme.spacing.lg }]}>
+          사이즈 선택
+        </Text>
+        <View style={styles.chipRow}>
+          {selectedProduct.sizes.map((size) => (
+            <Chip
+              key={size.label}
+              label={size.label}
+              selected={draftSize === size.label}
+              onPress={() => setDraftSize(size.label)}
+              style={styles.chipSpacing}
+            />
+          ))}
+        </View>
+        <Text style={styles.sizeHint}>
+          신장 기준 • XS: 155-160cm, S: 160-165cm, M: 165-170cm, L: 170-175cm,
+          XL: 175-180cm, 2XL: 180-185cm, 3XL: 185-190cm
+        </Text>
+
+        <Text style={[styles.sectionTitle, { marginTop: theme.spacing.lg }]}>
+          수량 선택
+        </Text>
+        <View style={styles.quantityRow}>
+          <SecondaryButton
+            label="-"
+            onPress={() => setDraftQuantity((q) => Math.max(1, q - 1))}
+          />
+          <Text style={styles.quantityValue}>{draftQuantity}</Text>
+          <SecondaryButton
+            label="+"
+            onPress={() => setDraftQuantity((q) => q + 1)}
+          />
+        </View>
+
+        <SecondaryButton
+          label="추가"
+          onPress={() => {
+            if (isDraftSizeUsed) return;
+
+            // Add new order line with draft size and quantity
+            addOrderLine(draftSize, draftQuantity);
+
+            // Reset draft to next available size
+            const nextAvailableSize = selectedProduct.sizes.find(
+              (size) => !usedSizes.has(size.label) && size.label !== draftSize,
+            );
+            if (nextAvailableSize) {
+              setDraftSize(nextAvailableSize.label);
+            } else {
+              // If all sizes are used, reset to first size
+              setDraftSize(selectedProduct.sizes[0]?.label ?? '');
+            }
+            setDraftQuantity(1);
+          }}
+          disabled={isDraftSizeUsed}
+          style={styles.addLineButton}
+        />
+        {isDraftSizeUsed && (
+          <Text style={styles.sizeHint}>
+            {draftSize} 사이즈는 이미 추가되었습니다.
+          </Text>
+        )}
+
+        {orderLines.length > 0 ? (
+          <>
+            <Text
+              style={[styles.sectionTitle, { marginTop: theme.spacing.lg }]}
+            >
+              확정 정보
+            </Text>
+            {orderLines.map((line) => (
+              <View key={line.id} style={styles.confirmRow}>
+                <Text style={styles.confirmText}>
+                  {line.sizeLabel} × {line.quantity}개
+                </Text>
+                {orderLines.length > 1 ? (
+                  <Pressable
+                    onPress={() => removeOrderLine(line.id)}
+                    accessibilityRole="button"
+                    accessibilityLabel={`${line.sizeLabel} 삭제`}
+                  >
+                    <Text style={styles.removeText}>삭제</Text>
+                  </Pressable>
+                ) : null}
+              </View>
+            ))}
           </>
         ) : null}
       </Card>
