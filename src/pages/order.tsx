@@ -10,6 +10,7 @@ import {
   TopBar,
   theme,
 } from '../components/ui';
+import { DaumPostcodeModal, type AddressData } from '../components/DaumPostcodeModal';
 import { API_BASE_URL } from '../config';
 import { useCatalog } from '../context/catalog';
 import { calcPricing } from '../data/pricing';
@@ -44,6 +45,14 @@ function Page() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
+  const [postcodeModalVisible, setPostcodeModalVisible] = useState(false);
+
+  const handleAddressSelect = (data: AddressData) => {
+    setAddress1(data.roadAddress || data.jibunAddress);
+    setZip(data.zonecode);
+    setCity(data.sido);
+    setState(data.sigungu);
+  };
 
   const pricing = calcPricing({
     product: selectedProduct,
@@ -231,12 +240,7 @@ function Page() {
         <Text style={styles.sectionTitle}>배송지</Text>
         <SecondaryButton
           label="주소 검색"
-          onPress={() => {
-            // TODO: Implement Kakao address search modal
-            setError(
-              '주소 검색 기능은 곧 추가됩니다. 지금은 직접 입력해 주세요.',
-            );
-          }}
+          onPress={() => setPostcodeModalVisible(true)}
           style={styles.addressSearchButton}
         />
         <TextInput
@@ -305,6 +309,12 @@ function Page() {
         />
         <SecondaryButton label="이전으로" onPress={() => navigation.goBack()} />
       </View>
+
+      <DaumPostcodeModal
+        visible={postcodeModalVisible}
+        onClose={() => setPostcodeModalVisible(false)}
+        onSelect={handleAddressSelect}
+      />
     </Screen>
   );
 }
