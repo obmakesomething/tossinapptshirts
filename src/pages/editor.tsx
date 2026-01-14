@@ -733,7 +733,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
     color: theme.colors.textPrimary,
-    marginBottom: 4,
+    marginBottom: theme.spacing.xs,
   },
   sizeGuideText: {
     fontSize: 12,

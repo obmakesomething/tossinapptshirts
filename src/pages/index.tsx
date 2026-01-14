@@ -45,6 +45,19 @@ function Page() {
 
   const exampleProducts = filteredProducts.slice(0, 3);
 
+  // 선택된 카테고리에 맞는 제품 찾기
+  const categoryProduct = products.find((p) => p.category === selectedCategory) || selectedProduct;
+
+  // 카테고리 변경 핸들러
+  const handleCategoryChange = (category: string) => {
+    setSelectedCategory(category);
+    // Context의 제품도 업데이트
+    const product = products.find((p) => p.category === category);
+    if (product) {
+      setSelectedProductId(product.id);
+    }
+  };
+
   const steps = [
     { title: '이미지 준비', desc: '업로드 또는 생성' },
     { title: '상품 선택', desc: '컬러·사이즈' },
@@ -99,7 +112,7 @@ function Page() {
               key={category}
               label={category}
               selected={selectedCategory === category}
-              onPress={() => setSelectedCategory(category)}
+              onPress={() => handleCategoryChange(category)}
               style={styles.chipSpacing}
             />
           ))}
@@ -109,7 +122,7 @@ function Page() {
       <View style={styles.exampleSection}>
         <View style={styles.exampleImageContainer}>
           <MockupCanvas
-            template={buildTemplate(selectedProduct, selectedColor, 'front')}
+            template={buildTemplate(categoryProduct, selectedColor, 'front')}
             width={180}
             height={240}
             showDesign
@@ -147,13 +160,16 @@ function Page() {
         />
       </View>
 
-      <View style={styles.section}>
+      <View style={styles.faqSection}>
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>자주 묻는 질문</Text>
           <Pressable onPress={goToFAQ}>
             <Text style={styles.sectionAction}>전체 보기</Text>
           </Pressable>
         </View>
+        <Text style={styles.faqDescription}>
+          궁금하신 사항에 대한 답변을 확인해보세요.
+        </Text>
         {faqItems.slice(0, 3).map((item) => (
           <Pressable key={item.id} onPress={goToFAQ}>
             <Card style={styles.faqCard}>
@@ -371,6 +387,17 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: theme.colors.textSecondary,
     lineHeight: 20,
+  },
+  faqSection: {
+    marginTop: theme.spacing.xxl,
+    marginBottom: theme.spacing.xl,
+  },
+  faqDescription: {
+    fontSize: 14,
+    color: theme.colors.textSecondary,
+    lineHeight: 20,
+    marginTop: theme.spacing.sm,
+    marginBottom: theme.spacing.md,
   },
   faqCard: {
     marginBottom: theme.spacing.sm,

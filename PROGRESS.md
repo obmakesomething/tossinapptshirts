@@ -112,93 +112,932 @@ colorImages: {
 - FAQ 및 문제 해결
 - 다음 세션 시작 가이드
 
-### 🔴 Issue #5: Fix Image Scale Range (logo to A3 size)
-**작업 필요**: src/components/ImageEditor.tsx 또는 관련 컴포넌트
-- 현재 scale min/max 값 확인
-- 로고 크기(~5cm) ~ A3 크기(~30cm) 범위로 조정
+---
 
-### 🔴 Issue #6: Make Canvas Full Screen in Editor
-**작업 필요**: src/pages/editor.tsx
-- 캔버스 크기 제한 해제
-- 전체 화면 활용하도록 레이아웃 조정
+## 이슈별 상세 가이드
 
-### 🔴 Issue #7: Implement Image Crop (Native Phone Editor)
-**문제**: 크롭 버튼 클릭 시 "library needed" 에러
-**작업 필요**:
-- react-native-image-crop-picker 설치 또는
-- React Native 네이티브 이미지 편집 기능 활용
+### Phase 1: UI/UX 개선 (추천 시작점) ⭐
 
-### 🔴 Issue #8: Fix Style Transfer Feature
-**문제**: 스타일 변환 기능 작동 안 함
-**작업 필요**:
-- 상세 로깅 추가
-- API 호출 흐름 디버깅
-- 에러 메시지 개선
+#### 🔴 Issue #9: Add FAQ Section Description
+**예상 시간**: 30분
+**난이도**: ⭐☆☆☆☆ (쉬움)
+**파일**: src/pages/index.tsx
 
-### 🔴 Issue #9: Add FAQ Section Description
-**문제**: FAQ 섹션이 위 버튼과 너무 가까움
-**작업 필요**: src/pages/index.tsx
-- FAQ 섹션에 설명 텍스트 추가
-- 간격 조정 (margin 증가)
+**문제**: FAQ 섹션이 위 버튼과 너무 가까워서 시각적 구분이 어려움
 
-### 🔴 Issue #10: Product Category Dynamic Mockup
-**문제**: 메인 페이지에서 제품 카테고리 선택해도 목업 이미지가 바뀌지 않음
-**작업 필요**: src/pages/index.tsx
-- selectedCategory 변경 시 mockup 이미지 동적 업데이트
+**작업 내용**:
+```typescript
+// src/pages/index.tsx (대략 Line 300-350)
+// FAQ 섹션 찾기
 
-### 🔴 Issue #11: Adjust Button Spacing Consistently
-**작업 필요**: 전체 앱 (index.tsx, editor.tsx, upload.tsx 등)
-- 같은 위계: spacing.sm ~ spacing.md
-- 다른 위계: spacing.lg ~ spacing.xl
-- Proximity 원칙 적용
+// ❌ Before:
+<View style={styles.faqSection}>
+  <Text style={styles.faqTitle}>자주 묻는 질문</Text>
+  {/* 바로 FAQ 버튼들 */}
+</View>
 
-### 🔴 Issue #12: Background Removal Button Styling
-**작업 필요**: src/pages/upload.tsx
-- 배경 제거 버튼에 색상 추가
-- 완료 상태 표시 (로딩, 성공, 실패)
+// ✅ After:
+<View style={styles.faqSection}>
+  <Text style={styles.faqTitle}>자주 묻는 질문</Text>
+  <Text style={styles.faqDescription}>
+    궁금하신 사항에 대한 답변을 확인해보세요.
+  </Text>
+  {/* FAQ 버튼들 */}
+</View>
 
-### 🔴 Issue #13: Checkerboard Transparency Pattern
-**문제**: 투명 영역이 하얀색으로 보임
-**작업 필요**: MockupCanvas 또는 이미지 렌더링 컴포넌트
-- 체크무늬 패턴 배경 추가
-- CSS: `background-image: repeating-conic-gradient(...)`
+// 스타일 추가:
+faqSection: {
+  marginTop: theme.spacing.xxl, // ✅ xl → xxl로 증가
+  paddingHorizontal: theme.spacing.lg,
+},
+faqDescription: {
+  fontSize: 14,
+  color: theme.colors.textSecondary,
+  marginTop: theme.spacing.sm,
+  marginBottom: theme.spacing.md,
+}
+```
 
-### 🔴 Issue #14: Reorganize Product Info Section
-**작업 필요**: src/pages/editor.tsx
-- 가격 표시 제거
-- 컬러 선택기를 제품 정보 섹션으로 통합
+**테스트 방법**:
+1. 메인 페이지 접속
+2. 아래로 스크롤하여 FAQ 섹션 확인
+3. 설명 텍스트가 표시되는지 확인
+4. 위 버튼과의 간격이 적절한지 확인
 
-### 🔴 Issue #15: Revert Front/Back UI
-**작업 필요**: src/pages/editor.tsx
-- 현재: XOR 토글 (둘 중 하나만)
-- 변경: 앞면 기본, 뒷면은 아래 옵션으로 추가
-- **주의**: 최근 editor.tsx가 수정되어 이미 OR 로직으로 변경되었을 수 있음 (확인 필요)
+---
 
-### 🔴 Issue #16: Fix Address Search Auto-fill and Modal Close
-**작업 필요**: src/components/DaumPostcodeModal.tsx, src/pages/order.tsx
-- 주소 선택 시 자동 입력
-- 모달 자동 닫기
-- 상세 주소 입력으로 포커스 이동
+#### 🔴 Issue #10: Product Category Dynamic Mockup
+**예상 시간**: 1-1.5시간
+**난이도**: ⭐⭐☆☆☆ (보통)
+**파일**: src/pages/index.tsx
 
-### 🔴 Issue #17: Remove Blue Dotted Lines from Canvas
-**문제**: 목업 캔버스에 파란 점선(프린팅 영역 가이드) 표시
-**작업 필요**: MockupCanvas 컴포넌트
-- 가이드 라인 제거 또는 옵션화
+**문제**: 카테고리 탭을 클릭해도 mockup 이미지가 변경되지 않음
 
-### 🔴 Issue #18: Document All Changes
-**작업 필요**: 이 파일 계속 업데이트
+**작업 내용**:
+```typescript
+// src/pages/index.tsx
 
-### 🔴 Issue #19: Image Link Resolution Documentation
-**작업 필요**: 별도 문서 생성 (IMAGE_LINKS.md)
-- resolveMockup() 함수 동작 방식
-- S3 vs 로컬 서버 경로
-- MOCKUP_CONFIG 설정
+// 1. 현재 selectedCategory state 확인
+const [selectedCategory, setSelectedCategory] = useState('티셔츠');
 
-### 🔴 Issue #20: Final Commit and Build
-**작업 필요**: 모든 이슈 완료 후
-- 최종 빌드 실행
-- 전체 변경사항 커밋
-- Railway 배포
+// 2. catalog에서 선택된 카테고리의 제품 찾기
+const selectedProduct = catalogProducts.find(
+  p => p.category === selectedCategory
+);
+
+// 3. mockup 이미지 동적으로 변경
+const mockupImageUri = selectedProduct?.colorImages[
+  selectedProduct.colors[0] // 기본 첫 번째 색상
+]?.main;
+
+// 4. Image 컴포넌트에 적용
+<Image
+  source={{ uri: mockupImageUri }}
+  style={styles.mockupImage}
+  resizeMode="contain"
+/>
+```
+
+**상세 구현**:
+```typescript
+// 카테고리 변경 시 제품도 함께 변경
+const handleCategoryChange = (category: string) => {
+  setSelectedCategory(category);
+
+  // Context의 제품도 업데이트 (필요한 경우)
+  const product = catalogProducts.find(p => p.category === category);
+  if (product) {
+    setSelectedProduct(product);
+    setSelectedColor(product.colors[0]); // 기본 색상으로 리셋
+  }
+};
+```
+
+**테스트 방법**:
+1. 메인 페이지 접속
+2. 카테고리 탭 클릭 (티셔츠 → 후드 → 맨투맨)
+3. 각 카테고리 변경 시 mockup 이미지가 즉시 변경되는지 확인
+4. 이미지 로딩 에러가 없는지 확인
+
+---
+
+#### 🔴 Issue #11: Adjust Button Spacing Consistently
+**예상 시간**: 2-3시간
+**난이도**: ⭐⭐⭐☆☆ (중간)
+**파일**: src/pages/index.tsx, editor.tsx, upload.tsx, generate.tsx, order.tsx
+
+**문제**: 버튼 간격이 일관성 없이 설정되어 있음
+
+**작업 원칙**:
+```typescript
+// theme.ts의 spacing 값 활용
+theme.spacing = {
+  xs: 4,   // 매우 작은 간격
+  sm: 8,   // 작은 간격 (같은 그룹 내)
+  md: 12,  // 중간 간격 (같은 그룹 내)
+  lg: 16,  // 큰 간격 (다른 그룹 간)
+  xl: 24,  // 매우 큰 간격 (섹션 간)
+  xxl: 32, // 거대한 간격 (주요 섹션)
+}
+
+// Proximity 원칙:
+// - 관련 있는 버튼: sm ~ md (8-12px)
+// - 다른 기능 그룹: lg ~ xl (16-24px)
+// - 섹션 구분: xl ~ xxl (24-32px)
+```
+
+**작업 체크리스트**:
+- [ ] src/pages/index.tsx
+  - [ ] 이미지 업로드/AI 생성 버튼 (같은 그룹 → sm)
+  - [ ] 버튼 그룹과 FAQ 섹션 (다른 섹션 → xl)
+- [ ] src/pages/editor.tsx
+  - [ ] 앞면/뒷면 토글 버튼 (같은 그룹 → sm)
+  - [ ] 이미지/텍스트 레이어 버튼 (같은 그룹 → sm)
+  - [ ] 편집 도구와 주문 버튼 (다른 기능 → lg)
+- [ ] src/pages/upload.tsx
+  - [ ] 배경 제거/스타일 변환 버튼 (같은 그룹 → md)
+  - [ ] 크롭 버튼 (다른 기능 → lg)
+- [ ] src/pages/generate.tsx
+  - [ ] 스타일 옵션 버튼들 (같은 그룹 → sm)
+- [ ] src/pages/order.tsx
+  - [ ] 결제 버튼 (단독 → xl)
+
+**예시 코드**:
+```typescript
+// ❌ Before: 하드코딩된 값
+<View style={{ gap: 10 }}>
+  <Button title="버튼1" />
+  <Button title="버튼2" />
+</View>
+
+// ✅ After: theme spacing 사용
+<View style={{ gap: theme.spacing.sm }}>
+  <Button title="버튼1" />
+  <Button title="버튼2" />
+</View>
+```
+
+**테스트 방법**:
+1. 모든 페이지 순회하며 버튼 간격 확인
+2. 같은 기능 그룹의 버튼들이 가까이 있는지 확인
+3. 다른 섹션 간 충분한 여백이 있는지 확인
+
+---
+
+### Phase 2: 에디터 기능 개선
+
+#### 🔴 Issue #5: Fix Image Scale Range (logo to A3 size)
+**예상 시간**: 1시간
+**난이도**: ⭐⭐☆☆☆ (보통)
+**파일**: src/components/ImageEditor.tsx, src/pages/editor.tsx
+
+**문제**: 이미지 크기 조절 범위가 부적절함 (너무 작거나 너무 큼)
+
+**작업 내용**:
+```typescript
+// src/components/ImageEditor.tsx 또는 editor.tsx
+
+// ❌ Before: 임의의 scale 값
+const [scale, setScale] = useState(1);
+// Slider min=0.1, max=5
+
+// ✅ After: 로고(5cm) ~ A3(30cm) 범위
+// 티셔츠 프린팅 영역: 약 25cm x 35cm
+// 로고: 5cm x 5cm (scale ≈ 0.2)
+// A3: 30cm x 42cm (scale ≈ 1.2)
+
+const MIN_SCALE = 0.2;  // 로고 크기
+const MAX_SCALE = 1.5;  // A3 크기
+const DEFAULT_SCALE = 0.8; // 적절한 기본값
+
+const [scale, setScale] = useState(DEFAULT_SCALE);
+
+<Slider
+  value={scale}
+  onValueChange={setScale}
+  minimumValue={MIN_SCALE}
+  maximumValue={MAX_SCALE}
+  step={0.05}
+/>
+```
+
+**테스트 방법**:
+1. 에디터에서 이미지 업로드
+2. 크기 조절 슬라이더 조작
+3. 최소값에서 로고 크기 정도인지 확인
+4. 최대값에서 티셔츠를 거의 채우는지 확인
+
+---
+
+#### 🔴 Issue #6: Make Canvas Full Screen in Editor
+**예상 시간**: 1.5시간
+**난이도**: ⭐⭐⭐☆☆ (중간)
+**파일**: src/pages/editor.tsx
+
+**문제**: 캔버스가 화면 일부만 차지하여 편집 공간이 부족함
+
+**작업 내용**:
+```typescript
+// src/pages/editor.tsx
+
+// ❌ Before: 고정 크기 또는 제한된 크기
+<View style={{ height: 400, width: 300 }}>
+  <MockupCanvas />
+</View>
+
+// ✅ After: 전체 화면 활용
+import { Dimensions } from 'react-native';
+
+const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
+
+// 헤더/버튼 영역 제외하고 최대한 활용
+const canvasHeight = screenHeight - 200; // 하단 컨트롤 영역 제외
+
+<ScrollView>
+  <View style={styles.canvasContainer}>
+    <MockupCanvas
+      width={screenWidth}
+      height={canvasHeight}
+    />
+  </View>
+  {/* 하단 편집 도구들 */}
+</ScrollView>
+
+const styles = StyleSheet.create({
+  canvasContainer: {
+    flex: 1,
+    width: '100%',
+    minHeight: canvasHeight,
+  },
+});
+```
+
+**테스트 방법**:
+1. 에디터 페이지 진입
+2. 캔버스가 화면 대부분을 차지하는지 확인
+3. 다양한 화면 크기에서 테스트 (iPhone SE, Pro Max 등)
+4. 스크롤이 자연스러운지 확인
+
+---
+
+#### 🔴 Issue #7: Implement Image Crop (Native Phone Editor)
+**예상 시간**: 2-3시간
+**난이도**: ⭐⭐⭐⭐☆ (어려움)
+**파일**: src/pages/upload.tsx
+
+**문제**: 크롭 버튼 클릭 시 "library needed" 에러 발생
+
+**작업 내용**:
+```bash
+# 1. 라이브러리 설치
+npm install react-native-image-crop-picker
+
+# 2. iOS 설정 (필요한 경우)
+cd ios && pod install
+```
+
+```typescript
+// src/pages/upload.tsx
+import ImagePicker from 'react-native-image-crop-picker';
+
+const handleCrop = async () => {
+  try {
+    const croppedImage = await ImagePicker.openCropper({
+      path: imageUri, // 현재 이미지 URI
+      width: 1000,
+      height: 1000,
+      cropping: true,
+      cropperToolbarTitle: '이미지 크롭',
+      freeStyleCropEnabled: true, // 자유 비율 크롭
+    });
+
+    // 크롭된 이미지로 업데이트
+    setImageUri(croppedImage.path);
+
+  } catch (error) {
+    console.error('Crop failed:', error);
+    Alert.alert('오류', '이미지 크롭에 실패했습니다.');
+  }
+};
+
+<Button title="크롭" onPress={handleCrop} />
+```
+
+**대안 (react-native-image-crop-picker 사용 불가 시)**:
+```typescript
+// @react-native-community/image-editor 사용
+import ImageEditor from '@react-native-community/image-editor';
+
+const handleCrop = async () => {
+  const cropData = {
+    offset: { x: 0, y: 0 },
+    size: { width: 1000, height: 1000 },
+    displaySize: { width: 1000, height: 1000 },
+  };
+
+  const croppedUri = await ImageEditor.cropImage(imageUri, cropData);
+  setImageUri(croppedUri);
+};
+```
+
+**테스트 방법**:
+1. 이미지 업로드
+2. 크롭 버튼 클릭
+3. 크롭 인터페이스가 표시되는지 확인
+4. 크롭 후 이미지가 업데이트되는지 확인
+
+---
+
+#### 🔴 Issue #17: Remove Blue Dotted Lines from Canvas
+**예상 시간**: 30분
+**난이도**: ⭐⭐☆☆☆ (보통)
+**파일**: src/components/MockupCanvas.tsx
+
+**문제**: 프린팅 영역 가이드 라인이 항상 표시되어 최종 결과 확인이 어려움
+
+**작업 내용**:
+```typescript
+// src/components/MockupCanvas.tsx
+
+// 가이드 라인 그리는 부분 찾기 (예시)
+// ❌ Before: 항상 표시
+ctx.strokeStyle = '#3182F6';
+ctx.setLineDash([5, 5]);
+ctx.strokeRect(printArea.x, printArea.y, printArea.width, printArea.height);
+
+// ✅ After: 옵션으로 제어 (에디터에서만 표시)
+interface MockupCanvasProps {
+  showGuides?: boolean; // 기본값: false
+}
+
+if (showGuides) {
+  ctx.strokeStyle = '#3182F6';
+  ctx.setLineDash([5, 5]);
+  ctx.strokeRect(printArea.x, printArea.y, printArea.width, printArea.height);
+}
+
+// 사용:
+// 에디터 페이지
+<MockupCanvas showGuides={true} />
+
+// 미리보기/주문 페이지
+<MockupCanvas showGuides={false} />
+```
+
+**테스트 방법**:
+1. 에디터 페이지: 가이드 라인 표시 확인
+2. 미리보기 페이지: 가이드 라인 미표시 확인
+3. 주문 페이지: 가이드 라인 미표시 확인
+
+---
+
+### Phase 3: 이미지 처리 개선
+
+#### 🔴 Issue #8: Fix Style Transfer Feature
+**예상 시간**: 2-3시간
+**난이도**: ⭐⭐⭐⭐☆ (어려움)
+**파일**: src/pages/upload.tsx, server/index.js
+
+**문제**: 스타일 변환 버튼 클릭 시 응답 없음
+
+**작업 내용**:
+
+**1. 프론트엔드 로깅 추가 (upload.tsx)**:
+```typescript
+const handleStyleTransfer = async () => {
+  console.log('[DEBUG] Style transfer started');
+
+  try {
+    setLoading(true);
+
+    const response = await fetch(`${API_BASE_URL}/v1/style-transfer`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        imageUri,
+        style: selectedStyle,
+      }),
+    });
+
+    console.log('[DEBUG] Response status:', response.status);
+    const data = await response.json();
+    console.log('[DEBUG] Response data:', data);
+
+    if (data.success) {
+      setImageUri(data.styledImageUri);
+    } else {
+      Alert.alert('오류', data.error || '스타일 변환 실패');
+    }
+
+  } catch (error) {
+    console.error('[ERROR] Style transfer failed:', error);
+    Alert.alert('오류', '네트워크 오류가 발생했습니다.');
+  } finally {
+    setLoading(false);
+  }
+};
+```
+
+**2. 백엔드 로깅 추가 (server/index.js)**:
+```javascript
+app.post('/v1/style-transfer', strictLimiter, async (req, res) => {
+  console.log('[DEBUG] Style transfer request received');
+  console.log('[DEBUG] Request body:', req.body);
+
+  try {
+    const { imageUri, style } = req.body;
+
+    if (!imageUri) {
+      console.error('[ERROR] Missing imageUri');
+      return res.status(400).json({ success: false, error: 'Image URI required' });
+    }
+
+    // OpenAI API 호출
+    console.log('[DEBUG] Calling OpenAI API...');
+    const response = await openai.images.edit({
+      image: imageUri,
+      prompt: `Apply ${style} style to this image`,
+      n: 1,
+      size: "1024x1024",
+    });
+
+    console.log('[DEBUG] OpenAI response:', response);
+
+    const styledImageUri = response.data[0].url;
+
+    res.json({
+      success: true,
+      styledImageUri,
+    });
+
+  } catch (error) {
+    console.error('[ERROR] Style transfer error:', error.message);
+    console.error('[ERROR] Stack:', error.stack);
+
+    res.status(500).json({
+      success: false,
+      error: error.message,
+    });
+  }
+});
+```
+
+**3. API 키 확인**:
+```bash
+# .env 파일 확인
+cat .env | grep OPENAI_API_KEY
+```
+
+**테스트 방법**:
+1. 콘솔 로그 모니터링
+2. 이미지 업로드 → 스타일 변환 클릭
+3. 프론트/백엔드 로그 확인
+4. 에러 메시지 분석
+5. OpenAI API quota 확인
+
+---
+
+#### 🔴 Issue #12: Background Removal Button Styling
+**예상 시간**: 1시간
+**난이도**: ⭐⭐☆☆☆ (보통)
+**파일**: src/pages/upload.tsx
+
+**문제**: 배경 제거 버튼이 눈에 띄지 않고 상태를 알 수 없음
+
+**작업 내용**:
+```typescript
+// src/pages/upload.tsx
+
+const [bgRemovalStatus, setBgRemovalStatus] = useState<
+  'idle' | 'loading' | 'success' | 'error'
+>('idle');
+
+const handleRemoveBackground = async () => {
+  setBgRemovalStatus('loading');
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/v1/remove-background`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ imageUri }),
+    });
+
+    const data = await response.json();
+
+    if (data.success) {
+      setImageUri(data.processedImageUri);
+      setBgRemovalStatus('success');
+
+      // 3초 후 상태 리셋
+      setTimeout(() => setBgRemovalStatus('idle'), 3000);
+    } else {
+      setBgRemovalStatus('error');
+    }
+
+  } catch (error) {
+    setBgRemovalStatus('error');
+  }
+};
+
+// 버튼 스타일
+const getButtonStyle = () => {
+  switch (bgRemovalStatus) {
+    case 'loading':
+      return { backgroundColor: theme.colors.textSecondary };
+    case 'success':
+      return { backgroundColor: '#52C41A' }; // 녹색
+    case 'error':
+      return { backgroundColor: theme.colors.error };
+    default:
+      return { backgroundColor: theme.colors.primary };
+  }
+};
+
+const getButtonText = () => {
+  switch (bgRemovalStatus) {
+    case 'loading':
+      return '처리 중...';
+    case 'success':
+      return '완료!';
+    case 'error':
+      return '실패 (재시도)';
+    default:
+      return '배경 제거';
+  }
+};
+
+<Button
+  title={getButtonText()}
+  onPress={handleRemoveBackground}
+  disabled={bgRemovalStatus === 'loading'}
+  style={[styles.button, getButtonStyle()]}
+/>
+```
+
+**테스트 방법**:
+1. 이미지 업로드
+2. 배경 제거 버튼 클릭
+3. "처리 중..." 상태 표시 확인
+4. 성공 시 녹색 "완료!" 표시 확인
+5. 실패 시 빨간색 "실패" 표시 확인
+
+---
+
+#### 🔴 Issue #13: Checkerboard Transparency Pattern
+**예상 시간**: 1-1.5시간
+**난이도**: ⭐⭐⭐☆☆ (중간)
+**파일**: src/components/MockupCanvas.tsx
+
+**문제**: 투명 배경 제거 후 투명 영역이 하얀색으로 보여 구분 어려움
+
+**작업 내용**:
+
+**React Native (Canvas 사용)**:
+```typescript
+// src/components/MockupCanvas.tsx
+
+// Canvas에 체크무늬 패턴 그리기
+const drawCheckerboard = (ctx: CanvasRenderingContext2D, width: number, height: number) => {
+  const squareSize = 10; // 체크무늬 크기
+  const colors = ['#FFFFFF', '#E0E0E0']; // 밝은 회색/흰색
+
+  for (let y = 0; y < height; y += squareSize) {
+    for (let x = 0; x < width; x += squareSize) {
+      const colorIndex = ((x / squareSize) + (y / squareSize)) % 2;
+      ctx.fillStyle = colors[colorIndex];
+      ctx.fillRect(x, y, squareSize, squareSize);
+    }
+  }
+};
+
+// 이미지 렌더링 전에 패턴 그리기
+const renderCanvas = () => {
+  const canvas = canvasRef.current;
+  const ctx = canvas.getContext('2d');
+
+  // 1. 체크무늬 배경 그리기
+  drawCheckerboard(ctx, canvas.width, canvas.height);
+
+  // 2. 목업 이미지 그리기
+  ctx.drawImage(mockupImage, 0, 0);
+
+  // 3. 사용자 이미지 그리기 (투명도 포함)
+  ctx.drawImage(userImage, x, y, width, height);
+};
+```
+
+**또는 CSS 스타일로 배경 추가**:
+```typescript
+<View style={styles.canvasWrapper}>
+  <Canvas ref={canvasRef} />
+</View>
+
+const styles = StyleSheet.create({
+  canvasWrapper: {
+    backgroundColor: '#FFFFFF',
+    backgroundImage: `
+      repeating-conic-gradient(
+        #E0E0E0 0% 25%,
+        #FFFFFF 0% 50%
+      ) 50% / 20px 20px
+    `,
+  },
+});
+```
+
+**테스트 방법**:
+1. 배경이 투명한 이미지 업로드
+2. 에디터/미리보기에서 체크무늬 패턴 표시 확인
+3. 투명 영역과 흰색 영역 구분 가능한지 확인
+
+---
+
+### Phase 4: 주문 플로우 개선
+
+#### 🔴 Issue #14: Reorganize Product Info Section
+**예상 시간**: 1시간
+**난이도**: ⭐⭐☆☆☆ (보통)
+**파일**: src/pages/editor.tsx
+
+**문제**: 제품 정보 섹션에 가격이 표시되어 있고, 컬러 선택기가 분리되어 있음
+
+**작업 내용**:
+```typescript
+// src/pages/editor.tsx
+
+// ❌ Before:
+<View style={styles.productInfo}>
+  <Text>{selectedProduct.name}</Text>
+  <Text>가격: {selectedProduct.price}원</Text>
+</View>
+<View style={styles.colorPicker}>
+  {/* 컬러 선택 */}
+</View>
+
+// ✅ After: 가격 제거, 컬러 통합
+<View style={styles.productInfo}>
+  <Text style={styles.productName}>{selectedProduct.name}</Text>
+  <Text style={styles.productModel}>{selectedProduct.modelName}</Text>
+
+  {/* 컬러 선택기 통합 */}
+  <View style={styles.colorSection}>
+    <Text style={styles.colorLabel}>컬러</Text>
+    <View style={styles.colorOptions}>
+      {selectedProduct.colors.map(color => (
+        <TouchableOpacity
+          key={color}
+          style={[
+            styles.colorChip,
+            selectedColor === color && styles.colorChipSelected,
+          ]}
+          onPress={() => setSelectedColor(color)}
+        >
+          <Text>{color}</Text>
+        </TouchableOpacity>
+      ))}
+    </View>
+  </View>
+</View>
+
+const styles = StyleSheet.create({
+  productInfo: {
+    padding: theme.spacing.lg,
+    backgroundColor: theme.colors.surface,
+    borderRadius: theme.radius.lg,
+  },
+  colorSection: {
+    marginTop: theme.spacing.md,
+  },
+  colorOptions: {
+    flexDirection: 'row',
+    gap: theme.spacing.sm,
+    marginTop: theme.spacing.xs,
+  },
+});
+```
+
+**테스트 방법**:
+1. 에디터 페이지 진입
+2. 제품 정보 섹션에서 가격이 보이지 않는지 확인
+3. 컬러 선택기가 제품 정보 내에 있는지 확인
+4. 컬러 변경이 정상 작동하는지 확인
+
+---
+
+#### 🔴 Issue #15: Revert Front/Back UI
+**예상 시간**: 1시간
+**난이도**: ⭐⭐☆☆☆ (보통)
+**파일**: src/pages/editor.tsx
+
+**주의**: 먼저 현재 코드 확인 필요 (이미 수정되었을 수 있음)
+
+**작업 내용**:
+```typescript
+// src/pages/editor.tsx
+
+// ❌ Before (XOR 로직): 둘 중 하나만 선택 가능
+const handleFrontToggle = () => {
+  setFrontPrintEnabled(true);
+  setPrintBackEnabled(false); // 뒷면 강제 비활성화
+};
+
+const handleBackToggle = () => {
+  setFrontPrintEnabled(false); // 앞면 강제 비활성화
+  setPrintBackEnabled(true);
+};
+
+// ✅ After (OR 로직): 앞면 기본, 뒷면은 추가 옵션
+<View style={styles.printOptions}>
+  {/* 앞면은 항상 활성화, 토글 없음 */}
+  <Text>앞면 프린팅</Text>
+
+  {/* 뒷면은 체크박스/스위치로 추가 */}
+  <View style={styles.backPrintOption}>
+    <Text>뒷면에도 프린팅</Text>
+    <Switch
+      value={printBackEnabled}
+      onValueChange={setPrintBackEnabled}
+    />
+  </View>
+</View>
+
+// 가격 계산: 뒷면 추가 시 추가 요금
+const totalPrice = basePrice + (printBackEnabled ? 5000 : 0);
+```
+
+**테스트 방법**:
+1. 에디터 진입 시 앞면 프린팅 활성화 확인
+2. 뒷면 스위치 ON → 양면 프린팅 활성화
+3. 뒷면 스위치 OFF → 앞면만 프린팅
+4. 미리보기에서 양면 표시 확인
+
+---
+
+#### 🔴 Issue #16: Fix Address Search Auto-fill and Modal Close
+**예상 시간**: 1-1.5시간
+**난이도**: ⭐⭐⭐☆☆ (중간)
+**파일**: src/components/DaumPostcodeModal.tsx, src/pages/order.tsx
+
+**문제**: 주소 선택 후 자동 입력 안 되고 모달이 자동으로 닫히지 않음
+
+**작업 내용**:
+
+**1. DaumPostcodeModal.tsx 수정**:
+```typescript
+// src/components/DaumPostcodeModal.tsx
+
+interface DaumPostcodeModalProps {
+  visible: boolean;
+  onClose: () => void;
+  onComplete: (data: AddressData) => void; // ✅ 콜백 추가
+}
+
+const DaumPostcodeModal = ({ visible, onClose, onComplete }: Props) => {
+  const handleComplete = (data: any) => {
+    console.log('[DEBUG] Address selected:', data);
+
+    const addressData = {
+      zonecode: data.zonecode,        // 우편번호
+      address: data.address,          // 기본 주소
+      buildingName: data.buildingName, // 건물명
+    };
+
+    // 1. 부모 컴포넌트에 데이터 전달
+    onComplete(addressData);
+
+    // 2. 모달 자동 닫기
+    onClose();
+  };
+
+  return (
+    <Modal visible={visible} onRequestClose={onClose}>
+      <DaumPostcode
+        onComplete={handleComplete}
+        onClose={onClose}
+      />
+    </Modal>
+  );
+};
+```
+
+**2. order.tsx 수정**:
+```typescript
+// src/pages/order.tsx
+
+const [addressModalVisible, setAddressModalVisible] = useState(false);
+const [zonecode, setZonecode] = useState('');
+const [address, setAddress] = useState('');
+const [detailAddress, setDetailAddress] = useState('');
+const detailAddressInputRef = useRef(null);
+
+const handleAddressComplete = (data: AddressData) => {
+  console.log('[DEBUG] Address data received:', data);
+
+  // 1. 우편번호, 기본 주소 자동 입력
+  setZonecode(data.zonecode);
+  setAddress(data.address);
+
+  // 2. 상세 주소 입력란으로 포커스 이동
+  setTimeout(() => {
+    detailAddressInputRef.current?.focus();
+  }, 100);
+};
+
+<DaumPostcodeModal
+  visible={addressModalVisible}
+  onClose={() => setAddressModalVisible(false)}
+  onComplete={handleAddressComplete}
+/>
+
+{/* 주소 입력 필드 */}
+<TextInput
+  value={zonecode}
+  editable={false}
+  placeholder="우편번호"
+/>
+<TextInput
+  value={address}
+  editable={false}
+  placeholder="기본 주소"
+/>
+<TextInput
+  ref={detailAddressInputRef}
+  value={detailAddress}
+  onChangeText={setDetailAddress}
+  placeholder="상세 주소"
+/>
+```
+
+**테스트 방법**:
+1. 주문 페이지에서 주소 검색 버튼 클릭
+2. 주소 검색 모달에서 주소 선택
+3. 모달이 자동으로 닫히는지 확인
+4. 우편번호, 기본 주소가 자동 입력되는지 확인
+5. 상세 주소 입력란으로 포커스 이동 확인
+
+---
+
+### Phase 5: 문서화 및 마무리
+
+#### 🔴 Issue #18: Document All Changes
+**예상 시간**: 계속
+**난이도**: ⭐☆☆☆☆
+**파일**: PROGRESS.md
+
+**작업 내용**:
+- 각 이슈 완료 시 PROGRESS.md 업데이트
+- 완료 표시: 🔴 → ✅
+- 시도한 방법, 최종 해결책 기록
+
+---
+
+#### 🔴 Issue #19: Image Link Resolution Documentation
+**예상 시간**: 1시간
+**난이도**: ⭐⭐☆☆☆
+**파일**: IMAGE_LINKS.md (새로 생성)
+
+**작업 내용**:
+- resolveMockup() 함수 설명
+- 로컬 vs 프로덕션 경로 차이
+- S3 설정 방법
+- 이미지 최적화 가이드
+
+---
+
+#### 🔴 Issue #20: Final Commit and Build
+**예상 시간**: 30분
+**난이도**: ⭐☆☆☆☆
+
+**작업 내용**:
+```bash
+# 1. 최종 빌드
+npm run build
+
+# 2. 커밋
+git add -A
+git commit -m "feat: complete all remaining issues (#5-#17)
+
+- Issue #5: Fixed image scale range
+- Issue #6: Made canvas full screen
+- Issue #7: Implemented image crop
+- Issue #8: Fixed style transfer
+- Issue #9: Added FAQ description
+- Issue #10: Dynamic mockup images
+- Issue #11: Consistent button spacing
+- Issue #12: Background removal button styling
+- Issue #13: Checkerboard transparency
+- Issue #14: Reorganized product info
+- Issue #15: Reverted front/back UI
+- Issue #16: Fixed address auto-fill
+- Issue #17: Removed blue dotted lines
+
+Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>"
+
+# 3. Push
+git push origin feat/20260113-2124
+
+# 4. Railway 배포 확인
+```
 
 ---
 

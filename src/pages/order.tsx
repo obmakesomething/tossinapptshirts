@@ -354,7 +354,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
     color: theme.colors.textPrimary,
-    marginBottom: 4,
+    marginBottom: theme.spacing.xs,
   },
   summaryMeta: {
     fontSize: 12,
