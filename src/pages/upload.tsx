@@ -187,33 +187,54 @@ function Page() {
   };
 
   const handleStyleTransfer = async (style: string) => {
-    if (!designImageUri && !lastDataUrl) return;
+    if (!designImageUri && !lastDataUrl) {
+      console.log('[StyleTransfer] No image available');
+      return;
+    }
+
+    console.log('[StyleTransfer] Starting style transfer:', style);
     setStylingImage(true);
     setError('');
     setSuccessMessage('');
     setShowStyleOptions(false);
+
     try {
+      const imageToTransfer = designImageUri || lastDataUrl;
+      console.log('[StyleTransfer] Image data length:', imageToTransfer?.length || 0);
+
       const response = await fetch(`${API_BASE_URL}/v1/images/style-transfer`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          dataUrl: designImageUri || lastDataUrl,
+          dataUrl: imageToTransfer,
           style,
           returnBase64: true,
         }),
       });
+
+      console.log('[StyleTransfer] Response status:', response.status);
+
       if (!response.ok) {
+        const errorText = await response.text();
+        console.error('[StyleTransfer] Error response:', errorText);
         throw new Error('스타일 변환에 실패했어요.');
       }
+
       const data = await response.json();
+      console.log('[StyleTransfer] Response keys:', Object.keys(data));
+
       if (!data.dataUrl) {
+        console.error('[StyleTransfer] Missing dataUrl in response:', data);
         throw new Error('스타일 변환 결과가 올바르지 않아요.');
       }
+
+      console.log('[StyleTransfer] Success! Data URL length:', data.dataUrl.length);
       setDesignImageUri(data.dataUrl);
       setLastDataUrl(null);
       setSuccessMessage('✓ 스타일 변환이 완료되었습니다.');
       setTimeout(() => setSuccessMessage(''), 3000);
     } catch (err) {
+      console.error('[StyleTransfer] Error:', err);
       setError(
         err instanceof Error ? err.message : '스타일 변환에 실패했어요.',
       );

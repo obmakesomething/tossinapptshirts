@@ -802,13 +802,23 @@ app.post('/v1/images/style-transfer', strictLimiter, async (req, res) => {
   try {
     const { dataUrl, style, returnBase64 } = req.body || {};
 
+    console.log('[StyleTransfer] Request received:', {
+      hasDataUrl: !!dataUrl,
+      dataUrlLength: dataUrl?.length || 0,
+      style,
+      returnBase64,
+    });
+
     if (!dataUrl) {
+      console.error('[StyleTransfer] Missing dataUrl');
       return res.status(400).json({ error: 'dataUrl is required.' });
     }
     if (!style) {
+      console.error('[StyleTransfer] Missing style');
       return res.status(400).json({ error: 'style is required.' });
     }
     if (!OPENAI_API_KEY) {
+      console.error('[StyleTransfer] Missing OPENAI_API_KEY');
       return res.status(500).json({ error: 'OPENAI_API_KEY is required.' });
     }
 
@@ -816,6 +826,7 @@ app.post('/v1/images/style-transfer', strictLimiter, async (req, res) => {
       requestId: req.requestId,
       style,
       returnBase64: !!returnBase64,
+      dataUrlLength: dataUrl.length,
     });
 
     const client = getOpenAIClient();
@@ -840,6 +851,8 @@ app.post('/v1/images/style-transfer', strictLimiter, async (req, res) => {
       prompt: enhancedPrompt,
     });
 
+    console.log('[StyleTransfer] Calling OpenAI with prompt:', enhancedPrompt);
+
     // Call OpenAI DALL-E for style transfer (using generate endpoint like existing code)
     const response = await client.images.generate({
       model: OPENAI_IMAGE_MODEL,
@@ -849,21 +862,33 @@ app.post('/v1/images/style-transfer', strictLimiter, async (req, res) => {
       ...(OPENAI_IMAGE_QUALITY ? { quality: OPENAI_IMAGE_QUALITY } : {}),
     });
 
+    console.log('[StyleTransfer] OpenAI response received');
+
     const generatedUrl = response.data[0]?.url;
     if (!generatedUrl) {
+      console.error('[StyleTransfer] No URL in OpenAI response');
       throw new Error('No image generated from OpenAI.');
     }
+
+    console.log('[StyleTransfer] Generated URL:', generatedUrl.substring(0, 50) + '...');
 
     // Download the generated image
     const tempDir = path.join(ORDER_OUTPUT_DIR, 'temp');
     await fsp.mkdir(tempDir, { recursive: true });
     const tempPath = path.join(tempDir, `style-${Date.now()}.png`);
+
+    console.log('[StyleTransfer] Downloading image to:', tempPath);
     await downloadToFile(generatedUrl, tempPath);
     const styledBuffer = await fsp.readFile(tempPath);
 
+    console.log('[StyleTransfer] Image downloaded, size:', styledBuffer.length, 'bytes');
+
     // Upload to S3
     const key = `${IMAGE_PREFIX}/${Date.now()}-${Math.random().toString(36).slice(2)}-styled.png`;
+    console.log('[StyleTransfer] Uploading to S3:', key);
     const url = await uploadToS3({ key, body: styledBuffer, contentType: 'image/png' });
+
+    console.log('[StyleTransfer] S3 URL:', url);
 
     logEvent('info', 'style_transfer_result', {
       requestId: req.requestId,
@@ -875,9 +900,14 @@ app.post('/v1/images/style-transfer', strictLimiter, async (req, res) => {
     const result = { url, requestId: req.requestId };
     if (returnBase64) {
       result.dataUrl = `data:image/png;base64,${styledBuffer.toString('base64')}`;
+      console.log('[StyleTransfer] Added base64 data, length:', result.dataUrl.length);
     }
+
+    console.log('[StyleTransfer] Sending response with keys:', Object.keys(result));
     res.json(result);
   } catch (error) {
+    console.error('[StyleTransfer] Error occurred:', error.message);
+    console.error('[StyleTransfer] Stack trace:', error.stack);
     logEvent('error', 'style_transfer_failed', {
       requestId: req.requestId,
       ...formatError(error),
