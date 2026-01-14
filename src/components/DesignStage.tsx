@@ -9,6 +9,7 @@ type DesignStageProps = {
   width?: number;
   height?: number;
   showPrintArea?: boolean;
+  showGuides?: boolean;
   imageUri?: string | null;
   imageTransform: LayerTransform;
   textLayer: TextLayer;
@@ -24,7 +25,7 @@ const clamp = (value: number, min: number, max: number) =>
   Math.min(Math.max(value, min), max);
 
 const MIN_SCALE = 0.2;
-const MAX_SCALE = 1.0; // Design should not exceed print area
+const MAX_SCALE = 1.5; // Updated for Issue #5
 const MAX_OFFSET = 0.55;
 const HIT_SLOP = 12;
 
@@ -33,6 +34,7 @@ export function DesignStage({
   width = 240,
   height = 320,
   showPrintArea = true,
+  showGuides = true,
   imageUri,
   imageTransform,
   textLayer,
@@ -229,7 +231,7 @@ export function DesignStage({
           )
         }
       />
-      {showPrintArea ? (
+      {showGuides ? (
         <View
           style={[
             styles.printArea,

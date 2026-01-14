@@ -1,6 +1,7 @@
 import { createRoute } from '@granite-js/react-native';
 import React, { useEffect, useMemo, useState } from 'react';
 import {
+  Dimensions,
   Pressable,
   StyleSheet,
   Switch,
@@ -74,6 +75,11 @@ function Page() {
     selectedProduct.sizes[0]?.label ?? '',
   );
   const [draftQuantity, setDraftQuantity] = useState<number>(1);
+
+  // Get screen dimensions for full-screen canvas
+  const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
+  const canvasWidth = Math.min(screenWidth - 32, 400); // 좌우 padding 고려, 최대 400
+  const canvasHeight = canvasWidth * 1.25; // 4:5 비율 유지
 
   const goPreview = () => {
     navigation.navigate('/preview');
@@ -364,8 +370,8 @@ function Page() {
         <View style={styles.canvas}>
           <DesignStage
             template={template}
-            width={240}
-            height={300}
+            width={canvasWidth}
+            height={canvasHeight}
             showPrintArea
             imageUri={designImageUri}
             imageTransform={imageTransform}
@@ -388,7 +394,7 @@ function Page() {
             <Text style={styles.sliderLabel}>크기</Text>
             <ScaleSlider
               min={0.2}
-              max={1.0}
+              max={1.5}
               value={activeTransform.scale}
               onChange={updateScale}
             />
@@ -498,7 +504,7 @@ function Page() {
                 <Text style={styles.sliderLabel}>크기</Text>
                 <ScaleSlider
                   min={0.2}
-                  max={1.0}
+                  max={1.5}
                   value={imageTransform.scale}
                   onChange={updateScale}
                 />

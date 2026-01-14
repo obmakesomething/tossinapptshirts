@@ -9,6 +9,7 @@ type MockupCanvasProps = {
   width?: number;
   height?: number;
   showPrintArea?: boolean;
+  showGuides?: boolean;
   showDesign?: boolean;
   designScale?: number;
   designImageUri?: string | null;
@@ -23,6 +24,7 @@ export function MockupCanvas({
   width = 220,
   height = 280,
   showPrintArea = false,
+  showGuides = false,
   showDesign = false,
   designScale = 0.7,
   designImageUri,
@@ -81,7 +83,7 @@ export function MockupCanvas({
           )
         }
       />
-      {showPrintArea && (
+      {showGuides && (
         <View
           style={[
             styles.printArea,
