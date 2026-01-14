@@ -10,7 +10,7 @@ import {
 import { Card, PrimaryButton, Screen, TopBar, theme } from '../components/ui';
 import { API_BASE_URL } from '../config';
 
-export const Route = createRoute('/inquiry-create', {
+export const Route = createRoute('/inquiry', {
   component: Page,
 });
 

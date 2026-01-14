@@ -2,6 +2,7 @@ import { createRoute } from '@granite-js/react-native';
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { MockupCanvas } from '../components/MockupCanvas';
+import { InquiryModal } from '../components/InquiryModal';
 import {
   Card,
   Chip,
@@ -32,6 +33,8 @@ function Page() {
   } = useCatalog();
   const [selectedCategory, setSelectedCategory] =
     React.useState<string>('티셔츠');
+  const [inquiryModalVisible, setInquiryModalVisible] =
+    React.useState<boolean>(false);
 
   const categories = ['티셔츠', '후드', '맨투맨'];
 
@@ -69,7 +72,7 @@ function Page() {
   };
 
   const goToInquiry = () => {
-    navigation.navigate('/inquiry-create');
+    setInquiryModalVisible(true);
   };
 
   return (
@@ -188,6 +191,11 @@ function Page() {
           </View>
         </Card>
       </View>
+
+      <InquiryModal
+        visible={inquiryModalVisible}
+        onClose={() => setInquiryModalVisible(false)}
+      />
     </Screen>
   );
 }
