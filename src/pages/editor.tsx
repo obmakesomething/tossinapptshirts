@@ -174,15 +174,22 @@ function Page() {
           <View style={styles.productText}>
             <Text style={styles.productTitle}>{selectedProduct.name}</Text>
             <Text style={styles.productMeta}>{selectedProduct.modelName}</Text>
-            <Text style={styles.productPrice}>
-              {selectedProduct.priceText}
-              {selectedProduct.originalPrice && selectedProduct.price ? (
-                <Text style={styles.productOriginalPrice}>
-                  {' '}
-                  {formatPrice(selectedProduct.originalPrice)}
-                </Text>
-              ) : null}
-            </Text>
+
+            {/* 컬러 선택기 통합 */}
+            <View style={styles.colorSection}>
+              <Text style={styles.colorLabel}>컬러</Text>
+              <View style={styles.colorOptions}>
+                {selectedProduct.colors.map((color) => (
+                  <ColorSwatch
+                    key={color}
+                    label={color}
+                    color={resolveColorValue(color)}
+                    selected={selectedColor === color}
+                    onPress={() => setSelectedColor(color)}
+                  />
+                ))}
+              </View>
+            </View>
           </View>
           <SecondaryButton
             label="상품 변경"
@@ -190,21 +197,6 @@ function Page() {
           />
         </View>
       </Card>
-
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>색상</Text>
-        <View style={styles.swatchRow}>
-          {selectedProduct.colors.map((color) => (
-            <ColorSwatch
-              key={color}
-              label={color}
-              color={resolveColorValue(color)}
-              selected={selectedColor === color}
-              onPress={() => setSelectedColor(color)}
-            />
-          ))}
-        </View>
-      </View>
 
       <Card style={styles.canvasCard}>
         <View style={styles.placementRow}>
@@ -703,7 +695,20 @@ const styles = StyleSheet.create({
     fontSize: 12,
     lineHeight: 18,
     color: theme.colors.textSecondary,
-    marginTop: theme.spacing.xs,
+    marginBottom: theme.spacing.sm,
+  },
+  colorSection: {
+    marginTop: theme.spacing.md,
+  },
+  colorLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: theme.colors.textPrimary,
+    marginBottom: theme.spacing.xs,
+  },
+  colorOptions: {
+    flexDirection: 'row',
+    gap: theme.spacing.sm,
   },
   productPrice: {
     fontSize: 14,

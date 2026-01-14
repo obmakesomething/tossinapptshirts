@@ -32,6 +32,9 @@ function Page() {
   const [uploading, setUploading] = useState(false);
   const [loadingAlbum, setLoadingAlbum] = useState(false);
   const [removingBg, setRemovingBg] = useState(false);
+  const [bgRemovalStatus, setBgRemovalStatus] = useState<
+    'idle' | 'loading' | 'success' | 'error'
+  >('idle');
   const [lastDataUrl, setLastDataUrl] = useState<string | null>(null);
   const [error, setError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
@@ -43,6 +46,33 @@ function Page() {
 
   const goNext = () => {
     navigation.navigate('/editor');
+  };
+
+  // Get button style based on background removal status
+  const getBgRemovalButtonStyle = () => {
+    switch (bgRemovalStatus) {
+      case 'loading':
+        return { backgroundColor: theme.colors.textSecondary };
+      case 'success':
+        return { backgroundColor: '#52C41A' }; // Green
+      case 'error':
+        return { backgroundColor: theme.colors.error };
+      default:
+        return {};
+    }
+  };
+
+  const getBgRemovalButtonText = () => {
+    switch (bgRemovalStatus) {
+      case 'loading':
+        return '처리 중...';
+      case 'success':
+        return '완료!';
+      case 'error':
+        return '실패 (재시도)';
+      default:
+        return '배경 제거하기';
+    }
   };
 
   const uploadDataUrl = async (dataUrl: string, filename: string) => {
@@ -112,6 +142,7 @@ function Page() {
   const handleRemoveBackground = async () => {
     if (!designImageUri && !lastDataUrl) return;
     setRemovingBg(true);
+    setBgRemovalStatus('loading');
     setError('');
     setSuccessMessage('');
     try {
@@ -140,10 +171,16 @@ function Page() {
       }
       setDesignImageUri(data.dataUrl);
       setLastDataUrl(null);
+      setBgRemovalStatus('success');
       setSuccessMessage('✓ 배경 제거가 완료되었습니다.');
-      setTimeout(() => setSuccessMessage(''), 3000);
+      setTimeout(() => {
+        setSuccessMessage('');
+        setBgRemovalStatus('idle');
+      }, 3000);
     } catch (err) {
+      setBgRemovalStatus('error');
       setError(err instanceof Error ? err.message : '배경 제거에 실패했어요.');
+      setTimeout(() => setBgRemovalStatus('idle'), 3000);
     } finally {
       setRemovingBg(false);
     }
@@ -257,10 +294,10 @@ function Page() {
         {previewUri && (
           <>
             <SecondaryButton
-              label={removingBg ? '배경 제거 중...' : '배경 제거하기'}
+              label={getBgRemovalButtonText()}
               onPress={handleRemoveBackground}
-              disabled={removingBg || stylingImage || cropping}
-              style={styles.bgRemoveButton}
+              disabled={bgRemovalStatus === 'loading' || stylingImage || cropping}
+              style={[styles.bgRemoveButton, getBgRemovalButtonStyle()]}
             />
             <SecondaryButton
               label={cropping ? '크롭 중...' : '이미지 크롭하기'}

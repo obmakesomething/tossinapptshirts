@@ -1,6 +1,6 @@
 import { createRoute } from '@granite-js/react-native';
 import { TossPay } from '@apps-in-toss/framework';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { StyleSheet, Text, TextInput, View } from 'react-native';
 import {
   Card,
@@ -47,6 +47,7 @@ function Page() {
   const [success, setSuccess] = useState(false);
   const [postcodeModalVisible, setPostcodeModalVisible] = useState(false);
   const [userKey, setUserKey] = useState<string>('');
+  const address2InputRef = useRef<TextInput>(null);
 
   // Get user key from Toss mini-app environment
   useEffect(() => {
@@ -77,6 +78,11 @@ function Page() {
     setZip(data.zonecode);
     setCity(data.sido);
     setState(data.sigungu);
+
+    // Focus on detail address input after address is selected
+    setTimeout(() => {
+      address2InputRef.current?.focus();
+    }, 100);
   };
 
   const pricing = calcPricing({
@@ -278,6 +284,7 @@ function Page() {
           onChangeText={setAddress1}
         />
         <TextInput
+          ref={address2InputRef}
           style={styles.input}
           placeholder="상세 주소"
           placeholderTextColor={theme.colors.muted}
