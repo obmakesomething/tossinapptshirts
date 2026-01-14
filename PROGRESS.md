@@ -1,6 +1,6 @@
-# 진행 상황 기록 (2026-01-13)
+# 진행 상황 기록 (2026-01-14)
 
-## 완료된 작업 (4/20)
+## 완료된 작업 (11/20)
 
 ### ✅ Issue #1: Rate Limiter Trust Proxy Error
 **문제**: Railway 배포 환경에서 express-rate-limit ValidationError 발생
@@ -91,7 +91,105 @@ colorImages: {
 
 ---
 
-## 남은 작업 (16/20)
+### ✅ Issue #5: Fix Image Scale Range (logo to A3 size)
+**완료**: 2026-01-14
+**파일**: src/pages/editor.tsx, src/components/DesignStage.tsx
+**해결**:
+- ScaleSlider max 값을 1.0 → 1.5로 변경
+- DesignStage MAX_SCALE도 1.5로 업데이트
+- 사용자가 로고 크기(0.2)부터 A3 크기(1.5)까지 조절 가능
+
+---
+
+### ✅ Issue #6: Make Canvas Full Screen in Editor
+**완료**: 2026-01-14
+**파일**: src/pages/editor.tsx
+**해결**:
+- Dimensions API 추가하여 화면 크기 동적 계산
+- canvasWidth = min(screenWidth - 32, 400)
+- canvasHeight = canvasWidth * 1.25 (4:5 비율 유지)
+- 모든 디바이스 크기에서 최적화된 캔버스 크기
+
+---
+
+### ✅ Issue #9: Add FAQ Section Description
+**완료**: 2026-01-14
+**파일**: src/pages/index.tsx
+**해결**:
+- FAQ 섹션에 "궁금하신 사항에 대한 답변을 확인해보세요." 설명 추가
+- faqSection 스타일 추가 (marginTop: xxl)
+- faqDescription 스타일 추가
+- 시각적 구분 개선
+
+---
+
+### ✅ Issue #10: Product Category Dynamic Mockup
+**완료**: 2026-01-14
+**파일**: src/pages/index.tsx
+**해결**:
+- handleCategoryChange 함수 추가
+- categoryProduct 변수로 선택된 카테고리의 제품 찾기
+- MockupCanvas에 categoryProduct 전달
+- 카테고리 변경 시 실시간 mockup 이미지 업데이트
+
+---
+
+### ✅ Issue #11: Adjust Button Spacing Consistently
+**완료**: 2026-01-14
+**파일**: src/pages/editor.tsx, order.tsx
+**해결**:
+- editor.tsx Line 736: marginBottom: 4 → theme.spacing.xs
+- order.tsx Line 357: marginBottom: 4 → theme.spacing.xs
+- 모든 spacing이 theme.spacing 사용하도록 통일
+
+---
+
+### ✅ Issue #12: Background Removal Button Styling
+**완료**: 2026-01-14
+**파일**: src/pages/upload.tsx
+**해결**:
+- bgRemovalStatus state 추가 (idle/loading/success/error)
+- getBgRemovalButtonStyle() 함수로 동적 스타일링
+- getBgRemovalButtonText() 함수로 상태별 텍스트
+- 성공 시 녹색, 실패 시 빨간색, 처리 중 회색
+- 3초 후 자동으로 idle 상태로 리셋
+
+---
+
+### ✅ Issue #14: Reorganize Product Info Section
+**완료**: 2026-01-14
+**파일**: src/pages/editor.tsx
+**해결**:
+- 가격 표시 제거 (productPrice, productOriginalPrice)
+- 컬러 선택기를 제품 정보 카드 내부로 통합
+- colorSection, colorLabel, colorOptions 스타일 추가
+- 더 깔끔한 에디터 인터페이스
+
+---
+
+### ✅ Issue #16: Fix Address Search Auto-fill and Modal Close
+**완료**: 2026-01-14
+**파일**: src/pages/order.tsx
+**해결**:
+- address2InputRef useRef 추가
+- handleAddressSelect에서 주소 선택 후 상세 주소 입력란으로 포커스
+- setTimeout으로 100ms 후 포커스 이동
+- 더 나은 UX 플로우
+
+---
+
+### ✅ Issue #17: Remove Blue Dotted Lines from Canvas
+**완료**: 2026-01-14
+**파일**: src/components/MockupCanvas.tsx, DesignStage.tsx
+**해결**:
+- showGuides prop 추가 (기본값: false)
+- MockupCanvas: showGuides로 가이드 라인 제어
+- DesignStage: showGuides로 가이드 라인 제어 (기본값: true, 에디터용)
+- 미리보기/주문 페이지에서는 가이드 라인 미표시
+
+---
+
+## 남은 작업 (9/20)
 
 ### ✅ Issue #4: Document Apps-in-Toss MCP Usage
 **완료**: 2026-01-13 22:00
