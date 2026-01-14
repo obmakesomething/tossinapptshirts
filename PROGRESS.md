@@ -1,6 +1,6 @@
 # 진행 상황 기록 (2026-01-14)
 
-## 완료된 작업 (14/20)
+## 완료된 작업 (15/20)
 
 ### ✅ Issue #1: Rate Limiter Trust Proxy Error
 **문제**: Railway 배포 환경에서 express-rate-limit ValidationError 발생
@@ -305,7 +305,52 @@ function CheckerboardPattern({ width, height, squareSize = 8 }) {
 
 ---
 
-## 남은 작업 (6/20)
+### ✅ Issue #19: Image Link Resolution Documentation
+**완료**: 2026-01-14
+**파일**: IMAGE_LINKS.md (새로 생성)
+**해결**:
+- 이미지 링크 해상도 시스템 완전 문서화
+- Mockup 이미지와 User Upload 이미지 시스템 설명
+- 환경별 설정 가이드 (로컬, 프로덕션, Railway)
+- S3 마이그레이션 단계별 가이드
+- 이미지 최적화 베스트 프랙티스
+- 문제 해결 섹션
+
+**문서 구조**:
+1. **Mockup 이미지 시스템**
+   - resolveMockup() 함수 설명
+   - MOCKUP_CONFIG 설정
+   - Server static files vs S3
+
+2. **User Upload 이미지 시스템**
+   - 업로드 플로우 (Base64 → Server → S3)
+   - API 엔드포인트 문서
+   - 프론트엔드 사용 예시
+
+3. **환경별 설정**
+   - 개발 환경 (.env.local)
+   - 프로덕션 환경 (Railway)
+   - 서버 정적 파일 제공
+
+4. **S3 마이그레이션 가이드**
+   - AWS CLI로 업로드
+   - 설정 변경 방법
+   - 검증 및 롤백 계획
+
+5. **이미지 최적화**
+   - Mockup 이미지 최적화 (1200x1500px, 85% quality)
+   - Server-side 최적화 (Sharp)
+   - Frontend 압축
+
+**Benefits**:
+- 새로운 개발자가 이미지 시스템을 빠르게 이해 가능
+- S3 마이그레이션 시 명확한 가이드 제공
+- 이미지 최적화로 성능 개선 가능
+- 문제 발생 시 빠른 트러블슈팅
+
+---
+
+## 남은 작업 (5/20)
 
 ### ✅ Issue #4: Document Apps-in-Toss MCP Usage
 **완료**: 2026-01-13 22:00
@@ -1171,16 +1216,8 @@ const handleAddressComplete = (data: AddressData) => {
 
 ---
 
-#### 🔴 Issue #19: Image Link Resolution Documentation
-**예상 시간**: 1시간
-**난이도**: ⭐⭐☆☆☆
-**파일**: IMAGE_LINKS.md (새로 생성)
-
-**작업 내용**:
-- resolveMockup() 함수 설명
-- 로컬 vs 프로덕션 경로 차이
-- S3 설정 방법
-- 이미지 최적화 가이드
+#### ✅ Issue #19: Image Link Resolution Documentation (완료 - 2026-01-14)
+상단 "완료된 작업" 섹션 참고
 
 ---
 
