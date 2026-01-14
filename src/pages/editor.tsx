@@ -46,7 +46,6 @@ function Page() {
     orderLines,
     totalQuantity,
     selectedPlacement,
-    frontPrintEnabled,
     printBackEnabled,
     selectedPrint,
     designImageUri,
@@ -56,7 +55,6 @@ function Page() {
     textLayer,
     setSelectedColor,
     setSelectedPlacement,
-    setFrontPrintEnabled,
     setPrintBackEnabled,
     addOrderLine,
     removeOrderLine,
@@ -200,63 +198,23 @@ function Page() {
 
       <Card style={styles.canvasCard}>
         <View style={styles.placementRow}>
-          <Text style={styles.placementLabel}>프린팅 활성화</Text>
+          <Text style={styles.placementLabel}>현재 편집 중</Text>
           <View style={styles.placementChips}>
             <Chip
               label="앞면"
-              selected={frontPrintEnabled}
-              onPress={() => {
-                // At least one placement must be enabled
-                if (frontPrintEnabled && !printBackEnabled) {
-                  return; // Cannot disable front if back is not enabled
-                }
-                setFrontPrintEnabled(!frontPrintEnabled);
-                // If disabling front, switch to back
-                if (frontPrintEnabled && printBackEnabled) {
-                  setSelectedPlacement('back');
-                }
-              }}
+              selected={selectedPlacement === 'front'}
+              onPress={() => setSelectedPlacement('front')}
               style={styles.chipSpacing}
             />
-            <Chip
-              label="뒷면"
-              selected={printBackEnabled}
-              onPress={() => {
-                // At least one placement must be enabled
-                if (printBackEnabled && !frontPrintEnabled) {
-                  return; // Cannot disable back if front is not enabled
-                }
-                setPrintBackEnabled(!printBackEnabled);
-                // If disabling back, switch to front
-                if (printBackEnabled && frontPrintEnabled) {
-                  setSelectedPlacement('front');
-                }
-              }}
-            />
+            {printBackEnabled && (
+              <Chip
+                label="뒷면"
+                selected={selectedPlacement === 'back'}
+                onPress={() => setSelectedPlacement('back')}
+              />
+            )}
           </View>
         </View>
-        {(frontPrintEnabled || printBackEnabled) && (
-          <View style={styles.editingRow}>
-            <Text style={styles.editingLabel}>현재 편집 중:</Text>
-            <View style={styles.editingChips}>
-              {frontPrintEnabled && (
-                <Chip
-                  label="앞면 편집"
-                  selected={selectedPlacement === 'front'}
-                  onPress={() => setSelectedPlacement('front')}
-                  style={styles.chipSpacing}
-                />
-              )}
-              {printBackEnabled && (
-                <Chip
-                  label="뒷면 편집"
-                  selected={selectedPlacement === 'back'}
-                  onPress={() => setSelectedPlacement('back')}
-                />
-              )}
-            </View>
-          </View>
-        )}
         <Text style={styles.canvasTitle}>
           {selectedPlacement === 'back' ? '뒷면' : '앞면'} 프린트 영역
         </Text>

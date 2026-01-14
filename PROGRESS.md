@@ -1,6 +1,6 @@
 # 진행 상황 기록 (2026-01-14)
 
-## 완료된 작업 (11/20)
+## 완료된 작업 (12/20)
 
 ### ✅ Issue #1: Rate Limiter Trust Proxy Error
 **문제**: Railway 배포 환경에서 express-rate-limit ValidationError 발생
@@ -189,7 +189,36 @@ colorImages: {
 
 ---
 
-## 남은 작업 (9/20)
+### ✅ Issue #15: Revert Front/Back UI to OR Logic
+**완료**: 2026-01-14
+**파일**: src/pages/editor.tsx
+**해결**:
+- OR 로직 확인: 앞면은 항상 활성화, 뒷면은 선택적 추가
+- "프린팅 활성화" 레이블을 "현재 편집 중"으로 변경
+- 앞면 칩은 항상 표시
+- 뒷면 칩은 printBackEnabled가 true일 때만 표시
+- frontPrintEnabled와 setFrontPrintEnabled 사용 제거 (앞면 항상 활성화)
+- 뒷면 프린팅 추가 스위치는 기존대로 유지 (OR 로직)
+
+**Before**:
+```typescript
+// XOR 로직 - 둘 중 하나만 선택 (잘못된 구현)
+<Chip label="앞면" selected={frontPrintEnabled} onPress={toggleFront} />
+<Chip label="뒷면" selected={printBackEnabled} onPress={toggleBack} />
+```
+
+**After**:
+```typescript
+// OR 로직 - 앞면 기본, 뒷면 선택적
+<Chip label="앞면" selected={selectedPlacement === 'front'} onPress={() => setSelectedPlacement('front')} />
+{printBackEnabled && (
+  <Chip label="뒷면" selected={selectedPlacement === 'back'} onPress={() => setSelectedPlacement('back')} />
+)}
+```
+
+---
+
+## 남은 작업 (8/20)
 
 ### ✅ Issue #4: Document Apps-in-Toss MCP Usage
 **완료**: 2026-01-13 22:00
@@ -922,52 +951,8 @@ const styles = StyleSheet.create({
 
 ---
 
-#### 🔴 Issue #15: Revert Front/Back UI
-**예상 시간**: 1시간
-**난이도**: ⭐⭐☆☆☆ (보통)
-**파일**: src/pages/editor.tsx
-
-**주의**: 먼저 현재 코드 확인 필요 (이미 수정되었을 수 있음)
-
-**작업 내용**:
-```typescript
-// src/pages/editor.tsx
-
-// ❌ Before (XOR 로직): 둘 중 하나만 선택 가능
-const handleFrontToggle = () => {
-  setFrontPrintEnabled(true);
-  setPrintBackEnabled(false); // 뒷면 강제 비활성화
-};
-
-const handleBackToggle = () => {
-  setFrontPrintEnabled(false); // 앞면 강제 비활성화
-  setPrintBackEnabled(true);
-};
-
-// ✅ After (OR 로직): 앞면 기본, 뒷면은 추가 옵션
-<View style={styles.printOptions}>
-  {/* 앞면은 항상 활성화, 토글 없음 */}
-  <Text>앞면 프린팅</Text>
-
-  {/* 뒷면은 체크박스/스위치로 추가 */}
-  <View style={styles.backPrintOption}>
-    <Text>뒷면에도 프린팅</Text>
-    <Switch
-      value={printBackEnabled}
-      onValueChange={setPrintBackEnabled}
-    />
-  </View>
-</View>
-
-// 가격 계산: 뒷면 추가 시 추가 요금
-const totalPrice = basePrice + (printBackEnabled ? 5000 : 0);
-```
-
-**테스트 방법**:
-1. 에디터 진입 시 앞면 프린팅 활성화 확인
-2. 뒷면 스위치 ON → 양면 프린팅 활성화
-3. 뒷면 스위치 OFF → 앞면만 프린팅
-4. 미리보기에서 양면 표시 확인
+#### ✅ Issue #15: Revert Front/Back UI (완료 - 2026-01-14)
+상단 "완료된 작업" 섹션 참고
 
 ---
 
