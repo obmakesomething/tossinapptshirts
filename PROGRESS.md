@@ -1,6 +1,6 @@
 # 진행 상황 기록 (2026-01-14)
 
-## 완료된 작업 (12/20)
+## 완료된 작업 (14/20)
 
 ### ✅ Issue #1: Rate Limiter Trust Proxy Error
 **문제**: Railway 배포 환경에서 express-rate-limit ValidationError 발생
@@ -218,7 +218,94 @@ colorImages: {
 
 ---
 
-## 남은 작업 (8/20)
+### ✅ Issue #8: Add Comprehensive Logging for Style Transfer
+**완료**: 2026-01-14
+**파일**: src/pages/upload.tsx, server/index.js
+**해결**:
+- 프론트엔드에 상세 로깅 추가 (handleStyleTransfer)
+- 백엔드에 단계별 로깅 추가 (OpenAI 호출, 이미지 다운로드, S3 업로드)
+- 에러 발생 시 스택 트레이스 로깅
+- 응답 구조 확인을 위한 로깅
+
+**Frontend logging**:
+```typescript
+console.log('[StyleTransfer] Starting style transfer:', style);
+console.log('[StyleTransfer] Image data length:', imageToTransfer?.length || 0);
+console.log('[StyleTransfer] Response status:', response.status);
+console.log('[StyleTransfer] Response keys:', Object.keys(data));
+console.log('[StyleTransfer] Success! Data URL length:', data.dataUrl.length);
+```
+
+**Backend logging**:
+```javascript
+console.log('[StyleTransfer] Request received:', { hasDataUrl, dataUrlLength, style });
+console.log('[StyleTransfer] Calling OpenAI with prompt:', enhancedPrompt);
+console.log('[StyleTransfer] OpenAI response received');
+console.log('[StyleTransfer] Image downloaded, size:', styledBuffer.length, 'bytes');
+console.log('[StyleTransfer] Sending response with keys:', Object.keys(result));
+```
+
+이제 사용자가 스타일 변환을 시도하면 전체 프로세스를 추적하여 어디서 실패하는지 정확히 파악할 수 있습니다.
+
+---
+
+### ✅ Issue #13: Add Checkerboard Transparency Pattern
+**완료**: 2026-01-14
+**파일**: src/components/MockupCanvas.tsx, DesignStage.tsx
+**해결**:
+- CheckerboardPattern 컴포넌트 생성 (8x8px 정사각형, 흰색/#E8E8E8 교차)
+- MockupCanvas에 체크무늬 패턴 추가 (디자인 이미지 뒤에)
+- DesignStage에 체크무늬 패턴 추가 (에디터 이미지 뒤에)
+- 이미지 transform에 맞춰 패턴도 함께 스케일/위치 조정
+- 투명 영역과 흰색 배경 구분 가능
+
+**Implementation**:
+```typescript
+// CheckerboardPattern component
+function CheckerboardPattern({ width, height, squareSize = 8 }) {
+  const rows = Math.ceil(height / squareSize);
+  const cols = Math.ceil(width / squareSize);
+  const squares = [];
+
+  for (let row = 0; row < rows; row++) {
+    for (let col = 0; col < cols; col++) {
+      const isEven = (row + col) % 2 === 0;
+      squares.push(
+        <View key={`${row}-${col}`}
+          style={{
+            position: 'absolute',
+            left: col * squareSize,
+            top: row * squareSize,
+            width: squareSize,
+            height: squareSize,
+            backgroundColor: isEven ? '#FFFFFF' : '#E8E8E8',
+          }}
+        />
+      );
+    }
+  }
+  return <View style={{ position: 'absolute', width, height }}>{squares}</View>;
+}
+
+// Usage in MockupCanvas
+{designImageUri && (
+  <>
+    <View style={{ /* positioned behind image */ }}>
+      <CheckerboardPattern width={designWidth} height={designHeight} squareSize={8} />
+    </View>
+    <Image source={{ uri: designImageUri }} ... />
+  </>
+)}
+```
+
+**Benefits**:
+- 사용자가 이미지의 어느 부분이 투명한지 명확하게 확인 가능
+- 배경 제거 기능 사용 시 더 나은 시각적 피드백
+- Photoshop, Figma 등 표준 이미지 편집 도구와 일관된 UX
+
+---
+
+## 남은 작업 (6/20)
 
 ### ✅ Issue #4: Document Apps-in-Toss MCP Usage
 **완료**: 2026-01-13 22:00
@@ -620,7 +707,12 @@ if (showGuides) {
 
 ### Phase 3: 이미지 처리 개선
 
-#### 🔴 Issue #8: Fix Style Transfer Feature
+#### ✅ Issue #8: Fix Style Transfer Feature (완료 - 2026-01-14)
+상단 "완료된 작업" 섹션 참고
+
+---
+
+#### 🔴 Issue #8 (Original Guide - For Reference):
 **예상 시간**: 2-3시간
 **난이도**: ⭐⭐⭐⭐☆ (어려움)
 **파일**: src/pages/upload.tsx, server/index.js
@@ -810,7 +902,12 @@ const getButtonText = () => {
 
 ---
 
-#### 🔴 Issue #13: Checkerboard Transparency Pattern
+#### ✅ Issue #13: Checkerboard Transparency Pattern (완료 - 2026-01-14)
+상단 "완료된 작업" 섹션 참고
+
+---
+
+#### 🔴 Issue #13 (Original Guide - For Reference):
 **예상 시간**: 1-1.5시간
 **난이도**: ⭐⭐⭐☆☆ (중간)
 **파일**: src/components/MockupCanvas.tsx
