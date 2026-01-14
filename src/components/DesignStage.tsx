@@ -4,6 +4,34 @@ import type { LayerTransform, TextLayer } from '../context/catalog';
 import type { MockupTemplate } from '../data/mockupTemplates';
 import { theme } from './ui';
 
+// Checkerboard background component for showing transparency
+function CheckerboardPattern({ width, height, squareSize = 8 }: { width: number; height: number; squareSize?: number }) {
+  const rows = Math.ceil(height / squareSize);
+  const cols = Math.ceil(width / squareSize);
+  const squares = [];
+
+  for (let row = 0; row < rows; row++) {
+    for (let col = 0; col < cols; col++) {
+      const isEven = (row + col) % 2 === 0;
+      squares.push(
+        <View
+          key={`${row}-${col}`}
+          style={{
+            position: 'absolute',
+            left: col * squareSize,
+            top: row * squareSize,
+            width: squareSize,
+            height: squareSize,
+            backgroundColor: isEven ? '#FFFFFF' : '#E8E8E8',
+          }}
+        />
+      );
+    }
+  }
+
+  return <View style={{ position: 'absolute', width, height }}>{squares}</View>;
+}
+
 type DesignStageProps = {
   template: MockupTemplate;
   width?: number;
@@ -245,11 +273,30 @@ export function DesignStage({
         />
       ) : null}
       {imageUri ? (
-        <Image
-          source={{ uri: imageUri }}
-          resizeMode="contain"
-          style={[styles.designImage, buildLayerStyle(imageTransform)]}
-        />
+        <>
+          {/* Checkerboard pattern behind transparent images */}
+          <View
+            style={[
+              buildLayerStyle(imageTransform),
+              {
+                position: 'absolute',
+                overflow: 'hidden',
+                borderRadius: 4,
+              },
+            ]}
+          >
+            <CheckerboardPattern
+              width={area.width * imageTransform.scale}
+              height={area.height * imageTransform.scale}
+              squareSize={10}
+            />
+          </View>
+          <Image
+            source={{ uri: imageUri }}
+            resizeMode="contain"
+            style={[styles.designImage, buildLayerStyle(imageTransform)]}
+          />
+        </>
       ) : (
         <View
           style={[styles.designPlaceholder, buildLayerStyle(imageTransform)]}

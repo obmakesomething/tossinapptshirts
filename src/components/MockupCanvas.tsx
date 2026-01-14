@@ -4,6 +4,34 @@ import type { LayerTransform, TextLayer } from '../context/catalog';
 import type { MockupTemplate } from '../data/mockupTemplates';
 import { theme } from './ui';
 
+// Checkerboard background component for showing transparency
+function CheckerboardPattern({ width, height, squareSize = 8 }: { width: number; height: number; squareSize?: number }) {
+  const rows = Math.ceil(height / squareSize);
+  const cols = Math.ceil(width / squareSize);
+  const squares = [];
+
+  for (let row = 0; row < rows; row++) {
+    for (let col = 0; col < cols; col++) {
+      const isEven = (row + col) % 2 === 0;
+      squares.push(
+        <View
+          key={`${row}-${col}`}
+          style={{
+            position: 'absolute',
+            left: col * squareSize,
+            top: row * squareSize,
+            width: squareSize,
+            height: squareSize,
+            backgroundColor: isEven ? '#FFFFFF' : '#E8E8E8',
+          }}
+        />
+      );
+    }
+  }
+
+  return <View style={{ position: 'absolute', width, height }}>{squares}</View>;
+}
+
 type MockupCanvasProps = {
   template: MockupTemplate;
   width?: number;
@@ -98,20 +126,36 @@ export function MockupCanvas({
       )}
       {showDesign &&
         (designImageUri ? (
-          <Image
-            source={{ uri: designImageUri }}
-            style={[
-              styles.designImage,
-              {
+          <>
+            {/* Checkerboard pattern behind transparent images */}
+            <View
+              style={{
+                position: 'absolute',
                 left: designLeft,
                 top: designTop,
                 width: designWidth,
                 height: designHeight,
-                transform: [{ rotate: `${rotation}deg` }],
-              },
-            ]}
-            resizeMode="contain"
-          />
+                overflow: 'hidden',
+                borderRadius: 4,
+              }}
+            >
+              <CheckerboardPattern width={designWidth} height={designHeight} squareSize={8} />
+            </View>
+            <Image
+              source={{ uri: designImageUri }}
+              style={[
+                styles.designImage,
+                {
+                  left: designLeft,
+                  top: designTop,
+                  width: designWidth,
+                  height: designHeight,
+                  transform: [{ rotate: `${rotation}deg` }],
+                },
+              ]}
+              resizeMode="contain"
+            />
+          </>
         ) : (
           <View
             style={[
