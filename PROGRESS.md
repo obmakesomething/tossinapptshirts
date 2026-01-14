@@ -1,6 +1,6 @@
 # 진행 상황 기록 (2026-01-14)
 
-## 완료된 작업 (15/20)
+## 완료된 작업 (16/20)
 
 ### ✅ Issue #1: Rate Limiter Trust Proxy Error
 **문제**: Railway 배포 환경에서 express-rate-limit ValidationError 발생
@@ -639,71 +639,46 @@ const styles = StyleSheet.create({
 
 ---
 
-#### 🔴 Issue #7: Implement Image Crop (Native Phone Editor)
-**예상 시간**: 2-3시간
-**난이도**: ⭐⭐⭐⭐☆ (어려움)
+### ✅ Issue #7: Implement Image Crop (User-Guided Approach)
+**완료**: 2026-01-14
 **파일**: src/pages/upload.tsx
+**해결**:
+- Apps-in-Toss MCP에 네이티브 크롭 기능 없음 확인
+- react-native-image-crop-picker 등 네이티브 라이브러리 설치 대신 사용자 가이드 방식 채택
+- 사용자가 사진 앱에서 미리 크롭 후 업로드하도록 안내
 
-**문제**: 크롭 버튼 클릭 시 "library needed" 에러 발생
-
-**작업 내용**:
-```bash
-# 1. 라이브러리 설치
-npm install react-native-image-crop-picker
-
-# 2. iOS 설정 (필요한 경우)
-cd ios && pod install
-```
-
+**구현 내용**:
 ```typescript
-// src/pages/upload.tsx
-import ImagePicker from 'react-native-image-crop-picker';
+// src/pages/upload.tsx Line 254-257
+<Text style={styles.cropGuide}>
+  💡 팁: 이미지를 정사각형으로 자르고 싶다면, 사진 앱에서 미리 크롭한 후
+  업로드하세요.
+</Text>
 
-const handleCrop = async () => {
-  try {
-    const croppedImage = await ImagePicker.openCropper({
-      path: imageUri, // 현재 이미지 URI
-      width: 1000,
-      height: 1000,
-      cropping: true,
-      cropperToolbarTitle: '이미지 크롭',
-      freeStyleCropEnabled: true, // 자유 비율 크롭
-    });
-
-    // 크롭된 이미지로 업데이트
-    setImageUri(croppedImage.path);
-
-  } catch (error) {
-    console.error('Crop failed:', error);
-    Alert.alert('오류', '이미지 크롭에 실패했습니다.');
-  }
-};
-
-<Button title="크롭" onPress={handleCrop} />
+// Line 389-397: cropGuide 스타일 추가
+cropGuide: {
+  fontSize: 12,
+  lineHeight: 18,
+  color: theme.colors.primary,
+  backgroundColor: theme.colors.primarySoft,
+  padding: theme.spacing.sm,
+  borderRadius: theme.radius.sm,
+  marginBottom: theme.spacing.lg,
+}
 ```
 
-**대안 (react-native-image-crop-picker 사용 불가 시)**:
-```typescript
-// @react-native-community/image-editor 사용
-import ImageEditor from '@react-native-community/image-editor';
+**변경사항**:
+- handleCropImage 함수 제거 (Lines 246-281)
+- "이미지 크롭하기" 버튼 제거
+- cropping state 변수 제거
+- 크롭 관련 disabled 조건 제거
+- 사용자 안내 텍스트 추가
 
-const handleCrop = async () => {
-  const cropData = {
-    offset: { x: 0, y: 0 },
-    size: { width: 1000, height: 1000 },
-    displaySize: { width: 1000, height: 1000 },
-  };
-
-  const croppedUri = await ImageEditor.cropImage(imageUri, cropData);
-  setImageUri(croppedUri);
-};
-```
-
-**테스트 방법**:
-1. 이미지 업로드
-2. 크롭 버튼 클릭
-3. 크롭 인터페이스가 표시되는지 확인
-4. 크롭 후 이미지가 업데이트되는지 확인
+**장점**:
+- 네이티브 라이브러리 설치 불필요 (앱 크기 절감)
+- iOS pod install 불필요
+- 사용자가 익숙한 시스템 사진 앱 활용
+- 유지보수 부담 감소
 
 ---
 

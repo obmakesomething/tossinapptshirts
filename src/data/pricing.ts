@@ -49,11 +49,11 @@ export function calcPricing(input: PricingInput): PricingResult {
 
   // 기본 금액 계산 (사이즈 추가금 포함)
   let itemsTotal = 0;
-  orderLines.forEach((line) => {
+  for (const line of orderLines) {
     const sizeInfo = product.sizes.find((s) => s.label === line.sizeLabel);
     const sizeExtraPrice = sizeInfo?.extraPrice ?? 0;
     itemsTotal += (basePrice + sizeExtraPrice) * line.quantity;
-  });
+  }
 
   // 추가 옵션 계산
   const backPrintingFee = printBackEnabled ? 6000 * totalQuantity : 0;

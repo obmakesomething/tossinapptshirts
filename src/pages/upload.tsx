@@ -40,7 +40,6 @@ function Page() {
   const [successMessage, setSuccessMessage] = useState('');
   const [stylingImage, setStylingImage] = useState(false);
   const [showStyleOptions, setShowStyleOptions] = useState(false);
-  const [cropping, setCropping] = useState(false);
 
   const previewUri = designImageUri ?? lastDataUrl;
 
@@ -243,42 +242,6 @@ function Page() {
     }
   };
 
-  const handleCropImage = async () => {
-    // TODO: Implement image cropping
-    // Option 1: Use expo-image-manipulator (if using Expo)
-    // Option 2: Use react-native-image-crop-picker
-    // Option 3: Use @react-native-community/image-editor
-
-    if (!previewUri) {
-      setError('크롭할 이미지를 먼저 선택해주세요.');
-      return;
-    }
-
-    setCropping(true);
-    setError('');
-
-    try {
-      // Placeholder: In a real implementation, open a crop modal/screen
-      // For now, just show a message that the feature needs a library
-      setError('크롭 기능은 곧 추가될 예정입니다. 라이브러리 설치가 필요합니다.');
-
-      // Example implementation with expo-image-manipulator:
-      // import * as ImageManipulator from 'expo-image-manipulator';
-      // const manipResult = await ImageManipulator.manipulateAsync(
-      //   previewUri,
-      //   [{ crop: { originX: 0, originY: 0, width: 1000, height: 1000 } }],
-      //   { format: ImageManipulator.SaveFormat.PNG }
-      // );
-      // setLastDataUrl(manipResult.uri);
-      // await uploadDataUrl(manipResult.uri, 'cropped.png');
-    } catch (err) {
-      setError(
-        err instanceof Error ? err.message : '이미지 크롭에 실패했어요.',
-      );
-    } finally {
-      setCropping(false);
-    }
-  };
 
   return (
     <Screen>
@@ -287,6 +250,10 @@ function Page() {
       <Text style={styles.title}>사진을 먼저 가져와 주세요</Text>
       <Text style={styles.subtitle}>
         아래 + 박스를 눌러 앨범에서 선택하세요.
+      </Text>
+      <Text style={styles.cropGuide}>
+        💡 팁: 이미지를 정사각형으로 자르고 싶다면, 사진 앱에서 미리 크롭한 후
+        업로드하세요.
       </Text>
 
       <Card style={styles.uploadCard}>
@@ -317,21 +284,15 @@ function Page() {
             <SecondaryButton
               label={getBgRemovalButtonText()}
               onPress={handleRemoveBackground}
-              disabled={bgRemovalStatus === 'loading' || stylingImage || cropping}
+              disabled={bgRemovalStatus === 'loading' || stylingImage}
               style={[styles.bgRemoveButton, getBgRemovalButtonStyle()]}
-            />
-            <SecondaryButton
-              label={cropping ? '크롭 중...' : '이미지 크롭하기'}
-              onPress={handleCropImage}
-              disabled={removingBg || stylingImage || cropping}
-              style={styles.bgRemoveButton}
             />
             <SecondaryButton
               label={
                 stylingImage ? '스타일 변환 중...' : '내 이미지 스타일 바꾸기'
               }
               onPress={() => setShowStyleOptions(true)}
-              disabled={removingBg || stylingImage || cropping}
+              disabled={removingBg || stylingImage}
               style={styles.bgRemoveButton}
             />
           </>
@@ -423,6 +384,15 @@ const styles = StyleSheet.create({
     fontSize: 13,
     lineHeight: 20,
     color: theme.colors.textSecondary,
+    marginBottom: theme.spacing.xs,
+  },
+  cropGuide: {
+    fontSize: 12,
+    lineHeight: 18,
+    color: theme.colors.primary,
+    backgroundColor: theme.colors.primarySoft,
+    padding: theme.spacing.sm,
+    borderRadius: theme.radius.sm,
     marginBottom: theme.spacing.lg,
   },
   uploadCard: {

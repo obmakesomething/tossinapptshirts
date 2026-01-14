@@ -99,7 +99,7 @@ function Page() {
   useEffect(() => {
     setDraftSize(selectedProduct.sizes[0]?.label ?? '');
     setDraftQuantity(1);
-  }, [selectedProduct.id]);
+  }, [selectedProduct]);
 
   const usedSizes = useMemo(
     () => new Set(orderLines.map((line) => line.sizeLabel)),
