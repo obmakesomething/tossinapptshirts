@@ -76,8 +76,8 @@ function Page() {
 
   // Get screen dimensions for full-screen canvas
   const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
-  const canvasWidth = Math.min(screenWidth - 32, 400); // 좌우 padding 고려, 최대 400
-  const canvasHeight = canvasWidth * 1.25; // 4:5 비율 유지
+  const canvasWidth = screenWidth - 32; // 좌우 16px padding, 최대한 활용
+  const canvasHeight = canvasWidth * 1.25; // 4:5 비율 유지 (티셔츠 형태)
 
   const goPreview = () => {
     navigation.navigate('/preview');

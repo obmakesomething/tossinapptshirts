@@ -1,6 +1,6 @@
 # 진행 상황 기록 (2026-01-14)
 
-## 완료된 작업 (16/20)
+## 완료된 작업 (18/20)
 
 ### ✅ Issue #1: Rate Limiter Trust Proxy Error
 **문제**: Railway 배포 환경에서 express-rate-limit ValidationError 발생
@@ -102,13 +102,13 @@ colorImages: {
 ---
 
 ### ✅ Issue #6: Make Canvas Full Screen in Editor
-**완료**: 2026-01-14
-**파일**: src/pages/editor.tsx
+**완료**: 2026-01-14 (업데이트: 최대 너비 제한 제거)
+**파일**: src/pages/editor.tsx Line 77-80
 **해결**:
 - Dimensions API 추가하여 화면 크기 동적 계산
-- canvasWidth = min(screenWidth - 32, 400)
+- ~~canvasWidth = min(screenWidth - 32, 400)~~ → **canvasWidth = screenWidth - 32** (최대 너비 제한 제거)
 - canvasHeight = canvasWidth * 1.25 (4:5 비율 유지)
-- 모든 디바이스 크기에서 최적화된 캔버스 크기
+- 모든 디바이스에서 화면 너비를 최대한 활용 (16px padding만 적용)
 
 ---
 
@@ -588,57 +588,6 @@ const [scale, setScale] = useState(DEFAULT_SCALE);
 
 ---
 
-#### 🔴 Issue #6: Make Canvas Full Screen in Editor
-**예상 시간**: 1.5시간
-**난이도**: ⭐⭐⭐☆☆ (중간)
-**파일**: src/pages/editor.tsx
-
-**문제**: 캔버스가 화면 일부만 차지하여 편집 공간이 부족함
-
-**작업 내용**:
-```typescript
-// src/pages/editor.tsx
-
-// ❌ Before: 고정 크기 또는 제한된 크기
-<View style={{ height: 400, width: 300 }}>
-  <MockupCanvas />
-</View>
-
-// ✅ After: 전체 화면 활용
-import { Dimensions } from 'react-native';
-
-const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
-
-// 헤더/버튼 영역 제외하고 최대한 활용
-const canvasHeight = screenHeight - 200; // 하단 컨트롤 영역 제외
-
-<ScrollView>
-  <View style={styles.canvasContainer}>
-    <MockupCanvas
-      width={screenWidth}
-      height={canvasHeight}
-    />
-  </View>
-  {/* 하단 편집 도구들 */}
-</ScrollView>
-
-const styles = StyleSheet.create({
-  canvasContainer: {
-    flex: 1,
-    width: '100%',
-    minHeight: canvasHeight,
-  },
-});
-```
-
-**테스트 방법**:
-1. 에디터 페이지 진입
-2. 캔버스가 화면 대부분을 차지하는지 확인
-3. 다양한 화면 크기에서 테스트 (iPhone SE, Pro Max 등)
-4. 스크롤이 자연스러운지 확인
-
----
-
 ### ✅ Issue #7: Implement Image Crop (User-Guided Approach)
 **완료**: 2026-01-14
 **파일**: src/pages/upload.tsx
@@ -682,46 +631,55 @@ cropGuide: {
 
 ---
 
-#### 🔴 Issue #17: Remove Blue Dotted Lines from Canvas
-**예상 시간**: 30분
-**난이도**: ⭐⭐☆☆☆ (보통)
-**파일**: src/components/MockupCanvas.tsx
+### ✅ Issue #17: Remove Blue Dotted Lines from Canvas
+**완료**: 2026-01-14 (이미 구현되어 있음)
+**파일**: src/components/MockupCanvas.tsx, src/components/DesignStage.tsx
+**해결**: showGuides 프롭이 이미 올바르게 구현되어 있음
 
-**문제**: 프린팅 영역 가이드 라인이 항상 표시되어 최종 결과 확인이 어려움
-
-**작업 내용**:
+**현재 구현 상태**:
 ```typescript
-// src/components/MockupCanvas.tsx
-
-// 가이드 라인 그리는 부분 찾기 (예시)
-// ❌ Before: 항상 표시
-ctx.strokeStyle = '#3182F6';
-ctx.setLineDash([5, 5]);
-ctx.strokeRect(printArea.x, printArea.y, printArea.width, printArea.height);
-
-// ✅ After: 옵션으로 제어 (에디터에서만 표시)
+// src/components/MockupCanvas.tsx Line 40, 55
 interface MockupCanvasProps {
-  showGuides?: boolean; // 기본값: false
+  showGuides?: boolean;
 }
 
-if (showGuides) {
-  ctx.strokeStyle = '#3182F6';
-  ctx.setLineDash([5, 5]);
-  ctx.strokeRect(printArea.x, printArea.y, printArea.width, printArea.height);
+export function MockupCanvas({
+  showGuides = false, // ✅ 기본값: false (미표시)
+  // ...
+}: MockupCanvasProps) {
+  // ...
+  {showGuides && (
+    <View
+      style={[
+        styles.printArea, // borderStyle: 'dashed', borderColor: primary
+        { left, top, width, height }
+      ]}
+    />
+  )}
 }
 
-// 사용:
-// 에디터 페이지
-<MockupCanvas showGuides={true} />
+// src/components/DesignStage.tsx Line 40, 65
+interface DesignStageProps {
+  showGuides?: boolean;
+}
 
-// 미리보기/주문 페이지
-<MockupCanvas showGuides={false} />
+export function DesignStage({
+  showGuides = true, // ✅ 기본값: true (에디터에서 표시)
+  // ...
+}: DesignStageProps) {
+  // ...
+}
 ```
 
-**테스트 방법**:
-1. 에디터 페이지: 가이드 라인 표시 확인
-2. 미리보기 페이지: 가이드 라인 미표시 확인
-3. 주문 페이지: 가이드 라인 미표시 확인
+**사용 현황**:
+- **에디터** (src/pages/editor.tsx): `<DesignStage>` 사용 → showGuides=true (기본값)
+- **미리보기** (src/pages/preview.tsx): `<MockupCanvas>` 사용 → showGuides=false (기본값)
+- **디자인 목록** (src/pages/designs.tsx): `<MockupCanvas>` 사용 → showGuides=false (기본값)
+- **홈** (src/pages/index.tsx): `<MockupCanvas>` 사용 → showGuides=false (기본값)
+
+**결과**:
+- 에디터: 파란색 점선 가이드 표시 ✅
+- 미리보기/주문: 가이드 미표시 ✅
 
 ---
 
