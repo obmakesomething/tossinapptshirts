@@ -1,6 +1,6 @@
 # 진행 상황 기록 (2026-01-13)
 
-## 완료된 작업 (3/20)
+## 완료된 작업 (4/20)
 
 ### ✅ Issue #1: Rate Limiter Trust Proxy Error
 **문제**: Railway 배포 환경에서 express-rate-limit ValidationError 발생
@@ -91,10 +91,26 @@ colorImages: {
 
 ---
 
-## 남은 작업 (17/20)
+## 남은 작업 (16/20)
 
-### 🔴 Issue #4: Document Apps-in-Toss MCP Usage
-**진행 상황**: 이 문서가 바로 그 문서입니다
+### ✅ Issue #4: Document Apps-in-Toss MCP Usage
+**완료**: 2026-01-13 22:00
+**파일**:
+- PROGRESS.md: 상세 진행 상황 추적 (이 파일)
+- HANDOFF.md: 완전한 프로젝트 인수인계 가이드 (새로 생성)
+- Apps-in-Toss MCP 조사 결과 문서화
+- Router 플러그인 이슈 상세 기록
+- 개발 워크플로우, 문제 해결 가이드 포함
+
+**내용**:
+- 프로젝트 개요 및 기술 스택
+- 빠른 시작 가이드
+- 완료/진행/대기 작업 요약
+- 파일 구조 및 주요 파일 설명
+- Git 워크플로우 및 커밋 컨벤션
+- 알려진 이슈 및 해결 방법
+- FAQ 및 문제 해결
+- 다음 세션 시작 가이드
 
 ### 🔴 Issue #5: Fix Image Scale Range (logo to A3 size)
 **작업 필요**: src/components/ImageEditor.tsx 또는 관련 컴포넌트
