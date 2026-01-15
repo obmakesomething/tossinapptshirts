@@ -109,7 +109,7 @@ function Page() {
       setError('필수 정보를 모두 입력해 주세요.');
       return;
     }
-    if (!designImageUri && !textLayer.enabled) {
+    if (!designImageUri && (!textLayer.enabled || !textLayer.text)) {
       setError('디자인 이미지 또는 텍스트가 필요해요.');
       return;
     }

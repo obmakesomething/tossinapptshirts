@@ -818,7 +818,7 @@ app.post('/v1/images/style-transfer', strictLimiter, async (req, res) => {
       console.error('[StyleTransfer] Missing style');
       return res.status(400).json({ error: 'style is required.' });
     }
-    if (!OPENAI_API_KEY) {
+    if (!process.env.OPENAI_API_KEY) {
       console.error('[StyleTransfer] Missing OPENAI_API_KEY');
       return res.status(500).json({ error: 'OPENAI_API_KEY is required.' });
     }
