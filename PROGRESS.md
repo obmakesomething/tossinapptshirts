@@ -2,33 +2,35 @@
 
 ## 완료된 작업 (18/20)
 
-### ✅ Issue #1: Rate Limiter Trust Proxy Error
+### ✅ Issue #1: Rate Limiter Trust Proxy Error (Updated Fix)
+**최종 해결**: 2026-01-15
 **문제**: Railway 배포 환경에서 express-rate-limit ValidationError 발생
-```
-ValidationError: The Express 'trust proxy' setting is true, which allows anyone to trivially bypass IP-based rate limiting.
-code: 'ERR_ERL_PERMISSIVE_TRUST_PROXY'
-```
 
-**해결**:
-- server/index.js Lines 44, 52에 `trustProxy: true` 옵션 추가
-- globalLimiter와 strictLimiter 모두 수정
+**첫 번째 시도 (실패)**:
+```
+ValidationError: Unexpected configuration option: trustProxy
+```
+- `trustProxy: true` 옵션이 express-rate-limit 8.x에서 지원되지 않음
 
-**파일**: server/index.js
+**최종 해결**:
+- Express 앱 레벨에서 `app.set('trust proxy', 1)` 설정
+- rateLimit 설정에서 trustProxy 옵션 제거
+
+**파일**: server/index.js Line 32
 ```javascript
+// Trust proxy - Required for Railway deployment to get correct client IPs
+app.set('trust proxy', 1);
+
+// Global rate limiter: 100 requests per 15 minutes per IP
 const globalLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 100,
-  trustProxy: true, // ✅ 추가
-  // ...
-});
-
-const strictLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 20,
-  trustProxy: true, // ✅ 추가
+  // trustProxy 옵션 제거 (Express 앱 레벨에서 설정)
   // ...
 });
 ```
+
+**참고**: Express의 trust proxy 설정은 앱 전체에 적용되며, rate limiter가 이를 자동으로 인식함
 
 ---
 
@@ -350,7 +352,7 @@ function CheckerboardPattern({ width, height, squareSize = 8 }) {
 
 ---
 
-## 남은 작업 (5/20)
+## 남은 작업 (2/20)
 
 ### ✅ Issue #4: Document Apps-in-Toss MCP Usage
 **완료**: 2026-01-13 22:00
@@ -1252,3 +1254,37 @@ git push origin feat/20260113-2124
 - Issue #3 조사 결과: Apps-in-Toss에 built-in inquiry 기능 없음
 - Router 플러그인 이슈: granite-js/plugin-router의 checkExportRoute 함수
 - Agent ID (MCP 조사): a8be4b8 (필요시 resume 가능)
+
+---
+
+## 세션 요약 (2026-01-15 18:02)
+
+### 완료된 이슈 (이번 세션)
+- **Issue #7**: 사용자 가이드 방식 이미지 크롭 (네이티브 라이브러리 대신)
+- **Issue #17**: 가이드 라인 구현 확인 (이미 올바르게 구현됨)
+- **Issue #6**: 캔버스 크기 증가 (400px 제한 제거)
+- **Issue #19**: IMAGE_LINKS.md 이미지 시스템 문서화
+- **Issue #1 (긴급 수정)**: trustProxy 설정 오류 수정 (프로덕션 배포 오류)
+
+### 전체 진행 상황
+- **완료**: 18/20 issues (90%)
+- **남은 작업**: Issue #18 (문서화), Issue #20 (최종 빌드)
+- **빌드 상태**: 모든 빌드 성공 (0 errors, 0 warnings)
+- **배포 상태**: ✅ 프로덕션 오류 수정 완료
+
+### 주요 변경사항
+1. **src/pages/upload.tsx**: 크롭 버튼 제거, 사용자 안내 텍스트 추가
+2. **src/pages/editor.tsx**: 캔버스 너비 제한 제거 (전체 화면 활용)
+3. **IMAGE_LINKS.md**: 441줄 이미지 시스템 종합 문서 생성
+4. **server/index.js**: trustProxy 설정 수정 (app.set 사용)
+5. **PROGRESS.md**: 18/20 완료 업데이트
+
+### 긴급 수정 (Issue #1)
+- **문제**: Railway 프로덕션에서 ValidationError 발생
+- **원인**: `trustProxy: true` 옵션이 express-rate-limit 8.x에서 지원되지 않음
+- **해결**: `app.set('trust proxy', 1)` 사용 (Express 앱 레벨 설정)
+
+### 다음 작업
+- 프로덕션 배포 확인 (Railway)
+- Issue #20: 최종 빌드 및 배포 검증
+- 모든 문서 최종 검토

@@ -28,6 +28,9 @@ app.use(helmet({
 // Compression for responses
 app.use(compression());
 
+// Trust proxy - Required for Railway deployment to get correct client IPs
+app.set('trust proxy', 1);
+
 // CORS
 app.use(cors({ origin: true }));
 
@@ -41,7 +44,6 @@ const globalLimiter = rateLimit({
   message: { error: 'Too many requests, please try again later.' },
   standardHeaders: true,
   legacyHeaders: false,
-  trustProxy: true, // Required for Railway/reverse proxy
 });
 app.use(globalLimiter);
 
@@ -49,7 +51,6 @@ app.use(globalLimiter);
 const strictLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: 20, // 20 requests per 15 minutes
-  trustProxy: true, // Required for Railway/reverse proxy
   message: { error: 'Rate limit exceeded for this operation.' },
   standardHeaders: true,
   legacyHeaders: false,
