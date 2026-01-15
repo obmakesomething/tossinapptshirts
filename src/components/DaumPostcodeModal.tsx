@@ -52,16 +52,20 @@ const POSTCODE_HTML = `
   <script>
     new daum.Postcode({
       oncomplete: function(data) {
+        // 주소 선택 시 데이터 전송
         window.ReactNativeWebView.postMessage(JSON.stringify(data));
       },
       onclose: function(state) {
-        if (state === 'FORCE_CLOSE' || state === 'COMPLETE_CLOSE') {
+        // 닫기 버튼 클릭 시 (FORCE_CLOSE) 또는 주소 선택 후 닫힘 (COMPLETE_CLOSE)
+        if (state === 'FORCE_CLOSE') {
           window.ReactNativeWebView.postMessage(JSON.stringify({ _close: true }));
         }
       },
       width: '100%',
       height: '100%'
-    }).embed(document.getElementById('layer'));
+    }).embed(document.getElementById('layer'), {
+      autoClose: true // 주소 선택 후 자동으로 닫힘
+    });
   </script>
 </body>
 </html>
