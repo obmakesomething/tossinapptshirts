@@ -4,7 +4,6 @@ import {
   Dimensions,
   Pressable,
   StyleSheet,
-  Switch,
   Text,
   TextInput,
   View,
@@ -83,11 +82,6 @@ function Page() {
     navigation.navigate('/preview');
   };
 
-  const template = buildTemplate(
-    selectedProduct,
-    selectedColor,
-    selectedPlacement,
-  );
   const pricing = calcPricing({
     product: selectedProduct,
     orderLines,
@@ -197,26 +191,8 @@ function Page() {
       </Card>
 
       <Card style={styles.canvasCard}>
-        <View style={styles.placementRow}>
-          <Text style={styles.placementLabel}>현재 편집 중</Text>
-          <View style={styles.placementChips}>
-            <Chip
-              label="앞면"
-              selected={selectedPlacement === 'front'}
-              onPress={() => setSelectedPlacement('front')}
-              style={styles.chipSpacing}
-            />
-            {printBackEnabled && (
-              <Chip
-                label="뒷면"
-                selected={selectedPlacement === 'back'}
-                onPress={() => setSelectedPlacement('back')}
-              />
-            )}
-          </View>
-        </View>
         <Text style={styles.canvasTitle}>
-          {selectedPlacement === 'back' ? '뒷면' : '앞면'} 프린트 영역
+          앞면 프린트 영역
         </Text>
         <View style={styles.layerRow}>
           <Chip
@@ -319,10 +295,11 @@ function Page() {
         ) : null}
         <View style={styles.canvas}>
           <DesignStage
-            template={template}
+            template={buildTemplate(selectedProduct, selectedColor, 'front')}
             width={canvasWidth}
             height={canvasHeight}
             showPrintArea
+            showGuides={false}
             imageUri={designImageUri}
             imageTransform={imageTransform}
             textLayer={textLayer}
@@ -393,32 +370,33 @@ function Page() {
       </Card>
 
       <Card style={styles.printingCard}>
-        <View style={styles.optionRow}>
-          <View>
-            <Text style={styles.optionTitle}>뒷면 프린팅 추가</Text>
-            {printBackEnabled && (
-              <Text style={styles.optionHint}>뒷면 디자인을 추가해요</Text>
-            )}
-          </View>
-          <Switch
-            value={printBackEnabled}
-            onValueChange={(enabled) => {
-              setPrintBackEnabled(enabled);
-              if (enabled) {
-                setSelectedPlacement('back');
-              } else {
-                setSelectedPlacement('front');
-              }
-            }}
-            trackColor={{
-              false: theme.colors.border,
-              true: theme.colors.primary,
-            }}
-            thumbColor={theme.colors.surface}
-          />
-        </View>
-        {printBackEnabled ? (
+        {!printBackEnabled ? (
           <>
+            <Text style={styles.optionTitle}>뒷면 프린팅</Text>
+            <Text style={styles.optionHint}>
+              앞면과 같은 디자인을 뒷면에도 추가할 수 있어요
+            </Text>
+            <SecondaryButton
+              label="뒷면 추가하기"
+              onPress={() => {
+                setPrintBackEnabled(true);
+                setSelectedPlacement('back');
+              }}
+              style={styles.addBackButton}
+            />
+          </>
+        ) : (
+          <>
+            <View style={styles.optionRow}>
+              <Text style={styles.optionTitle}>뒷면 프린팅</Text>
+              <SecondaryButton
+                label="뒷면 제거"
+                onPress={() => {
+                  setPrintBackEnabled(false);
+                  setSelectedPlacement('front');
+                }}
+              />
+            </View>
             <View style={styles.backPreviewContainer}>
               <MockupCanvas
                 template={buildTemplate(selectedProduct, selectedColor, 'back')}
@@ -500,7 +478,7 @@ function Page() {
               />
             </View>
           </>
-        ) : null}
+        )}
       </Card>
 
       <Card style={styles.optionCard}>
@@ -900,7 +878,6 @@ const styles = StyleSheet.create({
     marginBottom: theme.spacing.md,
   },
   canvas: {
-    height: 300,
     borderRadius: theme.radius.lg,
     backgroundColor: theme.colors.background,
     borderWidth: 1,
@@ -1058,5 +1035,8 @@ const styles = StyleSheet.create({
     lineHeight: 18,
     color: theme.colors.textSecondary,
     marginTop: theme.spacing.xs,
+  },
+  addBackButton: {
+    marginTop: theme.spacing.md,
   },
 });

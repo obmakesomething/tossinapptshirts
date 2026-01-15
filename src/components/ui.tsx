@@ -288,8 +288,11 @@ const styles = StyleSheet.create({
   primaryButton: {
     backgroundColor: theme.colors.primary,
     paddingVertical: 14,
+    paddingHorizontal: theme.spacing.lg,
     borderRadius: theme.radius.md,
     alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 48,
   },
   primaryButtonPressed: {
     opacity: 0.9,
@@ -303,9 +306,12 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: theme.colors.border,
     paddingVertical: 14,
+    paddingHorizontal: theme.spacing.lg,
     borderRadius: theme.radius.md,
     alignItems: 'center',
+    justifyContent: 'center',
     backgroundColor: theme.colors.surface,
+    minHeight: 48,
   },
   secondaryButtonPressed: {
     backgroundColor: theme.colors.primarySoft,
@@ -319,9 +325,12 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: theme.colors.errorBorder,
     paddingVertical: 14,
+    paddingHorizontal: theme.spacing.lg,
     borderRadius: theme.radius.md,
     alignItems: 'center',
+    justifyContent: 'center',
     backgroundColor: theme.colors.errorSoft,
+    minHeight: 48,
   },
   dangerButtonPressed: {
     backgroundColor: theme.colors.errorPressed,

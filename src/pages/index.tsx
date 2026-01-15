@@ -123,8 +123,8 @@ function Page() {
         <View style={styles.exampleImageContainer}>
           <MockupCanvas
             template={buildTemplate(categoryProduct, selectedColor, 'front')}
-            width={180}
-            height={240}
+            width={260}
+            height={340}
             showDesign
             designImageUri={null}
             textLayer={{
