@@ -187,6 +187,7 @@ const styles = StyleSheet.create({
   },
   designImage: {
     position: 'absolute',
+    backgroundColor: 'transparent',
   },
   textWrapper: {
     position: 'absolute',

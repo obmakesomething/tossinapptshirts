@@ -864,23 +864,32 @@ app.post('/v1/images/style-transfer', strictLimiter, async (req, res) => {
     });
 
     console.log('[StyleTransfer] OpenAI response received');
+    console.log('[StyleTransfer] Response data keys:', Object.keys(response.data[0] || {}));
 
     const generatedUrl = response.data[0]?.url;
-    if (!generatedUrl) {
-      console.error('[StyleTransfer] No URL in OpenAI response');
+    const generatedB64 = response.data[0]?.b64_json;
+
+    let styledBuffer;
+
+    if (generatedUrl) {
+      console.log('[StyleTransfer] Generated URL:', generatedUrl.substring(0, 50) + '...');
+
+      // Download the generated image
+      const tempDir = path.join(ORDER_OUTPUT_DIR, 'temp');
+      await fsp.mkdir(tempDir, { recursive: true });
+      const tempPath = path.join(tempDir, `style-${Date.now()}.png`);
+
+      console.log('[StyleTransfer] Downloading image to:', tempPath);
+      await downloadToFile(generatedUrl, tempPath);
+      styledBuffer = await fsp.readFile(tempPath);
+    } else if (generatedB64) {
+      console.log('[StyleTransfer] Received base64 image from OpenAI');
+      styledBuffer = Buffer.from(generatedB64, 'base64');
+    } else {
+      console.error('[StyleTransfer] No URL or b64_json in OpenAI response');
+      console.error('[StyleTransfer] Response data:', JSON.stringify(response.data[0]));
       throw new Error('No image generated from OpenAI.');
     }
-
-    console.log('[StyleTransfer] Generated URL:', generatedUrl.substring(0, 50) + '...');
-
-    // Download the generated image
-    const tempDir = path.join(ORDER_OUTPUT_DIR, 'temp');
-    await fsp.mkdir(tempDir, { recursive: true });
-    const tempPath = path.join(tempDir, `style-${Date.now()}.png`);
-
-    console.log('[StyleTransfer] Downloading image to:', tempPath);
-    await downloadToFile(generatedUrl, tempPath);
-    const styledBuffer = await fsp.readFile(tempPath);
 
     console.log('[StyleTransfer] Image downloaded, size:', styledBuffer.length, 'bytes');
 
@@ -1774,22 +1783,50 @@ app.post('/v1/payment/create', strictLimiter, async (req, res) => {
       isTestPayment: IS_TEST_PAYMENT,
     });
 
-    const response = await fetch(`${TOSSPAY_API_URL}/api-partner/v1/apps-in-toss/pay/make-payment`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-toss-user-key': userKey,
-      },
-      body: JSON.stringify({
+    let response;
+    try {
+      response = await fetch(`${TOSSPAY_API_URL}/api-partner/v1/apps-in-toss/pay/make-payment`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-toss-user-key': userKey,
+        },
+        body: JSON.stringify({
+          orderNo,
+          productDesc,
+          amount: Number(amount),
+          amountTaxFree: Number(amountTaxFree),
+          isTestPayment: IS_TEST_PAYMENT,
+        }),
+      });
+    } catch (fetchError) {
+      logEvent('error', 'payment_create_fetch_failed', {
+        requestId: req.requestId,
         orderNo,
-        productDesc,
-        amount: Number(amount),
-        amountTaxFree: Number(amountTaxFree),
-        isTestPayment: IS_TEST_PAYMENT,
-      }),
-    });
+        error: fetchError.message,
+        stack: fetchError.stack,
+      });
+      return res.status(503).json({
+        error: 'Failed to connect to payment service. Please try again.',
+        details: fetchError.message,
+      });
+    }
 
-    const data = await response.json();
+    let data;
+    try {
+      data = await response.json();
+    } catch (jsonError) {
+      logEvent('error', 'payment_create_json_failed', {
+        requestId: req.requestId,
+        orderNo,
+        status: response.status,
+        error: jsonError.message,
+      });
+      return res.status(502).json({
+        error: 'Invalid response from payment service.',
+        details: jsonError.message,
+      });
+    }
 
     if (data.resultType !== 'SUCCESS' || !data.success?.payToken) {
       logEvent('error', 'payment_create_failed', {

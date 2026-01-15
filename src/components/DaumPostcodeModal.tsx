@@ -70,17 +70,22 @@ const POSTCODE_HTML = `
 export function DaumPostcodeModal({ visible, onClose, onSelect }: DaumPostcodeModalProps) {
     const handleMessage = (event: { nativeEvent: { data: string } }) => {
         try {
+            console.log('[DaumPostcode] Received message:', event.nativeEvent.data);
             const data = JSON.parse(event.nativeEvent.data);
+            console.log('[DaumPostcode] Parsed data:', data);
 
             if (data._close) {
+                console.log('[DaumPostcode] Closing modal');
                 onClose();
                 return;
             }
 
+            console.log('[DaumPostcode] Selecting address:', data.address);
             onSelect(data as AddressData);
+            console.log('[DaumPostcode] onSelect called, now closing');
             onClose();
         } catch (error) {
-            console.error('Failed to parse postcode data:', error);
+            console.error('[DaumPostcode] Failed to parse data:', error, 'Raw:', event.nativeEvent.data);
         }
     };
 
