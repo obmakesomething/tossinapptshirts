@@ -250,11 +250,7 @@ export function DesignStage({
           resizeMode="contain"
           style={[styles.designImage, buildLayerStyle(imageTransform)]}
         />
-      ) : (
-        <View
-          style={[styles.designPlaceholder, buildLayerStyle(imageTransform)]}
-        />
-      )}
+      ) : null}
       {textLayer.enabled && textLayer.text ? (
         <View style={[styles.textWrapper, buildTextStyle(textTransform)]}>
           <Text
@@ -282,7 +278,7 @@ const styles = StyleSheet.create({
   container: {
     borderRadius: 18,
     overflow: 'hidden',
-    backgroundColor: theme.colors.surface,
+    backgroundColor: 'transparent',
     borderWidth: 1,
     borderColor: theme.colors.border,
     alignItems: 'center',

@@ -150,16 +150,37 @@ function getHttpsAgent() {
     const key = Buffer.from(mtlsKeyBase64, 'base64').toString('utf-8');
     const cert = Buffer.from(mtlsCertBase64, 'base64').toString('utf-8');
 
+    console.log('[mTLS] Decoded key length:', key.length, 'chars');
+    console.log('[mTLS] Decoded cert length:', cert.length, 'chars');
+    console.log('[mTLS] Key header:', key.substring(0, 60));
+    console.log('[mTLS] Cert header:', cert.substring(0, 60));
+
+    // Verify key and cert format
+    if (!key.includes('BEGIN') || (!key.includes('PRIVATE KEY') && !key.includes('RSA PRIVATE KEY'))) {
+      throw new Error('Invalid private key format - must contain BEGIN PRIVATE KEY or BEGIN RSA PRIVATE KEY');
+    }
+    if (!cert.includes('BEGIN CERTIFICATE')) {
+      throw new Error('Invalid certificate format - must contain BEGIN CERTIFICATE');
+    }
+
+    // Check if key might be encrypted (has ENCRYPTED in header)
+    if (key.includes('ENCRYPTED')) {
+      console.warn('[mTLS] WARNING: Private key appears to be encrypted but no passphrase provided');
+    }
+
     httpsAgent = new https.Agent({
       key,
       cert,
-      rejectUnauthorized: true, // Verify server certificate
+      rejectUnauthorized: true,
     });
 
     console.log('[mTLS] HTTPS Agent configured successfully');
     return httpsAgent;
   } catch (error) {
-    console.error('[mTLS] Failed to configure HTTPS Agent:', error);
+    console.error('[mTLS] Failed to configure HTTPS Agent');
+    console.error('[mTLS] Error message:', error.message);
+    console.error('[mTLS] Error code:', error.code);
+    console.error('[mTLS] Error stack:', error.stack);
     return null;
   }
 }
