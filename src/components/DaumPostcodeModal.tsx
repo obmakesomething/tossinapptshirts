@@ -42,34 +42,80 @@ const POSTCODE_HTML = `
   <title>주소 검색</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    html, body { width: 100%; height: 100%; overflow: hidden; }
-    #layer { width: 100%; height: 100%; }
+    html, body { width: 100%; height: 100%; overflow: hidden; background: white; }
+    #wrap { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; }
   </style>
 </head>
 <body>
-  <div id="layer"></div>
+  <div id="wrap"></div>
   <script src="https://t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js"></script>
   <script>
-    new daum.Postcode({
-      oncomplete: function(data) {
-        // 주소 선택 시 데이터 전송 후 즉시 닫기 신호 전송
-        console.log('[DaumPostcode WebView] oncomplete - sending address data');
-        window.ReactNativeWebView.postMessage(JSON.stringify({
-          type: 'complete',
-          data: data
-        }));
-      },
-      onclose: function(state) {
-        // X버튼 클릭 시에만 실행됨 (FORCE_CLOSE)
-        console.log('[DaumPostcode WebView] onclose called with state:', state);
-        window.ReactNativeWebView.postMessage(JSON.stringify({
-          type: 'close',
-          closeState: state
-        }));
-      },
-      width: '100%',
-      height: '100%'
-    }).embed(document.getElementById('layer'));
+    function sendMessage(messageObj) {
+      const message = JSON.stringify(messageObj);
+      console.log('[DaumPostcode WebView] Attempting to send:', message);
+
+      try {
+        if (window.ReactNativeWebView && typeof window.ReactNativeWebView.postMessage === 'function') {
+          console.log('[DaumPostcode WebView] Sending via ReactNativeWebView.postMessage');
+          window.ReactNativeWebView.postMessage(message);
+          return true;
+        }
+
+        if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.ReactNativeWebView) {
+          console.log('[DaumPostcode WebView] Sending via webkit.messageHandlers');
+          window.webkit.messageHandlers.ReactNativeWebView.postMessage(message);
+          return true;
+        }
+
+        console.error('[DaumPostcode WebView] No message bridge available!');
+        console.error('[DaumPostcode WebView] window.ReactNativeWebView:', window.ReactNativeWebView);
+        console.error('[DaumPostcode WebView] window.webkit:', window.webkit);
+        return false;
+      } catch (error) {
+        console.error('[DaumPostcode WebView] Error sending message:', error);
+        return false;
+      }
+    }
+
+    // Log immediately to verify script execution
+    console.log('[DaumPostcode WebView] Script loaded, initializing...');
+
+    // Wait for DOM to be ready
+    document.addEventListener('DOMContentLoaded', function() {
+      console.log('[DaumPostcode WebView] DOM ready, creating Postcode instance');
+
+      const element = document.getElementById('wrap');
+      if (!element) {
+        console.error('[DaumPostcode WebView] Cannot find #wrap element!');
+        return;
+      }
+
+      new daum.Postcode({
+        oncomplete: function(data) {
+          console.log('[DaumPostcode WebView] ========== oncomplete FIRED ==========');
+          console.log('[DaumPostcode WebView] Address data:', data);
+
+          const success = sendMessage({
+            type: 'complete',
+            data: data
+          });
+
+          console.log('[DaumPostcode WebView] Message send result:', success);
+          console.log('[DaumPostcode WebView] ====================================');
+        },
+        onclose: function(state) {
+          console.log('[DaumPostcode WebView] onclose fired, state:', state);
+          sendMessage({
+            type: 'close',
+            closeState: state
+          });
+        },
+        width: '100%',
+        height: '100%'
+      }).embed(element);
+
+      console.log('[DaumPostcode WebView] Daum Postcode embed() called successfully');
+    });
   </script>
 </body>
 </html>
@@ -78,30 +124,48 @@ const POSTCODE_HTML = `
 export function DaumPostcodeModal({ visible, onClose, onSelect }: DaumPostcodeModalProps) {
     const handleMessage = (event: { nativeEvent: { data: string } }) => {
         try {
-            console.log('[DaumPostcode] Received message:', event.nativeEvent.data);
+            console.log('[DaumPostcode] Received raw message:', event.nativeEvent.data);
+
             const message = JSON.parse(event.nativeEvent.data);
-            console.log('[DaumPostcode] Parsed message:', message);
+            console.log('[DaumPostcode] Parsed message type:', message.type);
+            console.log('[DaumPostcode] Full message object:', JSON.stringify(message, null, 2));
 
             // Handle address selection completion
-            if (message.type === 'complete') {
-                console.log('[DaumPostcode] Address selected:', message.data.address);
-                onSelect(message.data as AddressData);
-                console.log('[DaumPostcode] Calling onSelect and closing modal');
-                // Close modal immediately after selection
-                onClose();
+            if (message.type === 'complete' && message.data) {
+                const addressData = message.data;
+                console.log('[DaumPostcode] ===== ADDRESS SELECTED =====');
+                console.log('[DaumPostcode] zonecode:', addressData.zonecode);
+                console.log('[DaumPostcode] roadAddress:', addressData.roadAddress);
+                console.log('[DaumPostcode] jibunAddress:', addressData.jibunAddress);
+                console.log('[DaumPostcode] sido:', addressData.sido);
+                console.log('[DaumPostcode] sigungu:', addressData.sigungu);
+                console.log('[DaumPostcode] =============================');
+
+                // Call onSelect FIRST to update parent state
+                console.log('[DaumPostcode] Calling onSelect callback...');
+                onSelect(addressData as AddressData);
+
+                // Close modal AFTER a delay to ensure state update completes
+                console.log('[DaumPostcode] Scheduling modal close in 100ms...');
+                setTimeout(() => {
+                    console.log('[DaumPostcode] Closing modal now');
+                    onClose();
+                }, 100);
+
                 return;
             }
 
             // Handle X button close
             if (message.type === 'close') {
-                console.log('[DaumPostcode] User closed modal, state:', message.closeState);
+                console.log('[DaumPostcode] User closed modal via X button, state:', message.closeState);
                 onClose();
                 return;
             }
 
             console.warn('[DaumPostcode] Unknown message type:', message.type);
         } catch (error) {
-            console.error('[DaumPostcode] Failed to parse message:', error, 'Raw:', event.nativeEvent.data);
+            console.error('[DaumPostcode] Failed to parse message:', error);
+            console.error('[DaumPostcode] Raw data that failed to parse:', event.nativeEvent.data);
         }
     };
 
