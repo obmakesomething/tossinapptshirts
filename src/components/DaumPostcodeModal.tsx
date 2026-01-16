@@ -56,10 +56,10 @@ const POSTCODE_HTML = `
         window.ReactNativeWebView.postMessage(JSON.stringify(data));
       },
       onclose: function(state) {
-        // 닫기 버튼 클릭 시 (FORCE_CLOSE) 또는 주소 선택 후 닫힘 (COMPLETE_CLOSE)
-        if (state === 'FORCE_CLOSE') {
-          window.ReactNativeWebView.postMessage(JSON.stringify({ _close: true }));
-        }
+        // state: 'FORCE_CLOSE' (X버튼 클릭), 'COMPLETE_CLOSE' (주소 선택 완료)
+        // 모든 경우에 닫기 신호 전송
+        console.log('[DaumPostcode WebView] onclose called with state:', state);
+        window.ReactNativeWebView.postMessage(JSON.stringify({ _close: true, closeState: state }));
       },
       width: '100%',
       height: '100%'

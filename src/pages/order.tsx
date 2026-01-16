@@ -74,13 +74,29 @@ function Page() {
   }, []);
 
   const handleAddressSelect = (data: AddressData) => {
+    console.log('[Order] Address selected:', {
+      roadAddress: data.roadAddress,
+      jibunAddress: data.jibunAddress,
+      zonecode: data.zonecode,
+      sido: data.sido,
+      sigungu: data.sigungu,
+    });
+
     setAddress1(data.roadAddress || data.jibunAddress);
     setZip(data.zonecode);
     setCity(data.sido);
     setState(data.sigungu);
 
+    console.log('[Order] State updated with address:', {
+      address1: data.roadAddress || data.jibunAddress,
+      zip: data.zonecode,
+      city: data.sido,
+      state: data.sigungu,
+    });
+
     // Focus on detail address input after address is selected
     setTimeout(() => {
+      console.log('[Order] Focusing on address2 input');
       address2InputRef.current?.focus();
     }, 100);
   };
@@ -273,7 +289,10 @@ function Page() {
         <Text style={styles.sectionTitle}>배송지</Text>
         <SecondaryButton
           label="주소 검색"
-          onPress={() => setPostcodeModalVisible(true)}
+          onPress={() => {
+            console.log('[Order] Opening address search modal');
+            setPostcodeModalVisible(true);
+          }}
           style={styles.addressSearchButton}
         />
         <TextInput
@@ -346,7 +365,10 @@ function Page() {
 
       <DaumPostcodeModal
         visible={postcodeModalVisible}
-        onClose={() => setPostcodeModalVisible(false)}
+        onClose={() => {
+          console.log('[Order] Closing address search modal');
+          setPostcodeModalVisible(false);
+        }}
         onSelect={handleAddressSelect}
       />
     </Screen>

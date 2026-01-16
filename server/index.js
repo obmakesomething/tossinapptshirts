@@ -72,6 +72,9 @@ const formatError = (error) => ({
   name: error?.name,
   code: error?.code,
 });
+// Configuration constants (must be defined before middleware)
+const PORT = process.env.PORT || 3000;
+const REQUEST_TIMEOUT_MS = Number(process.env.REQUEST_TIMEOUT_MS) || 120000; // 2 minutes default
 
 // Request timeout middleware
 app.use((req, res, next) => {
@@ -117,9 +120,6 @@ app.use((req, res, next) => {
   });
   next();
 });
-
-const PORT = process.env.PORT || 3000;
-const REQUEST_TIMEOUT_MS = Number(process.env.REQUEST_TIMEOUT_MS) || 120000; // 2 minutes default
 const IMAGE_BUCKET = process.env.S3_BUCKET || '';
 const IMAGE_BASE_URL = process.env.S3_PUBLIC_BASE_URL || '';
 const IMAGE_PREFIX = process.env.S3_IMAGE_PREFIX || 'uploads';
@@ -304,13 +304,16 @@ async function removeBackgroundClipdrop({ sourcePath, apiKey, outputPath }) {
 }
 
 async function buildOrderPdf(order) {
-  return new Promise(async (resolve, reject) => {
-    try {
-      const doc = new PDFDocument({ size: 'A4', margin: 48 });
-      const chunks = [];
-      doc.on('data', (chunk) => chunks.push(chunk));
-      doc.on('end', () => resolve(Buffer.concat(chunks)));
-      doc.on('error', reject);
+  return new Promise((resolve, reject) => {
+    const doc = new PDFDocument({ size: 'A4', margin: 48 });
+    const chunks = [];
+    doc.on('data', (chunk) => chunks.push(chunk));
+    doc.on('end', () => resolve(Buffer.concat(chunks)));
+    doc.on('error', reject);
+
+    // Async processing wrapper
+    (async () => {
+      try {
 
       // Header
       doc.fontSize(18).text('Order Summary', { align: 'left' });
@@ -480,10 +483,12 @@ async function buildOrderPdf(order) {
         '※ 출력 이미지에 대한 최종 판단은 주문자가 진행합니다. 주문서 메일을 꼭 확인해 주세요.'
       );
 
-      doc.end();
-    } catch (error) {
-      reject(error);
-    }
+        doc.end();
+      } catch (error) {
+        doc.end();
+        reject(error);
+      }
+    })();
   });
 }
 
@@ -832,7 +837,8 @@ app.post('/v1/images/style-transfer', strictLimiter, async (req, res) => {
 
     const client = getOpenAIClient();
 
-    // Style-specific prompts (generate from text description)
+    // Style-specific prompts with CRITICAL instruction to preserve original image structure
+    // IMPORTANT: Tell the model to ONLY change the style, NOT the content/shape/form
     const stylePrompts = {
       'watercolor': 'watercolor painting style, soft and flowing watercolor textures, gentle color blending, artistic brush strokes, on white background',
       'sketch': 'pencil sketch style, hand-drawn lines, black and white illustration, artistic sketching, on white background',
@@ -843,7 +849,9 @@ app.post('/v1/images/style-transfer', strictLimiter, async (req, res) => {
     };
 
     const styleDescription = stylePrompts[style] || stylePrompts['watercolor'];
-    const enhancedPrompt = `A t-shirt design in ${styleDescription}`;
+    // CRITICAL: Add explicit instruction to preserve the original image's shape, form, and composition
+    // Only change the artistic style, not the content itself
+    const enhancedPrompt = `Convert the original image to ${styleDescription}. IMPORTANT: Keep the exact same subject, shape, composition, and layout as the original image. Only change the artistic style and rendering technique. Do not add, remove, or modify any elements from the original image.`;
 
     logEvent('info', 'style_transfer_generate', {
       requestId: req.requestId,

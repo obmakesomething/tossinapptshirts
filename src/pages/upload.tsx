@@ -119,7 +119,7 @@ function Page() {
         base64: true,
       });
       const photo = photos[0];
-      if (!photo) {
+      if (!photo || !photo.dataUri) {
         setError('앨범에서 사진을 찾지 못했어요.');
         return;
       }
@@ -128,7 +128,7 @@ function Page() {
         : `data:image/jpeg;base64,${photo.dataUri}`;
       setDesignImageUri(null);
       setLastDataUrl(dataUrl);
-      await uploadDataUrl(dataUrl, `album-${photo.id}`);
+      await uploadDataUrl(dataUrl, `album-${photo.id || 'unknown'}`);
     } catch (err) {
       setError(
         err instanceof Error ? err.message : '앨범을 불러오지 못했어요.',
