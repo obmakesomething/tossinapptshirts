@@ -11,6 +11,8 @@ const OpenAI = require('openai');
 const fs = require('fs');
 const fsp = require('fs/promises');
 const path = require('path');
+const https = require('https');
+const axios = require('axios');
 const { runPrintPipeline } = require('./printPipeline');
 const { getPool, initializeDatabase } = require('./db');
 
@@ -130,6 +132,37 @@ const ORDER_OUTPUT_DIR = process.env.ORDER_OUTPUT_DIR || path.join(process.cwd()
 const CLIPDROP_API_KEY = process.env.CLIPDROP_API_KEY || '';
 const KAKAO_WEBHOOK_URL = process.env.KAKAO_WEBHOOK_URL || '';
 const KAKAO_WEBHOOK_TOKEN = process.env.KAKAO_WEBHOOK_TOKEN || '';
+
+// mTLS configuration for Toss API
+let httpsAgent;
+function getHttpsAgent() {
+  if (httpsAgent) return httpsAgent;
+
+  const mtlsKeyBase64 = process.env.MTLS_KEY_BASE64;
+  const mtlsCertBase64 = process.env.MTLS_CERT_BASE64;
+
+  if (!mtlsKeyBase64 || !mtlsCertBase64) {
+    console.warn('[mTLS] MTLS_KEY_BASE64 or MTLS_CERT_BASE64 not found in environment variables');
+    return null;
+  }
+
+  try {
+    const key = Buffer.from(mtlsKeyBase64, 'base64').toString('utf-8');
+    const cert = Buffer.from(mtlsCertBase64, 'base64').toString('utf-8');
+
+    httpsAgent = new https.Agent({
+      key,
+      cert,
+      rejectUnauthorized: true, // Verify server certificate
+    });
+
+    console.log('[mTLS] HTTPS Agent configured successfully');
+    return httpsAgent;
+  } catch (error) {
+    console.error('[mTLS] Failed to configure HTTPS Agent:', error);
+    return null;
+  }
+}
 
 let s3Client;
 function resolveS3Endpoint() {
@@ -1806,56 +1839,59 @@ app.post('/v1/payment/create', strictLimiter, async (req, res) => {
       body: paymentBody,
     });
 
+    // Get mTLS agent
+    const agent = getHttpsAgent();
+    if (!agent) {
+      console.error('[Payment] mTLS agent not available - check MTLS_KEY_BASE64 and MTLS_CERT_BASE64 environment variables');
+      return res.status(500).json({
+        error: 'Payment service configuration error.',
+        details: 'mTLS certificates not configured',
+      });
+    }
+
     let response;
     try {
-      response = await fetch(paymentUrl, {
+      response = await axios({
         method: 'POST',
+        url: paymentUrl,
         headers: {
           'Content-Type': 'application/json',
           'x-toss-user-key': userKey,
         },
-        body: JSON.stringify(paymentBody),
+        data: paymentBody,
+        httpsAgent: agent,
+        timeout: 30000, // 30 seconds timeout
       });
 
-      console.log('[Payment] Fetch successful, status:', response.status);
-    } catch (fetchError) {
-      console.error('[Payment] Fetch failed:', {
+      console.log('[Payment] Request successful, status:', response.status);
+    } catch (axiosError) {
+      console.error('[Payment] Request failed:', {
         url: paymentUrl,
-        error: fetchError.message,
-        code: fetchError.code,
-        cause: fetchError.cause,
+        error: axiosError.message,
+        code: axiosError.code,
+        status: axiosError.response?.status,
+        data: axiosError.response?.data,
       });
 
-      logEvent('error', 'payment_create_fetch_failed', {
+      logEvent('error', 'payment_create_request_failed', {
         requestId: req.requestId,
         orderNo,
         url: paymentUrl,
-        error: fetchError.message,
-        code: fetchError.code,
-        stack: fetchError.stack,
+        error: axiosError.message,
+        code: axiosError.code,
+        status: axiosError.response?.status,
+        stack: axiosError.stack,
       });
       return res.status(503).json({
         error: 'Failed to connect to payment service. Please try again.',
-        details: fetchError.message,
+        details: axiosError.message,
         url: paymentUrl,
+        responseStatus: axiosError.response?.status,
+        responseData: axiosError.response?.data,
       });
     }
 
-    let data;
-    try {
-      data = await response.json();
-    } catch (jsonError) {
-      logEvent('error', 'payment_create_json_failed', {
-        requestId: req.requestId,
-        orderNo,
-        status: response.status,
-        error: jsonError.message,
-      });
-      return res.status(502).json({
-        error: 'Invalid response from payment service.',
-        details: jsonError.message,
-      });
-    }
+    const data = response.data;
 
     if (data.resultType !== 'SUCCESS' || !data.success?.payToken) {
       logEvent('error', 'payment_create_failed', {
