@@ -31,7 +31,6 @@ function Page() {
   const { designImageUri, setDesignImageUri } = useCatalog();
   const [uploading, setUploading] = useState(false);
   const [loadingAlbum, setLoadingAlbum] = useState(false);
-  const [removingBg, setRemovingBg] = useState(false);
   const [bgRemovalStatus, setBgRemovalStatus] = useState<
     'idle' | 'loading' | 'success' | 'error'
   >('idle');
@@ -140,7 +139,6 @@ function Page() {
 
   const handleRemoveBackground = async () => {
     if (!designImageUri && !lastDataUrl) return;
-    setRemovingBg(true);
     setBgRemovalStatus('loading');
     setError('');
     setSuccessMessage('');
@@ -180,8 +178,6 @@ function Page() {
       setBgRemovalStatus('error');
       setError(err instanceof Error ? err.message : '배경 제거에 실패했어요.');
       setTimeout(() => setBgRemovalStatus('idle'), 3000);
-    } finally {
-      setRemovingBg(false);
     }
   };
 
@@ -287,6 +283,7 @@ function Page() {
               disabled={bgRemovalStatus === 'loading' || stylingImage}
               style={[styles.bgRemoveButton, getBgRemovalButtonStyle()]}
             />
+            {/* Style transfer feature temporarily disabled - will be re-enabled in future release
             <SecondaryButton
               label={
                 stylingImage ? '스타일 변환 중...' : '내 이미지 스타일 바꾸기'
@@ -295,6 +292,7 @@ function Page() {
               disabled={removingBg || stylingImage}
               style={styles.bgRemoveButton}
             />
+            */}
           </>
         )}
       </Card>

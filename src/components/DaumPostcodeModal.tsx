@@ -78,16 +78,18 @@ export function DaumPostcodeModal({ visible, onClose, onSelect }: DaumPostcodeMo
             const data = JSON.parse(event.nativeEvent.data);
             console.log('[DaumPostcode] Parsed data:', data);
 
+            // Handle close signal from onclose callback
             if (data._close) {
-                console.log('[DaumPostcode] Closing modal');
+                console.log('[DaumPostcode] Received close signal, state:', data.closeState);
                 onClose();
                 return;
             }
 
-            console.log('[DaumPostcode] Selecting address:', data.address);
+            // Handle address selection from oncomplete callback
+            // DON'T close here - let autoClose and onclose(COMPLETE_CLOSE) handle it
+            console.log('[DaumPostcode] Address selected:', data.address);
             onSelect(data as AddressData);
-            console.log('[DaumPostcode] onSelect called, now closing');
-            onClose();
+            console.log('[DaumPostcode] onSelect called, waiting for autoClose...');
         } catch (error) {
             console.error('[DaumPostcode] Failed to parse data:', error, 'Raw:', event.nativeEvent.data);
         }

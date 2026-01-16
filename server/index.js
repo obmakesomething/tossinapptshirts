@@ -1791,32 +1791,53 @@ app.post('/v1/payment/create', strictLimiter, async (req, res) => {
       isTestPayment: IS_TEST_PAYMENT,
     });
 
+    const paymentUrl = `${TOSSPAY_API_URL}/api-partner/v1/apps-in-toss/pay/make-payment`;
+    const paymentBody = {
+      orderNo,
+      productDesc,
+      amount: Number(amount),
+      amountTaxFree: Number(amountTaxFree),
+      isTestPayment: IS_TEST_PAYMENT,
+    };
+
+    console.log('[Payment] Creating payment:', {
+      url: paymentUrl,
+      userKey: userKey.substring(0, 10) + '...',
+      body: paymentBody,
+    });
+
     let response;
     try {
-      response = await fetch(`${TOSSPAY_API_URL}/api-partner/v1/apps-in-toss/pay/make-payment`, {
+      response = await fetch(paymentUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'x-toss-user-key': userKey,
         },
-        body: JSON.stringify({
-          orderNo,
-          productDesc,
-          amount: Number(amount),
-          amountTaxFree: Number(amountTaxFree),
-          isTestPayment: IS_TEST_PAYMENT,
-        }),
+        body: JSON.stringify(paymentBody),
       });
+
+      console.log('[Payment] Fetch successful, status:', response.status);
     } catch (fetchError) {
+      console.error('[Payment] Fetch failed:', {
+        url: paymentUrl,
+        error: fetchError.message,
+        code: fetchError.code,
+        cause: fetchError.cause,
+      });
+
       logEvent('error', 'payment_create_fetch_failed', {
         requestId: req.requestId,
         orderNo,
+        url: paymentUrl,
         error: fetchError.message,
+        code: fetchError.code,
         stack: fetchError.stack,
       });
       return res.status(503).json({
         error: 'Failed to connect to payment service. Please try again.',
         details: fetchError.message,
+        url: paymentUrl,
       });
     }
 
