@@ -52,20 +52,24 @@ const POSTCODE_HTML = `
   <script>
     new daum.Postcode({
       oncomplete: function(data) {
-        // 주소 선택 시 데이터 전송
-        window.ReactNativeWebView.postMessage(JSON.stringify(data));
+        // 주소 선택 시 데이터 전송 후 즉시 닫기 신호 전송
+        console.log('[DaumPostcode WebView] oncomplete - sending address data');
+        window.ReactNativeWebView.postMessage(JSON.stringify({
+          type: 'complete',
+          data: data
+        }));
       },
       onclose: function(state) {
-        // state: 'FORCE_CLOSE' (X버튼 클릭), 'COMPLETE_CLOSE' (주소 선택 완료)
-        // 모든 경우에 닫기 신호 전송
+        // X버튼 클릭 시에만 실행됨 (FORCE_CLOSE)
         console.log('[DaumPostcode WebView] onclose called with state:', state);
-        window.ReactNativeWebView.postMessage(JSON.stringify({ _close: true, closeState: state }));
+        window.ReactNativeWebView.postMessage(JSON.stringify({
+          type: 'close',
+          closeState: state
+        }));
       },
       width: '100%',
       height: '100%'
-    }).embed(document.getElementById('layer'), {
-      autoClose: true // 주소 선택 후 자동으로 닫힘
-    });
+    }).embed(document.getElementById('layer'));
   </script>
 </body>
 </html>
@@ -75,23 +79,29 @@ export function DaumPostcodeModal({ visible, onClose, onSelect }: DaumPostcodeMo
     const handleMessage = (event: { nativeEvent: { data: string } }) => {
         try {
             console.log('[DaumPostcode] Received message:', event.nativeEvent.data);
-            const data = JSON.parse(event.nativeEvent.data);
-            console.log('[DaumPostcode] Parsed data:', data);
+            const message = JSON.parse(event.nativeEvent.data);
+            console.log('[DaumPostcode] Parsed message:', message);
 
-            // Handle close signal from onclose callback
-            if (data._close) {
-                console.log('[DaumPostcode] Received close signal, state:', data.closeState);
+            // Handle address selection completion
+            if (message.type === 'complete') {
+                console.log('[DaumPostcode] Address selected:', message.data.address);
+                onSelect(message.data as AddressData);
+                console.log('[DaumPostcode] Calling onSelect and closing modal');
+                // Close modal immediately after selection
                 onClose();
                 return;
             }
 
-            // Handle address selection from oncomplete callback
-            // DON'T close here - let autoClose and onclose(COMPLETE_CLOSE) handle it
-            console.log('[DaumPostcode] Address selected:', data.address);
-            onSelect(data as AddressData);
-            console.log('[DaumPostcode] onSelect called, waiting for autoClose...');
+            // Handle X button close
+            if (message.type === 'close') {
+                console.log('[DaumPostcode] User closed modal, state:', message.closeState);
+                onClose();
+                return;
+            }
+
+            console.warn('[DaumPostcode] Unknown message type:', message.type);
         } catch (error) {
-            console.error('[DaumPostcode] Failed to parse data:', error, 'Raw:', event.nativeEvent.data);
+            console.error('[DaumPostcode] Failed to parse message:', error, 'Raw:', event.nativeEvent.data);
         }
     };
 
