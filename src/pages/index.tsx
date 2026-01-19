@@ -1,6 +1,6 @@
 import { createRoute } from '@granite-js/react-native';
 import React from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import { MockupCanvas } from '../components/MockupCanvas';
 import { InquiryModal } from '../components/InquiryModal';
 import {
@@ -38,31 +38,15 @@ function Page() {
 
   const categories = ['티셔츠', '후드', '맨투맨'];
 
-  const filteredProducts =
-    selectedCategory === '티셔츠'
-      ? products.filter((p) => p.category === '티셔츠')
-      : products.filter((p) => p.category === selectedCategory);
-
-  const exampleProducts = filteredProducts.slice(0, 3);
-
-  // 선택된 카테고리에 맞는 제품 찾기
   const categoryProduct = products.find((p) => p.category === selectedCategory) || selectedProduct;
 
-  // 카테고리 변경 핸들러
   const handleCategoryChange = (category: string) => {
     setSelectedCategory(category);
-    // Context의 제품도 업데이트
     const product = products.find((p) => p.category === category);
     if (product) {
       setSelectedProductId(product.id);
     }
   };
-
-  const steps = [
-    { title: '이미지 준비', desc: '업로드 또는 생성' },
-    { title: '상품 선택', desc: '컬러·사이즈' },
-    { title: '완성 미리보기', desc: '미리보기·저장' },
-  ];
 
   const goToUpload = () => {
     navigation.navigate('/upload');
@@ -76,10 +60,6 @@ function Page() {
     navigation.navigate('/designs');
   };
 
-  const goToProducts = () => {
-    navigation.navigate('/products');
-  };
-
   const goToFAQ = () => {
     navigation.navigate('/faq');
   };
@@ -91,16 +71,22 @@ function Page() {
   return (
     <Screen>
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>머천다이즈 GPT</Text>
+        <View style={styles.headerLeft}>
+          <Image
+            source={require('../../assets/logo.jpg')}
+            style={styles.headerLogo}
+          />
+          <Text style={styles.headerTitle}>머천다이즈 Gpt</Text>
+        </View>
         <Pressable onPress={goToInquiry} style={styles.inquiryButton}>
           <Text style={styles.inquiryButtonText}>문의</Text>
         </Pressable>
       </View>
 
       <View style={styles.hero}>
-        <Text style={styles.heroTitle}>AI로 나만의 굿즈 만들기</Text>
+        <Text style={styles.heroTitle}>AI로 나만의 굿즈를 만들어 보세요</Text>
         <Text style={styles.heroSubtitle}>
-          내 이미지를 업로드하거나 AI로 이미지를 만들어 티셔츠·후디·맨투맨을 제작하세요.
+          내 이미지를 업로드하거나 AI로 새 이미지를 만들어서 티셔츠, 후디, 맨투맨을 제작할 수 있어요.
         </Text>
       </View>
 
@@ -168,7 +154,7 @@ function Page() {
           </Pressable>
         </View>
         <Text style={styles.faqDescription}>
-          궁금하신 사항에 대한 답변을 확인해보세요.
+          궁금한 점이 있으신가요? 답변을 확인해 보세요.
         </Text>
         {faqItems.slice(0, 3).map((item) => (
           <Pressable key={item.id} onPress={goToFAQ}>
@@ -222,6 +208,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     marginBottom: theme.spacing.lg,
+  },
+  headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  headerLogo: {
+    width: 28,
+    height: 28,
+    borderRadius: 6,
+    marginRight: theme.spacing.sm,
   },
   headerTitle: {
     fontSize: 20,

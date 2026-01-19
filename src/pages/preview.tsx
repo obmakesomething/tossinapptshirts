@@ -1,14 +1,13 @@
-import { share } from '@apps-in-toss/framework';
+import { share, getTossShareLink } from '@apps-in-toss/framework';
 import { createRoute } from '@granite-js/react-native';
+import { Button } from '@toss/tds-react-native';
 import React, { useState } from 'react';
 import { Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { MockupCanvas } from '../components/MockupCanvas';
 import {
   Card,
   ColorSwatch,
-  PrimaryButton,
   Screen,
-  SecondaryButton,
   TopBar,
   theme,
 } from '../components/ui';
@@ -27,7 +26,6 @@ function Page() {
   const {
     selectedProduct,
     selectedColor,
-    selectedPrint,
     printBackEnabled,
     setSelectedColor,
     frontDesignImageUri,
@@ -51,10 +49,10 @@ function Page() {
     try {
       const title = `${selectedProduct.name} - ${selectedColor}`;
       await saveCurrentDesign(title);
-      Alert.alert('저장 완료', '디자인을 저장했어요.');
+      Alert.alert('저장 완료', '디자인을 저장했어요!');
       navigation.navigate('/designs');
     } catch {
-      Alert.alert('저장 실패', '다시 시도해주세요.');
+      Alert.alert('저장 실패', '저장하지 못했어요. 다시 시도해 주세요.');
     } finally {
       setSaving(false);
     }
@@ -62,8 +60,10 @@ function Page() {
 
   const handleShare = async () => {
     try {
+      const ogImageUrl = frontDesignImageUri || undefined;
+      const shareLink = await getTossShareLink('intoss://merchandisegpt/preview', ogImageUrl);
       await share({
-        message: `${selectedProduct.name} 디자인을 확인해보세요! 🎨`,
+        message: `${selectedProduct.name} 디자인을 확인해보세요! 🎨\n${shareLink}`,
       });
     } catch {
       // User cancelled or share failed - ignore
@@ -79,7 +79,7 @@ function Page() {
       <TopBar title="완성 미리보기" onBack={() => navigation.goBack()} />
 
       <Text style={styles.title}>{selectedProduct.name}</Text>
-      <Text style={styles.subtitle}>색상별 미리보기를 확인하세요</Text>
+      <Text style={styles.subtitle}>다른 색상으로도 확인해 보세요</Text>
 
       <ScrollView horizontal showsHorizontalScrollIndicator={false}>
         {filteredShots.map((label, index) => {
@@ -95,8 +95,8 @@ function Page() {
                   selectedColor,
                   isBack ? 'back' : 'front',
                 )}
-                width={180}
-                height={220}
+                width={220}
+                height={275}
                 showDesign
                 designImageUri={
                   isBack ? backDesignImageUri : frontDesignImageUri
@@ -114,7 +114,7 @@ function Page() {
       </ScrollView>
 
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>컬러 변경</Text>
+        <Text style={styles.sectionTitle}>색상 바꿔보기</Text>
         <View style={styles.swatchRow}>
           {selectedProduct.colors.map((color) => (
             <ColorSwatch
@@ -129,25 +129,33 @@ function Page() {
       </View>
 
       <Card style={styles.infoCard}>
-        <Text style={styles.infoTitle}>파일 준비 완료</Text>
+        <Text style={styles.infoTitle}>파일 준비가 완료됐어요</Text>
         <Text style={styles.infoDesc}>
-          저장 후 언제든 다시 편집하거나 공유할 수 있어요.
+          저장한 뒤 언제든 다시 편집하거나 공유할 수 있어요.
         </Text>
       </Card>
 
       <View style={styles.actionRow}>
-        <PrimaryButton
-          label="주문 요청"
-          onPress={goOrder}
-          style={styles.actionButton}
-        />
-        <SecondaryButton
-          label={saving ? '저장 중...' : '저장하기'}
-          onPress={handleSave}
-          disabled={saving}
-          style={styles.actionButton}
-        />
-        <SecondaryButton label="공유하기" onPress={handleShare} />
+        <View style={styles.flex1}>
+          <Button type="primary" size="medium" onPress={goOrder}>
+            주문하기
+          </Button>
+        </View>
+        <View style={styles.flex1}>
+          <Button
+            type="light"
+            size="medium"
+            onPress={handleSave}
+            disabled={saving}
+          >
+            {saving ? '저장하고 있어요...' : '저장하기'}
+          </Button>
+        </View>
+        <View style={styles.flex1}>
+          <Button type="light" size="medium" onPress={handleShare}>
+            공유하기
+          </Button>
+        </View>
       </View>
     </Screen>
   );
@@ -213,8 +221,10 @@ const styles = StyleSheet.create({
   },
   actionRow: {
     marginTop: theme.spacing.lg,
+    gap: theme.spacing.sm,
+    flexDirection: 'row',
   },
-  actionButton: {
-    marginBottom: theme.spacing.sm,
+  flex1: {
+    flex: 1,
   },
 });

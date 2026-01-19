@@ -1,4 +1,4 @@
-import { share } from '@apps-in-toss/framework';
+import { share, getTossShareLink } from '@apps-in-toss/framework';
 import { createRoute } from '@granite-js/react-native';
 import React, { useEffect } from 'react';
 import { Alert, StyleSheet, Text, View } from 'react-native';
@@ -27,7 +27,7 @@ function formatTimeAgo(dateStr: string): string {
   const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
   const diffDays = Math.floor(diffHours / 24);
 
-  if (diffHours < 1) return '방금 전';
+  if (diffHours < 1) return '방금';
   if (diffHours < 24) return `${diffHours}시간 전`;
   if (diffDays === 1) return '어제';
   return `${diffDays}일 전`;
@@ -55,8 +55,10 @@ function Page() {
     const product = catalogProducts.find((p) => p.id === design.productId);
     const productName = product?.name ?? '티셔츠';
     try {
+      const ogImageUrl = design.designImageUri || undefined;
+      const shareLink = await getTossShareLink('intoss://merchandisegpt/designs', ogImageUrl);
       await share({
-        message: `${design.title} - ${productName} 디자인을 확인해보세요! 🎨`,
+        message: `${design.title} - ${productName} 디자인을 확인해보세요! 🎨\n${shareLink}`,
       });
     } catch {
       // User cancelled
@@ -64,16 +66,16 @@ function Page() {
   };
 
   const handleDelete = (design: SavedDesign) => {
-    Alert.alert('삭제 확인', `"${design.title}" 디자인을 삭제할까요?`, [
-      { text: '취소', style: 'cancel' },
+    Alert.alert('삭제할까요?', `"${design.title}" 디자인을 삭제하면 복구할 수 없어요.`, [
+      { text: '취소할게요', style: 'cancel' },
       {
-        text: '삭제',
+        text: '삭제하기',
         style: 'destructive',
         onPress: async () => {
           try {
             await deleteDesign(design.id);
           } catch {
-            Alert.alert('삭제 실패', '다시 시도해주세요.');
+            Alert.alert('삭제 실패', '삭제하지 못했어요. 다시 시도해 주세요.');
           }
         },
       },
@@ -85,15 +87,15 @@ function Page() {
       <TopBar title="내 디자인" onBack={() => navigation.goBack()} />
 
       <Text style={styles.title}>
-        저장된 디자인을 다시 편집하거나 공유하세요
+        저장한 디자인이에요. 다시 편집하거나 공유할 수 있어요.
       </Text>
 
       <View style={styles.list}>
         {savedDesigns.length === 0 ? (
           <Card style={styles.emptyCard}>
-            <Text style={styles.emptyText}>저장된 디자인이 없습니다</Text>
+            <Text style={styles.emptyText}>아직 저장한 디자인이 없어요</Text>
             <Text style={styles.emptySubtext}>
-              미리보기 화면에서 디자인을 저장해보세요
+              미리보기 화면에서 디자인을 저장해 보세요
             </Text>
           </Card>
         ) : (
@@ -127,17 +129,17 @@ function Page() {
                   </Text>
                   <View style={styles.cardActions}>
                     <SecondaryButton
-                      label="다시 편집"
+                      label="편집하기"
                       onPress={() => handleEdit(design)}
                       style={styles.cardButton}
                     />
                     <SecondaryButton
-                      label="공유"
+                      label="공유하기"
                       onPress={() => handleShare(design)}
                       style={styles.cardButton}
                     />
                     <DangerButton
-                      label="삭제"
+                      label="삭제하기"
                       onPress={() => handleDelete(design)}
                     />
                   </View>
@@ -148,7 +150,7 @@ function Page() {
         )}
       </View>
 
-      <PrimaryButton label="새 디자인 만들기" onPress={goHome} />
+      <PrimaryButton label="새로 만들기" onPress={goHome} />
     </Screen>
   );
 }

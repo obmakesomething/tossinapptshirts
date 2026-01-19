@@ -15,7 +15,6 @@ export const Route = createRoute('/faq', {
 });
 
 function Page() {
-  const navigation = Route.useNavigation();
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const scrollViewRef = useRef<ScrollView>(null);
@@ -60,10 +59,10 @@ function Page() {
 
   return (
     <Screen>
-      <TopBar title="자주 묻는 질문" onBack={() => navigation.goBack()} />
+      <TopBar title="자주 묻는 질문" />
 
       <Text style={styles.subtitle}>
-        궁금하신 내용을 확인해보세요
+        찾으시는 내용이 있으신가요?
       </Text>
 
       {/* Category Navigation Buttons */}
