@@ -1,5 +1,5 @@
 import { createRoute } from '@granite-js/react-native';
-import { TossPay } from '@apps-in-toss/framework';
+import { TossPay, getDeviceId } from '@apps-in-toss/framework';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { StyleSheet, Text, TextInput, View } from 'react-native';
 import {
@@ -49,28 +49,22 @@ function Page() {
   const [userKey, setUserKey] = useState<string>('');
   const address2InputRef = useRef<TextInput>(null);
 
-  // Get user key from Toss mini-app environment
+  // Get user key from Toss mini-app environment using getDeviceId
   useEffect(() => {
-    // In Toss mini-app, user key should be automatically available via SDK
-    // For development/testing, we'll use a fallback key
-    // TODO: In production, verify this is properly injected by Toss mini-app environment
-    const getTossUserKey = () => {
-      try {
-        // @ts-ignore - Toss may inject this in their environment
-        if (typeof global !== 'undefined' && global.tossUserKey) {
-          // @ts-ignore
-          return global.tossUserKey;
-        }
-      } catch (e) {
-        // Ignore error
+    try {
+      // Use Toss SDK's getDeviceId for user identification
+      const deviceId = getDeviceId();
+      if (deviceId) {
+        setUserKey(deviceId);
+        console.log('[Order] Got device ID for user-key:', deviceId.substring(0, 20) + '...');
+      } else {
+        console.warn('[Order] getDeviceId returned empty, using fallback');
+        setUserKey(`device-${Date.now()}`);
       }
-
-      // Fallback for development/testing
-      // In production, the Toss app environment should provide this automatically
-      return `toss-user-${Date.now()}`;
-    };
-
-    setUserKey(getTossUserKey());
+    } catch (e) {
+      console.error('[Order] Failed to get device ID:', e);
+      setUserKey(`device-${Date.now()}`);
+    }
   }, []);
 
   const handleAddressSelect = (data: AddressData) => {

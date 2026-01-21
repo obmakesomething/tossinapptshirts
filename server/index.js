@@ -369,173 +369,173 @@ async function buildOrderPdf(order) {
     (async () => {
       try {
 
-      // Header
-      doc.fontSize(18).text('Order Summary', { align: 'left' });
-      doc.moveDown(0.5);
-      doc.fontSize(11).fillColor('#333');
-
-      const createdAt = order.createdAt || new Date().toISOString();
-      doc.text(`Order ID: ${order.orderId || 'N/A'}`);
-      doc.text(`Created At: ${createdAt}`);
-      doc.text(`Channel: ${order.channel || 'Toss Miniapp'}`);
-      doc.moveDown();
-
-      // Customer Info
-      doc.fontSize(13).text('Customer');
-      doc.fontSize(11);
-      if (order.customer) {
-        doc.text(`Name: ${order.customer.name || ''}`);
-        doc.text(`Phone: ${order.customer.phone || ''}`);
-        doc.text(`Email: ${order.customer.email || ''}`);
-      }
-      doc.moveDown();
-
-      // Shipping Info
-      doc.fontSize(13).text('Shipping');
-      doc.fontSize(11);
-      if (order.shipping) {
-        doc.text(`Recipient: ${order.shipping.name || order.customer?.name || ''}`);
-        doc.text(`Phone: ${order.shipping.phone || order.customer?.phone || ''}`);
-        doc.text(`Address1: ${order.shipping.address1 || ''}`);
-        doc.text(`Address2: ${order.shipping.address2 || ''}`);
-        doc.text(`City: ${order.shipping.city || ''}`);
-        doc.text(`State: ${order.shipping.state || ''}`);
-        doc.text(`Zip: ${order.shipping.zip || ''}`);
-        doc.text(`Country: ${order.shipping.country || ''}`);
-        doc.text(`Memo: ${order.shipping.memo || ''}`);
-      }
-      doc.moveDown();
-
-      // Items with images
-      doc.fontSize(13).text('Items');
-      doc.fontSize(11);
-      const items = Array.isArray(order.items) ? order.items : [];
-
-      for (let index = 0; index < items.length; index++) {
-        const item = items[index];
-
-        // Check if we need a new page
-        if (doc.y > 650) {
-          doc.addPage();
-        }
-
-        doc.fontSize(12).fillColor('#000').text(`Item ${index + 1}`, { underline: true });
-        doc.fontSize(10).fillColor('#333');
-        doc.text(`- Product: ${item.productName || ''}`);
-        doc.text(`- Model: ${item.modelName || ''}`);
-        doc.text(`- Color: ${item.color || ''}`);
-        doc.text(`- Size: ${item.size || ''}`);
-        doc.text(`- Quantity: ${item.quantity || ''}`);
-        doc.text(`- Print Method: ${item.print?.method || ''}`);
-        doc.text(`- Print Placement: ${item.print?.placement || ''}`);
-        doc.text(`- Print Size: ${item.print?.sizeLabel || ''}`);
-        doc.text(`- Print Dimension: ${item.print?.sizeCm || ''}`);
-
-        if (item.text?.text) {
-          doc.text(
-            `- Text Layer: "${item.text.text}" (${item.text.fontWeight || ''}, ${item.text.fontSize || ''}px)`
-          );
-        }
+        // Header
+        doc.fontSize(18).text('Order Summary', { align: 'left' });
         doc.moveDown(0.5);
+        doc.fontSize(11).fillColor('#333');
 
-        // Design Image
-        if (item.designUrl) {
-          const designBuffer = await downloadToBuffer(item.designUrl);
-          if (designBuffer) {
-            try {
-              doc.fontSize(11).fillColor('#1E40AF').text('Design Image:', { continued: false });
-              doc.moveDown(0.3);
+        const createdAt = order.createdAt || new Date().toISOString();
+        doc.text(`Order ID: ${order.orderId || 'N/A'}`);
+        doc.text(`Created At: ${createdAt}`);
+        doc.text(`Channel: ${order.channel || 'Toss Miniapp'}`);
+        doc.moveDown();
 
-              const maxWidth = 250;
-              const maxHeight = 250;
+        // Customer Info
+        doc.fontSize(13).text('Customer');
+        doc.fontSize(11);
+        if (order.customer) {
+          doc.text(`Name: ${order.customer.name || ''}`);
+          doc.text(`Phone: ${order.customer.phone || ''}`);
+          doc.text(`Email: ${order.customer.email || ''}`);
+        }
+        doc.moveDown();
 
-              if (doc.y + maxHeight > 750) {
-                doc.addPage();
-              }
+        // Shipping Info
+        doc.fontSize(13).text('Shipping');
+        doc.fontSize(11);
+        if (order.shipping) {
+          doc.text(`Recipient: ${order.shipping.name || order.customer?.name || ''}`);
+          doc.text(`Phone: ${order.shipping.phone || order.customer?.phone || ''}`);
+          doc.text(`Address1: ${order.shipping.address1 || ''}`);
+          doc.text(`Address2: ${order.shipping.address2 || ''}`);
+          doc.text(`City: ${order.shipping.city || ''}`);
+          doc.text(`State: ${order.shipping.state || ''}`);
+          doc.text(`Zip: ${order.shipping.zip || ''}`);
+          doc.text(`Country: ${order.shipping.country || ''}`);
+          doc.text(`Memo: ${order.shipping.memo || ''}`);
+        }
+        doc.moveDown();
 
-              doc.image(designBuffer, {
-                fit: [maxWidth, maxHeight],
-                align: 'left',
-              });
-              doc.moveDown(0.5);
-            } catch (err) {
-              logEvent('warn', 'pdf_image_embed_failed', {
-                orderId: order.orderId,
-                itemIndex: index,
-                type: 'design',
-                error: err.message,
-              });
-              doc.fontSize(10).fillColor('#DC2626').text(`Design URL: ${item.designUrl}`);
-            }
-          } else {
-            doc.fontSize(10).fillColor('#6B7280').text(`Design URL: ${item.designUrl}`);
+        // Items with images
+        doc.fontSize(13).text('Items');
+        doc.fontSize(11);
+        const items = Array.isArray(order.items) ? order.items : [];
+
+        for (let index = 0; index < items.length; index++) {
+          const item = items[index];
+
+          // Check if we need a new page
+          if (doc.y > 650) {
+            doc.addPage();
+          }
+
+          doc.fontSize(12).fillColor('#000').text(`Item ${index + 1}`, { underline: true });
+          doc.fontSize(10).fillColor('#333');
+          doc.text(`- Product: ${item.productName || ''}`);
+          doc.text(`- Model: ${item.modelName || ''}`);
+          doc.text(`- Color: ${item.color || ''}`);
+          doc.text(`- Size: ${item.size || ''}`);
+          doc.text(`- Quantity: ${item.quantity || ''}`);
+          doc.text(`- Print Method: ${item.print?.method || ''}`);
+          doc.text(`- Print Placement: ${item.print?.placement || ''}`);
+          doc.text(`- Print Size: ${item.print?.sizeLabel || ''}`);
+          doc.text(`- Print Dimension: ${item.print?.sizeCm || ''}`);
+
+          if (item.text?.text) {
+            doc.text(
+              `- Text Layer: "${item.text.text}" (${item.text.fontWeight || ''}, ${item.text.fontSize || ''}px)`
+            );
           }
           doc.moveDown(0.5);
-        }
 
-        // Mockup Images
-        if (Array.isArray(item.mockupUrls) && item.mockupUrls.length > 0) {
-          doc.fontSize(11).fillColor('#1E40AF').text('Mockup Images:', { continued: false });
-          doc.moveDown(0.3);
-
-          for (let mi = 0; mi < item.mockupUrls.length; mi++) {
-            const mockupUrl = item.mockupUrls[mi];
-            const mockupBuffer = await downloadToBuffer(mockupUrl);
-
-            if (mockupBuffer) {
+          // Design Image
+          if (item.designUrl) {
+            const designBuffer = await downloadToBuffer(item.designUrl);
+            if (designBuffer) {
               try {
-                const maxWidth = 200;
-                const maxHeight = 200;
+                doc.fontSize(11).fillColor('#1E40AF').text('Design Image:', { continued: false });
+                doc.moveDown(0.3);
+
+                const maxWidth = 250;
+                const maxHeight = 250;
 
                 if (doc.y + maxHeight > 750) {
                   doc.addPage();
                 }
 
-                doc.fontSize(9).fillColor('#6B7280').text(`Mockup ${mi + 1}:`, { continued: false });
-                doc.moveDown(0.2);
-                doc.image(mockupBuffer, {
+                doc.image(designBuffer, {
                   fit: [maxWidth, maxHeight],
                   align: 'left',
                 });
                 doc.moveDown(0.5);
               } catch (err) {
-                logEvent('warn', 'pdf_mockup_embed_failed', {
+                logEvent('warn', 'pdf_image_embed_failed', {
                   orderId: order.orderId,
                   itemIndex: index,
-                  mockupIndex: mi,
+                  type: 'design',
                   error: err.message,
                 });
-                doc.fontSize(9).fillColor('#DC2626').text(`Mockup ${mi + 1} URL: ${mockupUrl}`);
+                doc.fontSize(10).fillColor('#DC2626').text(`Design URL: ${item.designUrl}`);
               }
             } else {
-              doc.fontSize(9).fillColor('#6B7280').text(`Mockup ${mi + 1} URL: ${mockupUrl}`);
+              doc.fontSize(10).fillColor('#6B7280').text(`Design URL: ${item.designUrl}`);
             }
+            doc.moveDown(0.5);
           }
-          doc.moveDown(0.5);
+
+          // Mockup Images
+          if (Array.isArray(item.mockupUrls) && item.mockupUrls.length > 0) {
+            doc.fontSize(11).fillColor('#1E40AF').text('Mockup Images:', { continued: false });
+            doc.moveDown(0.3);
+
+            for (let mi = 0; mi < item.mockupUrls.length; mi++) {
+              const mockupUrl = item.mockupUrls[mi];
+              const mockupBuffer = await downloadToBuffer(mockupUrl);
+
+              if (mockupBuffer) {
+                try {
+                  const maxWidth = 200;
+                  const maxHeight = 200;
+
+                  if (doc.y + maxHeight > 750) {
+                    doc.addPage();
+                  }
+
+                  doc.fontSize(9).fillColor('#6B7280').text(`Mockup ${mi + 1}:`, { continued: false });
+                  doc.moveDown(0.2);
+                  doc.image(mockupBuffer, {
+                    fit: [maxWidth, maxHeight],
+                    align: 'left',
+                  });
+                  doc.moveDown(0.5);
+                } catch (err) {
+                  logEvent('warn', 'pdf_mockup_embed_failed', {
+                    orderId: order.orderId,
+                    itemIndex: index,
+                    mockupIndex: mi,
+                    error: err.message,
+                  });
+                  doc.fontSize(9).fillColor('#DC2626').text(`Mockup ${mi + 1} URL: ${mockupUrl}`);
+                }
+              } else {
+                doc.fontSize(9).fillColor('#6B7280').text(`Mockup ${mi + 1} URL: ${mockupUrl}`);
+              }
+            }
+            doc.moveDown(0.5);
+          }
+
+          doc.moveDown(1);
         }
 
-        doc.moveDown(1);
-      }
+        // Pricing
+        if (doc.y > 700) {
+          doc.addPage();
+        }
+        doc.fontSize(13).fillColor('#000').text('Pricing');
+        doc.fontSize(11).fillColor('#333');
+        if (order.pricing) {
+          doc.text(`Unit Price: ${order.pricing.unitPrice || ''}`);
+          doc.text(`Quantity: ${order.pricing.quantity || ''}`);
+          doc.text(`Shipping: ${order.pricing.shipping || ''}`);
+          doc.text(`Total: ${order.pricing.total || ''}`);
+        }
 
-      // Pricing
-      if (doc.y > 700) {
-        doc.addPage();
-      }
-      doc.fontSize(13).fillColor('#000').text('Pricing');
-      doc.fontSize(11).fillColor('#333');
-      if (order.pricing) {
-        doc.text(`Unit Price: ${order.pricing.unitPrice || ''}`);
-        doc.text(`Quantity: ${order.pricing.quantity || ''}`);
-        doc.text(`Shipping: ${order.pricing.shipping || ''}`);
-        doc.text(`Total: ${order.pricing.total || ''}`);
-      }
-
-      // Footer note
-      doc.moveDown();
-      doc.fontSize(11).fillColor('#6B7280');
-      doc.text(
-        '※ 출력 이미지에 대한 최종 판단은 주문자가 해요. 주문서 메일을 꼭 확인해 주세요.'
-      );
+        // Footer note
+        doc.moveDown();
+        doc.fontSize(11).fillColor('#6B7280');
+        doc.text(
+          '※ 출력 이미지에 대한 최종 판단은 주문자가 해요. 주문서 메일을 꼭 확인해 주세요.'
+        );
 
         doc.end();
       } catch (error) {
@@ -609,8 +609,8 @@ app.post('/v1/images/upload', strictLimiter, async (req, res) => {
     const extension = mimeType.includes('png')
       ? 'png'
       : mimeType.includes('webp')
-      ? 'webp'
-      : 'jpg';
+        ? 'webp'
+        : 'jpg';
     const key = `${IMAGE_PREFIX}/${Date.now()}-${Math.random()
       .toString(36)
       .slice(2)}-${safeName || 'upload'}.${extension}`;
@@ -805,7 +805,7 @@ app.post('/v1/images/crop', strictLimiter, async (req, res) => {
       return res.status(400).json({ error: 'dataUrl is required.' });
     }
     if (!crop || typeof crop.x !== 'number' || typeof crop.y !== 'number' ||
-        typeof crop.width !== 'number' || typeof crop.height !== 'number') {
+      typeof crop.width !== 'number' || typeof crop.height !== 'number') {
       return res.status(400).json({ error: 'crop object with x, y, width, height is required.' });
     }
 
@@ -1920,7 +1920,7 @@ app.post('/v1/payment/create', strictLimiter, async (req, res) => {
         orderNo,
         response: data,
       });
-      return res.status(400).json({ 
+      return res.status(400).json({
         error: data.error?.message || 'Payment creation failed.',
         details: data,
       });
@@ -1932,7 +1932,7 @@ app.post('/v1/payment/create', strictLimiter, async (req, res) => {
       payToken: data.success.payToken,
     });
 
-    res.json({ 
+    res.json({
       payToken: data.success.payToken,
       orderNo,
       requestId: req.requestId,
@@ -1966,20 +1966,48 @@ app.post('/v1/payment/execute', strictLimiter, async (req, res) => {
       isTestPayment: IS_TEST_PAYMENT,
     });
 
-    const response = await fetch(`${TOSSPAY_API_URL}/api-partner/v1/apps-in-toss/pay/execute-payment`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-toss-user-key': userKey,
-      },
-      body: JSON.stringify({
-        payToken,
-        orderNo,
-        isTestPayment: IS_TEST_PAYMENT,
-      }),
-    });
+    // Get mTLS agent for Toss API authentication
+    const agent = getHttpsAgent();
+    if (!agent) {
+      console.error('[Payment Execute] mTLS agent not available');
+      return res.status(500).json({
+        error: 'Payment service configuration error.',
+        details: 'mTLS certificates not configured',
+      });
+    }
 
-    const data = await response.json();
+    let response;
+    try {
+      response = await axios({
+        method: 'POST',
+        url: `${TOSSPAY_API_URL}/api-partner/v1/apps-in-toss/pay/execute-payment`,
+        headers: {
+          'Content-Type': 'application/json',
+          'x-toss-user-key': userKey,
+        },
+        data: {
+          payToken,
+          orderNo,
+          isTestPayment: IS_TEST_PAYMENT,
+        },
+        httpsAgent: agent,
+        timeout: 30000,
+      });
+    } catch (axiosError) {
+      console.error('[Payment Execute] Request failed:', {
+        error: axiosError.message,
+        code: axiosError.code,
+        status: axiosError.response?.status,
+        data: axiosError.response?.data,
+      });
+      return res.status(503).json({
+        error: 'Failed to execute payment. Please try again.',
+        details: axiosError.message,
+        responseData: axiosError.response?.data,
+      });
+    }
+
+    const data = response.data;
 
     if (data.resultType !== 'SUCCESS') {
       logEvent('error', 'payment_execute_failed', {
@@ -1987,7 +2015,7 @@ app.post('/v1/payment/execute', strictLimiter, async (req, res) => {
         payToken,
         response: data,
       });
-      return res.status(400).json({ 
+      return res.status(400).json({
         error: data.error?.message || 'Payment execution failed.',
         details: data,
       });
@@ -2097,7 +2125,7 @@ app.post('/v1/payment/execute', strictLimiter, async (req, res) => {
 
           const pdfBuffer = await buildOrderPdf(orderData);
           const pdfName = `order-${orderData.orderId}.pdf`;
-          
+
           let pdfUrl = '';
           if (orderData.storePdf !== false) {
             const key = `${PDF_PREFIX}/${pdfName}`;
@@ -2156,7 +2184,7 @@ app.post('/v1/payment/execute', strictLimiter, async (req, res) => {
       }
     }
 
-    res.json({ 
+    res.json({
       success: true,
       payment: data.success,
       requestId: req.requestId,
@@ -2199,13 +2227,13 @@ app.post('/v1/payment/status', async (req, res) => {
     const data = await response.json();
 
     if (data.resultType !== 'SUCCESS') {
-      return res.status(400).json({ 
+      return res.status(400).json({
         error: data.error?.message || 'Failed to get payment status.',
         details: data,
       });
     }
 
-    res.json({ 
+    res.json({
       status: data.success,
       requestId: req.requestId,
     });
