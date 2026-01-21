@@ -76,7 +76,7 @@ function Page() {
 
   return (
     <Screen>
-      <TopBar title="완성 미리보기" onBack={() => navigation.goBack()} />
+      <TopBar title="완성 미리보기" />
 
       <Text style={styles.title}>{selectedProduct.name}</Text>
       <Text style={styles.subtitle}>다른 색상으로도 확인해 보세요</Text>

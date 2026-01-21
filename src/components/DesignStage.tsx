@@ -21,6 +21,8 @@ type DesignStageProps = {
   onInteractionEnd?: () => void;
 };
 
+
+
 const clamp = (value: number, min: number, max: number) =>
   Math.min(Math.max(value, min), max);
 
@@ -31,9 +33,9 @@ const HIT_SLOP = 12;
 
 export function DesignStage({
   template,
-  width = 240,
-  height = 320,
-  showPrintArea = true,
+  width = 220,
+  height = 275,
+  showPrintArea: _showPrintArea = true,
   showGuides = true,
   imageUri,
   imageTransform,
@@ -51,6 +53,8 @@ export function DesignStage({
     width: width * template.printArea.width,
     height: height * template.printArea.height,
   };
+
+  const effectiveShowGuides = _showPrintArea && showGuides;
 
   const activeTransform =
     activeLayer === 'text' ? textTransform : imageTransform;
@@ -231,7 +235,7 @@ export function DesignStage({
           )
         }
       />
-      {showGuides ? (
+      {effectiveShowGuides ? (
         <View
           style={[
             styles.printArea,

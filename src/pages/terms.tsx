@@ -8,11 +8,9 @@ export const Route = createRoute('/terms', {
 });
 
 function Page() {
-  const navigation = Route.useNavigation();
-
   return (
     <Screen>
-      <TopBar title="서비스 이용약관" onBack={() => navigation.goBack()} />
+      <TopBar title="서비스 이용약관" />
 
       <ScrollView showsVerticalScrollIndicator={false}>
         <View style={styles.content}>

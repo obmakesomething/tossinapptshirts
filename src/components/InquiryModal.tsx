@@ -27,7 +27,7 @@ export function InquiryModal({ visible, onClose }: InquiryModalProps) {
 
   const handleSubmit = async () => {
     if (!title.trim() || !content.trim()) {
-      setError('제목과 내용을 모두 입력해주세요.');
+      setError('제목과 내용을 모두 입력해 주세요.');
       return;
     }
 
@@ -97,14 +97,14 @@ export function InquiryModal({ visible, onClose }: InquiryModalProps) {
 
         <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
           <Text style={styles.subtitle}>
-            궁금하신 사항을 남겨주시면 빠른 시일 내에 답변드리겠습니다.
+            궁금한 내용을 남겨 주시면 빠르게 답변해 드릴게요.
           </Text>
 
           {success ? (
             <Card style={styles.successCard}>
               <Text style={styles.successText}>
-                ✓ 문의가 성공적으로 등록되었습니다!{'\n'}
-                답변은 영업일 기준 1-2일 이내에 처리됩니다.
+                ✓ 문의가 접수됐어요!{'\n'}
+                답변은 영업일 기준 1~2일 내로 보내드릴게요.
               </Text>
             </Card>
           ) : (
@@ -112,7 +112,7 @@ export function InquiryModal({ visible, onClose }: InquiryModalProps) {
               <Text style={styles.label}>이름 (선택)</Text>
               <TextInput
                 style={styles.input}
-                placeholder="이름을 입력하세요 (비공개)"
+                placeholder="이름을 입력해 주세요 (비공개)"
                 value={userName}
                 onChangeText={setUserName}
                 placeholderTextColor={theme.colors.textTertiary}
@@ -124,7 +124,7 @@ export function InquiryModal({ visible, onClose }: InquiryModalProps) {
               </Text>
               <TextInput
                 style={styles.input}
-                placeholder="문의 제목을 입력하세요"
+                placeholder="문의 제목을 입력해 주세요"
                 value={title}
                 onChangeText={setTitle}
                 placeholderTextColor={theme.colors.textTertiary}
@@ -137,7 +137,7 @@ export function InquiryModal({ visible, onClose }: InquiryModalProps) {
               </Text>
               <TextInput
                 style={[styles.input, styles.textArea]}
-                placeholder="문의 내용을 상세히 작성해주세요"
+                placeholder="문의 내용을 자세히 적어 주세요"
                 value={content}
                 onChangeText={setContent}
                 placeholderTextColor={theme.colors.textTertiary}
@@ -148,8 +148,8 @@ export function InquiryModal({ visible, onClose }: InquiryModalProps) {
               />
 
               <Text style={styles.hint}>
-                • 답변은 영업일 기준 1-2일 이내 등록됩니다.{'\n'}• 주문 관련
-                문의 시 주문번호를 함께 적어주세요.
+                • 답변은 영업일 기준 1~2일 내로 등록돼요.{'\n'}• 주문 관련
+                문의라면 주문번호를 함께 적어 주세요.
               </Text>
             </Card>
           )}
@@ -165,7 +165,7 @@ export function InquiryModal({ visible, onClose }: InquiryModalProps) {
                 style={styles.button}
               />
               <PrimaryButton
-                label={submitting ? '등록 중...' : '문의 등록하기'}
+                label={submitting ? '보내는 중...' : '문의 보내기'}
                 onPress={handleSubmit}
                 disabled={submitting}
                 style={styles.button}

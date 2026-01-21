@@ -24,7 +24,7 @@ function Page() {
 
   const handleSubmit = async () => {
     if (!title.trim() || !content.trim()) {
-      setError('제목과 내용을 모두 입력해주세요.');
+      setError('제목과 내용을 모두 입력해 주세요.');
       return;
     }
 
@@ -47,13 +47,13 @@ function Page() {
       });
 
       if (!response.ok) {
-        throw new Error('문의 등록에 실패했어요.');
+        throw new Error('문의를 등록하지 못했어요. 다시 시도해 주세요.');
       }
 
       // Success - navigate back
       navigation.goBack();
     } catch (err) {
-      setError(err instanceof Error ? err.message : '문의 등록에 실패했어요.');
+      setError(err instanceof Error ? err.message : '문의를 등록하지 못했어요. 다시 시도해 주세요.');
     } finally {
       setSubmitting(false);
     }
@@ -61,17 +61,17 @@ function Page() {
 
   return (
     <Screen>
-      <TopBar title="1대1 문의" onBack={() => navigation.goBack()} />
+      <TopBar title="1대1 문의" />
 
       <Text style={styles.subtitle}>
-        궁금하신 사항을 남겨주시면 빠른 시일 내에 답변드리겠습니다.
+        궁금한 점을 남겨주시면 빠르게 답변드릴게요.
       </Text>
 
       <Card style={styles.formCard}>
-        <Text style={styles.label}>이름 (선택)</Text>
+        <Text style={styles.label}>이름 (선택사항)</Text>
         <TextInput
           style={styles.input}
-          placeholder="이름을 입력하세요 (비공개)"
+          placeholder="이름을 알려주세요 (비공개)"
           value={userName}
           onChangeText={setUserName}
           placeholderTextColor={theme.colors.textTertiary}
@@ -82,7 +82,7 @@ function Page() {
         </Text>
         <TextInput
           style={styles.input}
-          placeholder="문의 제목을 입력하세요"
+          placeholder="어떤 내용인가요?"
           value={title}
           onChangeText={setTitle}
           placeholderTextColor={theme.colors.textTertiary}
@@ -94,7 +94,7 @@ function Page() {
         </Text>
         <TextInput
           style={[styles.input, styles.textArea]}
-          placeholder="문의 내용을 상세히 작성해주세요"
+          placeholder="궁금한 점을 자세히 적어주세요"
           value={content}
           onChangeText={setContent}
           placeholderTextColor={theme.colors.textTertiary}
@@ -104,7 +104,7 @@ function Page() {
         />
 
         <Text style={styles.hint}>
-          • 답변은 영업일 기준 1-2일 이내 등록됩니다.{'\n'}• 주문 관련 문의 시
+          • 답변은 영업일 기준 1-2일 안에 드려요.{'\\n'}• 주문 관련 문의라면
           주문번호를 함께 적어주세요.
         </Text>
       </Card>
@@ -112,7 +112,7 @@ function Page() {
       {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
       <PrimaryButton
-        label={submitting ? '등록 중...' : '문의 등록하기'}
+        label={submitting ? '등록하고 있어요...' : '문의 등록하기'}
         onPress={handleSubmit}
         disabled={submitting}
       />

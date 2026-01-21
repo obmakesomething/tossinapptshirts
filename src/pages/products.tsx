@@ -66,9 +66,9 @@ function Page() {
 
   return (
     <Screen>
-      <TopBar title="상품 선택" onBack={() => navigation.goBack()} />
+      <TopBar title="상품 선택" />
 
-      <Text style={styles.subtitle}>원하는 제품을 선택하세요.</Text>
+      <Text style={styles.subtitle}>어떤 제품으로 만들어 볼까요?</Text>
 
       <View style={styles.list}>
         {categories.map((category) => (
@@ -83,7 +83,7 @@ function Page() {
                       style={[
                         styles.card,
                         selectedProduct.id === product.id &&
-                          styles.cardSelected,
+                        styles.cardSelected,
                         isExpanded && styles.cardExpanded,
                       ]}
                     >
@@ -103,7 +103,7 @@ function Page() {
                   </Pressable>
                   {isExpanded && (
                     <View style={styles.colorSection}>
-                      <Text style={styles.colorTitle}>색상 선택</Text>
+                      <Text style={styles.colorTitle}>어떤 색상으로 할까요?</Text>
                       <View style={styles.colorRow}>
                         {product.colors.map((color) => (
                           <ColorSwatch
@@ -116,7 +116,7 @@ function Page() {
                         ))}
                       </View>
                       <PrimaryButton
-                        label="선택 완료"
+                        label="이 제품으로 할게요"
                         onPress={handleConfirm}
                         disabled={!tempColor}
                         style={styles.confirmButton}

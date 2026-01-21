@@ -64,7 +64,7 @@ function Page() {
 
   const handleGenerate = async () => {
     if (!prompt.trim()) {
-      setError('프롬프트를 입력해 주세요.');
+      setError('어떤 이미지를 만들지 알려주세요.');
       return;
     }
     setError('');
@@ -82,17 +82,17 @@ function Page() {
         }),
       });
       if (!response.ok) {
-        throw new Error('이미지 생성에 실패했어요.');
+        throw new Error('이미지를 만들지 못했어요. 다시 시도해 주세요.');
       }
       const data = await response.json();
       const nextUrl = data.images?.[0]?.dataUrl || '';
       if (!nextUrl) {
-        throw new Error('이미지 생성 결과가 비어 있어요.');
+        throw new Error('이미지 결과가 비어 있어요. 다른 문구로 다시 시도해 주세요.');
       }
       setResultUrl(nextUrl);
     } catch (err) {
       setError(
-        err instanceof Error ? err.message : '이미지 생성에 실패했어요.',
+        err instanceof Error ? err.message : '이미지를 만들지 못했어요. 다시 시도해 주세요.',
       );
     } finally {
       setLoading(false);
@@ -114,17 +114,17 @@ function Page() {
         },
       );
       if (!response.ok) {
-        throw new Error('배경 제거에 실패했어요.');
+        throw new Error('배경을 제거하지 못했어요. 다시 시도해 주세요.');
       }
       const data = await response.json();
       if (!data.dataUrl) {
-        throw new Error('배경 제거 결과가 올바르지 않아요.');
+        throw new Error('배경 제거 결과를 확인하지 못했어요. 다시 시도해 주세요.');
       }
       setResultUrl(data.dataUrl);
-      setSuccessMessage('✓ 배경 제거가 완료되었습니다.');
+      setSuccessMessage('✓ 배경을 제거했어요!');
       setTimeout(() => setSuccessMessage(''), 3000);
     } catch (err) {
-      setError(err instanceof Error ? err.message : '배경 제거에 실패했어요.');
+      setError(err instanceof Error ? err.message : '배경을 제거하지 못했어요. 다시 시도해 주세요.');
     } finally {
       setRemovingBg(false);
     }
@@ -132,9 +132,9 @@ function Page() {
 
   return (
     <Screen>
-      <TopBar title="AI 이미지 생성" onBack={() => navigation.goBack()} />
+      <TopBar title="AI 이미지 생성" />
 
-      <Text style={styles.title}>AI로 이미지를 만들어 보세요</Text>
+      <Text style={styles.title}>AI로 이미지를 만들어 볼까요?</Text>
 
       {resultUrl ? (
         <View style={styles.resultSection}>
@@ -148,7 +148,7 @@ function Page() {
             </Card>
           </View>
           <SecondaryButton
-            label={removingBg ? '배경 제거 중...' : '배경 제거'}
+            label={removingBg ? '배경 제거하고 있어요...' : '배경 제거하기'}
             onPress={handleRemoveBackground}
             disabled={removingBg}
             style={styles.bgRemoveButton}
@@ -158,7 +158,7 @@ function Page() {
 
       <TextInput
         style={styles.input}
-        placeholder="예: A clean vector-style illustration of a wave..."
+        placeholder="예: 파도 일러스트, 깔끔한 벡터 스타일로..."
         placeholderTextColor={theme.colors.muted}
         value={prompt}
         onChangeText={setPrompt}
@@ -171,11 +171,11 @@ function Page() {
         multiline
       />
       <Text style={styles.helperText}>
-        짧고 명확하게 적어 주세요. 영문이 가장 잘 나와요.
+        짧고 명확하게 적어 주세요. 영어로 쓰면 결과가 더 좋아요.
       </Text>
       {showExamples ? (
         <View style={styles.exampleSection}>
-          <Text style={styles.sectionTitle}>프롬프트 예시</Text>
+          <Text style={styles.sectionTitle}>이런 문구는 어때요?</Text>
           <View style={styles.chipRow}>
             {promptExamples.map((example) => (
               <Chip
@@ -190,7 +190,7 @@ function Page() {
       ) : null}
 
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>스타일</Text>
+        <Text style={styles.sectionTitle}>스타일 선택</Text>
         <View style={styles.chipRow}>
           {styleOptions.map((option) => (
             <Chip
@@ -205,7 +205,7 @@ function Page() {
       </View>
 
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>비율</Text>
+        <Text style={styles.sectionTitle}>비율 선택</Text>
         <View style={styles.chipRow}>
           {ratioOptions.map((option) => (
             <Chip
@@ -220,14 +220,14 @@ function Page() {
       </View>
 
       <PrimaryButton
-        label="생성하기"
+        label="이미지 만들기"
         onPress={handleGenerate}
         disabled={loading}
       />
       {loading ? (
         <View style={styles.loadingRow}>
           <ActivityIndicator color={theme.colors.primary} />
-          <Text style={styles.loadingText}>이미지를 생성 중이에요...</Text>
+          <Text style={styles.loadingText}>이미지를 만들고 있어요...</Text>
         </View>
       ) : null}
       {error ? <Text style={styles.errorText}>{error}</Text> : null}
@@ -236,7 +236,7 @@ function Page() {
       ) : null}
 
       <PrimaryButton
-        label="내 굿즈 만들기"
+        label="이 이미지로 굿즈 만들기"
         onPress={goNext}
         disabled={!resultUrl}
         style={styles.nextButton}

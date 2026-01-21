@@ -75,31 +75,18 @@ export function Screen({
 
 type TopBarProps = {
   title: string;
-  onBack?: () => void;
   rightLabel?: string;
   onRightPress?: () => void;
 };
 
 export function TopBar({
   title,
-  onBack,
   rightLabel,
   onRightPress,
 }: TopBarProps) {
   return (
     <View style={styles.topBar}>
-      {onBack ? (
-        <Pressable
-          style={styles.topBarButton}
-          onPress={onBack}
-          accessibilityRole="button"
-          accessibilityLabel="뒤로"
-        >
-          <Text style={styles.topBarAction}>←</Text>
-        </Pressable>
-      ) : (
-        <View style={styles.topBarButton} />
-      )}
+      <View style={styles.topBarButton} />
       <Text style={styles.topBarTitle}>{title}</Text>
       {rightLabel ? (
         <Pressable

@@ -22,7 +22,7 @@ type MockupCanvasProps = {
 export function MockupCanvas({
   template,
   width = 220,
-  height = 280,
+  height = 275,
   showPrintArea = false,
   showGuides = false,
   showDesign = false,
@@ -33,6 +33,7 @@ export function MockupCanvas({
   textTransform,
   style,
 }: MockupCanvasProps) {
+  const effectiveShowGuides = showGuides || showPrintArea;
   const area = {
     left: width * template.printArea.x,
     top: height * template.printArea.y,
@@ -83,7 +84,7 @@ export function MockupCanvas({
           )
         }
       />
-      {showGuides && (
+      {effectiveShowGuides && (
         <View
           style={[
             styles.printArea,

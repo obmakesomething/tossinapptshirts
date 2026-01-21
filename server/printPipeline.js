@@ -198,19 +198,19 @@ function runQc({ data, info, targetWidth, targetHeight }) {
   if (qc.status !== 'PASS') {
     if (fringeScore >= qc.metrics.fringe_score_threshold_warn) {
       qc.recommendations.push(
-        '경계 프린지 위험: Defringe/알파 정리 후 재업스케일 권장'
+        '경계 프린지 위험: Defringe/알파 정리 후 다시 업스케일해 주세요'
       );
     }
     if (bandRatio > 0.08) {
       qc.recommendations.push(
-        '반투명 경계 밴드가 넓음: 테두리 정리 또는 스타일 단순화 권장'
+        '반투명 경계 밴드가 넓어요. 테두리 정리하거나 스타일을 단순화해 주세요'
       );
     }
     if (qc.reasons.includes('size_too_small')) {
-      qc.recommendations.push('목표 픽셀 미달: 업스케일 target 재확인 또는 재업스케일 권장');
+      qc.recommendations.push('목표 픽셀에 못 미쳐요. 업스케일 target을 확인하거나 다시 업스케일해 주세요');
     }
     if (!hasAlpha || transparentRatio === 0) {
-      qc.recommendations.push('투명 배경 누락: transparent background로 재생성 후 재처리 권장');
+      qc.recommendations.push('투명 배경이 없어요. 투명 배경으로 다시 생성해 주세요');
     }
     qc.recommendations = qc.recommendations.slice(0, 3);
   }

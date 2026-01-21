@@ -63,13 +63,13 @@ function Page() {
   const getBgRemovalButtonText = () => {
     switch (bgRemovalStatus) {
       case 'loading':
-        return '처리 중...';
+        return '처리하고 있어요...';
       case 'success':
-        return '완료!';
+        return '완료됐어요!';
       case 'error':
-        return '실패 (재시도)';
+        return '다시 시도해 주세요';
       default:
-        return '배경 제거하기';
+        return '배경 제거해 볼까요?';
     }
   };
 
@@ -86,15 +86,15 @@ function Page() {
         }),
       });
       if (!response.ok) {
-        throw new Error('업로드에 실패했어요.');
+        throw new Error('업로드하지 못했어요. 다시 시도해 주세요.');
       }
       const data = await response.json();
       if (!data.dataUrl) {
-        throw new Error('업로드 결과가 올바르지 않아요.');
+        throw new Error('업로드 결과를 확인하지 못했어요. 다시 시도해 주세요.');
       }
       setDesignImageUri(data.dataUrl);
     } catch (err) {
-      setError(err instanceof Error ? err.message : '업로드에 실패했어요.');
+      setError(err instanceof Error ? err.message : '업로드하지 못했어요. 다시 시도해 주세요.');
     } finally {
       setUploading(false);
     }
@@ -108,7 +108,7 @@ function Page() {
       if (permission !== 'allowed') {
         const next = await fetchAlbumPhotos.openPermissionDialog();
         if (next !== 'allowed') {
-          setError('사진 접근 권한이 필요해요.');
+          setError('사진 앨범에 접근하려면 권한이 필요해요. 설정에서 허용해 주세요.');
           return;
         }
       }
@@ -119,7 +119,7 @@ function Page() {
       });
       const photo = photos[0];
       if (!photo || !photo.dataUri) {
-        setError('앨범에서 사진을 찾지 못했어요.');
+        setError('앨범에서 사진을 불러오지 못했어요. 다시 선택해 주세요.');
         return;
       }
       const dataUrl = photo.dataUri.startsWith('data:')
@@ -130,7 +130,7 @@ function Page() {
       await uploadDataUrl(dataUrl, `album-${photo.id || 'unknown'}`);
     } catch (err) {
       setError(
-        err instanceof Error ? err.message : '앨범을 불러오지 못했어요.',
+        err instanceof Error ? err.message : '앨범을 불러오지 못했어요. 잠시 후 다시 시도해 주세요.',
       );
     } finally {
       setLoadingAlbum(false);
@@ -152,31 +152,31 @@ function Page() {
             lastDataUrl
               ? { dataUrl: lastDataUrl, filename: 'upload', returnBase64: true }
               : {
-                  dataUrl: designImageUri,
-                  filename: 'upload',
-                  returnBase64: true,
-                },
+                dataUrl: designImageUri,
+                filename: 'upload',
+                returnBase64: true,
+              },
           ),
         },
       );
       if (!response.ok) {
-        throw new Error('배경 제거에 실패했어요.');
+        throw new Error('배경을 제거하지 못했어요. 다시 시도해 주세요.');
       }
       const data = await response.json();
       if (!data.dataUrl) {
-        throw new Error('배경 제거 결과가 올바르지 않아요.');
+        throw new Error('배경 제거 결과를 확인하지 못했어요. 다시 시도해 주세요.');
       }
       setDesignImageUri(data.dataUrl);
       setLastDataUrl(null);
       setBgRemovalStatus('success');
-      setSuccessMessage('✓ 배경 제거가 완료되었습니다.');
+      setSuccessMessage('✓ 배경을 제거했어요!');
       setTimeout(() => {
         setSuccessMessage('');
         setBgRemovalStatus('idle');
       }, 3000);
     } catch (err) {
       setBgRemovalStatus('error');
-      setError(err instanceof Error ? err.message : '배경 제거에 실패했어요.');
+      setError(err instanceof Error ? err.message : '배경을 제거하지 못했어요. 다시 시도해 주세요.');
       setTimeout(() => setBgRemovalStatus('idle'), 3000);
     }
   };
@@ -212,7 +212,7 @@ function Page() {
       if (!response.ok) {
         const errorText = await response.text();
         console.error('[StyleTransfer] Error response:', errorText);
-        throw new Error('스타일 변환에 실패했어요.');
+        throw new Error('스타일을 변환하지 못했어요. 다시 시도해 주세요.');
       }
 
       const data = await response.json();
@@ -220,18 +220,18 @@ function Page() {
 
       if (!data.dataUrl) {
         console.error('[StyleTransfer] Missing dataUrl in response:', data);
-        throw new Error('스타일 변환 결과가 올바르지 않아요.');
+        throw new Error('스타일 변환 결과를 확인하지 못했어요. 다시 시도해 주세요.');
       }
 
       console.log('[StyleTransfer] Success! Data URL length:', data.dataUrl.length);
       setDesignImageUri(data.dataUrl);
       setLastDataUrl(null);
-      setSuccessMessage('✓ 스타일 변환이 완료되었습니다.');
+      setSuccessMessage('✓ 스타일을 변환했어요!');
       setTimeout(() => setSuccessMessage(''), 3000);
     } catch (err) {
       console.error('[StyleTransfer] Error:', err);
       setError(
-        err instanceof Error ? err.message : '스타일 변환에 실패했어요.',
+        err instanceof Error ? err.message : '스타일을 변환하지 못했어요. 다시 시도해 주세요.',
       );
     } finally {
       setStylingImage(false);
@@ -241,15 +241,14 @@ function Page() {
 
   return (
     <Screen>
-      <TopBar title="내 이미지 업로드하기" onBack={() => navigation.goBack()} />
+      <TopBar title="내 이미지 업로드하기" />
 
-      <Text style={styles.title}>사진을 먼저 가져와 주세요</Text>
+      <Text style={styles.title}>먼저 사진을 가져와 주세요</Text>
       <Text style={styles.subtitle}>
-        아래 + 박스를 눌러 앨범에서 선택하세요.
+        아래 + 버튼을 눌러 앨범에서 사진을 선택해 주세요.
       </Text>
       <Text style={styles.cropGuide}>
-        💡 팁: 이미지를 정사각형으로 자르고 싶다면, 사진 앱에서 미리 크롭한 후
-        업로드하세요.
+        💡 팁: 정사각형 이미지를 원하시면 사진 앱에서 미리 잘라서 업로드해 주세요.
       </Text>
 
       <Card style={styles.uploadCard}>
@@ -259,20 +258,20 @@ function Page() {
           ) : (
             <View style={styles.previewPlaceholder}>
               <Text style={styles.plusText}>+</Text>
-              <Text style={styles.previewText}>사진 가져오기</Text>
+              <Text style={styles.previewText}>앨범에서 사진 선택</Text>
             </View>
           )}
         </Pressable>
         {loadingAlbum ? (
           <View style={styles.loadingRow}>
             <ActivityIndicator color={theme.colors.primary} />
-            <Text style={styles.loadingText}>앨범 불러오는 중...</Text>
+            <Text style={styles.loadingText}>앨범을 불러오고 있어요...</Text>
           </View>
         ) : null}
         {uploading ? (
           <View style={styles.loadingRow}>
             <ActivityIndicator color={theme.colors.primary} />
-            <Text style={styles.loadingText}>이미지 업로드 중...</Text>
+            <Text style={styles.loadingText}>이미지를 업로드하고 있어요...</Text>
           </View>
         ) : null}
         {previewUri && (
@@ -286,7 +285,7 @@ function Page() {
             {/* Style transfer feature temporarily disabled - will be re-enabled in future release
             <SecondaryButton
               label={
-                stylingImage ? '스타일 변환 중...' : '내 이미지 스타일 바꾸기'
+                stylingImage ? '스타일 변환하고 있어요...' : '이미지 스타일 바꿔볼까요?'
               }
               onPress={() => setShowStyleOptions(true)}
               disabled={removingBg || stylingImage}
@@ -316,9 +315,9 @@ function Page() {
             style={styles.modalContent}
             onPress={(e) => e.stopPropagation()}
           >
-            <Text style={styles.modalTitle}>스타일 선택</Text>
+            <Text style={styles.modalTitle}>어떤 스타일로 바꿔볼까요?</Text>
             <Text style={styles.modalSubtitle}>
-              원본 이미지의 형상을 유지하면서 스타일만 변환합니다
+              원본 이미지의 형태는 유지하면서 스타일만 바꿔요
             </Text>
             <View style={styles.styleGrid}>
               <Chip
@@ -353,7 +352,7 @@ function Page() {
               />
             </View>
             <SecondaryButton
-              label="취소"
+              label="다음에 할게요"
               onPress={() => setShowStyleOptions(false)}
               style={styles.modalCancelButton}
             />
@@ -362,7 +361,7 @@ function Page() {
       </Modal>
 
       <PrimaryButton
-        label="다음: 디자인 편집하기"
+        label="디자인 편집하러 가기"
         onPress={goNext}
         disabled={!designImageUri}
       />

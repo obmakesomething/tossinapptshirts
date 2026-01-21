@@ -122,11 +122,11 @@ function Page() {
   const handleSubmit = async () => {
     setError('');
     if (!name || !phone || !email || !address1) {
-      setError('필수 정보를 모두 입력해 주세요.');
+      setError('이름, 연락처, 이메일, 주소를 모두 입력해 주세요.');
       return;
     }
     if (!designImageUri && (!textLayer.enabled || !textLayer.text)) {
-      setError('디자인 이미지 또는 텍스트가 필요해요.');
+      setError('디자인 이미지나 텍스트를 먼저 추가해 주세요.');
       return;
     }
     setSubmitting(true);
@@ -162,6 +162,7 @@ function Page() {
               placement: printBackEnabled ? 'front/back' : 'front',
               sizeLabel: selectedPrint.label,
               sizeCm: selectedPrint.description,
+              scale: selectedPrint.designScale,
             },
             designUrl: designImageUri || '',
             text: textLayer.enabled ? textLayer : null,
@@ -204,7 +205,7 @@ function Page() {
 
       if (!createResponse.ok) {
         const errorData = await createResponse.json().catch(() => ({}));
-        throw new Error(errorData.error || '결제 생성에 실패했어요.');
+        throw new Error(errorData.error || '결제 준비를 못했어요. 잠시 후 다시 시도해 주세요.');
       }
 
       const { payToken } = await createResponse.json();
@@ -213,7 +214,7 @@ function Page() {
       const { success, reason } = await TossPay.checkoutPayment({ payToken });
 
       if (!success) {
-        throw new Error(reason || '결제 인증이 취소되었어요.');
+        throw new Error(reason || '결제 인증을 취소했어요.');
       }
 
       // Step 3: Execute payment on server
@@ -232,12 +233,12 @@ function Page() {
 
       if (!executeResponse.ok) {
         const errorData = await executeResponse.json().catch(() => ({}));
-        throw new Error(errorData.error || '결제 실행에 실패했어요.');
+        throw new Error(errorData.error || '결제를 완료하지 못했어요. 잠시 후 다시 시도해 주세요.');
       }
 
       setSuccess(true);
     } catch (err) {
-      setError(err instanceof Error ? err.message : '결제에 실패했어요.');
+      setError(err instanceof Error ? err.message : '결제를 완료하지 못했어요. 잠시 후 다시 시도해 주세요.');
     } finally {
       setSubmitting(false);
     }
@@ -245,13 +246,13 @@ function Page() {
 
   return (
     <Screen>
-      <TopBar title="주문 요청" onBack={() => navigation.goBack()} />
+      <TopBar title="주문하기" />
 
       <Card style={styles.summaryCard}>
         <Text style={styles.summaryTitle}>{selectedProduct.name}</Text>
         <Text style={styles.summaryMeta}>
           {selectedColor} · {sizeSummary || `${totalQuantity}개`}
-          {printBackEnabled ? ' · 뒷면 포함' : ''}
+          {printBackEnabled ? ' · 뒷면도 프린팅' : ''}
         </Text>
         <Text style={styles.summaryMeta}>
           예상 결제 {formatPrice(pricing.total)} (배송비{' '}
@@ -263,32 +264,32 @@ function Page() {
       </Card>
 
       <Card style={styles.formCard}>
-        <Text style={styles.sectionTitle}>주문자 정보</Text>
+        <Text style={styles.sectionTitle}>주문하시는 분</Text>
         <TextInput
           style={styles.input}
-          placeholder="이름"
+          placeholder="이름을 입력해 주세요"
           placeholderTextColor={theme.colors.muted}
           value={name}
           onChangeText={setName}
         />
         <TextInput
           style={styles.input}
-          placeholder="휴대폰 번호"
+          placeholder="연락받으실 번호"
           placeholderTextColor={theme.colors.muted}
           value={phone}
           onChangeText={setPhone}
         />
         <TextInput
           style={styles.input}
-          placeholder="이메일"
+          placeholder="주문서 받으실 이메일"
           placeholderTextColor={theme.colors.muted}
           value={email}
           onChangeText={setEmail}
         />
 
-        <Text style={styles.sectionTitle}>배송지</Text>
+        <Text style={styles.sectionTitle}>어디로 보내드릴까요?</Text>
         <SecondaryButton
-          label="주소 검색"
+          label="주소 찾기"
           onPress={() => {
             console.log('[Order] Opening address search modal');
             setPostcodeModalVisible(true);
@@ -297,7 +298,7 @@ function Page() {
         />
         <TextInput
           style={styles.input}
-          placeholder="주소"
+          placeholder="기본 주소"
           placeholderTextColor={theme.colors.muted}
           value={address1}
           onChangeText={setAddress1}
@@ -305,7 +306,7 @@ function Page() {
         <TextInput
           ref={address2InputRef}
           style={styles.input}
-          placeholder="상세 주소"
+          placeholder="상세 주소 (동/호수 등)"
           placeholderTextColor={theme.colors.muted}
           value={address2}
           onChangeText={setAddress2}
@@ -313,7 +314,7 @@ function Page() {
         <View style={styles.inlineRow}>
           <TextInput
             style={[styles.input, styles.inlineInput]}
-            placeholder="도시"
+            placeholder="시/도"
             placeholderTextColor={theme.colors.muted}
             value={city}
             onChangeText={setCity}
@@ -335,7 +336,7 @@ function Page() {
         />
         <TextInput
           style={[styles.input, styles.memoInput]}
-          placeholder="요청사항"
+          placeholder="배송 시 요청사항이 있으면 알려주세요"
           placeholderTextColor={theme.colors.muted}
           value={memo}
           onChangeText={setMemo}
@@ -344,23 +345,21 @@ function Page() {
       </Card>
 
       <Text style={styles.noticeText}>
-        출력 이미지에 대한 최종 판단은 주문자가 진행합니다. 주문서 메일을 꼭
-        확인해 주세요.
+        출력 이미지는 주문자가 직접 확인해 주세요. 주문서 메일을 꼭 확인해 주세요.
       </Text>
 
       {error ? <Text style={styles.errorText}>{error}</Text> : null}
       {success ? (
-        <Text style={styles.successText}>결제가 완료되었습니다. 주문서 이메일을 확인해 주세요.</Text>
+        <Text style={styles.successText}>결제가 완료됐어요! 주문서 이메일을 확인해 주세요.</Text>
       ) : null}
 
       <View style={styles.actionRow}>
         <PrimaryButton
-          label={submitting ? '결제 중...' : '토스페이로 결제하기'}
+          label={submitting ? '결제하고 있어요...' : '토스페이로 결제하기'}
           onPress={handleSubmit}
           disabled={submitting}
-          style={styles.actionButton}
         />
-        <SecondaryButton label="이전으로" onPress={() => navigation.goBack()} />
+        <SecondaryButton label="돌아가기" onPress={() => navigation.goBack()} />
       </View>
 
       <DaumPostcodeModal
@@ -422,9 +421,7 @@ const styles = StyleSheet.create({
   },
   actionRow: {
     marginTop: theme.spacing.md,
-  },
-  actionButton: {
-    marginBottom: theme.spacing.sm,
+    gap: theme.spacing.sm,
   },
   errorText: {
     fontSize: 12,

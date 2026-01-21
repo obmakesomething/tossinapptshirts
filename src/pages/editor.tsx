@@ -1,13 +1,7 @@
 import { createRoute } from '@granite-js/react-native';
+import { Button, TextField, Txt } from '@toss/tds-react-native';
 import React, { useEffect, useMemo, useState } from 'react';
-import {
-  Dimensions,
-  Pressable,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
+import { Dimensions, Pressable, StyleSheet, Text, View } from 'react-native';
 import { DesignStage } from '../components/DesignStage';
 import { MockupCanvas } from '../components/MockupCanvas';
 import { ScaleSlider } from '../components/ScaleSlider';
@@ -15,7 +9,6 @@ import {
   Card,
   Chip,
   ColorSwatch,
-  PrimaryButton,
   Screen,
   SecondaryButton,
   TopBar,
@@ -24,7 +17,6 @@ import {
 import { useCatalog } from '../context/catalog';
 import { resolveColorValue } from '../data/colorMap';
 import { buildTemplate } from '../data/mockupTemplates';
-import type { Placement } from '../data/mockupTemplates';
 import { calcPricing } from '../data/pricing';
 import { formatPrice } from '../utils/format';
 
@@ -32,19 +24,14 @@ export const Route = createRoute('/editor', {
   component: Page,
 });
 
-const placementOptions: { label: string; value: Placement }[] = [
-  { label: '앞면', value: 'front' },
-  { label: '뒷면', value: 'back' },
-];
-
 function Page() {
   const navigation = Route.useNavigation();
   const {
+
     selectedProduct,
     selectedColor,
     orderLines,
     totalQuantity,
-    selectedPlacement,
     printBackEnabled,
     selectedPrint,
     designImageUri,
@@ -57,15 +44,15 @@ function Page() {
     setPrintBackEnabled,
     addOrderLine,
     removeOrderLine,
-    setOrderLineSize,
-    setOrderLineQuantity,
     setImageTransform,
     setTextTransform,
     setActiveLayer,
     setTextLayer,
   } = useCatalog();
+
+
+
   const [scrollEnabled, setScrollEnabled] = useState(true);
-  const [activeLineId, setActiveLineId] = useState<string | null>(null);
 
   // Draft state for current size/quantity selection (not yet confirmed)
   const [draftSize, setDraftSize] = useState<string>(
@@ -74,7 +61,7 @@ function Page() {
   const [draftQuantity, setDraftQuantity] = useState<number>(1);
 
   // Get screen dimensions for full-screen canvas
-  const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
+  const { width: screenWidth } = Dimensions.get('window');
   const canvasWidth = screenWidth - 32; // 좌우 16px padding, 최대한 활용
   const canvasHeight = canvasWidth * 1.25; // 4:5 비율 유지 (티셔츠 형태)
 
@@ -113,53 +100,59 @@ function Page() {
     }
   };
 
+
   // Individual transform property updaters to avoid closure issues
   const updateScale = (scale: number) => {
     if (activeLayer === 'text') {
-      setTextTransform((prev) => ({ ...prev, scale }));
+      setTextTransform({ ...textTransform, scale });
     } else {
-      setImageTransform((prev) => ({ ...prev, scale }));
+      setImageTransform({ ...imageTransform, scale });
     }
   };
 
   const updateOffsetX = (offsetX: number) => {
     if (activeLayer === 'text') {
-      setTextTransform((prev) => ({ ...prev, offsetX }));
+      setTextTransform({ ...textTransform, offsetX });
     } else {
-      setImageTransform((prev) => ({ ...prev, offsetX }));
+      setImageTransform({ ...imageTransform, offsetX });
     }
   };
 
   const updateOffsetY = (offsetY: number) => {
     if (activeLayer === 'text') {
-      setTextTransform((prev) => ({ ...prev, offsetY }));
+      setTextTransform({ ...textTransform, offsetY });
     } else {
-      setImageTransform((prev) => ({ ...prev, offsetY }));
+      setImageTransform({ ...imageTransform, offsetY });
     }
   };
 
   const updateRotation = (rotation: number) => {
     if (activeLayer === 'text') {
-      setTextTransform((prev) => ({ ...prev, rotation }));
+      setTextTransform({ ...textTransform, rotation });
     } else {
-      setImageTransform((prev) => ({ ...prev, rotation }));
+      setImageTransform({ ...imageTransform, rotation });
     }
   };
 
-  const ensureTextLayer = () => {
-    if (!textLayer.enabled) {
-      setTextLayer({
-        ...textLayer,
-        enabled: true,
-        text: textLayer.text?.trim() ? textLayer.text : '텍스트',
-      });
-    }
+  const handleAddText = () => {
+    const colorKey = selectedColor.toLowerCase();
+    const isDark = ['블랙', '네이비', '차콜', 'black', 'navy', 'charcoal'].some(
+      (c) => colorKey.includes(c),
+    );
+    const autoColor = isDark ? '#FFFFFF' : '#000000';
+
+    setTextLayer({
+      ...textLayer,
+      enabled: true,
+      text: textLayer.text?.trim() ? textLayer.text : '내 텍스트',
+      color: autoColor,
+    });
     setActiveLayer('text');
   };
 
   return (
     <Screen scrollEnabled={scrollEnabled}>
-      <TopBar title="옷 위에 프린팅하기" onBack={() => navigation.goBack()} />
+      <TopBar title="옷 위에 프린팅하기" />
 
       <Card style={styles.productCard}>
         <View style={styles.productHeader}>
@@ -192,7 +185,7 @@ function Page() {
 
       <Card style={styles.canvasCard}>
         <Text style={styles.canvasTitle}>
-          앞면 프린트 영역
+          앞면 프린팅 영역
         </Text>
         <View style={styles.layerRow}>
           <Chip
@@ -204,20 +197,39 @@ function Page() {
           <Chip
             label="텍스트"
             selected={activeLayer === 'text'}
-            onPress={ensureTextLayer}
+            onPress={() => setActiveLayer('text')}
           />
         </View>
+        {activeLayer === 'text' && !textLayer.enabled ? (
+          <View style={styles.textEditSection}>
+            <Txt typography="t5" fontWeight="bold" color={theme.colors.textPrimary} style={{ marginBottom: theme.spacing.sm }}>
+              텍스트를 추가해 볼까요?
+            </Txt>
+            <Txt typography="t7" color={theme.colors.textSecondary} style={{ marginTop: theme.spacing.xs }}>
+              나만의 문구를 넣어서 특별한 굿즈를 만들어 보세요.
+            </Txt>
+            <View style={{ marginTop: theme.spacing.md }}>
+              <Button
+                type="primary"
+                size="medium"
+                onPress={handleAddText}
+              >
+                텍스트 추가하기
+              </Button>
+            </View>
+          </View>
+        ) : null}
         {activeLayer === 'text' && textLayer.enabled ? (
           <View style={styles.textEditSection}>
-            <Text style={styles.textEditTitle}>텍스트 내용</Text>
-            <TextInput
-              style={styles.textInput}
+            <TextField
+              variant="box"
+              label="텍스트"
+              labelOption="sustain"
               value={textLayer.text}
               onChangeText={(value) =>
                 setTextLayer({ ...textLayer, text: value })
               }
-              placeholder="텍스트 입력"
-              placeholderTextColor={theme.colors.muted}
+              placeholder="원하는 문구를 입력해 주세요"
             />
             <View style={styles.fontRow}>
               <Text style={styles.fontLabel}>굵기</Text>
@@ -234,14 +246,14 @@ function Page() {
                     style={[
                       styles.fontButton,
                       textLayer.fontWeight === weight &&
-                        styles.fontButtonSelected,
+                      styles.fontButtonSelected,
                     ]}
                   >
                     <Text
                       style={[
                         styles.fontButtonText,
                         textLayer.fontWeight === weight &&
-                          styles.fontButtonTextSelected,
+                        styles.fontButtonTextSelected,
                       ]}
                     >
                       {weight === 'regular' ? 'Regular' : 'Bold'}
@@ -268,14 +280,14 @@ function Page() {
                     style={[
                       styles.fontButton,
                       textLayer.color === colorOption.value &&
-                        styles.fontButtonSelected,
+                      styles.fontButtonSelected,
                     ]}
                   >
                     <Text
                       style={[
                         styles.fontButtonText,
                         textLayer.color === colorOption.value &&
-                          styles.fontButtonTextSelected,
+                        styles.fontButtonTextSelected,
                       ]}
                     >
                       {colorOption.label}
@@ -284,13 +296,18 @@ function Page() {
                 ))}
               </View>
             </View>
-            <SecondaryButton
-              label="텍스트 삭제"
-              onPress={() => {
-                setTextLayer({ ...textLayer, enabled: false });
-                setActiveLayer('image');
-              }}
-            />
+            <View style={{ marginTop: theme.spacing.md }}>
+              <Button
+                type="light"
+                size="medium"
+                onPress={() => {
+                  setTextLayer({ ...textLayer, enabled: false });
+                  setActiveLayer('image');
+                }}
+              >
+                텍스트 삭제하기
+              </Button>
+            </View>
           </View>
         ) : null}
         <View style={styles.canvas}>
@@ -312,10 +329,9 @@ function Page() {
           />
         </View>
         <View style={styles.transformSection}>
-          <Text style={styles.transformTitle}>위치 및 변형</Text>
+          <Text style={styles.transformTitle}>위치와 크기 조절</Text>
           <Text style={styles.transformHint}>
-            슬라이더로 {activeLayer === 'text' ? '텍스트' : '이미지'}의
-            크기·위치·회전을 조절하세요.
+            슬라이더로 {activeLayer === 'text' ? '텍스트' : '이미지'}의 크기, 위치, 회전을 조절해 보세요.
           </Text>
           <View style={styles.sliderRow}>
             <Text style={styles.sliderLabel}>크기</Text>
@@ -372,12 +388,12 @@ function Page() {
       <Card style={styles.printingCard}>
         {!printBackEnabled ? (
           <>
-            <Text style={styles.optionTitle}>뒷면 프린팅</Text>
+            <Text style={styles.optionTitle}>뒷면에도 프린팅할까요?</Text>
             <Text style={styles.optionHint}>
-              앞면과 같은 디자인을 뒷면에도 추가할 수 있어요
+              앞면과 같은 디자인을 뒷면에도 넣을 수 있어요
             </Text>
             <SecondaryButton
-              label="뒷면 추가하기"
+              label="뒷면 프린팅 추가하기"
               onPress={() => {
                 setPrintBackEnabled(true);
                 setSelectedPlacement('back');
@@ -390,7 +406,7 @@ function Page() {
             <View style={styles.optionRow}>
               <Text style={styles.optionTitle}>뒷면 프린팅</Text>
               <SecondaryButton
-                label="뒷면 제거"
+                label="뒷면 빼기"
                 onPress={() => {
                   setPrintBackEnabled(false);
                   setSelectedPlacement('front');
@@ -400,8 +416,8 @@ function Page() {
             <View style={styles.backPreviewContainer}>
               <MockupCanvas
                 template={buildTemplate(selectedProduct, selectedColor, 'back')}
-                width={140}
-                height={180}
+                width={canvasWidth}
+                height={canvasHeight}
                 showDesign
                 designImageUri={designImageUri}
                 imageTransform={imageTransform}
@@ -424,9 +440,9 @@ function Page() {
               </View>
             )}
             <View style={styles.backTransformSection}>
-              <Text style={styles.transformTitle}>뒷면 위치 및 변형</Text>
+              <Text style={styles.transformTitle}>뒷면 위치와 크기 조절</Text>
               <Text style={styles.transformHint}>
-                슬라이더로 뒷면 디자인의 크기·위치·회전을 조절하세요.
+                슬라이더로 뒷면 디자인의 크기, 위치, 회전을 조절해 보세요.
               </Text>
               <View style={styles.sliderRow}>
                 <Text style={styles.sliderLabel}>크기</Text>
@@ -465,7 +481,7 @@ function Page() {
                 />
               </View>
               <SecondaryButton
-                label="초기화"
+                label="처음으로 되돌리기"
                 onPress={() =>
                   setImageTransform({
                     offsetX: 0,
@@ -489,7 +505,7 @@ function Page() {
         </View>
 
         <Text style={[styles.sectionTitle, { marginTop: theme.spacing.lg }]}>
-          사이즈 선택
+          사이즈 골라주세요
         </Text>
         <View style={styles.chipRow}>
           {selectedProduct.sizes.map((size) => (
@@ -508,7 +524,7 @@ function Page() {
         </Text>
 
         <Text style={[styles.sectionTitle, { marginTop: theme.spacing.lg }]}>
-          수량 선택
+          수량은 몇 개로 할까요?
         </Text>
         <View style={styles.quantityRow}>
           <SecondaryButton
@@ -523,7 +539,7 @@ function Page() {
         </View>
 
         <SecondaryButton
-          label="추가"
+          label="장바구니에 추가"
           onPress={() => {
             if (isDraftSizeUsed) return;
 
@@ -547,7 +563,7 @@ function Page() {
         />
         {isDraftSizeUsed && (
           <Text style={styles.sizeHint}>
-            {draftSize} 사이즈는 이미 추가되었습니다.
+            {draftSize} 사이즈는 이미 담겨 있어요.
           </Text>
         )}
 
@@ -556,7 +572,7 @@ function Page() {
             <Text
               style={[styles.sectionTitle, { marginTop: theme.spacing.lg }]}
             >
-              확정 정보
+              주문할 상품
             </Text>
             {orderLines.map((line) => (
               <View key={line.id} style={styles.confirmRow}>
@@ -569,7 +585,7 @@ function Page() {
                     accessibilityRole="button"
                     accessibilityLabel={`${line.sizeLabel} 삭제`}
                   >
-                    <Text style={styles.removeText}>삭제</Text>
+                    <Text style={styles.removeText}>빼기</Text>
                   </Pressable>
                 ) : null}
               </View>
@@ -579,17 +595,17 @@ function Page() {
       </Card>
 
       <Card style={styles.priceCard}>
-        <Text style={styles.priceTitle}>예상 결제 금액</Text>
+        <Text style={styles.priceTitle}>예상 결제 금액이에요</Text>
         <Text style={styles.priceValue}>{formatPrice(pricing.total)}</Text>
         <View style={styles.priceOptions}>
           {pricing.backPrintingFee > 0 && (
             <Text style={styles.priceOption}>
-              뒷면 프린팅 +{formatPrice(pricing.backPrintingFee)} 포함
+              뒷면 프린팅 비용 +{formatPrice(pricing.backPrintingFee)} 포함
             </Text>
           )}
           {pricing.largePrintFee > 0 && (
             <Text style={styles.priceOption}>
-              대형 프린팅 +{formatPrice(pricing.largePrintFee)} 포함
+              대형 프린팅 비용 +{formatPrice(pricing.largePrintFee)} 포함
             </Text>
           )}
           <Text style={styles.priceNote}>
@@ -602,7 +618,9 @@ function Page() {
         </View>
       </Card>
 
-      <PrimaryButton label="완성 미리보기" onPress={goPreview} />
+      <Button type="primary" size="big" onPress={goPreview}>
+        완성된 모습 보기
+      </Button>
     </Screen>
   );
 }

@@ -84,7 +84,7 @@ function Page() {
 
   return (
     <Screen>
-      <TopBar title="내 디자인" onBack={() => navigation.goBack()} />
+      <TopBar title="내 디자인" />
 
       <Text style={styles.title}>
         저장한 디자인이에요. 다시 편집하거나 공유할 수 있어요.

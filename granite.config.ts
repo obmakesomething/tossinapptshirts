@@ -11,9 +11,9 @@ export default defineConfig({
     hermes(),
     appsInToss({
       brand: {
-        displayName: 'merchandisegpt',
+        displayName: '머천다이즈 Gpt',
         primaryColor: '#3182F6',
-        icon: '',
+        icon: './assets/logo.jpg',
       },
       permissions: [
         {

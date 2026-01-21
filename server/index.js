@@ -534,7 +534,7 @@ async function buildOrderPdf(order) {
       doc.moveDown();
       doc.fontSize(11).fillColor('#6B7280');
       doc.text(
-        '※ 출력 이미지에 대한 최종 판단은 주문자가 진행합니다. 주문서 메일을 꼭 확인해 주세요.'
+        '※ 출력 이미지에 대한 최종 판단은 주문자가 해요. 주문서 메일을 꼭 확인해 주세요.'
       );
 
         doc.end();
@@ -1172,7 +1172,7 @@ app.post('/v1/orders/submit', strictLimiter, async (req, res) => {
 
     const bodyText = `안녕하세요,
 
-새로운 주문이 접수되었습니다.
+새로운 주문이 들어왔어요.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 📦 주문 정보
@@ -1207,12 +1207,12 @@ ${pipelineInfo}
 ${pdfUrl ? `\n📄 PDF 다운로드: ${pdfUrl}` : ''}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-⚠️ 중요 안내
+⚠️ 확인해 주세요
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-출력 이미지에 대한 최종 판단은 주문자가 진행합니다.
+출력 이미지에 대한 최종 판단은 주문자가 해요.
 첨부된 주문서를 꼭 확인해 주세요.
 
-※ 제작 완료 예정일과 발송 방법을 회신해 주시기 바랍니다.
+※ 제작 완료 예정일과 발송 방법을 회신해 주세요.
 
 감사합니다.`;
 
@@ -1252,7 +1252,7 @@ ${pdfUrl ? `\n📄 PDF 다운로드: ${pdfUrl}` : ''}
     if (customerEmail) {
       const customerBodyText = `${customerName}님, 안녕하세요.
 
-주문이 정상적으로 접수되었습니다.
+주문이 정상적으로 접수됐어요.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 📦 주문 정보
@@ -1278,14 +1278,14 @@ ${itemsSummary}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 📎 첨부 파일
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-주문 내역서 PDF가 첨부되어 있습니다.
+주문 내역서 PDF가 첨부되어 있어요.
 ${pdfUrl ? `\n📄 PDF 다운로드: ${pdfUrl}` : ''}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-⚠️ 안내사항
+⚠️ 안내
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-제작 완료 예정일은 거래처에서 회신 예정입니다.
-추가 문의사항이 있으시면 답장해 주세요.
+제작 완료 예정일은 거래처에서 회신해 드릴 예정이에요.
+문의 사항이 있으면 이 메일에 답장해 주세요.
 
 감사합니다.`;
 
@@ -1359,10 +1359,10 @@ const garmentSizesData = {
 };
 
 const printOptionsData = [
-  { id: 'logo', label: '로고 (10cm 미만)', description: '작은 로고·심플', price: 2500, designScale: 0.35 },
-  { id: 'a5', label: 'A5 (10~15cm)', description: '중간 크기', price: 5500, designScale: 0.5 },
-  { id: 'a4', label: 'A4 (15~28cm)', description: '일반 포스터 크기', price: 7500, designScale: 0.7 },
-  { id: 'a3', label: 'A3 (최대)', description: '큰 전면 인쇄', price: 9500, designScale: 0.9 },
+  { id: 'logo', label: '로고 (10cm 미만)', description: '작은 로고, 심플해요', price: 2500, designScale: 0.35 },
+  { id: 'a5', label: 'A5 (10~15cm)', description: '적당한 크기예요', price: 5500, designScale: 0.5 },
+  { id: 'a4', label: 'A4 (15~28cm)', description: '일반 포스터 크기예요', price: 7500, designScale: 0.7 },
+  { id: 'a3', label: 'A3 (최대)', description: '크게 전면 인쇄해요', price: 9500, designScale: 0.9 },
 ];
 
 function getGarmentCategory(productName) {
@@ -1389,18 +1389,18 @@ function calculatePrintSize(garmentMeasurements, printOption, placement = 'front
   const warnings = [];
 
   if (widthCm > printableWidth - 2) {
-    warnings.push('프린팅 영역이 최대 크기에 가깝습니다.');
+    warnings.push('프린팅 영역이 최대 크기에 가까워요.');
   }
 
   if (widthCm < 8) {
-    warnings.push('프린팅이 너무 작아 세부 사항이 흐릿할 수 있습니다.');
+    warnings.push('프린팅이 너무 작아 세부 사항이 흐릿할 수 있어요.');
   }
 
   if (placement === 'back') {
-    warnings.push('뒷면 인쇄는 앞면보다 위치 조정이 제한적일 수 있습니다.');
+    warnings.push('뒷면 인쇄는 앞면보다 위치 조정이 제한적일 수 있어요.');
   }
 
-  const description = `${label} 크기로 ${garmentMeasurements.size} 사이즈에 프린팅 시 약 ${widthCm}cm × ${heightCm}cm 크기로 인쇄됩니다.`;
+  const description = `${label} 크기로 ${garmentMeasurements.size} 사이즈에 프린팅하면 약 ${widthCm}cm × ${heightCm}cm 크기로 인쇄돼요.`;
 
   return {
     widthCm,
@@ -1498,18 +1498,18 @@ app.post('/v1/print/calculate-size', (req, res) => {
     const warnings = [];
 
     if (widthCm > printableWidth - 2) {
-      warnings.push('프린팅 영역이 최대 크기에 가깝습니다.');
+      warnings.push('프린팅 영역이 최대 크기에 가까워요.');
     }
 
     if (widthCm < 8) {
-      warnings.push('프린팅이 너무 작아 세부 사항이 흐릿할 수 있습니다.');
+      warnings.push('프린팅이 너무 작아 세부 사항이 흐릿할 수 있어요.');
     }
 
     if (placement === 'back') {
-      warnings.push('뒷면 인쇄는 앞면보다 위치 조정이 제한적일 수 있습니다.');
+      warnings.push('뒷면 인쇄는 앞면보다 위치 조정이 제한적일 수 있어요.');
     }
 
-    const description = `${printOptionLabel} 크기로 ${garmentMeasurements.size} 사이즈에 프린팅 시 약 ${widthCm}cm × ${heightCm}cm 크기로 인쇄됩니다.`;
+    const description = `${printOptionLabel} 크기로 ${garmentMeasurements.size} 사이즈에 프린팅하면 약 ${widthCm}cm × ${heightCm}cm 크기로 인쇄돼요.`;
 
     logEvent('info', 'print_size_calc_result', {
       requestId: req.requestId,
@@ -2017,9 +2017,84 @@ app.post('/v1/payment/execute', strictLimiter, async (req, res) => {
           approvalTime: data.success?.approvalTime,
         };
 
-        // Process order similar to /v1/orders/submit
         const mailer = getMailer();
         if (mailer) {
+          if (Array.isArray(orderData.items)) {
+            for (const item of orderData.items) {
+              if (item.print?.scale !== undefined && item.productName && item.size) {
+                const category = getGarmentCategory(item.productName);
+                const measurements = getGarmentMeasurements(category, item.size);
+
+                if (measurements) {
+                  const scale = Math.max(0, Math.min(1, Number(item.print.scale)));
+                  const widthCm = Math.round(measurements.printableWidth * scale * 10) / 10;
+                  const heightCm = Math.round(measurements.printableHeight * scale * 10) / 10;
+                  item.print.sizeCm = `${widthCm}cm × ${heightCm}cm`;
+                  item.print.calculatedWidth = widthCm;
+                  item.print.calculatedHeight = heightCm;
+                }
+              }
+            }
+          }
+
+          let pipelineResult = null;
+          if (orderData.pipeline?.enabled !== false) {
+            const orderId = orderData.orderId || String(Date.now());
+            const workDir = path.join(ORDER_OUTPUT_DIR, orderId);
+            await fsp.mkdir(workDir, { recursive: true });
+
+            let masterPath = orderData.pipeline?.masterPngPath || null;
+            if (!masterPath) {
+              const sourceUrl =
+                orderData.pipeline?.masterPngUrl ||
+                orderData.masterPngUrl ||
+                orderData.items?.[0]?.designUrl ||
+                '';
+              if (sourceUrl) {
+                const downloadPath = path.join(workDir, 'master_input.png');
+                if (sourceUrl.startsWith('data:')) {
+                  const decoded = decodeDataUrl(sourceUrl);
+                  if (decoded) {
+                    await fsp.writeFile(downloadPath, decoded.buffer);
+                  } else {
+                    throw new Error('Invalid dataUrl for pipeline master image.');
+                  }
+                } else {
+                  await downloadToFile(sourceUrl, downloadPath);
+                }
+                masterPath = downloadPath;
+              }
+            }
+
+            if (masterPath) {
+              try {
+                const targetWidth = orderData.pipeline?.targetWidthPx || 2480;
+                const targetHeight = orderData.pipeline?.targetHeightPx || 3508;
+                pipelineResult = await runPrintPipeline({
+                  master_png_path: masterPath,
+                  order_id: orderId,
+                  target_width_px: targetWidth,
+                  target_height_px: targetHeight,
+                  clipdrop_api_key: CLIPDROP_API_KEY,
+                  output_dir: ORDER_OUTPUT_DIR,
+                  allow_warn_to_pass: true,
+                });
+
+                logEvent('info', 'pipeline_completed', {
+                  orderId,
+                  status: pipelineResult.status,
+                  qcStatus: pipelineResult.qc?.status,
+                  outputPath: pipelineResult.output_path,
+                });
+              } catch (pipelineError) {
+                logEvent('error', 'pipeline_failed', {
+                  orderId,
+                  error: pipelineError.message,
+                });
+              }
+            }
+          }
+
           const pdfBuffer = await buildOrderPdf(orderData);
           const pdfName = `order-${orderData.orderId}.pdf`;
           
@@ -2033,13 +2108,27 @@ app.post('/v1/payment/execute', strictLimiter, async (req, res) => {
           const customerEmail = orderData.customer?.email || '';
           const customerName = orderData.customer?.name || '주문자';
 
+          const attachments = [{ filename: pdfName, content: pdfBuffer }];
+          if (pipelineResult?.output_path && fs.existsSync(pipelineResult.output_path)) {
+            try {
+              const pngBuffer = await fsp.readFile(pipelineResult.output_path);
+              const pngName = `print-ready-${orderData.orderId}.png`;
+              attachments.push({ filename: pngName, content: pngBuffer });
+            } catch (pngErr) {
+              logEvent('warn', 'png_attachment_failed', {
+                orderId: orderData.orderId,
+                error: pngErr.message,
+              });
+            }
+          }
+
           if (adminTo) {
             await mailer.sendMail({
               from: process.env.SMTP_FROM || process.env.SMTP_USER,
               to: adminTo,
               subject: `🎽 결제 완료: ${orderData.orderId} - ${customerName}`,
               text: `주문번호: ${orderData.orderId}\n결제금액: ${data.success?.paidAmount}원\n결제수단: ${data.success?.payMethod}`,
-              attachments: [{ filename: pdfName, content: pdfBuffer }],
+              attachments,
             });
           }
 
@@ -2049,7 +2138,7 @@ app.post('/v1/payment/execute', strictLimiter, async (req, res) => {
               to: customerEmail,
               subject: `[티셔츠메이커] 주문이 완료되었습니다 - ${orderData.orderId}`,
               text: `안녕하세요 ${customerName}님,\n\n주문이 완료되었습니다.\n주문번호: ${orderData.orderId}\n결제금액: ${data.success?.paidAmount}원\n\n주문서를 첨부해 드립니다.`,
-              attachments: [{ filename: pdfName, content: pdfBuffer }],
+              attachments,
             });
           }
 

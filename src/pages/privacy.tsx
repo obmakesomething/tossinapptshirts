@@ -8,11 +8,9 @@ export const Route = createRoute('/privacy', {
 });
 
 function Page() {
-  const navigation = Route.useNavigation();
-
   return (
     <Screen>
-      <TopBar title="개인정보 처리방침" onBack={() => navigation.goBack()} />
+      <TopBar title="개인정보 처리방침" />
 
       <ScrollView showsVerticalScrollIndicator={false}>
         <View style={styles.content}>
