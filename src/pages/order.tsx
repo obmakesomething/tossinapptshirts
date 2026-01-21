@@ -1,6 +1,6 @@
 import { createRoute } from '@granite-js/react-native';
-import { TossPay, getDeviceId } from '@apps-in-toss/framework';
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { TossPay, appLogin } from '@apps-in-toss/framework';
+import React, { useMemo, useRef, useState, useCallback } from 'react';
 import { StyleSheet, Text, TextInput, View } from 'react-native';
 import {
   Card,
@@ -47,25 +47,46 @@ function Page() {
   const [success, setSuccess] = useState(false);
   const [postcodeModalVisible, setPostcodeModalVisible] = useState(false);
   const [userKey, setUserKey] = useState<string>('');
+  const [loginLoading, setLoginLoading] = useState(false);
   const address2InputRef = useRef<TextInput>(null);
 
-  // Get user key from Toss mini-app environment using getDeviceId
-  useEffect(() => {
+  // Toss Login to get userKey
+  const handleTossLogin = useCallback(async () => {
+    if (loginLoading) return;
+    setLoginLoading(true);
+    setError('');
+
     try {
-      // Use Toss SDK's getDeviceId for user identification
-      const deviceId = getDeviceId();
-      if (deviceId) {
-        setUserKey(deviceId);
-        console.log('[Order] Got device ID for user-key:', deviceId.substring(0, 20) + '...');
-      } else {
-        console.warn('[Order] getDeviceId returned empty, using fallback');
-        setUserKey(`device-${Date.now()}`);
+      // Step 1: Call Toss SDK appLogin to get authorizationCode
+      console.log('[Order] Starting Toss login...');
+      const { authorizationCode, referrer } = await appLogin();
+      console.log('[Order] Got authorization code, referrer:', referrer);
+
+      // Step 2: Send to server to exchange for userKey
+      const response = await fetch(`${API_BASE_URL}/v1/auth/login`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ authorizationCode, referrer }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || '로그인에 실패했어요.');
       }
+
+      const data = await response.json();
+      console.log('[Order] Login successful, userKey:', data.userKey?.substring(0, 10) + '...');
+
+      setUserKey(data.userKey);
     } catch (e) {
-      console.error('[Order] Failed to get device ID:', e);
-      setUserKey(`device-${Date.now()}`);
+      console.error('[Order] Toss login failed:', e);
+      setError(e instanceof Error ? e.message : '로그인에 실패했어요. 다시 시도해 주세요.');
+    } finally {
+      setLoginLoading(false);
     }
-  }, []);
+  }, [loginLoading]);
 
   const handleAddressSelect = (data: AddressData) => {
     console.log('[Order] Address selected:', {
@@ -115,6 +136,14 @@ function Page() {
 
   const handleSubmit = async () => {
     setError('');
+
+    // Check if user is logged in (has userKey)
+    if (!userKey) {
+      // Trigger login flow first
+      await handleTossLogin();
+      return; // User will need to press submit again after login
+    }
+
     if (!name || !phone || !email || !address1) {
       setError('이름, 연락처, 이메일, 주소를 모두 입력해 주세요.');
       return;

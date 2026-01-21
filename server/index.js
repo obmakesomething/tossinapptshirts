@@ -1820,6 +1820,129 @@ app.get('/v1/toss/disconnect', verifyTossCallbackAuth, (req, res) => {
 });
 
 // ========================================
+// Toss OAuth Login Endpoints
+// ========================================
+const TOSS_OAUTH_API_URL = process.env.TOSS_OAUTH_API_URL || 'https://oauth-apps-in-toss-api.toss.im';
+
+// Exchange authorization code for access token and get user info
+app.post('/v1/auth/login', strictLimiter, async (req, res) => {
+  try {
+    const { authorizationCode, referrer } = req.body || {};
+
+    if (!authorizationCode) {
+      return res.status(400).json({ error: 'authorizationCode is required.' });
+    }
+
+    logEvent('info', 'toss_login_request', {
+      requestId: req.requestId,
+      referrer,
+    });
+
+    // Get mTLS agent
+    const agent = getHttpsAgent();
+    if (!agent) {
+      console.error('[Toss Login] mTLS agent not available');
+      return res.status(500).json({
+        error: 'Authentication service configuration error.',
+        details: 'mTLS certificates not configured',
+      });
+    }
+
+    // Step 1: Exchange authorization code for access token
+    // Note: The actual token exchange endpoint may differ - check Toss docs
+    let tokenResponse;
+    try {
+      tokenResponse = await axios({
+        method: 'POST',
+        url: `${TOSS_OAUTH_API_URL}/api-partner/v1/apps-in-toss/user/oauth2/token`,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        data: {
+          authorizationCode,
+          referrer: referrer || 'DEFAULT',
+        },
+        httpsAgent: agent,
+        timeout: 15000,
+      });
+    } catch (tokenError) {
+      console.error('[Toss Login] Token exchange failed:', {
+        error: tokenError.message,
+        status: tokenError.response?.status,
+        data: tokenError.response?.data,
+      });
+      return res.status(401).json({
+        error: 'Failed to authenticate with Toss.',
+        details: tokenError.response?.data || tokenError.message,
+      });
+    }
+
+    const accessToken = tokenResponse.data?.success?.accessToken || tokenResponse.data?.accessToken;
+    if (!accessToken) {
+      console.error('[Toss Login] No access token in response:', tokenResponse.data);
+      return res.status(401).json({
+        error: 'Failed to get access token from Toss.',
+        details: tokenResponse.data,
+      });
+    }
+
+    // Step 2: Get user info including userKey
+    let userInfoResponse;
+    try {
+      userInfoResponse = await axios({
+        method: 'GET',
+        url: `${TOSS_OAUTH_API_URL}/api-partner/v1/apps-in-toss/user/oauth2/login-me`,
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+        },
+        httpsAgent: agent,
+        timeout: 15000,
+      });
+    } catch (userError) {
+      console.error('[Toss Login] User info fetch failed:', {
+        error: userError.message,
+        status: userError.response?.status,
+        data: userError.response?.data,
+      });
+      return res.status(401).json({
+        error: 'Failed to get user info from Toss.',
+        details: userError.response?.data || userError.message,
+      });
+    }
+
+    const userInfo = userInfoResponse.data?.success;
+    if (!userInfo?.userKey) {
+      console.error('[Toss Login] No userKey in response:', userInfoResponse.data);
+      return res.status(401).json({
+        error: 'Failed to get userKey from Toss.',
+        details: userInfoResponse.data,
+      });
+    }
+
+    logEvent('info', 'toss_login_success', {
+      requestId: req.requestId,
+      userKey: userInfo.userKey,
+      scope: userInfo.scope,
+    });
+
+    // Return userKey and other user info to client
+    res.json({
+      userKey: String(userInfo.userKey), // Convert to string for header use
+      scope: userInfo.scope,
+      agreedTerms: userInfo.agreedTerms,
+      // Note: Encrypted personal info is not sent to client
+      requestId: req.requestId,
+    });
+  } catch (error) {
+    logEvent('error', 'toss_login_error', {
+      requestId: req.requestId,
+      ...formatError(error),
+    });
+    res.status(500).json({ error: error.message || 'Login failed.', requestId: req.requestId });
+  }
+});
+
+// ========================================
 // TossPay Payment Endpoints
 // ========================================
 const TOSSPAY_API_URL = process.env.TOSSPAY_API_URL || 'https://pay-apps-in-toss-api.toss.im';
