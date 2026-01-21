@@ -1822,7 +1822,8 @@ app.get('/v1/toss/disconnect', verifyTossCallbackAuth, (req, res) => {
 // ========================================
 // Toss OAuth Login Endpoints
 // ========================================
-const TOSS_OAUTH_API_URL = process.env.TOSS_OAUTH_API_URL || 'https://oauth-apps-in-toss-api.toss.im';
+// Use same base URL as payment API - the OAuth endpoints are on the same server
+const TOSS_OAUTH_API_URL = process.env.TOSS_OAUTH_API_URL || 'https://pay-apps-in-toss-api.toss.im';
 
 // Exchange authorization code for access token and get user info
 app.post('/v1/auth/login', strictLimiter, async (req, res) => {
@@ -1849,12 +1850,12 @@ app.post('/v1/auth/login', strictLimiter, async (req, res) => {
     }
 
     // Step 1: Exchange authorization code for access token
-    // Note: The actual token exchange endpoint may differ - check Toss docs
+    // Using generate-token endpoint as per Toss documentation
     let tokenResponse;
     try {
       tokenResponse = await axios({
         method: 'POST',
-        url: `${TOSS_OAUTH_API_URL}/api-partner/v1/apps-in-toss/user/oauth2/token`,
+        url: `${TOSS_OAUTH_API_URL}/api-partner/v1/apps-in-toss/user/oauth2/generate-token`,
         headers: {
           'Content-Type': 'application/json',
         },
