@@ -13,7 +13,7 @@ export default defineConfig({
       brand: {
         displayName: '머천다이즈 Gpt',
         primaryColor: '#3182F6',
-        icon: './assets/logo.jpg',
+        icon: 'https://static.toss.im/appsintoss/14401/6e86af44-5d82-46a8-beca-dc81ed59e5ff.png',
       },
       permissions: [
         {
