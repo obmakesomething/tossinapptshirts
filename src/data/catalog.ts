@@ -30,11 +30,17 @@ export type CatalogProduct = {
   tags: string[];
 };
 
+// Cache for image sources to ensure identical URIs return the same object reference
+const mockupCache: Record<string, ImageSourcePropType> = {};
+
 // Mockup images are served from configured base URL (server or S3)
 const resolveMockup = (filename: string): ImageSourcePropType => {
   const uri = `${MOCKUP_CONFIG.baseUrl}/${filename}`;
-  console.log('[DEBUG] Mockup URI:', uri);
-  return { uri };
+  if (!mockupCache[uri]) {
+    console.log('[DEBUG] Mockup URI (new):', uri);
+    mockupCache[uri] = { uri };
+  }
+  return mockupCache[uri]!;
 };
 
 const formatPrice = (value: number | null) => {

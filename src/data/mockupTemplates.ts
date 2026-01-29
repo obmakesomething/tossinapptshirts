@@ -34,13 +34,12 @@ export function buildTemplate(
 ): MockupTemplate {
   // Use color-specific images if available, otherwise fallback to default
   let image: ImageSourcePropType;
-  if (product.colorImages && product.colorImages[color]) {
-    image =
-      placement === 'back'
-        ? product.colorImages[color].detail
-        : product.colorImages[color].main;
+  const colorSpec = product.colorImages?.[color];
+
+  if (placement === 'back') {
+    image = colorSpec?.detail ?? product.detailImage;
   } else {
-    image = placement === 'back' ? product.detailImage : product.mainImage;
+    image = colorSpec?.main ?? product.mainImage;
   }
 
   return {
