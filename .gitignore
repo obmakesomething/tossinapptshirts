@@ -18,3 +18,6 @@ yarn-error.log
 
 data/downloads/
 data/optimized/
+
+# mTLS Certificates (Sensitive)
+mTLS인증서관련/
