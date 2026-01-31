@@ -1,7 +1,7 @@
 import { createRoute } from '@granite-js/react-native';
 import { Button, TextField, Txt } from '@toss/tds-react-native';
 import React, { useEffect, useMemo, useState } from 'react';
-import { Dimensions, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Alert, Dimensions, Pressable, StyleSheet, Text, View } from 'react-native';
 import { DesignStage } from '../components/DesignStage';
 import { MockupCanvas } from '../components/MockupCanvas';
 import { ScaleSlider } from '../components/ScaleSlider';
@@ -27,7 +27,6 @@ export const Route = createRoute('/editor', {
 function Page() {
   const navigation = Route.useNavigation();
   const {
-
     selectedProduct,
     selectedColor,
     orderLines,
@@ -48,11 +47,50 @@ function Page() {
     setTextTransform,
     setActiveLayer,
     setTextLayer,
+    saveCurrentDesign,
   } = useCatalog();
 
 
 
   const [scrollEnabled, setScrollEnabled] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+
+  const hasDesign = !!(designImageUri || textLayer.enabled);
+
+  const handleSave = () => {
+    Alert.prompt
+      ? Alert.prompt(
+          '디자인 저장',
+          '저장할 이름을 입력해 주세요',
+          async (title) => {
+            if (!title?.trim()) return;
+            setIsSaving(true);
+            try {
+              await saveCurrentDesign(title.trim());
+              Alert.alert('저장 완료', '디자인이 저장되었어요.');
+            } catch {
+              Alert.alert('저장 실패', '다시 시도해 주세요.');
+            } finally {
+              setIsSaving(false);
+            }
+          },
+          'plain-text',
+          `${selectedProduct.name} 디자인`,
+        )
+      : // Android fallback (Alert.prompt is iOS only)
+        (async () => {
+          const title = `${selectedProduct.name} 디자인`;
+          setIsSaving(true);
+          try {
+            await saveCurrentDesign(title);
+            Alert.alert('저장 완료', '디자인이 저장되었어요.');
+          } catch {
+            Alert.alert('저장 실패', '다시 시도해 주세요.');
+          } finally {
+            setIsSaving(false);
+          }
+        })();
+  };
 
   // Draft state for current size/quantity selection (not yet confirmed)
   const [draftSize, setDraftSize] = useState<string>(
@@ -618,9 +656,20 @@ function Page() {
         </View>
       </Card>
 
-      <Button type="primary" size="big" onPress={goPreview}>
-        완성된 모습 보기
-      </Button>
+      <View style={styles.footerCTA}>
+        <Button
+          type="light"
+          size="big"
+          onPress={handleSave}
+          disabled={!hasDesign || isSaving}
+        >
+          {isSaving ? '저장 중...' : '디자인 저장하기'}
+        </Button>
+        <View style={styles.footerSpacer} />
+        <Button type="primary" size="big" onPress={goPreview}>
+          완성된 모습 보기
+        </Button>
+      </View>
     </Screen>
   );
 }
@@ -1056,5 +1105,11 @@ const styles = StyleSheet.create({
   },
   addBackButton: {
     marginTop: theme.spacing.md,
+  },
+  footerCTA: {
+    paddingBottom: theme.spacing.lg,
+  },
+  footerSpacer: {
+    height: theme.spacing.sm,
   },
 });

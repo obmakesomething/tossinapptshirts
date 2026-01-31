@@ -1,5 +1,5 @@
 import { createRoute } from '@granite-js/react-native';
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import { MockupCanvas } from '../components/MockupCanvas';
 import { InquiryModal } from '../components/InquiryModal';
@@ -11,7 +11,8 @@ import {
   SecondaryButton,
   theme,
 } from '../components/ui';
-import { useCatalog } from '../context/catalog';
+import { type SavedDesign, useCatalog } from '../context/catalog';
+import { catalogProducts } from '../data/catalog';
 import { faqItems } from '../data/faq';
 import { buildTemplate } from '../data/mockupTemplates';
 
@@ -25,16 +26,19 @@ function Page() {
     products,
     selectedProduct,
     selectedColor,
-    designImageUri,
-    imageTransform,
-    textLayer,
-    textTransform,
     setSelectedProductId,
+    savedDesigns,
+    loadDesign,
+    refreshSavedDesigns,
   } = useCatalog();
   const [selectedCategory, setSelectedCategory] =
     React.useState<string>('티셔츠');
   const [inquiryModalVisible, setInquiryModalVisible] =
     React.useState<boolean>(false);
+
+  useEffect(() => {
+    refreshSavedDesigns();
+  }, [refreshSavedDesigns]);
 
   const categories = ['티셔츠', '후드', '맨투맨'];
 
@@ -67,6 +71,28 @@ function Page() {
   const goToInquiry = () => {
     setInquiryModalVisible(true);
   };
+
+  const handleContinueDesign = (design: SavedDesign) => {
+    loadDesign(design);
+    navigation.navigate('/editor');
+  };
+
+  const handlePreviewDesign = (design: SavedDesign) => {
+    loadDesign(design);
+    navigation.navigate('/preview');
+  };
+
+  function formatTimeAgo(dateStr: string): string {
+    const date = new Date(dateStr);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+    const diffDays = Math.floor(diffHours / 24);
+    if (diffHours < 1) return '방금';
+    if (diffHours < 24) return `${diffHours}시간 전`;
+    if (diffDays === 1) return '어제';
+    return `${diffDays}일 전`;
+  }
 
   return (
     <Screen>
@@ -171,27 +197,59 @@ function Page() {
 
       <View style={styles.section}>
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>최근 작업</Text>
-          <Pressable onPress={goToDesigns}>
-            <Text style={styles.sectionAction}>전체 보기</Text>
-          </Pressable>
+          <Text style={styles.sectionTitle}>내 디자인</Text>
+          {savedDesigns.length > 0 && (
+            <Pressable onPress={goToDesigns}>
+              <Text style={styles.sectionAction}>전체 보기</Text>
+            </Pressable>
+          )}
         </View>
-        <Card style={styles.recentCard}>
-          <MockupCanvas
-            template={buildTemplate(selectedProduct, selectedColor, 'front')}
-            width={56}
-            height={72}
-            showDesign
-            designImageUri={designImageUri}
-            imageTransform={imageTransform}
-            textLayer={textLayer}
-            textTransform={textTransform}
-          />
-          <View style={styles.recentText}>
-            <Text style={styles.recentTitle}>Ocean Wave Tee</Text>
-            <Text style={styles.recentDesc}>블랙 / M · 2시간 전</Text>
-          </View>
-        </Card>
+        {savedDesigns.length === 0 ? (
+          <Card style={styles.emptyDesignCard}>
+            <Text style={styles.emptyDesignText}>아직 저장한 디자인이 없어요</Text>
+            <Text style={styles.emptyDesignSubtext}>
+              에디터에서 디자인을 저장하면 여기에 나타나요
+            </Text>
+          </Card>
+        ) : (
+          savedDesigns.slice(0, 3).map((design) => {
+            const product = catalogProducts.find((p) => p.id === design.productId) ?? selectedProduct;
+            return (
+              <Card key={design.id} style={styles.recentCard}>
+                <MockupCanvas
+                  template={buildTemplate(product, design.color, 'front')}
+                  width={56}
+                  height={72}
+                  showDesign
+                  designImageUri={design.designImageUri}
+                  imageTransform={design.imageTransform}
+                  textLayer={design.textLayer}
+                  textTransform={design.textTransform}
+                />
+                <View style={styles.recentText}>
+                  <Text style={styles.recentTitle}>{design.title}</Text>
+                  <Text style={styles.recentDesc}>
+                    {design.color} · {formatTimeAgo(design.createdAt)}
+                  </Text>
+                </View>
+                <View style={styles.recentActions}>
+                  <Pressable
+                    onPress={() => handleContinueDesign(design)}
+                    style={styles.recentActionButton}
+                  >
+                    <Text style={styles.recentActionText}>편집</Text>
+                  </Pressable>
+                  <Pressable
+                    onPress={() => handlePreviewDesign(design)}
+                    style={styles.recentActionButtonPrimary}
+                  >
+                    <Text style={styles.recentActionTextPrimary}>주문</Text>
+                  </Pressable>
+                </View>
+              </Card>
+            );
+          })
+        )}
       </View>
 
       <InquiryModal
@@ -367,19 +425,66 @@ const styles = StyleSheet.create({
   recentCard: {
     flexDirection: 'row',
     alignItems: 'center',
+    marginBottom: theme.spacing.sm,
   },
   recentText: {
     flex: 1,
     marginLeft: theme.spacing.md,
   },
   recentTitle: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '700',
+    color: theme.colors.textPrimary,
+    lineHeight: 22,
+    marginBottom: 2,
+  },
+  recentDesc: {
+    fontSize: 12,
+    color: theme.colors.textSecondary,
+    lineHeight: 18,
+  },
+  recentActions: {
+    flexDirection: 'column',
+    alignItems: 'flex-end',
+    gap: theme.spacing.xs,
+    marginLeft: theme.spacing.sm,
+  },
+  recentActionButton: {
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.xs + 2,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    backgroundColor: theme.colors.surface,
+  },
+  recentActionText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: theme.colors.textSecondary,
+  },
+  recentActionButtonPrimary: {
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.xs + 2,
+    borderRadius: 999,
+    backgroundColor: theme.colors.primary,
+  },
+  recentActionTextPrimary: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
+  emptyDesignCard: {
+    alignItems: 'center',
+    paddingVertical: theme.spacing.xl,
+  },
+  emptyDesignText: {
+    fontSize: 15,
+    fontWeight: '600',
     color: theme.colors.textPrimary,
     lineHeight: 22,
     marginBottom: theme.spacing.xs,
   },
-  recentDesc: {
+  emptyDesignSubtext: {
     fontSize: 13,
     color: theme.colors.textSecondary,
     lineHeight: 20,

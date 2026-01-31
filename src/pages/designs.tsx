@@ -51,6 +51,11 @@ function Page() {
     navigation.navigate('/editor');
   };
 
+  const handlePreview = (design: SavedDesign) => {
+    loadDesign(design);
+    navigation.navigate('/preview');
+  };
+
   const handleShare = async (design: SavedDesign) => {
     const product = catalogProducts.find((p) => p.id === design.productId);
     const productName = product?.name ?? '티셔츠';
@@ -128,6 +133,11 @@ function Page() {
                     {design.color} · {formatTimeAgo(design.createdAt)}
                   </Text>
                   <View style={styles.cardActions}>
+                    <PrimaryButton
+                      label="미리보기"
+                      onPress={() => handlePreview(design)}
+                      style={styles.cardButton}
+                    />
                     <SecondaryButton
                       label="편집하기"
                       onPress={() => handleEdit(design)}
