@@ -1,0 +1,1045 @@
+{
+  "project": {
+    "name": "MerchandiseGPT (머천다이즈 Gpt)",
+    "packageName": "merchandisegpt",
+    "description": "토스 인앱(Apps-in-Toss) 커스텀 의류 디자인 & 주문 미니앱. AI 이미지 생성 + 이미지 업로드 → 목업 편집 → 토스페이 결제 → 주문서 PDF 생성 → 이메일 발송",
+    "platform": "Toss Apps-in-Toss (mini-app)",
+    "productionUrl": "https://tossinapptshirts-production.up.railway.app",
+    "developmentPeriod": "2026-01-13 ~ 2026-01-29 (17일)",
+    "totalCommits": 49,
+    "totalSourceLines": 11182,
+    "products": ["티셔츠", "후디", "맨투맨"]
+  },
+
+  "techStack": {
+    "frontend": {
+      "framework": "Granite.js (React Native 래퍼)",
+      "ui": "TDS (토스 디자인 시스템) + @toss/tds-react-native",
+      "language": "TypeScript 5.8",
+      "react": "React 18.2 + React Native 0.72.6",
+      "routing": "@granite-js/plugin-router (파일 기반 라우팅)",
+      "stateManagement": "React Context API (CatalogProvider)",
+      "bundler": "SWC + Hermes (@granite-js/plugin-hermes)",
+      "imagePicker": "react-native-image-picker"
+    },
+    "backend": {
+      "runtime": "Node.js 20",
+      "framework": "Express.js 5.2",
+      "language": "JavaScript (CommonJS)",
+      "database": "PostgreSQL (pg 8.16)",
+      "objectStorage": "AWS S3 (@aws-sdk/client-s3 3.962)",
+      "ai": "OpenAI API (openai 4.104) - gpt-image-1",
+      "imageProcessing": "Sharp 0.34",
+      "pdf": "PDFKit 0.17",
+      "email": "Nodemailer 7.0 (Gmail SMTP)",
+      "httpClient": "Axios 1.13 (mTLS 지원)",
+      "security": ["Helmet 8.1", "CORS", "express-rate-limit 8.2", "compression"]
+    },
+    "infrastructure": {
+      "hosting": "Railway (nixpacks)",
+      "clustering": "Node.js cluster 모듈 (CPU 코어 수)",
+      "database": "Railway PostgreSQL",
+      "storage": "AWS S3",
+      "build": "granite build → .ait 번들",
+      "linter": "Biome 1.9"
+    }
+  },
+
+  "directoryStructure": {
+    "root": {
+      "granite.config.ts": "Granite 빌드 설정 (앱이름, 아이콘, 권한, 플러그인)",
+      "index.ts": "앱 엔트리포인트",
+      "package.json": "의존성 및 스크립트 정의",
+      "tsconfig.json": "TypeScript 설정",
+      "nixpacks.toml": "Railway 배포 빌드팩 설정",
+      "biome.json": "Biome 린터/포매터 설정",
+      ".env.example": "환경변수 템플릿 (28개 변수)",
+      ".railwayignore": "Railway 배포 제외 패턴",
+      ".nvmrc": "Node.js 버전 고정",
+      "babel.config.js": "Babel 설정",
+      "jest.config.js": "Jest 테스트 설정",
+      "test-features.html": "로컬 기능 테스트 HTML"
+    },
+    "src": {
+      "_app.tsx": {
+        "lines": 16,
+        "description": "앱 진입점 - TDS Provider + CatalogProvider 래핑"
+      },
+      "config.ts": {
+        "lines": 2,
+        "description": "API_BASE_URL 상수 (Railway 프로덕션 URL)"
+      },
+      "router.gen.ts": {
+        "lines": 43,
+        "description": "자동 생성된 라우트 정의 (12개 페이지)"
+      },
+      "pages": {
+        "index.tsx": {
+          "lines": 424,
+          "description": "홈 페이지 - 상품 카드 선택, FAQ 바로가기, CTA 버튼",
+          "features": ["상품 카탈로그 표시", "카테고리별 목업 이미지", "FAQ/문의 링크"]
+        },
+        "upload.tsx": {
+          "lines": 498,
+          "description": "이미지 업로드 페이지 - 갤러리에서 선택, 크롭, 배경 제거",
+          "features": ["react-native-image-picker 연동", "서버 배경제거 API 호출", "4단계 버튼 피드백"]
+        },
+        "generate.tsx": {
+          "lines": 349,
+          "description": "AI 이미지 생성 페이지 - DALL-E 프롬프트 입력",
+          "features": ["프롬프트 입력 UI", "OpenAI API 호출", "생성 결과 미리보기"]
+        },
+        "editor.tsx": {
+          "lines": 1060,
+          "description": "메인 디자인 편집기 - 드래그/스케일/회전, 텍스트 레이어, 앞/뒤면",
+          "features": ["이미지 변형 (드래그, 스케일, 회전)", "텍스트 레이어 추가/편집", "앞면/뒷면 토글", "실시간 목업 프리뷰", "디자인 저장/불러오기"]
+        },
+        "products.tsx": {
+          "lines": 212,
+          "description": "상품 카탈로그 브라우징 - 색상/사이즈 선택",
+          "features": ["상품 상세 정보", "색상 선택 칩", "사이즈 차트"]
+        },
+        "preview.tsx": {
+          "lines": 230,
+          "description": "목업 프리뷰 캐러셀 - 최종 확인",
+          "features": ["앞/뒤면 목업 표시", "캐러셀 슬라이드", "주문 진행 CTA"]
+        },
+        "order.tsx": {
+          "lines": 468,
+          "description": "주문서 페이지 - 배송 주소, 사이즈/수량, 토스페이 결제",
+          "features": ["다음 주소검색 모달", "사이즈/수량 선택", "가격 자동 계산", "토스페이 결제 연동", "OAuth 로그인 필수"]
+        },
+        "designs.tsx": {
+          "lines": 213,
+          "description": "저장된 디자인 목록 - 불러오기/삭제",
+          "features": ["로컬 스토리지 디자인 목록", "디자인 불러오기", "삭제 확인"]
+        },
+        "inquiry.tsx": {
+          "lines": 186,
+          "description": "1:1 문의 페이지",
+          "features": ["문의 작성", "문의 내역 조회"]
+        },
+        "faq.tsx": {
+          "lines": 283,
+          "description": "FAQ 페이지 - 27개 Q&A, 7개 카테고리 아코디언",
+          "features": ["카테고리 네비게이션", "아코디언 펼치기/접기", "아이콘별 그룹"]
+        },
+        "terms.tsx": {
+          "lines": 160,
+          "description": "이용약관 페이지"
+        },
+        "privacy.tsx": {
+          "lines": 193,
+          "description": "개인정보처리방침 페이지"
+        }
+      },
+      "components": {
+        "MockupCanvas.tsx": {
+          "lines": 202,
+          "description": "상품 템플릿 위에 디자인 이미지를 오버레이하여 렌더링하는 캔버스 컴포넌트",
+          "features": ["목업 이미지 + 디자인 합성", "프린트 영역 좌표 기반 위치 계산", "투명 배경 지원"]
+        },
+        "DesignStage.tsx": {
+          "lines": 319,
+          "description": "디자인 편집 스테이지 - 제스처 기반 드래그/스케일/회전 인터랙션",
+          "features": ["PanResponder 기반 드래그", "핀치 줌", "회전 제스처", "변형 상태 관리"]
+        },
+        "ScaleSlider.tsx": {
+          "lines": 95,
+          "description": "스케일 조절 슬라이더 컴포넌트",
+          "features": ["0.1~1.5 범위 스케일", "실시간 미리보기 연동"]
+        },
+        "DaumPostcodeModal.tsx": {
+          "lines": 221,
+          "description": "다음 우편번호 검색 모달 - WebView 기반 주소 검색",
+          "features": ["WebView 임베딩", "타입 기반 메시지 프로토콜", "자동 필드 채우기"]
+        },
+        "InquiryModal.tsx": {
+          "lines": 294,
+          "description": "1:1 문의 모달 컴포넌트 (라우터 버그 우회용)",
+          "features": ["문의 작성 폼", "문의 내역 조회", "모달 방식 표시"]
+        },
+        "ui.tsx": {
+          "lines": 382,
+          "description": "공통 UI 테마/색상/스타일 정의",
+          "features": ["theme 객체 (colors, spacing, font)", "공통 버튼/텍스트 스타일", "textTertiary 등 확장 색상"]
+        }
+      },
+      "data": {
+        "catalog.ts": {
+          "lines": 151,
+          "description": "상품 카탈로그 정의 - 3종 상품 (티셔츠/후디/맨투맨)",
+          "products": [
+            {
+              "id": "p-001",
+              "name": "티셔츠",
+              "model": "Printstar 148 Heavy 14oz",
+              "basePrice": 10000,
+              "colors": ["화이트", "블랙"],
+              "sizes": "XS~3XL"
+            },
+            {
+              "id": "p-002",
+              "name": "후드",
+              "model": "Printstar 188 Heavy Hoodie",
+              "basePrice": 23500,
+              "originalPrice": 24500,
+              "colors": ["그레이", "블랙"],
+              "sizes": "S~4XL"
+            },
+            {
+              "id": "p-003",
+              "name": "맨투맨",
+              "model": "Printstar 183 Heavy Sweatshirt",
+              "basePrice": 17000,
+              "originalPrice": 18000,
+              "colors": ["그레이", "블랙"],
+              "sizes": "S~4XL"
+            }
+          ]
+        },
+        "pricing.ts": {
+          "lines": 78,
+          "description": "가격 계산 로직",
+          "constants": {
+            "SHIPPING_FEE": 3000,
+            "FREE_SHIPPING_THRESHOLD": 60000,
+            "BASE_PRICES": {
+              "티셔츠": 30000,
+              "맨투맨": 40000,
+              "후드": 45000,
+              "에코백": 15000
+            }
+          },
+          "formula": "itemsTotal = SUM((BASE_PRICE + sizeExtra) * qty) + backPrintFee(6000/qty) + largePrintFee(2000/qty) + shippingFee(3000 or 0)"
+        },
+        "garmentSizes.ts": {
+          "lines": 198,
+          "description": "사이즈별 치수표 (XS~4XL, 가슴/어깨/총장/소매 cm)"
+        },
+        "colorMap.ts": {
+          "lines": 70,
+          "description": "색상명 → HEX 코드 매핑"
+        },
+        "printOptions.ts": {
+          "lines": 24,
+          "description": "프린트 사이즈 옵션 (standard/large)"
+        },
+        "mockupTemplates.ts": {
+          "lines": 54,
+          "description": "목업 템플릿 정의 - 프린트 영역 좌표(x, y, width, height)"
+        },
+        "faq.ts": {
+          "lines": 287,
+          "description": "FAQ 콘텐츠 - 27개 Q&A, 7개 카테고리"
+        }
+      },
+      "context": {
+        "catalog.tsx": {
+          "lines": 424,
+          "description": "CatalogProvider - 전역 상태 관리 (React Context)",
+          "state": [
+            "selectedProduct / selectedColor",
+            "orderLines[] (sizeLabel, quantity)",
+            "front/back designImageUri",
+            "front/back imageTransform (offsetX, offsetY, scale, rotation)",
+            "front/back textTransform",
+            "front/back textLayer",
+            "activeLayer (image | text)",
+            "frontPrintEnabled / printBackEnabled",
+            "selectedPrint (standard)",
+            "savedDesigns[] (로컬 스토리지 persist)"
+          ]
+        }
+      },
+      "utils": {
+        "printSizeCalculator.ts": {
+          "lines": 133,
+          "description": "프린트 치수 계산 유틸 (의류 사이즈 → 프린트 영역 cm)"
+        },
+        "format.ts": {
+          "lines": 5,
+          "description": "숫자 포맷 유틸 (원화 표시 등)"
+        }
+      }
+    },
+    "server": {
+      "index.js": {
+        "lines": 2398,
+        "description": "메인 Express 서버 - 20개 API 엔드포인트, mTLS, S3, OpenAI, PDF, 이메일"
+      },
+      "db.js": {
+        "lines": 80,
+        "description": "PostgreSQL 초기화 - 싱글턴 Pool, 테이블 자동 생성, DATABASE_URL 없으면 graceful skip"
+      },
+      "cluster.js": {
+        "lines": 59,
+        "description": "멀티프로세스 클러스터링 - CPU 코어 수만큼 워커 fork"
+      },
+      "printPipeline.js": {
+        "lines": 367,
+        "description": "이미지 업스케일/처리 파이프라인 - Sharp 기반 리사이즈, 크롭, 품질 최적화"
+      },
+      "test-email.js": {
+        "lines": null,
+        "description": "이메일 발송 테스트 스크립트"
+      },
+      "test-pdf.js": {
+        "lines": 135,
+        "description": "PDF 생성 테스트 스크립트"
+      },
+      "test-full-flow.js": {
+        "lines": 301,
+        "description": "E2E 전체 플로우 테스트 (업로드→주문→PDF→이메일)"
+      },
+      "test-mtls.js": {
+        "lines": 158,
+        "description": "mTLS 인증서 연결 테스트 스크립트"
+      }
+    },
+    "assets": {
+      "fonts": ["NotoSansKR-Regular.ttf", "NotoSansKR-Bold.ttf"],
+      "mockups": "상품 목업 이미지 (앞/뒤, 흰/검) - 4개 파일",
+      "logo.png": "앱 로고",
+      "logo.jpg": "앱 로고 (JPG 버전)"
+    },
+    "public/mockups": "서버 정적 파일 제공용 목업 이미지 (8개)",
+    "scripts": {
+      "build_catalog.py": "CSV → 카탈로그 데이터 빌드",
+      "optimize_images.py": "이미지 최적화 (리사이즈, 압축)",
+      "upload-mockups.js": "S3 목업 이미지 업로드",
+      "process_print_file.js": "프린트 파일 처리"
+    },
+    "docs": {
+      "spec.md": "MVP 스펙 문서",
+      "ORDER_EMAIL_SYSTEM.md": "주문 이메일 시스템 설계",
+      "PRINT_SIZE_CALCULATOR.md": "프린트 사이즈 계산 API 문서",
+      "TRAFFIC_SCALING.md": "프로덕션 트래픽 스케일링 가이드"
+    }
+  },
+
+  "serverAPI": {
+    "totalEndpoints": 20,
+    "rateLimiting": {
+      "global": {
+        "windowMs": 900000,
+        "max": 100,
+        "description": "전역 - IP당 15분에 100 요청"
+      },
+      "strict": {
+        "windowMs": 900000,
+        "max": 20,
+        "description": "고비용 작업 - IP당 15분에 20 요청"
+      }
+    },
+    "endpoints": {
+      "health": [
+        {
+          "method": "GET",
+          "path": "/health",
+          "line": 564,
+          "description": "서버 상태 확인 + 메트릭 (uptime, 메모리, 설정값)",
+          "rateLimit": "global",
+          "auth": "none"
+        }
+      ],
+      "images": [
+        {
+          "method": "POST",
+          "path": "/v1/images/upload",
+          "line": 589,
+          "description": "이미지 업로드 → S3 저장, base64 입력",
+          "rateLimit": "strict",
+          "auth": "none"
+        },
+        {
+          "method": "POST",
+          "path": "/v1/images/generate",
+          "line": 640,
+          "description": "AI 이미지 생성 (OpenAI DALL-E gpt-image-1), base64/URL 응답 모두 처리",
+          "rateLimit": "strict",
+          "auth": "none"
+        },
+        {
+          "method": "POST",
+          "path": "/v1/images/remove-background",
+          "line": 738,
+          "description": "배경 제거 (Clipdrop API), 투명 PNG 반환",
+          "rateLimit": "strict",
+          "auth": "none"
+        },
+        {
+          "method": "POST",
+          "path": "/v1/images/crop",
+          "line": 800,
+          "description": "이미지 크롭 (Sharp), 좌표/크기 기반",
+          "rateLimit": "strict",
+          "auth": "none"
+        },
+        {
+          "method": "POST",
+          "path": "/v1/images/style-transfer",
+          "line": 861,
+          "description": "스타일 트랜스퍼 (OpenAI), 원본 구조 유지하면서 스타일 변경",
+          "rateLimit": "strict",
+          "auth": "none",
+          "note": "프론트에서 비활성화됨 (안정성 이슈)"
+        }
+      ],
+      "print": [
+        {
+          "method": "POST",
+          "path": "/v1/print-files/process",
+          "line": 991,
+          "description": "프린트 파일 처리 (printPipeline.js 호출)",
+          "rateLimit": "strict",
+          "auth": "none"
+        },
+        {
+          "method": "POST",
+          "path": "/v1/print/calculate-size",
+          "line": 1421,
+          "description": "프린트 치수 계산 (의류 사이즈 → 프린트 영역 cm)",
+          "rateLimit": "global",
+          "auth": "none"
+        },
+        {
+          "method": "GET",
+          "path": "/v1/print/sizes",
+          "line": 1554,
+          "description": "프린트 사이즈 목록 반환",
+          "rateLimit": "global",
+          "auth": "none"
+        }
+      ],
+      "orders": [
+        {
+          "method": "POST",
+          "path": "/v1/orders/submit",
+          "line": 1019,
+          "description": "주문 제출 → PDF 생성(pdfkit) → 이메일 발송(nodemailer) → S3 업로드",
+          "rateLimit": "strict",
+          "auth": "none",
+          "flow": [
+            "1. 주문 데이터 검증 (이미지 또는 텍스트 필수)",
+            "2. 디자인 이미지 다운로드",
+            "3. PDF 주문서 생성 (NotoSansKR 폰트)",
+            "4. PDF → S3 업로드",
+            "5. 관리자 이메일 발송 (PDF 첨부)"
+          ]
+        }
+      ],
+      "inquiries": [
+        {
+          "method": "POST",
+          "path": "/v1/inquiries",
+          "line": 1595,
+          "description": "문의 작성 (PostgreSQL INSERT)",
+          "rateLimit": "global",
+          "auth": "none"
+        },
+        {
+          "method": "GET",
+          "path": "/v1/inquiries",
+          "line": 1632,
+          "description": "문의 목록 조회 (user_id 필터)",
+          "rateLimit": "global",
+          "auth": "none"
+        },
+        {
+          "method": "GET",
+          "path": "/v1/inquiries/:id",
+          "line": 1664,
+          "description": "문의 상세 + 답변 조회 (JOIN inquiry_replies)",
+          "rateLimit": "global",
+          "auth": "none"
+        }
+      ],
+      "address": [
+        {
+          "method": "GET",
+          "path": "/v1/address/search",
+          "line": 1714,
+          "description": "카카오맵 주소 검색 API 프록시",
+          "rateLimit": "global",
+          "auth": "none"
+        }
+      ],
+      "auth": [
+        {
+          "method": "POST",
+          "path": "/v1/auth/login",
+          "line": 1829,
+          "description": "Toss OAuth 로그인 - authorizationCode → accessToken → userKey 반환",
+          "rateLimit": "strict",
+          "auth": "none",
+          "flow": [
+            "1. 클라이언트에서 appLogin()으로 authorizationCode 획득",
+            "2. 서버에서 Toss OAuth API로 accessToken 교환",
+            "3. login-me API로 userKey 조회",
+            "4. userKey 반환 (결제 시 필수)"
+          ]
+        }
+      ],
+      "tossCallbacks": [
+        {
+          "method": "POST",
+          "path": "/v1/toss/disconnect",
+          "line": 1785,
+          "description": "토스 연결 해제 콜백 (Basic Auth 검증)",
+          "rateLimit": "global",
+          "auth": "Basic (TOSS_CALLBACK_USERNAME/PASSWORD)"
+        },
+        {
+          "method": "GET",
+          "path": "/v1/toss/disconnect",
+          "line": 1808,
+          "description": "토스 연결 해제 GET 콜백",
+          "rateLimit": "global",
+          "auth": "Basic (TOSS_CALLBACK_USERNAME/PASSWORD)"
+        }
+      ],
+      "payment": [
+        {
+          "method": "POST",
+          "path": "/v1/payment/create",
+          "line": 1953,
+          "description": "토스페이 결제 생성 (mTLS + axios)",
+          "rateLimit": "strict",
+          "auth": "mTLS (클라이언트 인증서)",
+          "headers": ["x-toss-user-key (필수)"],
+          "note": "IS_TEST_PAYMENT=true면 테스트 모드"
+        },
+        {
+          "method": "POST",
+          "path": "/v1/payment/execute",
+          "line": 2074,
+          "description": "토스페이 결제 실행 (mTLS + axios)",
+          "rateLimit": "strict",
+          "auth": "mTLS (클라이언트 인증서)"
+        },
+        {
+          "method": "POST",
+          "path": "/v1/payment/status",
+          "line": 2326,
+          "description": "결제 상태 조회",
+          "rateLimit": "global",
+          "auth": "none"
+        }
+      ]
+    }
+  },
+
+  "database": {
+    "type": "PostgreSQL",
+    "driver": "pg (node-postgres)",
+    "connectionPattern": "싱글턴 Pool (getPool())",
+    "gracefulDegradation": "DATABASE_URL 없으면 DB 기능 자동 비활성화",
+    "ssl": "production 환경에서 SSL 활성화 (rejectUnauthorized: false)",
+    "tables": {
+      "inquiries": {
+        "columns": {
+          "id": "SERIAL PRIMARY KEY",
+          "user_id": "VARCHAR(100) NOT NULL",
+          "user_name": "VARCHAR(100)",
+          "title": "VARCHAR(200) NOT NULL",
+          "content": "TEXT NOT NULL",
+          "status": "VARCHAR(20) DEFAULT 'pending'",
+          "created_at": "TIMESTAMP DEFAULT NOW()",
+          "updated_at": "TIMESTAMP DEFAULT NOW()"
+        },
+        "indexes": ["idx_inquiries_user_id", "idx_inquiries_status"]
+      },
+      "inquiry_replies": {
+        "columns": {
+          "id": "SERIAL PRIMARY KEY",
+          "inquiry_id": "INTEGER REFERENCES inquiries(id) ON DELETE CASCADE",
+          "admin_name": "VARCHAR(100) DEFAULT '관리자'",
+          "content": "TEXT NOT NULL",
+          "created_at": "TIMESTAMP DEFAULT NOW()"
+        },
+        "indexes": ["idx_inquiry_replies_inquiry_id"]
+      }
+    }
+  },
+
+  "environmentVariables": {
+    "total": 28,
+    "categories": {
+      "server": {
+        "PORT": { "default": "3000", "description": "서버 포트" },
+        "NODE_ENV": { "default": null, "description": "실행 환경 (production/development)" },
+        "REQUEST_TIMEOUT_MS": { "default": "120000", "description": "요청 타임아웃 (ms)" },
+        "WEB_CONCURRENCY": { "default": "CPU cores", "description": "클러스터 워커 수" },
+        "DATABASE_URL": { "default": null, "description": "PostgreSQL 연결 문자열 (없으면 DB 비활성화)" }
+      },
+      "aws_s3": {
+        "AWS_ACCESS_KEY_ID": { "required": true, "description": "AWS 접근 키" },
+        "AWS_SECRET_ACCESS_KEY": { "required": true, "description": "AWS 시크릿 키" },
+        "AWS_REGION": { "default": "us-east-1", "description": "S3 리전" },
+        "S3_BUCKET": { "default": "", "description": "S3 버킷 이름" },
+        "S3_PUBLIC_BASE_URL": { "default": "", "description": "S3 공개 URL 프리픽스" },
+        "S3_IMAGE_PREFIX": { "default": "uploads", "description": "이미지 S3 키 프리픽스" },
+        "S3_PDF_PREFIX": { "default": "orders", "description": "PDF S3 키 프리픽스" },
+        "S3_ENDPOINT": { "default": "", "description": "S3 커스텀 엔드포인트" },
+        "S3_FORCE_PATH_STYLE": { "default": "false", "description": "S3 path-style 강제" }
+      },
+      "openai": {
+        "OPENAI_API_KEY": { "required": true, "description": "OpenAI API 키" },
+        "OPENAI_IMAGE_MODEL": { "default": "gpt-image-1", "description": "이미지 생성 모델" },
+        "OPENAI_IMAGE_QUALITY": { "default": "medium", "description": "이미지 품질" }
+      },
+      "email_smtp": {
+        "SMTP_USER": { "required": true, "description": "SMTP 사용자 (Gmail)" },
+        "SMTP_PASS": { "required": true, "description": "SMTP 비밀번호 (앱 비밀번호)" },
+        "SMTP_FROM": { "required": true, "description": "발신자 이메일" },
+        "SMTP_HOST": { "default": "smtp.gmail.com", "description": "SMTP 호스트" },
+        "SMTP_PORT": { "default": "465", "description": "SMTP 포트" },
+        "SMTP_SECURE": { "default": "true", "description": "SSL/TLS 사용" },
+        "ORDER_EMAIL_TO": { "required": true, "description": "주문 수신 관리자 이메일" }
+      },
+      "toss_payment": {
+        "MTLS_KEY_BASE64": { "required": true, "description": "mTLS 개인키 (Base64 인코딩)" },
+        "MTLS_CERT_BASE64": { "required": true, "description": "mTLS 공개 인증서 (Base64 인코딩)" },
+        "TOSS_OAUTH_API_URL": { "default": "https://pay-apps-in-toss-api.toss.im", "description": "토스 OAuth API URL" },
+        "TOSSPAY_API_URL": { "default": "https://pay-apps-in-toss-api.toss.im", "description": "토스페이 결제 API URL" },
+        "IS_TEST_PAYMENT": { "default": "true", "description": "테스트 결제 모드" },
+        "TOSS_CALLBACK_USERNAME": { "required": false, "description": "토스 콜백 Basic Auth 사용자" },
+        "TOSS_CALLBACK_PASSWORD": { "required": false, "description": "토스 콜백 Basic Auth 비밀번호" }
+      },
+      "external": {
+        "CLIPDROP_API_KEY": { "default": "", "description": "Clipdrop 배경제거 API 키" },
+        "KAKAO_REST_API_KEY": { "required": false, "description": "카카오맵 REST API 키" }
+      }
+    }
+  },
+
+  "userFlow": {
+    "description": "유저 여정 플로우",
+    "steps": [
+      {
+        "step": 1,
+        "page": "index.tsx",
+        "action": "홈에서 상품 카테고리 선택 (티셔츠/후디/맨투맨)"
+      },
+      {
+        "step": 2,
+        "page": "upload.tsx 또는 generate.tsx",
+        "action": "갤러리 업로드 또는 AI 이미지 생성"
+      },
+      {
+        "step": 3,
+        "page": "products.tsx",
+        "action": "상품 상세 선택 (색상)"
+      },
+      {
+        "step": 4,
+        "page": "editor.tsx",
+        "action": "디자인 편집 (위치/크기/회전 + 텍스트 레이어 + 앞/뒤면)"
+      },
+      {
+        "step": 5,
+        "page": "preview.tsx",
+        "action": "최종 목업 프리뷰 확인"
+      },
+      {
+        "step": 6,
+        "page": "order.tsx",
+        "action": "사이즈/수량 선택 → 배송 주소 입력 → 토스페이 결제"
+      },
+      {
+        "step": 7,
+        "page": "서버 처리",
+        "action": "PDF 주문서 생성 → S3 업로드 → 관리자 이메일 발송"
+      }
+    ]
+  },
+
+  "troubleshooting": {
+    "totalIssues": 9,
+    "issues": [
+      {
+        "id": "TS-001",
+        "title": "Rate Limiter 크래시 (express-rate-limit trustProxy)",
+        "severity": "CRITICAL",
+        "daysToResolve": 2,
+        "commitsInvolved": 2,
+        "symptom": "Railway 배포 후 서버 즉시 크래시: ValidationError: trustProxy is not allowed",
+        "rootCause": "express-rate-limit v8에서 trustProxy를 자체 옵션으로 받지 않음. Express 앱 레벨 설정(app.set('trust proxy'))을 따라감",
+        "attempts": [
+          {
+            "attempt": 1,
+            "action": "rateLimit({ trustProxy: true }) 추가",
+            "result": "FAIL - express-rate-limit 8.x는 이 옵션 미지원, 여전히 크래시",
+            "commit": "ec865cd"
+          },
+          {
+            "attempt": 2,
+            "action": "trustProxy 제거, app.set('trust proxy', 1) 사용",
+            "result": "SUCCESS",
+            "commit": "04cc7eb"
+          }
+        ],
+        "finalFix": "app.set('trust proxy', 1)을 Express 앱 레벨에서 설정하고, rateLimit 설정에서 trustProxy 옵션 완전 제거",
+        "lesson": "express-rate-limit v7→v8 마이그레이션 시 breaking change 확인 필요. trustProxy는 Express 전역 설정으로만 가능"
+      },
+      {
+        "id": "TS-002",
+        "title": "다음 주소검색 모달 (WebView 호환 문제)",
+        "severity": "HIGH",
+        "daysToResolve": 3,
+        "commitsInvolved": 5,
+        "symptom": "주소 선택 후 모달이 닫히지 않거나, 주소 데이터가 React Native로 전달되지 않음",
+        "rootCause": "다음 우편번호 API의 embed() 모드는 브라우저 기준 설계. React Native WebView에서 autoClose와 onclose(COMPLETE_CLOSE) 이벤트가 동작하지 않음",
+        "attempts": [
+          {
+            "attempt": 1,
+            "action": "embed({ autoClose: true }) 사용",
+            "result": "FAIL - WebView에서 autoClose 미작동",
+            "commit": "60d985c"
+          },
+          {
+            "attempt": 2,
+            "action": "onclose(COMPLETE_CLOSE) 핸들링",
+            "result": "FAIL - WebView embed 모드에서 COMPLETE_CLOSE 이벤트 자체가 발생 안 함",
+            "commit": "60d985c"
+          },
+          {
+            "attempt": 3,
+            "action": "onclose 모든 상태에서 닫기",
+            "result": "FAIL - 주소 선택 전에도 닫혀버림",
+            "commit": "17aca26"
+          },
+          {
+            "attempt": 4,
+            "action": "oncomplete에서 onSelect 호출 후 즉시 모달 닫기",
+            "result": "PARTIAL - 타이밍 이슈 발생",
+            "commit": "487ae71"
+          },
+          {
+            "attempt": 5,
+            "action": "타입 기반 메시지 프로토콜 구현: {type: 'complete', data} / {type: 'close', closeState}",
+            "result": "SUCCESS",
+            "commit": "df2d632"
+          }
+        ],
+        "finalFix": "WebView ↔ React Native 간 타입 기반 JSON 메시지 프로토콜. oncomplete에서 {type:'complete', data} 전송, RN 측에서 type='complete' 수신 시 onSelect() 호출 후 즉시 onClose(). autoClose 옵션 완전 제거",
+        "lesson": "Daum Postcode API의 embed() 모드는 WebView 환경을 고려하지 않음. postMessage 기반 커스텀 브릿지가 필수"
+      },
+      {
+        "id": "TS-003",
+        "title": "토스페이 결제 API / mTLS 인증",
+        "severity": "CRITICAL",
+        "daysToResolve": 3,
+        "commitsInvolved": 6,
+        "symptom": "결제 생성/실행 API 호출 시 400, fetch failed, key mismatch 등 다양한 에러",
+        "rootCause": "토스 결제 API는 mTLS(상호 TLS) 필수 + 올바른 userKey 필수 (OAuth 로그인으로만 획득 가능)",
+        "attempts": [
+          {
+            "attempt": 1,
+            "action": "x-toss-user-key 헤더 추가",
+            "result": "PARTIAL - 400 해결됐지만 fetch failed 발생",
+            "commit": "cc30643"
+          },
+          {
+            "attempt": 2,
+            "action": "fetch() → axios + httpsAgent(mTLS 인증서) 변경",
+            "result": "PARTIAL - key values mismatch 에러",
+            "commit": "00acadd"
+          },
+          {
+            "attempt": 3,
+            "action": "올바른 인증서 쌍 재발급 및 Base64 환경변수로 전달",
+            "result": "PARTIAL - payment/create는 성공, execute 실패",
+            "commit": "f886a60"
+          },
+          {
+            "attempt": 4,
+            "action": "payment/execute에도 httpsAgent(mTLS) 추가",
+            "result": "PARTIAL - 유저키 관련 에러 발생",
+            "commit": "900a106"
+          },
+          {
+            "attempt": 5,
+            "action": "getDeviceId() 대신 Toss OAuth 로그인 구현 → 올바른 userKey 획득",
+            "result": "PARTIAL - OAuth API URL 오류",
+            "commit": "497f891"
+          },
+          {
+            "attempt": 6,
+            "action": "OAuth API URL 수정: oauth-apps-in-toss-api.toss.im → pay-apps-in-toss-api.toss.im",
+            "result": "SUCCESS",
+            "commit": "dc3a64f"
+          }
+        ],
+        "finalFix": "1) appLogin() → authorizationCode → 서버에서 accessToken 교환 → login-me API로 userKey 조회. 2) 모든 결제 API(create/execute)에 axios + httpsAgent(mTLS) 사용. 3) API URL은 pay-apps-in-toss-api.toss.im",
+        "lesson": "토스 인앱 결제는 3중 보안: mTLS 인증서 + OAuth userKey + 올바른 API 도메인. getDeviceId()는 결제용 유저키가 아님"
+      },
+      {
+        "id": "TS-004",
+        "title": "PNG 투명도 깨짐 (배경 아티팩트)",
+        "severity": "MEDIUM",
+        "daysToResolve": 2,
+        "commitsInvolved": 4,
+        "symptom": "배경 제거한 PNG 이미지에 회색/흰색 배경이 보임, 체커보드 패턴이 최종 목업에 나타남",
+        "rootCause": "React Native View 기본 배경색 + 불필요한 래퍼 View + 체커보드 컴포넌트가 MockupCanvas에도 적용됨",
+        "attempts": [
+          {
+            "attempt": 1,
+            "action": "체커보드 패턴 컴포넌트 추가 (편집기 투명 표시용)",
+            "result": "PARTIAL - MockupCanvas에도 체커보드가 나타남",
+            "commit": "eae2d92"
+          },
+          {
+            "attempt": 2,
+            "action": "MockupCanvas에서 체커보드 제거",
+            "result": "PARTIAL - View 배경색이 여전히 보임",
+            "commit": "17aca26"
+          },
+          {
+            "attempt": 3,
+            "action": "backgroundColor: 'transparent' + 플레이스홀더 View 제거",
+            "result": "SUCCESS",
+            "commit": "f886a60"
+          }
+        ],
+        "finalFix": "모든 디자인 이미지 컨테이너에 backgroundColor: 'transparent' 설정. 체커보드 패턴은 DesignStage(편집기)에서만 표시. MockupCanvas에서는 완전 제거",
+        "lesson": "React Native에서 투명 PNG 처리 시 모든 상위 View의 배경색을 명시적으로 transparent 설정 필요"
+      },
+      {
+        "id": "TS-005",
+        "title": "OpenAI 이미지 응답 포맷 (base64 vs URL)",
+        "severity": "HIGH",
+        "daysToResolve": 1,
+        "commitsInvolved": 1,
+        "symptom": "gpt-image-1 모델로 이미지 생성 시 빈 이미지 반환 (S3에 빈 파일 업로드)",
+        "rootCause": "gpt-image-1 모델은 항상 b64_json(base64) 형식으로 반환하는데, 코드가 URL 형식만 처리",
+        "attempts": [
+          {
+            "attempt": 1,
+            "action": "base64 응답 처리 분기 추가: b64_json이면 Buffer.from() 후 S3 업로드",
+            "result": "SUCCESS",
+            "commit": "d91d94c"
+          }
+        ],
+        "finalFix": "if (response.data[0].b64_json) { Buffer.from(b64, 'base64') → S3 } else if (response.data[0].url) { fetch URL → S3 }",
+        "lesson": "OpenAI 모델별 응답 포맷이 다를 수 있음. dall-e-3은 URL, gpt-image-1은 base64. 두 포맷 모두 처리 필수"
+      },
+      {
+        "id": "TS-006",
+        "title": "토스 앱스토어 심사 반려",
+        "severity": "HIGH",
+        "daysToResolve": 2,
+        "commitsInvolved": 3,
+        "symptom": "토스 앱스토어 심사 반려 (3가지 사유)",
+        "rootCause": "토스 인앱 정책 미준수: 커스텀 뒤로가기 버튼 금지, 앱 이름 규정, 앱 아이콘 필수",
+        "rejectionReasons": [
+          {
+            "reason": "앱 로고 누락",
+            "fix": "granite.config.ts에 icon 경로 추가",
+            "commit": "9ece957"
+          },
+          {
+            "reason": "앱 이름 규정 위반 (대문자 연속 'GPT')",
+            "fix": "'머천다이즈 GPT' → '머천다이즈 Gpt'로 변경",
+            "commit": "9ece957"
+          },
+          {
+            "reason": "커스텀 뒤로가기 버튼 사용",
+            "fix": "전체 10개 페이지에서 TopBar의 onBack prop 제거",
+            "commit": "9ece957"
+          }
+        ],
+        "lesson": "토스 인앱은 자체 네비게이션(뒤로가기)을 제공하므로 앱 내 커스텀 뒤로가기 절대 금지. 앱 이름에 대문자 연속 사용 불가"
+      },
+      {
+        "id": "TS-007",
+        "title": "Granite 라우터 파일 인식 버그",
+        "severity": "MEDIUM",
+        "daysToResolve": 1,
+        "commitsInvolved": 1,
+        "symptom": "src/pages/inquiry.tsx 파일을 생성했으나 라우터가 인식하지 않음",
+        "rootCause": "Granite 프레임워크의 파일 기반 라우팅이 특정 파일명을 감지하지 못하는 프레임워크 버그",
+        "finalFix": "InquiryModal 컴포넌트를 만들어 별도 페이지 대신 모달 방식으로 구현 (294줄 컴포넌트)",
+        "commit": "ec865cd",
+        "lesson": "Granite 프레임워크 라우터 한계. 인식 안 되는 페이지는 모달 방식으로 우회"
+      },
+      {
+        "id": "TS-008",
+        "title": "mTLS 인증서 Git 유출",
+        "severity": "CRITICAL (보안)",
+        "daysToResolve": 1,
+        "commitsInvolved": 1,
+        "symptom": "mTLS 개인키 + 공개 인증서가 git 커밋에 포함됨",
+        "rootCause": "토스 심사 반려 수정 커밋(9ece957)에서 server/certs/ 디렉토리가 실수로 커밋",
+        "finalFix": "git rm --cached server/certs/*, .gitignore에 server/certs/ *.pem *.key *.crt 패턴 추가",
+        "commit": "44de148",
+        "lesson": "인증서는 환경변수(Base64 인코딩)로만 전달. 파일로 저장 절대 금지. pre-commit hook으로 민감 파일 차단 권장"
+      },
+      {
+        "id": "TS-009",
+        "title": "목업 이미지 중복 네트워크 요청",
+        "severity": "LOW",
+        "daysToResolve": 1,
+        "commitsInvolved": 1,
+        "symptom": "앱 렌더링 시 동일 목업 이미지에 대한 네트워크 요청이 중복 발생",
+        "rootCause": "catalog.ts와 mockupTemplates.ts에서 require() 호출이 렌더링마다 새 객체를 생성하여 React Native가 별개의 이미지로 인식",
+        "finalFix": "모듈 레벨 상수로 캐싱: const IMG = require('./img.jpg') 후 참조",
+        "commit": "e12a41e",
+        "lesson": "React Native에서 require()는 렌더 함수 밖(모듈 레벨)에서 1회만 호출하여 참조 동일성 보장"
+      }
+    ]
+  },
+
+  "developmentTimeline": {
+    "phases": [
+      {
+        "phase": 1,
+        "name": "초기 빌드",
+        "date": "2026-01-13",
+        "commits": 6,
+        "summary": "결제 통합, 주소 검색, FAQ, UX 개선, 리브랜딩",
+        "keyCommits": [
+          { "hash": "f15752c", "message": "TossPay 결제 통합", "description": "서버 결제 엔드포인트 + 클라이언트 SDK 연동" },
+          { "hash": "7781ae6", "message": "다음 주소검색 추가", "description": "WebView 기반 주소 모달 컴포넌트" },
+          { "hash": "44ddd33", "message": "FAQ 페이지 추가", "description": "27개 Q&A, 7개 카테고리" },
+          { "hash": "cc30643", "message": "UX/결제 대규모 개선", "description": "리브랜딩 + 앞/뒤 토글 로직 + x-toss-user-key 헤더" },
+          { "hash": "4cd6465", "message": "P2 개선", "description": "뒷면 프린트 위치 이동 + 크롭 버튼 UI" }
+        ]
+      },
+      {
+        "phase": 2,
+        "name": "집중 이슈 해결",
+        "date": "2026-01-14",
+        "commits": 17,
+        "summary": "이슈 #1~#20 체계적 해결. UI/UX, 에디터, 이미지 처리, 주문 플로우 전반 개선",
+        "keyCommits": [
+          { "hash": "ec865cd", "message": "이슈 #1-3 수정", "description": "trustProxy 크래시 + 목업 이미지 오류 + 라우터 버그 우회" },
+          { "hash": "1ff53c2", "message": "Phase 1 UI/UX (#9,10,11)", "description": "FAQ 설명 + 동적 목업 + 버튼 간격 통일" },
+          { "hash": "7d91540", "message": "Phase 2 에디터 (#5,6,17)", "description": "스케일 범위 확장 + 풀스크린 캔버스 + 가이드라인 설정" },
+          { "hash": "b40a08a", "message": "Phase 3&4 (#12,14,16)", "description": "배경제거 버튼 + 상품정보 재배치 + 주소 자동포커스" },
+          { "hash": "eae2d92", "message": "체커보드 패턴 (#13)", "description": "투명 이미지 표시용 체커보드 패턴 컴포넌트" },
+          { "hash": "f96000c", "message": "스타일 트랜스퍼 디버깅 (#8)", "description": "프론트/백엔드 전체 로깅 추가" }
+        ]
+      },
+      {
+        "phase": 3,
+        "name": "프로덕션 배포 긴급 수정",
+        "date": "2026-01-15",
+        "commits": 4,
+        "summary": "Railway 프로덕션 서버 크래시 및 핵심 기능 버그 긴급 수정",
+        "keyCommits": [
+          { "hash": "04cc7eb", "message": "CRITICAL: trustProxy 설정 수정", "description": "app.set('trust proxy', 1) 올바른 설정" },
+          { "hash": "75fb5c8", "message": "프로덕션 버그 #21-23", "description": "OPENAI_API_KEY ReferenceError + 결제 검증 수정" },
+          { "hash": "27587ed", "message": "UI 개선 #24-28", "description": "프린트영역 클리핑 + 가이드라인 제거 + 목업 크기 증가" },
+          { "hash": "d91d94c", "message": "Railway 로그 기반 버그 수정", "description": "base64 응답 처리 + fetch 에러 핸들링 + PNG 투명도" }
+        ]
+      },
+      {
+        "phase": 4,
+        "name": "심층 트러블슈팅",
+        "date": "2026-01-16",
+        "commits": 8,
+        "summary": "3대 난제 집중 해결: 주소검색 모달, mTLS 결제, PNG 렌더링",
+        "keyCommits": [
+          { "hash": "60d985c", "message": "DaumPostcode autoClose 수정", "description": "공식 문서 기반 1차 시도" },
+          { "hash": "df2d632", "message": "DaumPostcode 최종 수정", "description": "타입 기반 메시지 프로토콜로 완전 해결" },
+          { "hash": "00acadd", "message": "mTLS 인증 구현", "description": "axios + httpsAgent로 mTLS 지원" },
+          { "hash": "f886a60", "message": "PNG 투명 + mTLS 로깅", "description": "배경 아티팩트 제거 + 인증서 디버깅" },
+          { "hash": "cffd198", "message": "블랙 티셔츠 목업 교체", "description": "잘못된 이미지 파일 교체" }
+        ]
+      },
+      {
+        "phase": 5,
+        "name": "토스 앱스토어 심사",
+        "date": "2026-01-19 ~ 2026-01-21",
+        "commits": 5,
+        "summary": "토스 리뷰 피드백 반영, 심사 반려 수정, OAuth 로그인 구현",
+        "keyCommits": [
+          { "hash": "f36563a", "message": "토스 리뷰 피드백 반영", "description": "로고 추가 + 공유 기능 업데이트" },
+          { "hash": "9ece957", "message": "심사 반려 수정", "description": "커스텀 뒤로가기 제거(10개 페이지) + 앱이름 + 로고" },
+          { "hash": "900a106", "message": "결제 에러 수정", "description": "execute에 mTLS 추가 + test-mtls.js" },
+          { "hash": "497f891", "message": "Toss OAuth 로그인 구현", "description": "appLogin() → authCode → accessToken → userKey 전체 플로우" },
+          { "hash": "dc3a64f", "message": "OAuth API URL 수정", "description": "pay-apps-in-toss-api.toss.im 올바른 도메인" }
+        ]
+      },
+      {
+        "phase": 6,
+        "name": "최종 폴리싱",
+        "date": "2026-01-29",
+        "commits": 3,
+        "summary": "이미지 캐싱, 인증서 보안, 배포 설정 정리",
+        "keyCommits": [
+          { "hash": "e12a41e", "message": "이미지 소스 캐싱", "description": "require() 중복 방지로 네트워크 요청 최적화" },
+          { "hash": "44de148", "message": "인증서 Git 제거", "description": "민감 파일 git index에서 삭제 + .gitignore 추가" },
+          { "hash": "087df29", "message": "배포 설정 업데이트", "description": ".railwayignore + 로고 + 최종 .ait 번들" }
+        ]
+      }
+    ],
+    "statistics": {
+      "totalCommits": 49,
+      "totalDays": 17,
+      "mostActiveDay": { "date": "2026-01-14", "commits": 17 },
+      "secondMostActiveDay": { "date": "2026-01-16", "commits": 8 },
+      "primaryDeveloper": "daepop98",
+      "aiCoAuthor": "Claude Sonnet 4.5",
+      "issueTracker": "PROGRESS.md (28+ issues)",
+      "mostModifiedFiles": [
+        "server/index.js",
+        "src/pages/order.tsx",
+        "src/components/DaumPostcodeModal.tsx",
+        "src/pages/editor.tsx"
+      ]
+    }
+  },
+
+  "security": {
+    "measures": [
+      {
+        "layer": "HTTP Security",
+        "implementation": "Helmet.js (CSP disabled, COEP disabled for WebView compatibility)"
+      },
+      {
+        "layer": "Rate Limiting",
+        "implementation": "2-tier: 전역 100req/15min + 고비용 20req/15min"
+      },
+      {
+        "layer": "CORS",
+        "implementation": "cors({ origin: true })"
+      },
+      {
+        "layer": "mTLS",
+        "implementation": "토스 결제 API에 클라이언트 인증서 (Base64 환경변수)"
+      },
+      {
+        "layer": "OAuth",
+        "implementation": "Toss OAuth2 → userKey 획득 (결제 필수)"
+      },
+      {
+        "layer": "Callback Auth",
+        "implementation": "토스 콜백에 Basic Auth (username/password)"
+      },
+      {
+        "layer": "Body Limit",
+        "implementation": "express.json({ limit: '15mb' })"
+      },
+      {
+        "layer": "SSL",
+        "implementation": "Railway 자동 HTTPS + DB SSL"
+      }
+    ],
+    "knownIssue": "CORS origin: true는 모든 오리진 허용. 프로덕션에서는 토스 인앱 도메인만 허용 필요"
+  },
+
+  "scripts": {
+    "dev": "granite dev - 개발 서버 실행",
+    "build": "granite build - .ait 번들 빌드",
+    "start": "node server/index.js - 프로덕션 서버 시작",
+    "start:cluster": "node server/cluster.js - 클러스터 모드 시작",
+    "server": "node server/index.js - 서버 직접 실행",
+    "test": "jest --passWithNoTests - 테스트 실행",
+    "typecheck": "tsc --noEmit - 타입 체크",
+    "lint": "biome check --write - 린트 + 자동 수정",
+    "optimize-images": "python3 scripts/optimize_images.py - 이미지 최적화"
+  }
+}
