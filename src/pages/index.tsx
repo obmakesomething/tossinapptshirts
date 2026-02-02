@@ -16,6 +16,9 @@ import { useCatalog } from '../context/catalog';
 import { faqItems } from '../data/faq';
 import { buildTemplate } from '../data/mockupTemplates';
 
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const heroDesignUri = Image.resolveAssetSource(require('../../assets/hero_design.png')).uri;
+
 export const Route = createRoute('/', {
   component: Page,
 });
@@ -115,21 +118,11 @@ function Page() {
             width={260}
             height={340}
             showDesign
-            designImageUri={null}
-            textLayer={{
-              enabled: true,
-              text: 'MERCHANDISE\nGPT',
-              fontSize: 36,
-              fontWeight: 'bold',
-              color:
-                selectedColor === '블랙'
-                  ? theme.colors.surface
-                  : theme.colors.textPrimary,
-            }}
-            textTransform={{
+            designImageUri={heroDesignUri}
+            imageTransform={{
               offsetX: 0,
               offsetY: 0,
-              scale: 0.6,
+              scale: 0.9,
               rotation: 0,
             }}
           />
