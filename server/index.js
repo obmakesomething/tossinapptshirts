@@ -8,6 +8,7 @@ const nodemailer = require('nodemailer');
 const PDFDocument = require('pdfkit');
 const { S3Client, PutObjectCommand } = require('@aws-sdk/client-s3');
 const OpenAI = require('openai');
+const { GoogleGenAI } = require('@google/genai');
 const fs = require('fs');
 const fsp = require('fs/promises');
 const path = require('path');
@@ -128,6 +129,7 @@ const IMAGE_PREFIX = process.env.S3_IMAGE_PREFIX || 'uploads';
 const PDF_PREFIX = process.env.S3_PDF_PREFIX || 'orders';
 const OPENAI_IMAGE_MODEL = process.env.OPENAI_IMAGE_MODEL || 'gpt-image-1';
 const OPENAI_IMAGE_QUALITY = process.env.OPENAI_IMAGE_QUALITY || 'medium';
+const IMAGEN_MODEL = process.env.IMAGEN_MODEL || 'imagen-4.0-generate-001';
 const ORDER_OUTPUT_DIR = process.env.ORDER_OUTPUT_DIR || path.join(process.cwd(), 'order-output');
 const CLIPDROP_API_KEY = process.env.CLIPDROP_API_KEY || '';
 const KAKAO_WEBHOOK_URL = process.env.KAKAO_WEBHOOK_URL || '';
@@ -228,6 +230,17 @@ function getOpenAIClient() {
   }
   openaiClient = new OpenAI({ apiKey });
   return openaiClient;
+}
+
+let imagenClient;
+function getImagenClient() {
+  if (imagenClient) return imagenClient;
+  const apiKey = process.env.GOOGLE_API_KEY;
+  if (!apiKey) {
+    throw new Error('GOOGLE_API_KEY is required for Imagen image generation.');
+  }
+  imagenClient = new GoogleGenAI({ apiKey });
+  return imagenClient;
 }
 
 function resolveBaseUrl() {
@@ -642,22 +655,15 @@ app.post('/v1/images/generate', strictLimiter, async (req, res) => {
     const { prompt, numberOfImages = 1, aspectRatio = '1:1', returnBase64 } = req.body || {};
     if (!prompt) return res.status(400).json({ error: 'Prompt is required.' });
     const count = Math.max(1, Math.min(4, Number(numberOfImages) || 1));
-    const sizeMap = {
-      '1:1': '1024x1024',
-      '4:3': '1536x1024',
-      '3:4': '1024x1536',
-    };
-    const size = sizeMap[aspectRatio] || '1024x1024';
 
     // Add white background instruction to prompt for easier background removal
     const enhancedPrompt = `${prompt}, on a plain white background`;
 
-    const client = getOpenAIClient();
+    const ai = getImagenClient();
     logEvent('info', 'image_generate_request', {
       requestId: req.requestId,
-      model: OPENAI_IMAGE_MODEL,
-      quality: OPENAI_IMAGE_QUALITY,
-      size,
+      model: IMAGEN_MODEL,
+      aspectRatio,
       count,
       originalPrompt: prompt,
       enhancedPrompt: enhancedPrompt,
@@ -666,46 +672,32 @@ app.post('/v1/images/generate', strictLimiter, async (req, res) => {
       returnBase64: !!returnBase64,
     });
 
-    const response = await client.images.generate({
-      model: OPENAI_IMAGE_MODEL,
+    const response = await ai.models.generateImages({
+      model: IMAGEN_MODEL,
       prompt: enhancedPrompt,
-      size,
-      n: count,
-      ...(OPENAI_IMAGE_QUALITY ? { quality: OPENAI_IMAGE_QUALITY } : {}),
+      config: {
+        numberOfImages: count,
+        aspectRatio: aspectRatio,
+        language: 'ko',
+      },
     });
 
     const results = [];
-    const generated = response?.data || [];
+    const generated = response?.generatedImages || [];
     for (const item of generated) {
-      let buffer = null;
-      let actualMimeType = 'unknown';
-      if (item.b64_json) {
-        buffer = Buffer.from(item.b64_json, 'base64');
-      } else if (item.url) {
-        const imageResponse = await fetch(item.url);
-        if (!imageResponse.ok) continue;
-        actualMimeType = imageResponse.headers.get('content-type') || 'unknown';
-        buffer = Buffer.from(await imageResponse.arrayBuffer());
-      }
-      if (!buffer) continue;
+      const imageBytes = item?.image?.imageBytes;
+      if (!imageBytes) continue;
 
-      // Check actual format from buffer signature
-      const isPNG = buffer[0] === 0x89 && buffer[1] === 0x50 && buffer[2] === 0x4E && buffer[3] === 0x47;
-      const isJPEG = buffer[0] === 0xFF && buffer[1] === 0xD8;
-      const detectedFormat = isPNG ? 'PNG' : isJPEG ? 'JPEG' : 'unknown';
+      const buffer = Buffer.from(imageBytes, 'base64');
 
-      logEvent('info', 'openai_image_format', {
+      logEvent('info', 'imagen_image_generated', {
         requestId: req.requestId,
-        actualMimeType,
-        detectedFormat,
-        isPNG,
+        bufferSize: buffer.length,
         bufferHeader: buffer.slice(0, 4).toString('hex'),
       });
 
-      // Force PNG mime type for storage
       const mimeType = 'image/png';
-
-      const key = `${IMAGE_PREFIX}/openai-${Date.now()}-${Math.random().toString(36).slice(2)}.png`;
+      const key = `${IMAGE_PREFIX}/imagen-${Date.now()}-${Math.random().toString(36).slice(2)}.png`;
       const url = await uploadToS3({ key, body: buffer, contentType: mimeType });
       const result = { url, mimeType };
       if (returnBase64) {
@@ -722,16 +714,14 @@ app.post('/v1/images/generate', strictLimiter, async (req, res) => {
       imageCount: results.length,
       firstUrl: results[0]?.url || '',
     });
-    res.json({ images: results, size, requestId: req.requestId });
+    res.json({ images: results, aspectRatio, requestId: req.requestId });
   } catch (error) {
     logEvent('error', 'image_generate_failed', {
       requestId: req.requestId,
       status: error.status,
-      param: error.param,
-      type: error.type,
       ...formatError(error),
     });
-    res.status(500).json({ error: error.message || 'OpenAI image failed.', requestId: req.requestId });
+    res.status(500).json({ error: error.message || 'Imagen image generation failed.', requestId: req.requestId });
   }
 });
 
@@ -877,9 +867,9 @@ app.post('/v1/images/style-transfer', strictLimiter, async (req, res) => {
       console.error('[StyleTransfer] Missing style');
       return res.status(400).json({ error: 'style is required.' });
     }
-    if (!process.env.OPENAI_API_KEY) {
-      console.error('[StyleTransfer] Missing OPENAI_API_KEY');
-      return res.status(500).json({ error: 'OPENAI_API_KEY is required.' });
+    if (!process.env.GOOGLE_API_KEY) {
+      console.error('[StyleTransfer] Missing GOOGLE_API_KEY');
+      return res.status(500).json({ error: 'GOOGLE_API_KEY is required.' });
     }
 
     logEvent('info', 'style_transfer_request', {
@@ -889,10 +879,8 @@ app.post('/v1/images/style-transfer', strictLimiter, async (req, res) => {
       dataUrlLength: dataUrl.length,
     });
 
-    const client = getOpenAIClient();
+    const ai = getImagenClient();
 
-    // Style-specific prompts with CRITICAL instruction to preserve original image structure
-    // IMPORTANT: Tell the model to ONLY change the style, NOT the content/shape/form
     const stylePrompts = {
       'watercolor': 'watercolor painting style, soft and flowing watercolor textures, gentle color blending, artistic brush strokes, on white background',
       'sketch': 'pencil sketch style, hand-drawn lines, black and white illustration, artistic sketching, on white background',
@@ -903,57 +891,37 @@ app.post('/v1/images/style-transfer', strictLimiter, async (req, res) => {
     };
 
     const styleDescription = stylePrompts[style] || stylePrompts['watercolor'];
-    // CRITICAL: Add explicit instruction to preserve the original image's shape, form, and composition
-    // Only change the artistic style, not the content itself
     const enhancedPrompt = `Convert the original image to ${styleDescription}. IMPORTANT: Keep the exact same subject, shape, composition, and layout as the original image. Only change the artistic style and rendering technique. Do not add, remove, or modify any elements from the original image.`;
 
     logEvent('info', 'style_transfer_generate', {
       requestId: req.requestId,
       style,
-      model: OPENAI_IMAGE_MODEL,
+      model: IMAGEN_MODEL,
       prompt: enhancedPrompt,
     });
 
-    console.log('[StyleTransfer] Calling OpenAI with prompt:', enhancedPrompt);
+    console.log('[StyleTransfer] Calling Imagen with prompt:', enhancedPrompt);
 
-    // Call OpenAI DALL-E for style transfer (using generate endpoint like existing code)
-    const response = await client.images.generate({
-      model: OPENAI_IMAGE_MODEL,
+    const response = await ai.models.generateImages({
+      model: IMAGEN_MODEL,
       prompt: enhancedPrompt,
-      size: '1024x1024',
-      n: 1,
-      ...(OPENAI_IMAGE_QUALITY ? { quality: OPENAI_IMAGE_QUALITY } : {}),
+      config: {
+        numberOfImages: 1,
+        aspectRatio: '1:1',
+        language: 'auto',
+      },
     });
 
-    console.log('[StyleTransfer] OpenAI response received');
-    console.log('[StyleTransfer] Response data keys:', Object.keys(response.data[0] || {}));
+    console.log('[StyleTransfer] Imagen response received');
 
-    const generatedUrl = response.data[0]?.url;
-    const generatedB64 = response.data[0]?.b64_json;
-
-    let styledBuffer;
-
-    if (generatedUrl) {
-      console.log('[StyleTransfer] Generated URL:', generatedUrl.substring(0, 50) + '...');
-
-      // Download the generated image
-      const tempDir = path.join(ORDER_OUTPUT_DIR, 'temp');
-      await fsp.mkdir(tempDir, { recursive: true });
-      const tempPath = path.join(tempDir, `style-${Date.now()}.png`);
-
-      console.log('[StyleTransfer] Downloading image to:', tempPath);
-      await downloadToFile(generatedUrl, tempPath);
-      styledBuffer = await fsp.readFile(tempPath);
-    } else if (generatedB64) {
-      console.log('[StyleTransfer] Received base64 image from OpenAI');
-      styledBuffer = Buffer.from(generatedB64, 'base64');
-    } else {
-      console.error('[StyleTransfer] No URL or b64_json in OpenAI response');
-      console.error('[StyleTransfer] Response data:', JSON.stringify(response.data[0]));
-      throw new Error('No image generated from OpenAI.');
+    const imageBytes = response?.generatedImages?.[0]?.image?.imageBytes;
+    if (!imageBytes) {
+      console.error('[StyleTransfer] No imageBytes in Imagen response');
+      throw new Error('No image generated from Imagen.');
     }
 
-    console.log('[StyleTransfer] Image downloaded, size:', styledBuffer.length, 'bytes');
+    const styledBuffer = Buffer.from(imageBytes, 'base64');
+    console.log('[StyleTransfer] Image generated, size:', styledBuffer.length, 'bytes');
 
     // Upload to S3
     const key = `${IMAGE_PREFIX}/${Date.now()}-${Math.random().toString(36).slice(2)}-styled.png`;
@@ -2387,6 +2355,8 @@ async function startServer() {
       s3ForcePathStyle: String(process.env.S3_FORCE_PATH_STYLE || 'false'),
       openaiModel: OPENAI_IMAGE_MODEL,
       openaiQuality: OPENAI_IMAGE_QUALITY,
+      imagenModel: IMAGEN_MODEL,
+      imagenEnabled: Boolean(process.env.GOOGLE_API_KEY),
       clipdropEnabled: Boolean(CLIPDROP_API_KEY),
       databaseEnabled: Boolean(process.env.DATABASE_URL),
       kakaoApiEnabled: Boolean(process.env.KAKAO_REST_API_KEY),
