@@ -65,7 +65,6 @@ function Page() {
 
   const [scrollEnabled, setScrollEnabled] = useState(true);
   const [editorTab, setEditorTab] = useState(0);
-  const [isOutOfBounds, setIsOutOfBounds] = useState(false);
   const [focusMode, setFocusMode] = useState(false);
   const [expandedPanel, setExpandedPanel] = useState(false);
 
@@ -260,7 +259,6 @@ function Page() {
               onTextTransformChange={setTextTransform}
               onInteractionStart={() => setScrollEnabled(false)}
               onInteractionEnd={() => setScrollEnabled(true)}
-              onOutOfBounds={setIsOutOfBounds}
             />
           </View>
         </View>
@@ -460,13 +458,6 @@ function Page() {
           {/* ── 탭 1: 조정 ── */}
           {editorTab === 1 && (
             <View>
-              {isOutOfBounds && (
-                <View style={styles.outOfBoundsInfo}>
-                  <Text style={styles.outOfBoundsInfoText}>
-                    프린트 영역 밖으로 조금 벗어났어요 (괜찮아요!)
-                  </Text>
-                </View>
-              )}
               <Text style={styles.transformHint}>
                 {activeLayer === 'text' ? '텍스트' : '이미지'}의 크기와 위치를 조절해 보세요.
               </Text>

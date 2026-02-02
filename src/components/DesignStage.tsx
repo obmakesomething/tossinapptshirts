@@ -19,7 +19,7 @@ type DesignStageProps = {
   onTextTransformChange: (transform: LayerTransform) => void;
   onInteractionStart?: () => void;
   onInteractionEnd?: () => void;
-  onOutOfBounds?: (isOut: boolean) => void;
+  onOutOfBounds?: (isOut: boolean, overflowPercent?: number) => void;
   cameraScale?: number;
 };
 
@@ -238,27 +238,35 @@ export function DesignStage({
   };
 
   // Out-of-bounds detection (simplified, ignoring rotation)
-  const isOutOfBounds = useMemo(() => {
+  const { isOutOfBounds, overflowPercent } = useMemo(() => {
     const checkBounds = (transform: LayerTransform, isText: boolean) => {
-      if (isText && !textLayer.enabled) return false;
-      if (!isText && !imageUri) return false;
+      if (isText && !textLayer.enabled) return { out: false, overflow: 0 };
+      if (!isText && !imageUri) return { out: false, overflow: 0 };
       const s = isText ? buildTextStyle(transform) : buildLayerStyle(transform);
       const w = 'width' in s ? (s.width as number) : 0;
       const h = 'height' in s ? (s.height as number) : 0;
       const l = s.left as number;
       const t = s.top as number;
-      return (
-        l < area.left - 2 ||
-        t < area.top - 2 ||
-        l + w > area.left + area.width + 2 ||
-        t + h > area.top + area.height + 2
-      );
+
+      // Calculate overflow amounts
+      const leftOverflow = Math.max(0, area.left - l);
+      const topOverflow = Math.max(0, area.top - t);
+      const rightOverflow = Math.max(0, (l + w) - (area.left + area.width));
+      const bottomOverflow = Math.max(0, (t + h) - (area.top + area.height));
+
+      const maxOverflow = Math.max(leftOverflow, topOverflow, rightOverflow, bottomOverflow);
+      const refDimension = Math.max(area.width, area.height);
+      const overflowPct = refDimension > 0 ? Math.round((maxOverflow / refDimension) * 100) : 0;
+
+      const out = maxOverflow > 2; // 2px tolerance
+      return { out, overflow: overflowPct };
     };
-    const imgOut = checkBounds(imageTransform, false);
-    const txtOut = checkBounds(textTransform, true);
-    const out = imgOut || txtOut;
-    onOutOfBounds?.(out);
-    return out;
+    const imgResult = checkBounds(imageTransform, false);
+    const txtResult = checkBounds(textTransform, true);
+    const out = imgResult.out || txtResult.out;
+    const maxOverflow = Math.max(imgResult.overflow, txtResult.overflow);
+    onOutOfBounds?.(out, maxOverflow);
+    return { isOutOfBounds: out, overflowPercent: maxOverflow };
   }, [imageTransform, textTransform, imageUri, textLayer.enabled, area.left, area.top, area.width, area.height]);
 
   const GUIDE_SIZE = 12;
