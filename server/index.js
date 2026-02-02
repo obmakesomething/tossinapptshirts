@@ -678,7 +678,6 @@ app.post('/v1/images/generate', strictLimiter, async (req, res) => {
       config: {
         numberOfImages: count,
         aspectRatio: aspectRatio,
-        language: 'ko',
       },
     });
 
@@ -908,7 +907,6 @@ app.post('/v1/images/style-transfer', strictLimiter, async (req, res) => {
       config: {
         numberOfImages: 1,
         aspectRatio: '1:1',
-        language: 'auto',
       },
     });
 
