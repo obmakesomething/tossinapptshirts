@@ -1,5 +1,5 @@
 import React from 'react';
-import { Image, StyleSheet, Text, View, type ViewStyle } from 'react-native';
+import { Image, StyleSheet, Text, View, type ViewStyle, type ImageSourcePropType } from 'react-native';
 import type { LayerTransform, TextLayer } from '../context/catalog';
 import type { MockupTemplate } from '../data/mockupTemplates';
 import { theme } from './ui';
@@ -12,7 +12,7 @@ type MockupCanvasProps = {
   showGuides?: boolean;
   showDesign?: boolean;
   designScale?: number;
-  designImageUri?: string | null;
+  designImageUri?: string | ImageSourcePropType | null;
   imageTransform?: LayerTransform;
   textLayer?: TextLayer;
   textTransform?: LayerTransform;
@@ -100,7 +100,7 @@ export function MockupCanvas({
       {showDesign &&
         (designImageUri ? (
           <Image
-            source={{ uri: designImageUri }}
+            source={typeof designImageUri === 'string' ? { uri: designImageUri } : designImageUri}
             style={[
               styles.designImage,
               {
