@@ -67,6 +67,7 @@ function Page() {
   const [editorTab, setEditorTab] = useState(0);
   const [isOutOfBounds, setIsOutOfBounds] = useState(false);
   const [focusMode, setFocusMode] = useState(false);
+  const [expandedPanel, setExpandedPanel] = useState(false);
 
   // Draft state for current size/quantity selection (not yet confirmed)
   const [draftSize, setDraftSize] = useState<string>(
@@ -77,7 +78,9 @@ function Page() {
   // 패딩 24 통일 (좌우 24 × 2 = 48)
   const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
   const canvasWidth = screenWidth - 48;
-  const canvasHeight = Math.min(canvasWidth * 1.25, screenHeight * 0.42);
+  const canvasHeight = expandedPanel
+    ? Math.min(canvasWidth * 0.8, screenHeight * 0.25)
+    : Math.min(canvasWidth * 1.25, screenHeight * 0.42);
 
   // Zoom to print area camera transform
   const printAreaFrac = { x: 0.32, y: 0.22, w: 0.36, h: 0.46 };
@@ -276,12 +279,22 @@ function Page() {
       </View>
 
       {/* ── 하단 탭 패널 ── */}
-      <View style={styles.panel}>
-        <TabBar
-          tabs={EDITOR_TABS}
-          activeIndex={editorTab}
-          onChangeIndex={setEditorTab}
-        />
+      <View style={[styles.panel, expandedPanel && styles.panelExpanded]}>
+        <View style={styles.panelHeader}>
+          <TabBar
+            tabs={EDITOR_TABS}
+            activeIndex={editorTab}
+            onChangeIndex={setEditorTab}
+          />
+          <Pressable
+            style={styles.expandButton}
+            onPress={() => setExpandedPanel(!expandedPanel)}
+          >
+            <Text style={styles.expandButtonText}>
+              {expandedPanel ? '▼ 축소' : '▲ 확장'}
+            </Text>
+          </Pressable>
+        </View>
         <ScrollView
           style={styles.panelScroll}
           contentContainerStyle={styles.panelContent}
@@ -343,14 +356,14 @@ function Page() {
                           style={[
                             styles.fontButton,
                             textLayer.fontWeight === weight &&
-                              styles.fontButtonSelected,
+                            styles.fontButtonSelected,
                           ]}
                         >
                           <Text
                             style={[
                               styles.fontButtonText,
                               textLayer.fontWeight === weight &&
-                                styles.fontButtonTextSelected,
+                              styles.fontButtonTextSelected,
                             ]}
                           >
                             {weight === 'regular' ? 'Regular' : 'Bold'}
@@ -377,14 +390,14 @@ function Page() {
                           style={[
                             styles.fontButton,
                             textLayer.color === colorOption.value &&
-                              styles.fontButtonSelected,
+                            styles.fontButtonSelected,
                           ]}
                         >
                           <Text
                             style={[
                               styles.fontButtonText,
                               textLayer.color === colorOption.value &&
-                                styles.fontButtonTextSelected,
+                              styles.fontButtonTextSelected,
                             ]}
                           >
                             {colorOption.label}
@@ -461,7 +474,7 @@ function Page() {
                 <Text style={styles.sliderLabel}>크기</Text>
                 <ScaleSlider
                   min={0.2}
-                  max={1.5}
+                  max={2.0}
                   value={activeTransform.scale}
                   onChange={updateScale}
                 />
@@ -789,6 +802,26 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: theme.colors.border,
     marginTop: theme.spacing.sm,
+  },
+  panelExpanded: {
+    flex: 2.5,
+  },
+  panelHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingRight: theme.spacing.md,
+  },
+  expandButton: {
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.xs,
+    borderRadius: 999,
+    backgroundColor: theme.colors.primarySoft,
+  },
+  expandButtonText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: theme.colors.primary,
   },
   panelScroll: {
     flex: 1,
