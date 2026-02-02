@@ -280,21 +280,21 @@ function Page() {
 
       {/* ── 하단 탭 패널 ── */}
       <View style={[styles.panel, expandedPanel && styles.panelExpanded]}>
-        <View style={styles.panelHeader}>
-          <TabBar
-            tabs={EDITOR_TABS}
-            activeIndex={editorTab}
-            onChangeIndex={setEditorTab}
-          />
-          <Pressable
-            style={styles.expandButton}
-            onPress={() => setExpandedPanel(!expandedPanel)}
-          >
-            <Text style={styles.expandButtonText}>
-              {expandedPanel ? '▼ 축소' : '▲ 확장'}
-            </Text>
-          </Pressable>
-        </View>
+        {/* 드래그 핸들 */}
+        <Pressable
+          style={styles.dragHandle}
+          onPress={() => setExpandedPanel(!expandedPanel)}
+        >
+          <View style={styles.dragBar} />
+          <Text style={styles.dragHint}>
+            {expandedPanel ? '▼ 터치해서 패널 축소' : '▲ 터치해서 패널 확장'}
+          </Text>
+        </Pressable>
+        <TabBar
+          tabs={EDITOR_TABS}
+          activeIndex={editorTab}
+          onChangeIndex={setEditorTab}
+        />
         <ScrollView
           style={styles.panelScroll}
           contentContainerStyle={styles.panelContent}
@@ -461,9 +461,9 @@ function Page() {
           {editorTab === 1 && (
             <View>
               {isOutOfBounds && (
-                <View style={styles.outOfBoundsWarning}>
-                  <Text style={styles.outOfBoundsText}>
-                    디자인이 프린트 영역 밖에 있어요
+                <View style={styles.outOfBoundsInfo}>
+                  <Text style={styles.outOfBoundsInfoText}>
+                    프린트 영역 밖으로 조금 벗어났어요 (괜찮아요!)
                   </Text>
                 </View>
               )}
@@ -806,22 +806,35 @@ const styles = StyleSheet.create({
   panelExpanded: {
     flex: 2.5,
   },
-  panelHeader: {
-    flexDirection: 'row',
+  dragHandle: {
     alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingRight: theme.spacing.md,
+    paddingVertical: theme.spacing.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.border,
   },
-  expandButton: {
-    paddingHorizontal: theme.spacing.md,
-    paddingVertical: theme.spacing.xs,
-    borderRadius: 999,
-    backgroundColor: theme.colors.primarySoft,
+  dragBar: {
+    width: 40,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: theme.colors.border,
+    marginBottom: theme.spacing.xs,
   },
-  expandButtonText: {
+  dragHint: {
     fontSize: 11,
-    fontWeight: '600',
-    color: theme.colors.primary,
+    color: theme.colors.textTertiary,
+  },
+  outOfBoundsInfo: {
+    backgroundColor: theme.colors.surface,
+    borderRadius: theme.radius.md,
+    padding: theme.spacing.sm,
+    marginBottom: theme.spacing.md,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+  },
+  outOfBoundsInfoText: {
+    fontSize: 12,
+    color: theme.colors.textSecondary,
+    textAlign: 'center',
   },
   panelScroll: {
     flex: 1,
