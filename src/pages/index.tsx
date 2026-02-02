@@ -16,8 +16,9 @@ import { useCatalog } from '../context/catalog';
 import { faqItems } from '../data/faq';
 import { buildTemplate } from '../data/mockupTemplates';
 
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const heroDesignImage = require('../../assets/hero_design.png');
+import { API_BASE_URL } from '../config';
+
+const heroDesignImageUri = `${API_BASE_URL}/mockups/hero_design.png`;
 
 export const Route = createRoute('/', {
   component: Page,
@@ -118,7 +119,7 @@ function Page() {
             width={260}
             height={340}
             showDesign
-            designImageUri={heroDesignImage}
+            designImageUri={heroDesignImageUri}
             imageTransform={{
               offsetX: 0,
               offsetY: 0,
