@@ -11,9 +11,12 @@ import {
 import {
   Card,
   Chip,
+  CollapsibleSection,
+  DisabledHint,
   PrimaryButton,
   Screen,
   SecondaryButton,
+  StickyFooter,
   TopBar,
   theme,
 } from '../components/ui';
@@ -189,35 +192,37 @@ function Page() {
         </View>
       ) : null}
 
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>스타일 선택</Text>
-        <View style={styles.chipRow}>
-          {styleOptions.map((option) => (
-            <Chip
-              key={option}
-              label={option}
-              selected={style === option}
-              onPress={() => setStyle(option)}
-              style={styles.chipSpacing}
-            />
-          ))}
+      <CollapsibleSection title={`스타일: ${style} · 비율: ${ratio} 변경`}>
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>스타일 선택</Text>
+          <View style={styles.chipRow}>
+            {styleOptions.map((option) => (
+              <Chip
+                key={option}
+                label={option}
+                selected={style === option}
+                onPress={() => setStyle(option)}
+                style={styles.chipSpacing}
+              />
+            ))}
+          </View>
         </View>
-      </View>
 
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>비율 선택</Text>
-        <View style={styles.chipRow}>
-          {ratioOptions.map((option) => (
-            <Chip
-              key={option}
-              label={option}
-              selected={ratio === option}
-              onPress={() => setRatio(option)}
-              style={styles.chipSpacing}
-            />
-          ))}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>비율 선택</Text>
+          <View style={styles.chipRow}>
+            {ratioOptions.map((option) => (
+              <Chip
+                key={option}
+                label={option}
+                selected={ratio === option}
+                onPress={() => setRatio(option)}
+                style={styles.chipSpacing}
+              />
+            ))}
+          </View>
         </View>
-      </View>
+      </CollapsibleSection>
 
       <PrimaryButton
         label="이미지 만들기"
@@ -235,12 +240,19 @@ function Page() {
         <Text style={styles.successText}>{successMessage}</Text>
       ) : null}
 
-      <PrimaryButton
-        label="이 이미지로 굿즈 만들기"
-        onPress={goNext}
-        disabled={!resultUrl}
-        style={styles.nextButton}
-      />
+      <View style={styles.stickyFooterSpacer} />
+
+      <StickyFooter>
+        <PrimaryButton
+          label="이 이미지로 굿즈 만들기"
+          onPress={goNext}
+          disabled={!resultUrl}
+        />
+        <DisabledHint
+          text="이미지를 먼저 만들어 주세요"
+          visible={!resultUrl}
+        />
+      </StickyFooter>
     </Screen>
   );
 }
@@ -345,5 +357,8 @@ const styles = StyleSheet.create({
     color: theme.colors.success,
     marginTop: theme.spacing.sm,
     fontWeight: '600',
+  },
+  stickyFooterSpacer: {
+    height: 80,
   },
 });

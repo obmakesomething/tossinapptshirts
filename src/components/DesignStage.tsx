@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+import React, { useMemo, useRef } from 'react';
 import { Image, PanResponder, StyleSheet, Text, View } from 'react-native';
 import type { LayerTransform, TextLayer } from '../context/catalog';
 import type { MockupTemplate } from '../data/mockupTemplates';
@@ -19,6 +19,7 @@ type DesignStageProps = {
   onTextTransformChange: (transform: LayerTransform) => void;
   onInteractionStart?: () => void;
   onInteractionEnd?: () => void;
+  onOutOfBounds?: (isOut: boolean) => void;
 };
 
 
@@ -46,6 +47,7 @@ export function DesignStage({
   onTextTransformChange,
   onInteractionStart,
   onInteractionEnd,
+  onOutOfBounds,
 }: DesignStageProps) {
   const area = {
     left: width * template.printArea.x,
@@ -211,6 +213,35 @@ export function DesignStage({
     };
   };
 
+  // Out-of-bounds detection (simplified, ignoring rotation)
+  const isOutOfBounds = useMemo(() => {
+    const checkBounds = (transform: LayerTransform, isText: boolean) => {
+      if (isText && !textLayer.enabled) return false;
+      if (!isText && !imageUri) return false;
+      const s = isText ? buildTextStyle(transform) : buildLayerStyle(transform);
+      const w = 'width' in s ? (s.width as number) : 0;
+      const h = 'height' in s ? (s.height as number) : 0;
+      const l = s.left as number;
+      const t = s.top as number;
+      return (
+        l < area.left - 2 ||
+        t < area.top - 2 ||
+        l + w > area.left + area.width + 2 ||
+        t + h > area.top + area.height + 2
+      );
+    };
+    const imgOut = checkBounds(imageTransform, false);
+    const txtOut = checkBounds(textTransform, true);
+    const out = imgOut || txtOut;
+    onOutOfBounds?.(out);
+    return out;
+  }, [imageTransform, textTransform, imageUri, textLayer.enabled, area.left, area.top, area.width, area.height]);
+
+  const GUIDE_SIZE = 12;
+  const GUIDE_WIDTH = 2;
+  const overlayColor = 'rgba(0,0,0,0.15)';
+  const borderColor = isOutOfBounds ? theme.colors.error : theme.colors.primary;
+
   return (
     <View
       style={[styles.container, { width, height }]}
@@ -235,7 +266,18 @@ export function DesignStage({
           )
         }
       />
-      {effectiveShowGuides ? (
+      {/* Overlay mask: darken outside print area */}
+      {_showPrintArea && (
+        <>
+          <View style={[styles.overlayMask, { top: 0, left: 0, right: 0, height: area.top, backgroundColor: overlayColor }]} />
+          <View style={[styles.overlayMask, { top: area.top + area.height, left: 0, right: 0, bottom: 0, backgroundColor: overlayColor }]} />
+          <View style={[styles.overlayMask, { top: area.top, left: 0, width: area.left, height: area.height, backgroundColor: overlayColor }]} />
+          <View style={[styles.overlayMask, { top: area.top, left: area.left + area.width, right: 0, height: area.height, backgroundColor: overlayColor }]} />
+        </>
+      )}
+
+      {/* Print area border */}
+      {effectiveShowGuides && (
         <View
           style={[
             styles.printArea,
@@ -244,10 +286,28 @@ export function DesignStage({
               top: area.top,
               width: area.width,
               height: area.height,
+              borderColor,
             },
           ]}
-        />
-      ) : null}
+        >
+          {/* 프린트 영역 label */}
+          <Text style={[styles.printAreaLabel, { color: borderColor }]}>프린트 영역</Text>
+        </View>
+      )}
+
+      {/* Corner L-guides */}
+      {effectiveShowGuides && (
+        <>
+          {/* Top-left */}
+          <View style={[styles.cornerGuide, { top: area.top - 1, left: area.left - 1, borderTopWidth: GUIDE_WIDTH, borderLeftWidth: GUIDE_WIDTH, borderColor, width: GUIDE_SIZE, height: GUIDE_SIZE }]} />
+          {/* Top-right */}
+          <View style={[styles.cornerGuide, { top: area.top - 1, left: area.left + area.width - GUIDE_SIZE + 1, borderTopWidth: GUIDE_WIDTH, borderRightWidth: GUIDE_WIDTH, borderColor, width: GUIDE_SIZE, height: GUIDE_SIZE }]} />
+          {/* Bottom-left */}
+          <View style={[styles.cornerGuide, { top: area.top + area.height - GUIDE_SIZE + 1, left: area.left - 1, borderBottomWidth: GUIDE_WIDTH, borderLeftWidth: GUIDE_WIDTH, borderColor, width: GUIDE_SIZE, height: GUIDE_SIZE }]} />
+          {/* Bottom-right */}
+          <View style={[styles.cornerGuide, { top: area.top + area.height - GUIDE_SIZE + 1, left: area.left + area.width - GUIDE_SIZE + 1, borderBottomWidth: GUIDE_WIDTH, borderRightWidth: GUIDE_WIDTH, borderColor, width: GUIDE_SIZE, height: GUIDE_SIZE }]} />
+        </>
+      )}
       {imageUri ? (
         <Image
           source={{ uri: imageUri }}
@@ -291,17 +351,27 @@ const styles = StyleSheet.create({
   image: {
     ...StyleSheet.absoluteFillObject,
   },
+  overlayMask: {
+    position: 'absolute',
+  },
   printArea: {
     position: 'absolute',
-    borderWidth: 2,
+    borderWidth: 1.5,
     borderColor: theme.colors.primary,
     borderStyle: 'dashed',
-    borderRadius: 10,
+    borderRadius: 6,
+    alignItems: 'center',
   },
-  designPlaceholder: {
+  printAreaLabel: {
     position: 'absolute',
-    borderRadius: 10,
-    backgroundColor: theme.colors.primarySoft,
+    top: -18,
+    fontSize: 10,
+    fontWeight: '600',
+    letterSpacing: 0.5,
+  },
+  cornerGuide: {
+    position: 'absolute',
+    borderColor: theme.colors.primary,
   },
   designImage: {
     position: 'absolute',

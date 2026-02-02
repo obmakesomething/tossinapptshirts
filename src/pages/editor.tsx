@@ -1,22 +1,32 @@
 import { createRoute } from '@granite-js/react-native';
-import { Button, TextField, Txt } from '@toss/tds-react-native';
+import { TextField } from '@toss/tds-react-native';
 import React, { useEffect, useMemo, useState } from 'react';
-import { Dimensions, Pressable, StyleSheet, Text, View } from 'react-native';
+import {
+  Dimensions,
+  Pressable,
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 import { DesignStage } from '../components/DesignStage';
 import { MockupCanvas } from '../components/MockupCanvas';
 import { ScaleSlider } from '../components/ScaleSlider';
 import {
   Card,
   Chip,
+  CollapsibleSection,
   ColorSwatch,
-  Screen,
+  PrimaryButton,
   SecondaryButton,
+  TabBar,
   TopBar,
   theme,
 } from '../components/ui';
 import { useCatalog } from '../context/catalog';
 import { resolveColorValue } from '../data/colorMap';
-import { buildTemplate } from '../data/mockupTemplates';
+import { buildTemplate, printSizeByCategory } from '../data/mockupTemplates';
 import { calcPricing } from '../data/pricing';
 import { formatPrice } from '../utils/format';
 
@@ -53,6 +63,8 @@ function Page() {
 
 
   const [scrollEnabled, setScrollEnabled] = useState(true);
+  const [editorTab, setEditorTab] = useState(0);
+  const [isOutOfBounds, setIsOutOfBounds] = useState(false);
 
   // Draft state for current size/quantity selection (not yet confirmed)
   const [draftSize, setDraftSize] = useState<string>(
@@ -61,9 +73,11 @@ function Page() {
   const [draftQuantity, setDraftQuantity] = useState<number>(1);
 
   // Get screen dimensions for full-screen canvas
-  const { width: screenWidth } = Dimensions.get('window');
-  const canvasWidth = screenWidth - 32; // 좌우 16px padding, 최대한 활용
-  const canvasHeight = canvasWidth * 1.25; // 4:5 비율 유지 (티셔츠 형태)
+  const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
+  const canvasWidth = screenWidth - 32;
+  const canvasHeight = Math.min(canvasWidth * 1.25, screenHeight * 0.42);
+
+  const EDITOR_TABS = ['레이어', '조정', '옵션'];
 
   const goPreview = () => {
     navigation.navigate('/preview');
@@ -151,18 +165,312 @@ function Page() {
   };
 
   return (
-    <Screen scrollEnabled={scrollEnabled}>
-      <TopBar title="옷 위에 프린팅하기" />
+    <SafeAreaView style={styles.safe}>
+      {/* ── 컴팩트 상단 ── */}
+      <View style={styles.compactHeader}>
+        <TopBar title="옷 위에 프린팅하기" />
+        <View style={styles.compactProduct}>
+          <View style={[styles.compactDot, { backgroundColor: resolveColorValue(selectedColor) }]} />
+          <Text style={styles.compactName} numberOfLines={1}>
+            {selectedProduct.name} · {selectedColor}
+          </Text>
+          <Pressable
+            onPress={() => navigation.navigate('/products')}
+            style={styles.compactChange}
+          >
+            <Text style={styles.compactChangeText}>변경</Text>
+          </Pressable>
+        </View>
+      </View>
 
-      <Card style={styles.productCard}>
-        <View style={styles.productHeader}>
-          <View style={styles.productText}>
-            <Text style={styles.productTitle}>{selectedProduct.name}</Text>
-            <Text style={styles.productMeta}>{selectedProduct.modelName}</Text>
+      {/* ── 캔버스 (최대화) ── */}
+      <View style={styles.canvasArea}>
+        <DesignStage
+          template={buildTemplate(selectedProduct, selectedColor, 'front')}
+          width={canvasWidth}
+          height={canvasHeight}
+          showPrintArea
+          showGuides={false}
+          imageUri={designImageUri}
+          imageTransform={imageTransform}
+          textLayer={textLayer}
+          textTransform={textTransform}
+          activeLayer={activeLayer}
+          onImageTransformChange={setImageTransform}
+          onTextTransformChange={setTextTransform}
+          onInteractionStart={() => setScrollEnabled(false)}
+          onInteractionEnd={() => setScrollEnabled(true)}
+          onOutOfBounds={setIsOutOfBounds}
+        />
+        {/* 출력 크기 + 해상도 안내 */}
+        <View style={styles.canvasInfo}>
+          <Text style={styles.canvasInfoText}>
+            출력 영역 약 {printSizeByCategory[selectedProduct.category]?.widthCm ?? 28}×
+            {printSizeByCategory[selectedProduct.category]?.heightCm ?? 36}cm
+          </Text>
+          {designImageUri && (
+            <Text style={styles.canvasInfoWarn}>
+              해상도에 따라 인쇄 품질이 달라질 수 있어요
+            </Text>
+          )}
+        </View>
+      </View>
 
-            {/* 컬러 선택기 통합 */}
-            <View style={styles.colorSection}>
-              <Text style={styles.colorLabel}>컬러</Text>
+      {/* ── 하단 탭 패널 ── */}
+      <View style={styles.panel}>
+        <TabBar
+          tabs={EDITOR_TABS}
+          activeIndex={editorTab}
+          onChangeIndex={setEditorTab}
+        />
+        <ScrollView
+          style={styles.panelScroll}
+          contentContainerStyle={styles.panelContent}
+          scrollEnabled={scrollEnabled}
+          showsVerticalScrollIndicator={false}
+          nestedScrollEnabled
+        >
+          {/* ── 탭 0: 레이어 ── */}
+          {editorTab === 0 && (
+            <View>
+              <View style={styles.layerRow}>
+                <Chip
+                  label="이미지"
+                  selected={activeLayer === 'image'}
+                  onPress={() => setActiveLayer('image')}
+                  style={styles.chipSpacing}
+                />
+                <Chip
+                  label="텍스트"
+                  selected={activeLayer === 'text'}
+                  onPress={() => setActiveLayer('text')}
+                />
+              </View>
+
+              {activeLayer === 'text' && !textLayer.enabled && (
+                <View style={styles.textEditSection}>
+                  <Text style={styles.sectionTitle}>텍스트를 추가해 볼까요?</Text>
+                  <Text style={styles.sectionHint}>
+                    나만의 문구를 넣어서 특별한 굿즈를 만들어 보세요.
+                  </Text>
+                  <SecondaryButton label="텍스트 추가하기" onPress={handleAddText} />
+                </View>
+              )}
+
+              {activeLayer === 'text' && textLayer.enabled && (
+                <View style={styles.textEditSection}>
+                  <TextField
+                    variant="box"
+                    label="텍스트"
+                    labelOption="sustain"
+                    value={textLayer.text}
+                    onChangeText={(value) =>
+                      setTextLayer({ ...textLayer, text: value })
+                    }
+                    placeholder="원하는 문구를 입력해 주세요"
+                  />
+                  <View style={styles.fontRow}>
+                    <Text style={styles.fontLabel}>굵기</Text>
+                    <View style={styles.fontButtons}>
+                      {['regular', 'bold'].map((weight) => (
+                        <Pressable
+                          key={weight}
+                          onPress={() =>
+                            setTextLayer({
+                              ...textLayer,
+                              fontWeight: weight as 'regular' | 'bold',
+                            })
+                          }
+                          style={[
+                            styles.fontButton,
+                            textLayer.fontWeight === weight &&
+                              styles.fontButtonSelected,
+                          ]}
+                        >
+                          <Text
+                            style={[
+                              styles.fontButtonText,
+                              textLayer.fontWeight === weight &&
+                                styles.fontButtonTextSelected,
+                            ]}
+                          >
+                            {weight === 'regular' ? 'Regular' : 'Bold'}
+                          </Text>
+                        </Pressable>
+                      ))}
+                    </View>
+                  </View>
+                  <View style={styles.fontRow}>
+                    <Text style={styles.fontLabel}>색상</Text>
+                    <View style={styles.fontButtons}>
+                      {[
+                        { label: '블랙', value: '#000000' },
+                        { label: '화이트', value: '#FFFFFF' },
+                      ].map((colorOption) => (
+                        <Pressable
+                          key={colorOption.value}
+                          onPress={() =>
+                            setTextLayer({
+                              ...textLayer,
+                              color: colorOption.value,
+                            })
+                          }
+                          style={[
+                            styles.fontButton,
+                            textLayer.color === colorOption.value &&
+                              styles.fontButtonSelected,
+                          ]}
+                        >
+                          <Text
+                            style={[
+                              styles.fontButtonText,
+                              textLayer.color === colorOption.value &&
+                                styles.fontButtonTextSelected,
+                            ]}
+                          >
+                            {colorOption.label}
+                          </Text>
+                        </Pressable>
+                      ))}
+                    </View>
+                  </View>
+                  <SecondaryButton
+                    label="텍스트 삭제하기"
+                    onPress={() => {
+                      setTextLayer({ ...textLayer, enabled: false });
+                      setActiveLayer('image');
+                    }}
+                    style={{ marginTop: theme.spacing.sm }}
+                  />
+                </View>
+              )}
+
+              {/* 뒷면 프린팅 토글 */}
+              <View style={styles.backSection}>
+                {!printBackEnabled ? (
+                  <SecondaryButton
+                    label="뒷면 프린팅 추가하기"
+                    onPress={() => {
+                      setPrintBackEnabled(true);
+                      setSelectedPlacement('back');
+                    }}
+                  />
+                ) : (
+                  <>
+                    <View style={styles.optionRow}>
+                      <Text style={styles.sectionTitle}>뒷면 프린팅</Text>
+                      <SecondaryButton
+                        label="뒷면 빼기"
+                        onPress={() => {
+                          setPrintBackEnabled(false);
+                          setSelectedPlacement('front');
+                        }}
+                      />
+                    </View>
+                    <View style={styles.backPreviewContainer}>
+                      <MockupCanvas
+                        template={buildTemplate(selectedProduct, selectedColor, 'back')}
+                        width={160}
+                        height={200}
+                        showDesign
+                        designImageUri={designImageUri}
+                        imageTransform={imageTransform}
+                        textLayer={textLayer}
+                        textTransform={textTransform}
+                      />
+                    </View>
+                  </>
+                )}
+              </View>
+            </View>
+          )}
+
+          {/* ── 탭 1: 조정 ── */}
+          {editorTab === 1 && (
+            <View>
+              {isOutOfBounds && (
+                <View style={styles.outOfBoundsWarning}>
+                  <Text style={styles.outOfBoundsText}>
+                    디자인이 프린트 영역 밖에 있어요
+                  </Text>
+                </View>
+              )}
+              <Text style={styles.transformHint}>
+                {activeLayer === 'text' ? '텍스트' : '이미지'}의 크기와 위치를 조절해 보세요.
+              </Text>
+              <View style={styles.sliderRow}>
+                <Text style={styles.sliderLabel}>크기</Text>
+                <ScaleSlider
+                  min={0.2}
+                  max={1.5}
+                  value={activeTransform.scale}
+                  onChange={updateScale}
+                />
+              </View>
+              <CollapsibleSection title="정밀 조정 (위치/회전)">
+                <View style={styles.sliderRow}>
+                  <Text style={styles.sliderLabel}>가로 위치</Text>
+                  <ScaleSlider
+                    min={-0.55}
+                    max={0.55}
+                    value={activeTransform.offsetX}
+                    onChange={updateOffsetX}
+                  />
+                </View>
+                <View style={styles.sliderRow}>
+                  <Text style={styles.sliderLabel}>세로 위치</Text>
+                  <ScaleSlider
+                    min={-0.55}
+                    max={0.55}
+                    value={activeTransform.offsetY}
+                    onChange={updateOffsetY}
+                  />
+                </View>
+                <View style={styles.sliderRow}>
+                  <Text style={styles.sliderLabel}>회전</Text>
+                  <ScaleSlider
+                    min={-180}
+                    max={180}
+                    value={activeTransform.rotation}
+                    onChange={updateRotation}
+                  />
+                </View>
+              </CollapsibleSection>
+              <View style={styles.adjustButtons}>
+                <SecondaryButton
+                  label="프린트 영역에 맞추기"
+                  onPress={() =>
+                    updateActiveTransform({
+                      offsetX: 0,
+                      offsetY: 0,
+                      scale: activeLayer === 'text' ? 0.9 : 1.0,
+                      rotation: 0,
+                    })
+                  }
+                  style={styles.resetButton}
+                />
+                <SecondaryButton
+                  label="초기화"
+                  onPress={() =>
+                    updateActiveTransform({
+                      offsetX: 0,
+                      offsetY: 0,
+                      scale:
+                        activeLayer === 'text' ? 0.45 : selectedPrint.designScale,
+                      rotation: 0,
+                    })
+                  }
+                  style={styles.resetButton}
+                />
+              </View>
+            </View>
+          )}
+
+          {/* ── 탭 2: 옵션 ── */}
+          {editorTab === 2 && (
+            <View>
+              {/* 컬러 */}
+              <Text style={styles.sectionTitle}>컬러</Text>
               <View style={styles.colorOptions}>
                 {selectedProduct.colors.map((color) => (
                   <ColorSwatch
@@ -174,594 +482,312 @@ function Page() {
                   />
                 ))}
               </View>
-            </View>
-          </View>
-          <SecondaryButton
-            label="상품 변경"
-            onPress={() => navigation.navigate('/products')}
-          />
-        </View>
-      </Card>
 
-      <Card style={styles.canvasCard}>
-        <Text style={styles.canvasTitle}>
-          앞면 프린팅 영역
-        </Text>
-        <View style={styles.layerRow}>
-          <Chip
-            label="이미지"
-            selected={activeLayer === 'image'}
-            onPress={() => setActiveLayer('image')}
-            style={styles.chipSpacing}
-          />
-          <Chip
-            label="텍스트"
-            selected={activeLayer === 'text'}
-            onPress={() => setActiveLayer('text')}
-          />
-        </View>
-        {activeLayer === 'text' && !textLayer.enabled ? (
-          <View style={styles.textEditSection}>
-            <Txt typography="t5" fontWeight="bold" color={theme.colors.textPrimary} style={{ marginBottom: theme.spacing.sm }}>
-              텍스트를 추가해 볼까요?
-            </Txt>
-            <Txt typography="t7" color={theme.colors.textSecondary} style={{ marginTop: theme.spacing.xs }}>
-              나만의 문구를 넣어서 특별한 굿즈를 만들어 보세요.
-            </Txt>
-            <View style={{ marginTop: theme.spacing.md }}>
-              <Button
-                type="primary"
-                size="medium"
-                onPress={handleAddText}
-              >
-                텍스트 추가하기
-              </Button>
-            </View>
-          </View>
-        ) : null}
-        {activeLayer === 'text' && textLayer.enabled ? (
-          <View style={styles.textEditSection}>
-            <TextField
-              variant="box"
-              label="텍스트"
-              labelOption="sustain"
-              value={textLayer.text}
-              onChangeText={(value) =>
-                setTextLayer({ ...textLayer, text: value })
-              }
-              placeholder="원하는 문구를 입력해 주세요"
-            />
-            <View style={styles.fontRow}>
-              <Text style={styles.fontLabel}>굵기</Text>
-              <View style={styles.fontButtons}>
-                {['regular', 'bold'].map((weight) => (
-                  <Pressable
-                    key={weight}
-                    onPress={() =>
-                      setTextLayer({
-                        ...textLayer,
-                        fontWeight: weight as 'regular' | 'bold',
-                      })
-                    }
-                    style={[
-                      styles.fontButton,
-                      textLayer.fontWeight === weight &&
-                      styles.fontButtonSelected,
-                    ]}
-                  >
-                    <Text
-                      style={[
-                        styles.fontButtonText,
-                        textLayer.fontWeight === weight &&
-                        styles.fontButtonTextSelected,
-                      ]}
-                    >
-                      {weight === 'regular' ? 'Regular' : 'Bold'}
-                    </Text>
-                  </Pressable>
-                ))}
-              </View>
-            </View>
-            <View style={styles.fontRow}>
-              <Text style={styles.fontLabel}>색상</Text>
-              <View style={styles.fontButtons}>
-                {[
-                  { label: '블랙', value: '#000000' },
-                  { label: '화이트', value: '#FFFFFF' },
-                ].map((colorOption) => (
-                  <Pressable
-                    key={colorOption.value}
-                    onPress={() =>
-                      setTextLayer({
-                        ...textLayer,
-                        color: colorOption.value,
-                      })
-                    }
-                    style={[
-                      styles.fontButton,
-                      textLayer.color === colorOption.value &&
-                      styles.fontButtonSelected,
-                    ]}
-                  >
-                    <Text
-                      style={[
-                        styles.fontButtonText,
-                        textLayer.color === colorOption.value &&
-                        styles.fontButtonTextSelected,
-                      ]}
-                    >
-                      {colorOption.label}
-                    </Text>
-                  </Pressable>
-                ))}
-              </View>
-            </View>
-            <View style={{ marginTop: theme.spacing.md }}>
-              <Button
-                type="light"
-                size="medium"
-                onPress={() => {
-                  setTextLayer({ ...textLayer, enabled: false });
-                  setActiveLayer('image');
-                }}
-              >
-                텍스트 삭제하기
-              </Button>
-            </View>
-          </View>
-        ) : null}
-        <View style={styles.canvas}>
-          <DesignStage
-            template={buildTemplate(selectedProduct, selectedColor, 'front')}
-            width={canvasWidth}
-            height={canvasHeight}
-            showPrintArea
-            showGuides={false}
-            imageUri={designImageUri}
-            imageTransform={imageTransform}
-            textLayer={textLayer}
-            textTransform={textTransform}
-            activeLayer={activeLayer}
-            onImageTransformChange={setImageTransform}
-            onTextTransformChange={setTextTransform}
-            onInteractionStart={() => setScrollEnabled(false)}
-            onInteractionEnd={() => setScrollEnabled(true)}
-          />
-        </View>
-        <View style={styles.transformSection}>
-          <Text style={styles.transformTitle}>위치와 크기 조절</Text>
-          <Text style={styles.transformHint}>
-            슬라이더로 {activeLayer === 'text' ? '텍스트' : '이미지'}의 크기, 위치, 회전을 조절해 보세요.
-          </Text>
-          <View style={styles.sliderRow}>
-            <Text style={styles.sliderLabel}>크기</Text>
-            <ScaleSlider
-              min={0.2}
-              max={1.5}
-              value={activeTransform.scale}
-              onChange={updateScale}
-            />
-          </View>
-          <View style={styles.sliderRow}>
-            <Text style={styles.sliderLabel}>가로 위치</Text>
-            <ScaleSlider
-              min={-0.55}
-              max={0.55}
-              value={activeTransform.offsetX}
-              onChange={updateOffsetX}
-            />
-          </View>
-          <View style={styles.sliderRow}>
-            <Text style={styles.sliderLabel}>세로 위치</Text>
-            <ScaleSlider
-              min={-0.55}
-              max={0.55}
-              value={activeTransform.offsetY}
-              onChange={updateOffsetY}
-            />
-          </View>
-          <View style={styles.sliderRow}>
-            <Text style={styles.sliderLabel}>회전</Text>
-            <ScaleSlider
-              min={-180}
-              max={180}
-              value={activeTransform.rotation}
-              onChange={updateRotation}
-            />
-          </View>
-          <SecondaryButton
-            label="초기화"
-            onPress={() =>
-              updateActiveTransform({
-                offsetX: 0,
-                offsetY: 0,
-                scale:
-                  activeLayer === 'text' ? 0.45 : selectedPrint.designScale,
-                rotation: 0,
-              })
-            }
-            style={styles.resetButton}
-          />
-        </View>
-      </Card>
-
-      <Card style={styles.printingCard}>
-        {!printBackEnabled ? (
-          <>
-            <Text style={styles.optionTitle}>뒷면에도 프린팅할까요?</Text>
-            <Text style={styles.optionHint}>
-              앞면과 같은 디자인을 뒷면에도 넣을 수 있어요
-            </Text>
-            <SecondaryButton
-              label="뒷면 프린팅 추가하기"
-              onPress={() => {
-                setPrintBackEnabled(true);
-                setSelectedPlacement('back');
-              }}
-              style={styles.addBackButton}
-            />
-          </>
-        ) : (
-          <>
-            <View style={styles.optionRow}>
-              <Text style={styles.optionTitle}>뒷면 프린팅</Text>
-              <SecondaryButton
-                label="뒷면 빼기"
-                onPress={() => {
-                  setPrintBackEnabled(false);
-                  setSelectedPlacement('front');
-                }}
-              />
-            </View>
-            <View style={styles.backPreviewContainer}>
-              <MockupCanvas
-                template={buildTemplate(selectedProduct, selectedColor, 'back')}
-                width={canvasWidth}
-                height={canvasHeight}
-                showDesign
-                designImageUri={designImageUri}
-                imageTransform={imageTransform}
-                textLayer={textLayer}
-                textTransform={textTransform}
-              />
-            </View>
-            {!designImageUri && (
-              <View style={styles.imageActionRow}>
-                <SecondaryButton
-                  label="내 이미지 업로드하기"
-                  onPress={() => navigation.navigate('/upload')}
-                  style={styles.imageActionButton}
-                />
-                <SecondaryButton
-                  label="AI로 이미지 만들기"
-                  onPress={() => navigation.navigate('/generate')}
-                  style={styles.imageActionButton}
-                />
-              </View>
-            )}
-            <View style={styles.backTransformSection}>
-              <Text style={styles.transformTitle}>뒷면 위치와 크기 조절</Text>
-              <Text style={styles.transformHint}>
-                슬라이더로 뒷면 디자인의 크기, 위치, 회전을 조절해 보세요.
+              {/* 사이즈 */}
+              <Text style={[styles.sectionTitle, { marginTop: theme.spacing.lg }]}>
+                사이즈
               </Text>
-              <View style={styles.sliderRow}>
-                <Text style={styles.sliderLabel}>크기</Text>
-                <ScaleSlider
-                  min={0.2}
-                  max={1.5}
-                  value={imageTransform.scale}
-                  onChange={updateScale}
+              <View style={styles.chipRow}>
+                {selectedProduct.sizes.map((size) => (
+                  <Chip
+                    key={size.label}
+                    label={size.label}
+                    selected={draftSize === size.label}
+                    onPress={() => setDraftSize(size.label)}
+                    style={styles.chipSpacing}
+                  />
+                ))}
+              </View>
+              <Text style={styles.sizeHint}>
+                XS: 155-160 · S: 160-165 · M: 165-170 · L: 170-175 · XL: 175-180 · 2XL: 180-185
+              </Text>
+
+              {/* 수량 */}
+              <Text style={[styles.sectionTitle, { marginTop: theme.spacing.lg }]}>
+                수량
+              </Text>
+              <View style={styles.quantityRow}>
+                <SecondaryButton
+                  label="-"
+                  onPress={() => setDraftQuantity((q) => Math.max(1, q - 1))}
+                />
+                <Text style={styles.quantityValue}>{draftQuantity}</Text>
+                <SecondaryButton
+                  label="+"
+                  onPress={() => setDraftQuantity((q) => q + 1)}
                 />
               </View>
-              <View style={styles.sliderRow}>
-                <Text style={styles.sliderLabel}>가로 위치</Text>
-                <ScaleSlider
-                  min={-0.55}
-                  max={0.55}
-                  value={imageTransform.offsetX}
-                  onChange={updateOffsetX}
-                />
-              </View>
-              <View style={styles.sliderRow}>
-                <Text style={styles.sliderLabel}>세로 위치</Text>
-                <ScaleSlider
-                  min={-0.55}
-                  max={0.55}
-                  value={imageTransform.offsetY}
-                  onChange={updateOffsetY}
-                />
-              </View>
-              <View style={styles.sliderRow}>
-                <Text style={styles.sliderLabel}>회전</Text>
-                <ScaleSlider
-                  min={-180}
-                  max={180}
-                  value={imageTransform.rotation}
-                  onChange={updateRotation}
-                />
-              </View>
+
               <SecondaryButton
-                label="처음으로 되돌리기"
-                onPress={() =>
-                  setImageTransform({
-                    offsetX: 0,
-                    offsetY: 0,
-                    scale: selectedPrint.designScale,
-                    rotation: 0,
-                  })
-                }
-                style={styles.resetButton}
+                label="장바구니에 추가"
+                onPress={() => {
+                  if (isDraftSizeUsed) return;
+                  addOrderLine(draftSize, draftQuantity);
+                  const nextSize = selectedProduct.sizes.find(
+                    (s) => !usedSizes.has(s.label) && s.label !== draftSize,
+                  );
+                  setDraftSize(nextSize?.label ?? selectedProduct.sizes[0]?.label ?? '');
+                  setDraftQuantity(1);
+                }}
+                disabled={isDraftSizeUsed}
+                style={styles.addLineButton}
               />
-            </View>
-          </>
-        )}
-      </Card>
-
-      <Card style={styles.optionCard}>
-        <Text style={styles.sectionTitle}>주문 정보</Text>
-        <View style={styles.infoRow}>
-          <Text style={styles.infoLabel}>색상</Text>
-          <Text style={styles.infoValue}>{selectedColor}</Text>
-        </View>
-
-        <Text style={[styles.sectionTitle, { marginTop: theme.spacing.lg }]}>
-          사이즈 골라주세요
-        </Text>
-        <View style={styles.chipRow}>
-          {selectedProduct.sizes.map((size) => (
-            <Chip
-              key={size.label}
-              label={size.label}
-              selected={draftSize === size.label}
-              onPress={() => setDraftSize(size.label)}
-              style={styles.chipSpacing}
-            />
-          ))}
-        </View>
-        <Text style={styles.sizeHint}>
-          신장 기준 • XS: 155-160cm, S: 160-165cm, M: 165-170cm, L: 170-175cm,
-          XL: 175-180cm, 2XL: 180-185cm, 3XL: 185-190cm
-        </Text>
-
-        <Text style={[styles.sectionTitle, { marginTop: theme.spacing.lg }]}>
-          수량은 몇 개로 할까요?
-        </Text>
-        <View style={styles.quantityRow}>
-          <SecondaryButton
-            label="-"
-            onPress={() => setDraftQuantity((q) => Math.max(1, q - 1))}
-          />
-          <Text style={styles.quantityValue}>{draftQuantity}</Text>
-          <SecondaryButton
-            label="+"
-            onPress={() => setDraftQuantity((q) => q + 1)}
-          />
-        </View>
-
-        <SecondaryButton
-          label="장바구니에 추가"
-          onPress={() => {
-            if (isDraftSizeUsed) return;
-
-            // Add new order line with draft size and quantity
-            addOrderLine(draftSize, draftQuantity);
-
-            // Reset draft to next available size
-            const nextAvailableSize = selectedProduct.sizes.find(
-              (size) => !usedSizes.has(size.label) && size.label !== draftSize,
-            );
-            if (nextAvailableSize) {
-              setDraftSize(nextAvailableSize.label);
-            } else {
-              // If all sizes are used, reset to first size
-              setDraftSize(selectedProduct.sizes[0]?.label ?? '');
-            }
-            setDraftQuantity(1);
-          }}
-          disabled={isDraftSizeUsed}
-          style={styles.addLineButton}
-        />
-        {isDraftSizeUsed && (
-          <Text style={styles.sizeHint}>
-            {draftSize} 사이즈는 이미 담겨 있어요.
-          </Text>
-        )}
-
-        {orderLines.length > 0 ? (
-          <>
-            <Text
-              style={[styles.sectionTitle, { marginTop: theme.spacing.lg }]}
-            >
-              주문할 상품
-            </Text>
-            {orderLines.map((line) => (
-              <View key={line.id} style={styles.confirmRow}>
-                <Text style={styles.confirmText}>
-                  {line.sizeLabel} × {line.quantity}개
+              {isDraftSizeUsed && (
+                <Text style={styles.sizeHint}>
+                  {draftSize} 사이즈는 이미 담겨 있어요.
                 </Text>
-                {orderLines.length > 1 ? (
-                  <Pressable
-                    onPress={() => removeOrderLine(line.id)}
-                    accessibilityRole="button"
-                    accessibilityLabel={`${line.sizeLabel} 삭제`}
-                  >
-                    <Text style={styles.removeText}>빼기</Text>
-                  </Pressable>
-                ) : null}
-              </View>
-            ))}
-          </>
-        ) : null}
-      </Card>
+              )}
 
-      <Card style={styles.priceCard}>
-        <Text style={styles.priceTitle}>예상 결제 금액이에요</Text>
-        <Text style={styles.priceValue}>{formatPrice(pricing.total)}</Text>
-        <View style={styles.priceOptions}>
-          {pricing.backPrintingFee > 0 && (
-            <Text style={styles.priceOption}>
-              뒷면 프린팅 비용 +{formatPrice(pricing.backPrintingFee)} 포함
-            </Text>
-          )}
-          {pricing.largePrintFee > 0 && (
-            <Text style={styles.priceOption}>
-              대형 프린팅 비용 +{formatPrice(pricing.largePrintFee)} 포함
-            </Text>
-          )}
-          <Text style={styles.priceNote}>
-            배송비{' '}
-            {pricing.shippingFee === 0
-              ? '무료'
-              : formatPrice(pricing.shippingFee)}{' '}
-            · 총 {totalQuantity}개
-          </Text>
-        </View>
-      </Card>
+              {/* 주문 목록 */}
+              {orderLines.length > 0 && (
+                <>
+                  <Text style={[styles.sectionTitle, { marginTop: theme.spacing.lg }]}>
+                    주문할 상품
+                  </Text>
+                  {orderLines.map((line) => (
+                    <View key={line.id} style={styles.confirmRow}>
+                      <Text style={styles.confirmText}>
+                        {line.sizeLabel} × {line.quantity}개
+                      </Text>
+                      {orderLines.length > 1 && (
+                        <Pressable
+                          onPress={() => removeOrderLine(line.id)}
+                          accessibilityRole="button"
+                          accessibilityLabel={`${line.sizeLabel} 삭제`}
+                        >
+                          <Text style={styles.removeText}>빼기</Text>
+                        </Pressable>
+                      )}
+                    </View>
+                  ))}
+                </>
+              )}
 
-      <Button type="primary" size="big" onPress={goPreview}>
-        완성된 모습 보기
-      </Button>
-    </Screen>
+              {/* 가격 */}
+              <Card style={styles.priceCard}>
+                <Text style={styles.priceTitle}>예상 결제 금액</Text>
+                <Text style={styles.priceValue}>{formatPrice(pricing.total)}</Text>
+                {pricing.backPrintingFee > 0 && (
+                  <Text style={styles.priceOption}>
+                    뒷면 +{formatPrice(pricing.backPrintingFee)}
+                  </Text>
+                )}
+                {pricing.largePrintFee > 0 && (
+                  <Text style={styles.priceOption}>
+                    대형 +{formatPrice(pricing.largePrintFee)}
+                  </Text>
+                )}
+                <Text style={styles.priceNote}>
+                  배송비{' '}
+                  {pricing.shippingFee === 0
+                    ? '무료'
+                    : formatPrice(pricing.shippingFee)}{' '}
+                  · 총 {totalQuantity}개
+                </Text>
+              </Card>
+            </View>
+          )}
+        </ScrollView>
+      </View>
+
+      {/* ── 하단 고정 CTA ── */}
+      <View style={styles.ctaBar}>
+        <PrimaryButton label="완성된 모습 보기" onPress={goPreview} />
+      </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  productCard: {
-    marginBottom: theme.spacing.lg,
-  },
-  productHeader: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    justifyContent: 'space-between',
-  },
-  productText: {
+  safe: {
     flex: 1,
-    marginRight: theme.spacing.md,
+    backgroundColor: theme.colors.background,
   },
-  productTitle: {
-    fontSize: 17,
-    lineHeight: 24,
-    fontWeight: '700',
-    color: theme.colors.textPrimary,
-    marginBottom: theme.spacing.xs,
+
+  /* ── Compact Header ── */
+  compactHeader: {
+    paddingHorizontal: theme.spacing.lg,
   },
-  productMeta: {
-    fontSize: 12,
-    lineHeight: 18,
-    color: theme.colors.textSecondary,
+  compactProduct: {
+    flexDirection: 'row',
+    alignItems: 'center',
     marginBottom: theme.spacing.sm,
   },
-  colorSection: {
-    marginTop: theme.spacing.md,
+  compactDot: {
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    marginRight: theme.spacing.sm,
   },
-  colorLabel: {
-    fontSize: 13,
+  compactName: {
+    flex: 1,
+    fontSize: 14,
     fontWeight: '600',
     color: theme.colors.textPrimary,
-    marginBottom: theme.spacing.xs,
   },
-  colorOptions: {
+  compactChange: {
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.xs,
+    borderRadius: 999,
+    backgroundColor: theme.colors.primarySoft,
+  },
+  compactChangeText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: theme.colors.primary,
+  },
+
+  /* ── Canvas ── */
+  canvasArea: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: theme.spacing.lg,
+  },
+
+  /* ── Canvas Info ── */
+  canvasInfo: {
     flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
     gap: theme.spacing.sm,
+    paddingVertical: theme.spacing.xs,
   },
-  productPrice: {
-    fontSize: 14,
-    lineHeight: 20,
-    fontWeight: '700',
-    color: theme.colors.textPrimary,
+  canvasInfoText: {
+    fontSize: 11,
+    color: theme.colors.textTertiary,
+  },
+  canvasInfoWarn: {
+    fontSize: 11,
+    color: theme.colors.warning,
+  },
+
+  /* ── Bottom Panel ── */
+  panel: {
+    flex: 1,
+    backgroundColor: theme.colors.surface,
+    borderTopLeftRadius: theme.radius.xl,
+    borderTopRightRadius: theme.radius.xl,
+    borderTopWidth: 1,
+    borderTopColor: theme.colors.border,
     marginTop: theme.spacing.sm,
   },
-  productOriginalPrice: {
-    fontSize: 12,
-    lineHeight: 18,
-    fontWeight: '400',
-    color: theme.colors.textSecondary,
-    textDecorationLine: 'line-through',
+  panelScroll: {
+    flex: 1,
   },
-  section: {
-    marginBottom: theme.spacing.lg,
+  panelContent: {
+    padding: theme.spacing.lg,
+    paddingBottom: theme.spacing.xxl,
+  },
+
+  /* ── CTA ── */
+  ctaBar: {
+    backgroundColor: theme.colors.surface,
+    paddingHorizontal: theme.spacing.lg,
+    paddingVertical: theme.spacing.md,
+    borderTopWidth: 1,
+    borderTopColor: theme.colors.border,
+  },
+
+  /* ── Layer tab ── */
+  layerRow: {
+    flexDirection: 'row',
+    marginBottom: theme.spacing.md,
+  },
+  chipSpacing: {
+    marginRight: theme.spacing.sm,
+    marginBottom: theme.spacing.sm,
+  },
+  textEditSection: {
+    marginBottom: theme.spacing.md,
+    paddingBottom: theme.spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.border,
   },
   sectionTitle: {
-    fontSize: 16,
+    fontSize: 15,
     lineHeight: 22,
     fontWeight: '700',
     color: theme.colors.textPrimary,
     marginBottom: theme.spacing.sm,
   },
-  sizeGuide: {
-    padding: theme.spacing.sm,
-    backgroundColor: theme.colors.primarySoft,
-    borderRadius: theme.radius.sm,
+  sectionHint: {
+    fontSize: 13,
+    lineHeight: 20,
+    color: theme.colors.textSecondary,
     marginBottom: theme.spacing.md,
   },
-  sizeGuideTitle: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: theme.colors.textPrimary,
-    marginBottom: theme.spacing.xs,
+  backSection: {
+    marginTop: theme.spacing.md,
+    paddingTop: theme.spacing.md,
+    borderTopWidth: 1,
+    borderTopColor: theme.colors.border,
   },
-  sizeGuideText: {
-    fontSize: 12,
-    color: theme.colors.textSecondary,
-    lineHeight: 18,
-  },
-  infoRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: theme.spacing.xs,
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.border,
-    marginBottom: theme.spacing.xs,
-  },
-  infoLabel: {
-    fontSize: 14,
-    lineHeight: 20,
-    color: theme.colors.textSecondary,
-  },
-  infoValue: {
-    fontSize: 14,
-    lineHeight: 20,
-    fontWeight: '600',
-    color: theme.colors.textPrimary,
-  },
-  swatchRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-  },
-  chipRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-  },
-  optionCard: {
-    marginBottom: theme.spacing.lg,
-  },
-  lineRow: {
+  optionRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     marginBottom: theme.spacing.sm,
   },
-  lineBadge: {
-    paddingHorizontal: theme.spacing.sm,
-    paddingVertical: theme.spacing.xs + 2,
-    borderRadius: 999,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    backgroundColor: theme.colors.surface,
+  backPreviewContainer: {
+    alignItems: 'center',
+    marginVertical: theme.spacing.sm,
   },
-  lineBadgeActive: {
-    borderColor: theme.colors.primary,
-    backgroundColor: theme.colors.primarySoft,
+
+  /* ── Adjust tab ── */
+  transformHint: {
+    fontSize: 13,
+    lineHeight: 20,
+    color: theme.colors.textSecondary,
+    marginBottom: theme.spacing.sm,
   },
-  lineBadgeText: {
+  sliderRow: {
+    marginTop: theme.spacing.sm,
+  },
+  sliderLabel: {
     fontSize: 12,
     lineHeight: 18,
     color: theme.colors.textSecondary,
+    marginBottom: theme.spacing.sm,
   },
-  lineBadgeTextActive: {
-    color: theme.colors.primary,
+  outOfBoundsWarning: {
+    backgroundColor: theme.colors.errorSoft,
+    borderWidth: 1,
+    borderColor: theme.colors.errorBorder,
+    borderRadius: theme.radius.sm,
+    padding: theme.spacing.sm,
+    marginBottom: theme.spacing.md,
+  },
+  outOfBoundsText: {
+    fontSize: 13,
+    color: theme.colors.error,
     fontWeight: '600',
+    textAlign: 'center',
+  },
+  adjustButtons: {
+    gap: theme.spacing.sm,
+    marginTop: theme.spacing.md,
+  },
+  resetButton: {
+    marginTop: 0,
+  },
+
+  /* ── Options tab ── */
+  colorOptions: {
+    flexDirection: 'row',
+    gap: theme.spacing.sm,
+    marginBottom: theme.spacing.sm,
+  },
+  chipRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+  },
+  sizeHint: {
+    fontSize: 11,
+    lineHeight: 16,
+    color: theme.colors.textSecondary,
+    marginTop: theme.spacing.xs,
   },
   quantityRow: {
     flexDirection: 'row',
@@ -773,18 +799,6 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: theme.colors.textPrimary,
     marginHorizontal: theme.spacing.lg,
-  },
-  removeText: {
-    fontSize: 12,
-    lineHeight: 18,
-    color: theme.colors.error,
-    fontWeight: '600',
-  },
-  subTitle: {
-    fontSize: 13,
-    lineHeight: 20,
-    color: theme.colors.textSecondary,
-    marginBottom: theme.spacing.sm,
   },
   addLineButton: {
     marginTop: theme.spacing.sm,
@@ -803,173 +817,44 @@ const styles = StyleSheet.create({
     color: theme.colors.textPrimary,
     fontWeight: '600',
   },
-  chipSpacing: {
-    marginRight: theme.spacing.sm,
-    marginBottom: theme.spacing.sm,
-  },
-  imageActionRow: {
-    marginTop: theme.spacing.sm,
-  },
-  imageActionButton: {
-    marginBottom: theme.spacing.sm,
-  },
-  textEditSection: {
-    marginBottom: theme.spacing.md,
-    paddingBottom: theme.spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.border,
-  },
-  textEditTitle: {
-    fontSize: 14,
-    lineHeight: 20,
-    fontWeight: '600',
-    color: theme.colors.textPrimary,
-    marginBottom: theme.spacing.sm,
-  },
-  sizeHint: {
+  removeText: {
     fontSize: 12,
     lineHeight: 18,
-    color: theme.colors.textSecondary,
-    marginTop: theme.spacing.xs,
-  },
-  optionHint: {
-    fontSize: 12,
-    lineHeight: 18,
-    color: theme.colors.textSecondary,
-    marginTop: theme.spacing.xs,
-  },
-  backPreviewContainer: {
-    alignItems: 'center',
-    marginVertical: theme.spacing.md,
-  },
-  backTransformSection: {
-    marginTop: theme.spacing.md,
-    paddingTop: theme.spacing.md,
-    borderTopWidth: 1,
-    borderTopColor: theme.colors.border,
-  },
-  canvasCard: {
-    marginBottom: theme.spacing.lg,
-  },
-  placementRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: theme.spacing.md,
-  },
-  placementLabel: {
-    fontSize: 14,
-    lineHeight: 20,
+    color: theme.colors.error,
     fontWeight: '600',
-    color: theme.colors.textPrimary,
   },
-  placementChips: {
-    flexDirection: 'row',
+  priceCard: {
+    marginTop: theme.spacing.lg,
+    backgroundColor: theme.colors.infoSoft,
+    borderColor: theme.colors.infoBorder,
   },
-  editingRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: theme.spacing.md,
-    paddingTop: theme.spacing.sm,
-    borderTopWidth: 1,
-    borderTopColor: theme.colors.border,
-  },
-  editingLabel: {
-    fontSize: 13,
-    lineHeight: 20,
-    fontWeight: '600',
-    color: theme.colors.textSecondary,
-  },
-  editingChips: {
-    flexDirection: 'row',
-  },
-  canvasTitle: {
-    fontSize: 16,
+  priceTitle: {
+    fontSize: 15,
     lineHeight: 22,
     fontWeight: '700',
-    color: theme.colors.textPrimary,
-    marginBottom: theme.spacing.sm,
-  },
-  layerRow: {
-    flexDirection: 'row',
-    marginBottom: theme.spacing.md,
-  },
-  canvas: {
-    borderRadius: theme.radius.lg,
-    backgroundColor: theme.colors.background,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginVertical: theme.spacing.md,
-  },
-  transformSection: {
-    marginTop: theme.spacing.md,
-    paddingTop: theme.spacing.md,
-    borderTopWidth: 1,
-    borderTopColor: theme.colors.border,
-  },
-  transformTitle: {
-    fontSize: 14,
-    lineHeight: 20,
-    fontWeight: '600',
     color: theme.colors.textPrimary,
     marginBottom: theme.spacing.xs,
   },
-  transformHint: {
+  priceValue: {
+    fontSize: 22,
+    lineHeight: 30,
+    fontWeight: '800',
+    color: theme.colors.primary,
+    marginBottom: theme.spacing.xs,
+  },
+  priceOption: {
     fontSize: 12,
     lineHeight: 18,
     color: theme.colors.textSecondary,
-    marginBottom: theme.spacing.sm,
   },
-  sliderRow: {
-    marginTop: theme.spacing.sm,
-  },
-  sliderLabel: {
+  priceNote: {
     fontSize: 12,
     lineHeight: 18,
     color: theme.colors.textSecondary,
-    marginBottom: theme.spacing.sm,
+    marginTop: theme.spacing.xs,
   },
-  resetButton: {
-    marginTop: theme.spacing.md,
-  },
-  toolButton: {
-    marginRight: theme.spacing.sm,
-    marginBottom: theme.spacing.sm,
-  },
-  textCard: {
-    marginBottom: theme.spacing.lg,
-  },
-  optionRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: theme.spacing.md,
-  },
-  printingCard: {
-    marginBottom: theme.spacing.lg,
-  },
-  optionTitle: {
-    fontSize: 16,
-    lineHeight: 22,
-    fontWeight: '700',
-    color: theme.colors.textPrimary,
-  },
-  textInput: {
-    minHeight: 48,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    borderRadius: theme.radius.md,
-    paddingHorizontal: theme.spacing.md,
-    paddingVertical: theme.spacing.sm,
-    fontSize: 14,
-    lineHeight: 20,
-    fontFamily: 'NotoSansKR-Regular',
-    color: theme.colors.textPrimary,
-    backgroundColor: theme.colors.surface,
-  },
+
+  /* ── Text editing ── */
   fontRow: {
     marginTop: theme.spacing.md,
     marginBottom: theme.spacing.md,
@@ -1003,58 +888,5 @@ const styles = StyleSheet.create({
   },
   fontButtonTextSelected: {
     color: theme.colors.primary,
-  },
-  colorRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: theme.spacing.md,
-  },
-  colorChip: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    marginRight: theme.spacing.sm,
-  },
-  colorChipSelected: {
-    borderColor: theme.colors.primary,
-    borderWidth: 2,
-  },
-  priceCard: {
-    marginBottom: theme.spacing.lg,
-    backgroundColor: theme.colors.infoSoft,
-    borderColor: theme.colors.infoBorder,
-  },
-  priceTitle: {
-    fontSize: 16,
-    lineHeight: 22,
-    fontWeight: '700',
-    color: theme.colors.textPrimary,
-    marginBottom: theme.spacing.sm,
-  },
-  priceValue: {
-    fontSize: 24,
-    lineHeight: 32,
-    fontWeight: '800',
-    color: theme.colors.primary,
-    marginBottom: theme.spacing.sm,
-  },
-  priceOptions: {
-    gap: theme.spacing.xs,
-  },
-  priceOption: {
-    fontSize: 12,
-    lineHeight: 18,
-    color: theme.colors.textSecondary,
-  },
-  priceNote: {
-    fontSize: 12,
-    lineHeight: 18,
-    color: theme.colors.textSecondary,
-    marginTop: theme.spacing.xs,
-  },
-  addBackButton: {
-    marginTop: theme.spacing.md,
   },
 });

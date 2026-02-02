@@ -27,6 +27,13 @@ export const defaultPrintArea: PrintArea = {
   height: 0.46,
 };
 
+// Actual print dimensions by product category (cm)
+export const printSizeByCategory: Record<string, { widthCm: number; heightCm: number }> = {
+  티셔츠: { widthCm: 28, heightCm: 36 },
+  후드: { widthCm: 30, heightCm: 40 },
+  맨투맨: { widthCm: 30, heightCm: 40 },
+};
+
 export function buildTemplate(
   product: CatalogProduct,
   color: string,

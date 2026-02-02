@@ -13,9 +13,11 @@ import {
 import {
   Card,
   Chip,
+  DisabledHint,
   PrimaryButton,
   Screen,
   SecondaryButton,
+  StickyFooter,
   TopBar,
   theme,
 } from '../components/ui';
@@ -274,26 +276,16 @@ function Page() {
             <Text style={styles.loadingText}>이미지를 업로드하고 있어요...</Text>
           </View>
         ) : null}
-        {previewUri && (
-          <>
-            <SecondaryButton
-              label={getBgRemovalButtonText()}
-              onPress={handleRemoveBackground}
-              disabled={bgRemovalStatus === 'loading' || stylingImage}
-              style={[styles.bgRemoveButton, getBgRemovalButtonStyle()]}
-            />
-            {/* Style transfer feature temporarily disabled - will be re-enabled in future release
-            <SecondaryButton
-              label={
-                stylingImage ? '스타일 변환하고 있어요...' : '이미지 스타일 바꿔볼까요?'
-              }
-              onPress={() => setShowStyleOptions(true)}
-              disabled={removingBg || stylingImage}
-              style={styles.bgRemoveButton}
-            />
-            */}
-          </>
-        )}
+        <SecondaryButton
+          label={getBgRemovalButtonText()}
+          onPress={handleRemoveBackground}
+          disabled={!previewUri || bgRemovalStatus === 'loading' || stylingImage}
+          style={[styles.bgRemoveButton, previewUri ? getBgRemovalButtonStyle() : undefined]}
+        />
+        <DisabledHint
+          text="사진 업로드 후 사용할 수 있어요"
+          visible={!previewUri}
+        />
       </Card>
       {error ? <Text style={styles.errorText}>{error}</Text> : null}
       {successMessage ? (
@@ -360,11 +352,19 @@ function Page() {
         </Pressable>
       </Modal>
 
-      <PrimaryButton
-        label="디자인 편집하러 가기"
-        onPress={goNext}
-        disabled={!designImageUri}
-      />
+      <View style={styles.stickyFooterSpacer} />
+
+      <StickyFooter>
+        <PrimaryButton
+          label="디자인 편집하러 가기"
+          onPress={goNext}
+          disabled={!designImageUri}
+        />
+        <DisabledHint
+          text="사진을 선택하면 다음 단계로 갈 수 있어요"
+          visible={!designImageUri}
+        />
+      </StickyFooter>
     </Screen>
   );
 }
@@ -494,5 +494,8 @@ const styles = StyleSheet.create({
   },
   modalCancelButton: {
     marginTop: theme.spacing.sm,
+  },
+  stickyFooterSpacer: {
+    height: 80,
   },
 });

@@ -4,6 +4,7 @@ import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import { MockupCanvas } from '../components/MockupCanvas';
 import { InquiryModal } from '../components/InquiryModal';
 import {
+  BottomSheet,
   Card,
   Chip,
   PrimaryButton,
@@ -34,6 +35,8 @@ function Page() {
   const [selectedCategory, setSelectedCategory] =
     React.useState<string>('티셔츠');
   const [inquiryModalVisible, setInquiryModalVisible] =
+    React.useState<boolean>(false);
+  const [startSheetVisible, setStartSheetVisible] =
     React.useState<boolean>(false);
 
   const categories = ['티셔츠', '후드', '맨투맨'];
@@ -135,15 +138,44 @@ function Page() {
 
       <View style={styles.heroActions}>
         <PrimaryButton
-          label="내 이미지 업로드하기"
-          onPress={goToUpload}
+          label="굿즈 만들기 시작하기"
+          onPress={() => setStartSheetVisible(true)}
           style={styles.actionButton}
         />
+      </View>
+
+      <BottomSheet
+        visible={startSheetVisible}
+        onClose={() => setStartSheetVisible(false)}
+        title="어떻게 시작할까요?"
+      >
+        <PrimaryButton
+          label="내 사진으로 만들기"
+          onPress={() => {
+            setStartSheetVisible(false);
+            goToUpload();
+          }}
+          style={styles.sheetOption}
+        />
+        <Text style={styles.sheetOptionDesc}>
+          갤러리에서 사진을 골라 굿즈에 넣을 수 있어요
+        </Text>
         <SecondaryButton
           label="AI로 이미지 만들기"
-          onPress={goToGenerate}
-          style={styles.actionButton}
+          onPress={() => {
+            setStartSheetVisible(false);
+            goToGenerate();
+          }}
+          style={styles.sheetOption}
         />
+        <Text style={styles.sheetOptionDesc}>
+          텍스트만 입력하면 AI가 이미지를 만들어 줘요
+        </Text>
+      </BottomSheet>
+
+      <View style={styles.scrollHint}>
+        <Text style={styles.scrollHintText}>아래에 더 있어요</Text>
+        <Text style={styles.scrollHintArrow}>▼</Text>
       </View>
 
       <View style={styles.faqSection}>
@@ -420,5 +452,28 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     color: theme.colors.textSecondary,
     marginLeft: theme.spacing.sm,
+  },
+  sheetOption: {
+    marginBottom: theme.spacing.xs,
+  },
+  sheetOptionDesc: {
+    fontSize: 13,
+    lineHeight: 20,
+    color: theme.colors.textSecondary,
+    marginBottom: theme.spacing.lg,
+  },
+  scrollHint: {
+    alignItems: 'center',
+    paddingVertical: theme.spacing.md,
+    marginBottom: theme.spacing.sm,
+  },
+  scrollHintText: {
+    fontSize: 13,
+    color: theme.colors.textTertiary,
+    marginBottom: theme.spacing.xs,
+  },
+  scrollHintArrow: {
+    fontSize: 10,
+    color: theme.colors.textTertiary,
   },
 });
