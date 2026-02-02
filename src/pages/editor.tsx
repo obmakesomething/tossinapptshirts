@@ -44,6 +44,7 @@ function Page() {
     totalQuantity,
     printBackEnabled,
     selectedPrint,
+    selectedPlacement,
     designImageUri,
     imageTransform,
     textTransform,
@@ -65,6 +66,7 @@ function Page() {
   const [scrollEnabled, setScrollEnabled] = useState(true);
   const [editorTab, setEditorTab] = useState(0);
   const [isOutOfBounds, setIsOutOfBounds] = useState(false);
+  const [focusMode, setFocusMode] = useState(false);
 
   // Draft state for current size/quantity selection (not yet confirmed)
   const [draftSize, setDraftSize] = useState<string>(
@@ -72,10 +74,22 @@ function Page() {
   );
   const [draftQuantity, setDraftQuantity] = useState<number>(1);
 
-  // Get screen dimensions for full-screen canvas
+  // 패딩 24 통일 (좌우 24 × 2 = 48)
   const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
-  const canvasWidth = screenWidth - 32;
+  const canvasWidth = screenWidth - 48;
   const canvasHeight = Math.min(canvasWidth * 1.25, screenHeight * 0.42);
+
+  // Zoom to print area camera transform
+  const printAreaFrac = { x: 0.32, y: 0.22, w: 0.36, h: 0.46 };
+  const cameraScale = focusMode
+    ? Math.min(canvasWidth / (canvasWidth * printAreaFrac.w), canvasHeight / (canvasHeight * printAreaFrac.h))
+    : 1;
+  const cameraTranslateX = focusMode
+    ? -(printAreaFrac.x + printAreaFrac.w / 2 - 0.5) * canvasWidth * cameraScale
+    : 0;
+  const cameraTranslateY = focusMode
+    ? -(printAreaFrac.y + printAreaFrac.h / 2 - 0.5) * canvasHeight * cameraScale
+    : 0;
 
   const EDITOR_TABS = ['레이어', '조정', '옵션'];
 
@@ -181,27 +195,72 @@ function Page() {
             <Text style={styles.compactChangeText}>변경</Text>
           </Pressable>
         </View>
+        {/* 앞/뒤면 세그먼트 */}
+        <View style={styles.placementSegment}>
+          <Pressable
+            style={[styles.segmentButton, selectedPlacement === 'front' && styles.segmentButtonActive]}
+            onPress={() => setSelectedPlacement('front')}
+          >
+            <Text style={[styles.segmentButtonText, selectedPlacement === 'front' && styles.segmentButtonTextActive]}>
+              앞면
+            </Text>
+          </Pressable>
+          <Pressable
+            style={[styles.segmentButton, selectedPlacement === 'back' && styles.segmentButtonActive]}
+            onPress={() => {
+              setSelectedPlacement('back');
+              if (!printBackEnabled) setPrintBackEnabled(true);
+            }}
+          >
+            <Text style={[styles.segmentButtonText, selectedPlacement === 'back' && styles.segmentButtonTextActive]}>
+              뒷면
+            </Text>
+          </Pressable>
+        </View>
       </View>
 
       {/* ── 캔버스 (최대화) ── */}
       <View style={styles.canvasArea}>
-        <DesignStage
-          template={buildTemplate(selectedProduct, selectedColor, 'front')}
-          width={canvasWidth}
-          height={canvasHeight}
-          showPrintArea
-          showGuides={false}
-          imageUri={designImageUri}
-          imageTransform={imageTransform}
-          textLayer={textLayer}
-          textTransform={textTransform}
-          activeLayer={activeLayer}
-          onImageTransformChange={setImageTransform}
-          onTextTransformChange={setTextTransform}
-          onInteractionStart={() => setScrollEnabled(false)}
-          onInteractionEnd={() => setScrollEnabled(true)}
-          onOutOfBounds={setIsOutOfBounds}
-        />
+        <View style={styles.canvasToolbar}>
+          <Pressable
+            style={[styles.focusButton, focusMode && styles.focusButtonActive]}
+            onPress={() => setFocusMode(!focusMode)}
+          >
+            <Text style={[styles.focusButtonText, focusMode && styles.focusButtonTextActive]}>
+              {focusMode ? '전체 보기' : '확대 편집'}
+            </Text>
+          </Pressable>
+        </View>
+        <View style={[styles.canvasClip, { width: canvasWidth, height: canvasHeight }]}>
+          <View
+            style={{
+              transform: [
+                { translateX: cameraTranslateX },
+                { translateY: cameraTranslateY },
+                { scale: cameraScale },
+              ],
+            }}
+          >
+            <DesignStage
+              template={buildTemplate(selectedProduct, selectedColor, selectedPlacement)}
+              width={canvasWidth}
+              height={canvasHeight}
+              showPrintArea
+              showGuides
+              cameraScale={cameraScale}
+              imageUri={designImageUri}
+              imageTransform={imageTransform}
+              textLayer={textLayer}
+              textTransform={textTransform}
+              activeLayer={activeLayer}
+              onImageTransformChange={setImageTransform}
+              onTextTransformChange={setTextTransform}
+              onInteractionStart={() => setScrollEnabled(false)}
+              onInteractionEnd={() => setScrollEnabled(true)}
+              onOutOfBounds={setIsOutOfBounds}
+            />
+          </View>
+        </View>
         {/* 출력 크기 + 해상도 안내 */}
         <View style={styles.canvasInfo}>
           <Text style={styles.canvasInfoText}>
@@ -606,7 +665,7 @@ const styles = StyleSheet.create({
 
   /* ── Compact Header ── */
   compactHeader: {
-    paddingHorizontal: theme.spacing.lg,
+    paddingHorizontal: 24,
   },
   compactProduct: {
     flexDirection: 'row',
@@ -639,11 +698,69 @@ const styles = StyleSheet.create({
     color: theme.colors.primary,
   },
 
+  /* ── Placement Segment ── */
+  placementSegment: {
+    flexDirection: 'row',
+    backgroundColor: theme.colors.surface,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    padding: 2,
+    marginBottom: theme.spacing.sm,
+  },
+  segmentButton: {
+    flex: 1,
+    alignItems: 'center',
+    paddingVertical: theme.spacing.xs,
+    borderRadius: 999,
+  },
+  segmentButtonActive: {
+    backgroundColor: theme.colors.primarySoft,
+  },
+  segmentButtonText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: theme.colors.textSecondary,
+  },
+  segmentButtonTextActive: {
+    color: theme.colors.primary,
+  },
+
   /* ── Canvas ── */
   canvasArea: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: theme.spacing.lg,
+    paddingHorizontal: 24,
+  },
+  canvasToolbar: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    width: '100%',
+    marginBottom: theme.spacing.xs,
+  },
+  canvasClip: {
+    overflow: 'hidden',
+    borderRadius: 18,
+  },
+  focusButton: {
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.xs,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    backgroundColor: theme.colors.surface,
+  },
+  focusButtonActive: {
+    borderColor: theme.colors.primary,
+    backgroundColor: theme.colors.primarySoft,
+  },
+  focusButtonText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: theme.colors.textSecondary,
+  },
+  focusButtonTextActive: {
+    color: theme.colors.primary,
   },
 
   /* ── Canvas Info ── */

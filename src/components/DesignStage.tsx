@@ -20,12 +20,25 @@ type DesignStageProps = {
   onInteractionStart?: () => void;
   onInteractionEnd?: () => void;
   onOutOfBounds?: (isOut: boolean) => void;
+  cameraScale?: number;
 };
 
 
 
 const clamp = (value: number, min: number, max: number) =>
   Math.min(Math.max(value, min), max);
+
+const snapRotation = (angle: number) => {
+  const SNAP_THRESHOLD = 5;
+  const mod = ((angle % 360) + 360) % 360;
+  const snapPoints = [0, 90, 180, 270, 360];
+  for (const snap of snapPoints) {
+    if (Math.abs(mod - snap) < SNAP_THRESHOLD) {
+      return angle - mod + (snap === 360 ? 0 : snap);
+    }
+  }
+  return angle;
+};
 
 const MIN_SCALE = 0.2;
 const MAX_SCALE = 1.5; // Updated for Issue #5
@@ -48,6 +61,7 @@ export function DesignStage({
   onInteractionStart,
   onInteractionEnd,
   onOutOfBounds,
+  cameraScale: cameraScaleProp = 1,
 }: DesignStageProps) {
   const area = {
     left: width * template.printArea.x,
@@ -77,9 +91,12 @@ export function DesignStage({
   const updateTransformRef = useRef(updateTransform);
   const areaRef = useRef(area);
 
+  const cameraScaleRef = useRef(cameraScaleProp);
+
   activeTransformRef.current = activeTransform;
   updateTransformRef.current = updateTransform;
   areaRef.current = area;
+  cameraScaleRef.current = cameraScaleProp;
 
   const isWithinPrintArea = (x: number, y: number) => {
     const currentArea = areaRef.current;
@@ -145,13 +162,14 @@ export function DesignStage({
             rotation: startRef.current.rotation + rotationDelta,
           });
         } else {
+          const cs = cameraScaleRef.current;
           const nextOffsetX = clamp(
-            startRef.current.offsetX + gestureState.dx / currentArea.width,
+            startRef.current.offsetX + gestureState.dx / (currentArea.width * cs),
             -MAX_OFFSET,
             MAX_OFFSET,
           );
           const nextOffsetY = clamp(
-            startRef.current.offsetY + gestureState.dy / currentArea.height,
+            startRef.current.offsetY + gestureState.dy / (currentArea.height * cs),
             -MAX_OFFSET,
             MAX_OFFSET,
           );
@@ -164,6 +182,12 @@ export function DesignStage({
         }
       },
       onPanResponderRelease: () => {
+        // Snap rotation to 0/90/180/270 if within ±5°
+        const cur = activeTransformRef.current;
+        const snapped = snapRotation(cur.rotation);
+        if (snapped !== cur.rotation) {
+          updateTransformRef.current({ ...cur, rotation: snapped });
+        }
         onInteractionEnd?.();
       },
       onPanResponderTerminate: () => {
