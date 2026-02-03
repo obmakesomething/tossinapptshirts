@@ -49,8 +49,13 @@ function Page() {
     try {
       const title = `${selectedProduct.name} - ${selectedColor}`;
       await saveCurrentDesign(title);
-      Alert.alert('저장 완료', '디자인을 저장했어요!');
-      navigation.navigate('/designs');
+      // Designs list will auto-refresh via useEffect in designs.tsx
+      Alert.alert('저장 완료', '디자인을 저장했어요!', [
+        {
+          text: '확인',
+          onPress: () => navigation.navigate('/designs'),
+        },
+      ]);
     } catch {
       Alert.alert('저장 실패', '저장하지 못했어요. 다시 시도해 주세요.');
     } finally {

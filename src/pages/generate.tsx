@@ -1,5 +1,5 @@
 import { createRoute } from '@granite-js/react-native';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Image,
@@ -22,6 +22,8 @@ import {
 } from '../components/ui';
 import { API_BASE_URL } from '../config';
 import { useCatalog } from '../context/catalog';
+import { useJobTracker, type JobStage } from '../context/jobTracker';
+import { useToast } from '../context/toastContext';
 
 export const Route = createRoute('/generate', {
   component: Page,
@@ -29,9 +31,9 @@ export const Route = createRoute('/generate', {
 
 const styleOptions = ['미니멀', '라인아트', '그래픽'];
 const ratioOptions = ['1:1', '4:3', '3:4'];
-const stylePromptMap: Record<string, string> = {
+const stylePresetMap: Record<string, string> = {
   미니멀: 'minimal',
-  라인아트: 'line art',
+  라인아트: 'lineart',
   그래픽: 'graphic',
 };
 const promptExamples = [
@@ -40,18 +42,60 @@ const promptExamples = [
   'Cute bear mascot, flat illustration',
 ];
 
+// Stage labels for display
+const stageLabels: Record<string, string> = {
+  validate_input: '업로드 확인',
+  run_model: 'AI 모델 실행',
+  render_output: '결과 렌더링',
+};
+
 function Page() {
   const navigation = Route.useNavigation();
   const { setDesignImageUri, setDesignPrompt } = useCatalog();
+  const { activeJob, startJob, cancelJob, clearJob, retryJob, isPolling } = useJobTracker();
+  const { showToast } = useToast();
+
   const [prompt, setPrompt] = useState('');
   const [style, setStyle] = useState<string>(styleOptions[0] ?? '미니멀');
   const [ratio, setRatio] = useState<string>(ratioOptions[0] ?? '1:1');
   const [resultUrl, setResultUrl] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
   const [removingBg, setRemovingBg] = useState(false);
   const [showExamples, setShowExamples] = useState(true);
   const [error, setError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
+
+  // Watch for job completion and update UI
+  useEffect(() => {
+    if (activeJob?.status === 'succeeded' && activeJob.result?.preview_url) {
+      setResultUrl(activeJob.result.preview_url);
+      setDesignPrompt(prompt.trim() || '');
+      showToast({
+        type: 'success',
+        message: '이미지 생성이 완료됐어요!',
+        action: {
+          label: '에디터로 이동',
+          onPress: () => {
+            setDesignImageUri(activeJob.result?.preview_url || null);
+            navigation.navigate('/editor');
+          },
+        },
+      });
+      clearJob();
+    } else if (activeJob?.status === 'failed') {
+      setError(activeJob.failReason || '이미지를 만들지 못했어요.');
+      showToast({
+        type: 'error',
+        message: activeJob.failReason || '이미지 생성에 실패했어요.',
+        action: {
+          label: '재시도',
+          onPress: handleRetry,
+        },
+      });
+      clearJob();
+    }
+  }, [activeJob?.status]);
+
+  const isLoading = isPolling || (activeJob?.status === 'queued' || activeJob?.status === 'running');
 
   const goNext = () => {
     if (resultUrl) {
@@ -71,37 +115,32 @@ function Page() {
       return;
     }
     setError('');
-    setLoading(true);
-    // 로딩 UI가 먼저 렌더되도록 1프레임 양보
-    await new Promise(requestAnimationFrame);
+    setResultUrl(null);
     setDesignPrompt(prompt.trim());
-    try {
-      const response = await fetch(`${API_BASE_URL}/v1/images/generate`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          prompt: `${prompt.trim()} (${stylePromptMap[style] || style})`,
-          numberOfImages: 1,
-          aspectRatio: ratio,
-          returnBase64: true,
-        }),
-      });
-      if (!response.ok) {
-        throw new Error('이미지를 만들지 못했어요. 다시 시도해 주세요.');
-      }
-      const data = await response.json();
-      const nextUrl = data.images?.[0]?.dataUrl || '';
-      if (!nextUrl) {
-        throw new Error('이미지 결과가 비어 있어요. 다른 문구로 다시 시도해 주세요.');
-      }
-      setResultUrl(nextUrl);
-    } catch (err) {
-      setError(
-        err instanceof Error ? err.message : '이미지를 만들지 못했어요. 다시 시도해 주세요.',
-      );
-    } finally {
-      setLoading(false);
+
+    // Start background job
+    const jobId = await startJob({
+      prompt: prompt.trim(),
+      style_preset: stylePresetMap[style] || 'minimal',
+      aspectRatio: ratio,
+    });
+
+    if (!jobId) {
+      setError('작업을 시작하지 못했어요. 다시 시도해 주세요.');
     }
+  };
+
+  const handleRetry = async () => {
+    setError('');
+    const jobId = await retryJob();
+    if (!jobId) {
+      setError('재시도에 실패했어요.');
+    }
+  };
+
+  const handleCancel = async () => {
+    await cancelJob();
+    setError('');
   };
 
   const handleRemoveBackground = async () => {
@@ -109,7 +148,6 @@ function Page() {
     setRemovingBg(true);
     setError('');
     setSuccessMessage('');
-    // 로딩 UI가 먼저 렌더되도록 1프레임 양보
     await new Promise(requestAnimationFrame);
     try {
       const response = await fetch(
@@ -136,6 +174,16 @@ function Page() {
       setRemovingBg(false);
     }
   };
+
+  // Get current stage progress
+  const getStageProgress = () => {
+    if (!activeJob?.stage) return null;
+    const stages: JobStage[] = ['validate_input', 'run_model', 'render_output'];
+    const currentIndex = stages.indexOf(activeJob.stage);
+    return { current: currentIndex + 1, total: stages.length, label: stageLabels[activeJob.stage] };
+  };
+
+  const stageProgress = getStageProgress();
 
   return (
     <Screen>
@@ -176,6 +224,7 @@ function Page() {
           }
         }}
         multiline
+        editable={!isLoading}
       />
       <Text style={styles.helperText}>
         짧고 명확하게 적어 주세요. 영어로 쓰면 결과가 더 좋아요.
@@ -210,6 +259,9 @@ function Page() {
               />
             ))}
           </View>
+          {isLoading && (
+            <Text style={styles.helperHint}>변경 사항은 다음 생성에 적용돼요.</Text>
+          )}
         </View>
 
         <View style={styles.section}>
@@ -229,16 +281,32 @@ function Page() {
       </CollapsibleSection>
 
       <PrimaryButton
-        label="이미지 만들기"
-        onPress={handleGenerate}
-        disabled={loading}
+        label={isLoading ? '생성 취소하기' : '이미지 만들기'}
+        onPress={isLoading ? handleCancel : handleGenerate}
+        disabled={false}
       />
-      {loading ? (
-        <View style={styles.loadingRow}>
-          <ActivityIndicator color={theme.colors.primary} />
-          <Text style={styles.loadingText}>이미지를 만들고 있어요...</Text>
+
+      {isLoading && (
+        <View style={styles.loadingSection}>
+          <View style={styles.loadingRow}>
+            <ActivityIndicator color={theme.colors.primary} />
+            <Text style={styles.loadingText}>
+              {stageProgress
+                ? `${stageProgress.label} (${stageProgress.current}/${stageProgress.total})`
+                : '이미지를 만들고 있어요...'}
+            </Text>
+          </View>
+          {activeJob?.etaMs && activeJob.etaMs > 0 && (
+            <Text style={styles.etaText}>
+              예상 대기 시간: 약 {Math.ceil(activeJob.etaMs / 1000)}초
+            </Text>
+          )}
+          <Text style={styles.backgroundHint}>
+            🎯 다른 화면으로 이동해도 계속 생성돼요.
+          </Text>
         </View>
-      ) : null}
+      )}
+
       {error ? <Text style={styles.errorText}>{error}</Text> : null}
       {successMessage ? (
         <Text style={styles.successText}>{successMessage}</Text>
@@ -285,6 +353,13 @@ const styles = StyleSheet.create({
     color: theme.colors.textSecondary,
     marginTop: theme.spacing.sm,
     marginBottom: theme.spacing.lg,
+  },
+  helperHint: {
+    fontSize: 11,
+    lineHeight: 16,
+    color: theme.colors.primary,
+    marginTop: theme.spacing.xs,
+    fontStyle: 'italic',
   },
   exampleSection: {
     marginBottom: theme.spacing.lg,
@@ -338,16 +413,37 @@ const styles = StyleSheet.create({
   bgRemoveButton: {
     marginTop: theme.spacing.md,
   },
+  loadingSection: {
+    marginTop: theme.spacing.md,
+    paddingVertical: theme.spacing.md,
+    paddingHorizontal: theme.spacing.md,
+    backgroundColor: theme.colors.surfaceSecondary,
+    borderRadius: theme.radius.md,
+  },
   loadingRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: theme.spacing.sm,
   },
   loadingText: {
+    fontSize: 14,
+    lineHeight: 20,
+    color: theme.colors.textPrimary,
+    marginLeft: theme.spacing.sm,
+    fontWeight: '600',
+  },
+  etaText: {
     fontSize: 12,
     lineHeight: 18,
     color: theme.colors.textSecondary,
-    marginLeft: theme.spacing.sm,
+    marginTop: theme.spacing.xs,
+    marginLeft: 28,
+  },
+  backgroundHint: {
+    fontSize: 12,
+    lineHeight: 18,
+    color: theme.colors.primary,
+    marginTop: theme.spacing.sm,
+    fontWeight: '500',
   },
   errorText: {
     fontSize: 12,

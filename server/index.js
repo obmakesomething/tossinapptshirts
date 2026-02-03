@@ -15,6 +15,7 @@ const path = require('path');
 const https = require('https');
 const axios = require('axios');
 const { runPrintPipeline } = require('./printPipeline');
+const generationsRouter = require('./generations');
 const { getPool, initializeDatabase } = require('./db');
 
 const app = express();
@@ -598,6 +599,9 @@ app.get('/health', (_req, res) => {
   };
   res.json(health);
 });
+
+// Job-based generation API
+app.use('/api/generations', strictLimiter, generationsRouter);
 
 app.post('/v1/images/upload', strictLimiter, async (req, res) => {
   try {
