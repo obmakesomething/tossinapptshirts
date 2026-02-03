@@ -89,7 +89,7 @@ function Page() {
       <View style={styles.header}>
         <View style={styles.headerLeft}>
           <Image
-            source={require('../../assets/logo.jpg')}
+            source={require('../../assets/logo.png')}
             style={styles.headerLogo}
           />
           <Text style={styles.headerTitle}>굿즈 GPT</Text>
