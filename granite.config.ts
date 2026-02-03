@@ -13,7 +13,7 @@ export default defineConfig({
       brand: {
         displayName: '굿즈 GPT',
         primaryColor: '#3182F6',
-        icon: 'https://static.toss.im/appsintoss/14401/6e86af44-5d82-46a8-beca-dc81ed59e5ff.png',
+        icon: 'https://static.toss.im/appsintoss/14401/d0c0ede6-31b9-400d-b236-196c02293df1.png',
       },
       permissions: [
         {
