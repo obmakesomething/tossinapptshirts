@@ -1,0 +1,44 @@
+{
+  "id": "blank_shapes_sheet",
+  "title": "다양한 모양 무지 시트",
+  "engine": "sheet",
+  "sheet": {
+    "sizeMm": { "width": 210, "height": 297 },
+    "marginMm": { "top": 10, "right": 10, "bottom": 10, "left": 10 },
+    "gapMm": { "row": 3, "column": 3 }
+  },
+  "layout": {
+    "type": "grid",
+    "rows": 5,
+    "columns": 4,
+    "autoFlow": "row"
+  },
+  "shapePresets": [
+    { "id": "circle_s", "type": "circle", "sizeMm": { "width": 24, "height": 24 } },
+    { "id": "circle_m", "type": "circle", "sizeMm": { "width": 32, "height": 32 } },
+    { "id": "oval_m", "type": "oval", "sizeMm": { "width": 36, "height": 24 } },
+    {
+      "id": "rounded_rect_m",
+      "type": "roundedRect",
+      "sizeMm": { "width": 40, "height": 28 },
+      "cornerRadiusMm": 6
+    },
+    {
+      "id": "rounded_rect_l",
+      "type": "roundedRect",
+      "sizeMm": { "width": 55, "height": 35 },
+      "cornerRadiusMm": 8
+    },
+    { "id": "square_m", "type": "rect", "sizeMm": { "width": 30, "height": 30 } }
+  ],
+  "editor": {
+    "supportsBulkEdit": false,
+    "supportsBlank": true,
+    "supportsBlankOnly": true
+  },
+  "notes": [
+    "무지 전용 템플릿입니다.",
+    "모양과 크기만 선택하면 바로 제작할 수 있습니다."
+  ],
+  "version": 1
+}

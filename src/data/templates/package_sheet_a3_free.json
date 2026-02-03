@@ -1,0 +1,30 @@
+{
+  "id": "package_sheet_a3_free",
+  "title": "패키지 스티커 A3 한판짜기",
+  "engine": "sheet",
+  "sheet": {
+    "sizeMm": { "width": 297, "height": 420 },
+    "marginMm": { "top": 12, "right": 12, "bottom": 12, "left": 12 },
+    "gapMm": { "row": 3, "column": 3 }
+  },
+  "layout": {
+    "type": "free",
+    "maxItems": 50,
+    "snapGridMm": 1
+  },
+  "placementGuide": {
+    "safeAreaMm": { "top": 15, "right": 15, "bottom": 15, "left": 15 },
+    "minGapMm": 2
+  },
+  "editor": {
+    "supportsFreePlacement": true,
+    "supportsRotate": true,
+    "supportsScale": true,
+    "supportsBlank": true
+  },
+  "notes": [
+    "A3(297x420mm) 한 판에 원하는 만큼 배치합니다.",
+    "스티커 간 간격은 최소 2mm를 유지해 주세요."
+  ],
+  "version": 1
+}
