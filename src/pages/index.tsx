@@ -1,6 +1,6 @@
 import { createRoute } from '@granite-js/react-native';
-import React from 'react';
-import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { Image, InteractionManager, Pressable, StyleSheet, Text, View } from 'react-native';
 import { MockupCanvas } from '../components/MockupCanvas';
 import { InquiryModal } from '../components/InquiryModal';
 import {
@@ -42,6 +42,15 @@ function Page() {
     React.useState<boolean>(false);
   const [startSheetVisible, setStartSheetVisible] =
     React.useState<boolean>(false);
+  const [interactionComplete, setInteractionComplete] = useState(false);
+
+  // 초기 인터랙션 완료 후 아래 섹션 렌더 (랜딩 속도 개선)
+  useEffect(() => {
+    const handle = InteractionManager.runAfterInteractions(() => {
+      setInteractionComplete(true);
+    });
+    return () => handle.cancel();
+  }, []);
 
   const categories = ['티셔츠', '후드', '맨투맨'];
 
@@ -172,53 +181,59 @@ function Page() {
         <Text style={styles.scrollHintArrow}>▼</Text>
       </View>
 
-      <View style={styles.faqSection}>
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>자주 묻는 질문</Text>
-          <Pressable onPress={goToFAQ}>
-            <Text style={styles.sectionAction}>전체 보기</Text>
-          </Pressable>
-        </View>
-        <Text style={styles.faqDescription}>
-          궁금한 점이 있으신가요? 답변을 확인해 보세요.
-        </Text>
-        {faqItems.slice(0, 3).map((item) => (
-          <Pressable key={item.id} onPress={goToFAQ}>
-            <Card style={styles.faqCard}>
-              <View style={styles.faqRow}>
-                <Text style={styles.faqQ}>Q</Text>
-                <Text style={styles.faqQuestion}>{item.question}</Text>
-                <Text style={styles.faqArrow}>›</Text>
-              </View>
-            </Card>
-          </Pressable>
-        ))}
-      </View>
-
-      <View style={styles.section}>
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>최근 작업</Text>
-          <Pressable onPress={goToDesigns}>
-            <Text style={styles.sectionAction}>전체 보기</Text>
-          </Pressable>
-        </View>
-        <Card style={styles.recentCard}>
-          <MockupCanvas
-            template={buildTemplate(selectedProduct, selectedColor, 'front')}
-            width={56}
-            height={72}
-            showDesign
-            designImageUri={designImageUri}
-            imageTransform={imageTransform}
-            textLayer={textLayer}
-            textTransform={textTransform}
-          />
-          <View style={styles.recentText}>
-            <Text style={styles.recentTitle}>Ocean Wave Tee</Text>
-            <Text style={styles.recentDesc}>블랙 / M · 2시간 전</Text>
+      {/* FAQ 섹션 - 인터랙션 완료 후 렌더 */}
+      {interactionComplete && (
+        <View style={styles.faqSection}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>자주 묻는 질문</Text>
+            <Pressable onPress={goToFAQ}>
+              <Text style={styles.sectionAction}>전체 보기</Text>
+            </Pressable>
           </View>
-        </Card>
-      </View>
+          <Text style={styles.faqDescription}>
+            궁금한 점이 있으신가요? 답변을 확인해 보세요.
+          </Text>
+          {faqItems.slice(0, 3).map((item) => (
+            <Pressable key={item.id} onPress={goToFAQ}>
+              <Card style={styles.faqCard}>
+                <View style={styles.faqRow}>
+                  <Text style={styles.faqQ}>Q</Text>
+                  <Text style={styles.faqQuestion}>{item.question}</Text>
+                  <Text style={styles.faqArrow}>›</Text>
+                </View>
+              </Card>
+            </Pressable>
+          ))}
+        </View>
+      )}
+
+      {/* 최근 작업 섹션 - 인터랙션 완료 후 렌더 */}
+      {interactionComplete && (
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>최근 작업</Text>
+            <Pressable onPress={goToDesigns}>
+              <Text style={styles.sectionAction}>전체 보기</Text>
+            </Pressable>
+          </View>
+          <Card style={styles.recentCard}>
+            <MockupCanvas
+              template={buildTemplate(selectedProduct, selectedColor, 'front')}
+              width={56}
+              height={72}
+              showDesign
+              designImageUri={designImageUri}
+              imageTransform={imageTransform}
+              textLayer={textLayer}
+              textTransform={textTransform}
+            />
+            <View style={styles.recentText}>
+              <Text style={styles.recentTitle}>Ocean Wave Tee</Text>
+              <Text style={styles.recentDesc}>블랙 / M · 2시간 전</Text>
+            </View>
+          </Card>
+        </View>
+      )}
 
       <InquiryModal
         visible={inquiryModalVisible}

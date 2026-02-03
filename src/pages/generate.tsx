@@ -72,6 +72,8 @@ function Page() {
     }
     setError('');
     setLoading(true);
+    // 로딩 UI가 먼저 렌더되도록 1프레임 양보
+    await new Promise(requestAnimationFrame);
     setDesignPrompt(prompt.trim());
     try {
       const response = await fetch(`${API_BASE_URL}/v1/images/generate`, {
@@ -107,6 +109,8 @@ function Page() {
     setRemovingBg(true);
     setError('');
     setSuccessMessage('');
+    // 로딩 UI가 먼저 렌더되도록 1프레임 양보
+    await new Promise(requestAnimationFrame);
     try {
       const response = await fetch(
         `${API_BASE_URL}/v1/images/remove-background`,

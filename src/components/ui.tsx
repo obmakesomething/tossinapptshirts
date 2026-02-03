@@ -68,6 +68,8 @@ export function Screen({
         contentContainerStyle={[styles.container, contentStyle]}
         showsVerticalScrollIndicator={false}
         scrollEnabled={scrollEnabled}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
       >
         {children}
       </ScrollView>

@@ -1,0 +1,38 @@
+{
+  "id": "name_sticker_basic_round",
+  "title": "네임스티커 기본 라운드",
+  "engine": "sheet",
+  "sheet": {
+    "sizeMm": { "width": 210, "height": 297 },
+    "marginMm": { "top": 8, "right": 8, "bottom": 8, "left": 8 },
+    "gapMm": { "row": 3, "column": 3 }
+  },
+  "layout": {
+    "type": "grid",
+    "rows": 6,
+    "columns": 4,
+    "repeat": true,
+    "autoFlow": "row"
+  },
+  "shape": {
+    "type": "roundedRect",
+    "sizeMm": { "width": 45, "height": 18 },
+    "cornerRadiusMm": 6
+  },
+  "editor": {
+    "supportsBulkEdit": true,
+    "bulkEditMode": "replaceAll",
+    "supportsBlank": true,
+    "supportsPerItemText": true
+  },
+  "text": {
+    "defaultLines": 1,
+    "maxChars": 12,
+    "alignment": "center"
+  },
+  "notes": [
+    "한 번 입력으로 전체 문구를 변경할 수 있습니다.",
+    "문구 없이 무지로도 제작할 수 있습니다."
+  ],
+  "version": 1
+}

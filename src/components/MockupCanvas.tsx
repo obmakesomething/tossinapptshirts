@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Image, StyleSheet, Text, View, type ViewStyle, type ImageSourcePropType } from 'react-native';
 import type { LayerTransform, TextLayer } from '../context/catalog';
 import type { MockupTemplate } from '../data/mockupTemplates';
@@ -63,6 +63,8 @@ export function MockupCanvas({
   const textTop =
     area.top + area.height / 2 + textOffsetY * area.height - textHeight / 2;
 
+  const [imageLoaded, setImageLoaded] = useState(false);
+
   return (
     <View style={[styles.container, { width, height }, style]}>
       <Image
@@ -77,13 +79,18 @@ export function MockupCanvas({
             template.image,
           )
         }
-        onLoad={() =>
+        onLoad={() => {
+          setImageLoaded(true);
           console.log(
             '[MockupCanvas] Image loaded successfully:',
             template.image,
-          )
-        }
+          );
+        }}
       />
+      {/* Skeleton overlay while loading */}
+      {!imageLoaded && (
+        <View style={styles.skeleton} />
+      )}
       {effectiveShowGuides && (
         <View
           style={[
@@ -198,5 +205,9 @@ const styles = StyleSheet.create({
   textLayer: {
     textAlign: 'center',
     includeFontPadding: false,
+  },
+  skeleton: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: theme.colors.border,
   },
 });
