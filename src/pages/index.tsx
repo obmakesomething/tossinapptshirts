@@ -92,7 +92,7 @@ function Page() {
             source={require('../../assets/logo.jpg')}
             style={styles.headerLogo}
           />
-          <Text style={styles.headerTitle}>머천다이즈 Gpt</Text>
+          <Text style={styles.headerTitle}>굿즈 GPT</Text>
         </View>
         <Pressable onPress={goToInquiry} style={styles.inquiryButton}>
           <Text style={styles.inquiryButtonText}>문의</Text>

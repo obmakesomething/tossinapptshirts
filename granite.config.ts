@@ -11,7 +11,7 @@ export default defineConfig({
     hermes(),
     appsInToss({
       brand: {
-        displayName: '머천다이즈 Gpt',
+        displayName: '굿즈 GPT',
         primaryColor: '#3182F6',
         icon: 'https://static.toss.im/appsintoss/14401/6e86af44-5d82-46a8-beca-dc81ed59e5ff.png',
       },
