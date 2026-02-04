@@ -171,7 +171,7 @@ async function processJob(jobId, app) {
         }
 
         const ai = new GoogleGenAI({ apiKey: GOOGLE_API_KEY });
-        const IMAGEN_MODEL = process.env.IMAGEN_MODEL || 'imagen-3.0-generate-002';
+        const IMAGEN_MODEL = process.env.IMAGEN_MODEL || 'imagen-4.0-generate-001';
 
         const response = await ai.models.generateImages({
             model: IMAGEN_MODEL,

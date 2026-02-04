@@ -140,6 +140,11 @@ function Page() {
   };
 
   const handleGenerate = async () => {
+    // Prevent multiple submissions
+    if (isLoading) {
+      return;
+    }
+
     if (!prompt.trim()) {
       setError('어떤 이미지를 만들지 알려주세요.');
       return;
