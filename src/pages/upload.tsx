@@ -23,6 +23,7 @@ import {
 } from '../components/ui';
 import { API_BASE_URL } from '../config';
 import { useCatalog } from '../context/catalog';
+import { trackImageUploaded } from '../utils/analytics';
 
 export const Route = createRoute('/upload', {
   component: Page,
@@ -94,6 +95,7 @@ function Page() {
       if (!data.dataUrl) {
         throw new Error('업로드 결과를 확인하지 못했어요. 다시 시도해 주세요.');
       }
+      trackImageUploaded('file_picker');
       setDesignImageUri(data.dataUrl);
     } catch (err) {
       setError(err instanceof Error ? err.message : '업로드하지 못했어요. 다시 시도해 주세요.');
@@ -168,6 +170,7 @@ function Page() {
       if (!data.dataUrl) {
         throw new Error('배경 제거 결과를 확인하지 못했어요. 다시 시도해 주세요.');
       }
+      trackImageUploaded('background_removed');
       setDesignImageUri(data.dataUrl);
       setLastDataUrl(null);
       setBgRemovalStatus('success');
@@ -226,6 +229,7 @@ function Page() {
       }
 
       console.log('[StyleTransfer] Success! Data URL length:', data.dataUrl.length);
+      trackImageUploaded('style_transfer');
       setDesignImageUri(data.dataUrl);
       setLastDataUrl(null);
       setSuccessMessage('✓ 스타일을 변환했어요!');

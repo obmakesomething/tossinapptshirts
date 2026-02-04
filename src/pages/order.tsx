@@ -15,6 +15,7 @@ import { API_BASE_URL } from '../config';
 import { useCatalog } from '../context/catalog';
 import { calcPricing } from '../data/pricing';
 import { formatPrice } from '../utils/format';
+import { trackOrderCreated, trackPaymentSuccess, trackPaymentFailed } from '../utils/analytics';
 
 export const Route = createRoute('/order', {
   component: Page,
@@ -233,10 +234,14 @@ function Page() {
 
       const { payToken } = await createResponse.json();
 
+      // Track order created
+      trackOrderCreated(orderId, pricing.total, 'KRW');
+
       // Step 2: Open TossPay checkout for user authentication
       const { success, reason } = await TossPay.checkoutPayment({ payToken });
 
       if (!success) {
+        trackPaymentFailed(orderId, pricing.total, reason || '결제 인증 취소', 'KRW');
         throw new Error(reason || '결제 인증을 취소했어요.');
       }
 
@@ -256,12 +261,19 @@ function Page() {
 
       if (!executeResponse.ok) {
         const errorData = await executeResponse.json().catch(() => ({}));
+        trackPaymentFailed(orderId, pricing.total, errorData.error || '결제 실행 실패', 'KRW');
         throw new Error(errorData.error || '결제를 완료하지 못했어요. 잠시 후 다시 시도해 주세요.');
       }
 
+      // Track payment success
+      trackPaymentSuccess(orderId, pricing.total, 'TossPay', 'KRW');
+
       setSuccess(true);
     } catch (err) {
-      setError(err instanceof Error ? err.message : '결제를 완료하지 못했어요. 잠시 후 다시 시도해 주세요.');
+      const errorMessage = err instanceof Error ? err.message : '결제를 완료하지 못했어요. 잠시 후 다시 시도해 주세요.';
+      setError(errorMessage);
+      // Track error if not already tracked
+      console.error('[Order] Payment error:', errorMessage);
     } finally {
       setSubmitting(false);
     }

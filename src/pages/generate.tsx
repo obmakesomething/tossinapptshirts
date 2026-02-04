@@ -25,6 +25,7 @@ import { API_BASE_URL } from '../config';
 import { useCatalog } from '../context/catalog';
 import { useJobTracker, type JobStage } from '../context/jobTracker';
 import { useToast } from '../context/toastContext';
+import { trackImageGenerated } from '../utils/analytics';
 
 export const Route = createRoute('/generate', {
   component: Page,
@@ -70,6 +71,7 @@ function Page() {
     if (activeJob?.status === 'succeeded' && activeJob.result?.preview_url) {
       setResultUrl(activeJob.result.preview_url);
       setDesignPrompt(prompt.trim() || '');
+      trackImageGenerated(prompt.trim(), style, ratio);
       showToast({
         type: 'success',
         message: '이미지 생성이 완료됐어요!',
