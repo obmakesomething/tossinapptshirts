@@ -811,8 +811,9 @@ const styles = StyleSheet.create({
     marginBottom: theme.spacing.xs,
   },
   dragHint: {
-    fontSize: 11,
-    color: theme.colors.textTertiary,
+    fontSize: 12,
+    fontWeight: '600',
+    color: theme.colors.primary,
   },
   outOfBoundsInfo: {
     backgroundColor: theme.colors.surface,

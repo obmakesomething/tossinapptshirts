@@ -13,6 +13,7 @@ import {
   Chip,
   CollapsibleSection,
   DisabledHint,
+  FullScreenLoader,
   PrimaryButton,
   Screen,
   SecondaryButton,
@@ -96,6 +97,33 @@ function Page() {
   }, [activeJob?.status]);
 
   const isLoading = isPolling || (activeJob?.status === 'queued' || activeJob?.status === 'running');
+
+  // Loading message progression
+  const loadingMessages = [
+    '이미지를 생성하고 있어요...',
+    'AI가 열심히 그리고 있어요...',
+    '거의 다 됐어요!',
+  ];
+  const [loadingMessageIndex, setLoadingMessageIndex] = useState(0);
+
+  // Change loading message over time
+  useEffect(() => {
+    if (!isLoading) {
+      setLoadingMessageIndex(0);
+      return;
+    }
+
+    const intervals = [0, 5000, 15000]; // 0s, 5s, 15s
+    const timers = intervals.slice(1).map((delay, index) =>
+      setTimeout(() => {
+        setLoadingMessageIndex(index + 1);
+      }, delay),
+    );
+
+    return () => {
+      timers.forEach(clearTimeout);
+    };
+  }, [isLoading]);
 
   const goNext = () => {
     if (resultUrl) {
@@ -186,7 +214,8 @@ function Page() {
   const stageProgress = getStageProgress();
 
   return (
-    <Screen>
+    <>
+      <Screen>
       <TopBar title="AI 이미지 생성" />
 
       <Text style={styles.title}>AI로 이미지를 만들어 볼까요?</Text>
@@ -325,7 +354,12 @@ function Page() {
           visible={!resultUrl}
         />
       </StickyFooter>
-    </Screen>
+      </Screen>
+      <FullScreenLoader
+        visible={isLoading}
+        message={loadingMessages[loadingMessageIndex] || loadingMessages[0]}
+      />
+    </>
   );
 }
 

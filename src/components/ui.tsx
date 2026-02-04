@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import {
+  ActivityIndicator,
   Dimensions,
   Modal,
   Pressable,
@@ -380,6 +381,26 @@ export function TabBar({ tabs, activeIndex, onChangeIndex }: TabBarProps) {
   );
 }
 
+type FullScreenLoaderProps = {
+  visible: boolean;
+  message?: string;
+};
+
+export function FullScreenLoader({ visible, message = '로딩 중...' }: FullScreenLoaderProps) {
+  if (!visible) return null;
+
+  return (
+    <Modal transparent visible={visible} animationType="fade">
+      <View style={styles.fullScreenLoader}>
+        <View style={styles.loaderContent}>
+          <ActivityIndicator size="large" color={theme.colors.primary} />
+          <Text style={styles.loaderMessage}>{message}</Text>
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
 const styles = StyleSheet.create({
   safe: {
     flex: 1,
@@ -645,5 +666,25 @@ const styles = StyleSheet.create({
   },
   tabTextActive: {
     color: theme.colors.primary,
+  },
+  fullScreenLoader: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loaderContent: {
+    backgroundColor: theme.colors.surface,
+    borderRadius: theme.radius.lg,
+    padding: theme.spacing.xxl,
+    alignItems: 'center',
+    minWidth: 200,
+  },
+  loaderMessage: {
+    marginTop: theme.spacing.lg,
+    fontSize: 16,
+    fontWeight: '600',
+    color: theme.colors.textPrimary,
+    textAlign: 'center',
   },
 });
