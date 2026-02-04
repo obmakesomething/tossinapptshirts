@@ -2340,6 +2340,121 @@ app.post('/v1/payment/status', async (req, res) => {
   }
 });
 
+// ========================================
+// Refund Policy Page
+// ========================================
+app.get('/refund-policy', (req, res) => {
+  const html = `
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>환불 약관 - Merchandise GPT</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      line-height: 1.6;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+      color: #333;
+    }
+    h1 {
+      color: #1a1a1a;
+      border-bottom: 2px solid #4a90e2;
+      padding-bottom: 10px;
+    }
+    h2 {
+      color: #2c3e50;
+      margin-top: 30px;
+    }
+    .article {
+      margin: 20px 0;
+      padding: 15px;
+      background: #f8f9fa;
+      border-left: 4px solid #4a90e2;
+    }
+    .contact {
+      margin-top: 40px;
+      padding: 20px;
+      background: #e8f4f8;
+      border-radius: 8px;
+    }
+    ul {
+      padding-left: 20px;
+    }
+    li {
+      margin: 10px 0;
+    }
+  </style>
+</head>
+<body>
+  <h1>환불 약관</h1>
+  <p><strong>서비스명:</strong> Merchandise GPT (굿즈 GPT)</p>
+  <p><strong>시행일:</strong> 2026년 2월 4일</p>
+
+  <div class="article">
+    <h2>제1조 (청약철회)</h2>
+    <p>「전자상거래 등에서의 소비자 보호에 관한 법률」 제17조에 따라, 구매자는 상품을 배송받은 날로부터 7일 이내에 청약철회(환불)를 요청할 수 있습니다.</p>
+  </div>
+
+  <div class="article">
+    <h2>제2조 (청약철회 제한)</h2>
+    <p>다음의 경우에는 청약철회가 제한됩니다:</p>
+    <ul>
+      <li>구매자의 요청에 따라 개별적으로 제작된 맞춤형 상품의 경우</li>
+      <li>구매자의 책임 있는 사유로 상품이 훼손된 경우</li>
+      <li>상품의 포장을 개봉하여 상품 가치가 현저히 감소한 경우</li>
+    </ul>
+    <p><strong>※ 본 서비스는 주문 즉시 제작(POD) 방식으로, 고객이 선택한 디자인으로 개별 제작되는 맞춤형 상품입니다.</strong></p>
+  </div>
+
+  <div class="article">
+    <h2>제3조 (환불 가능 사유)</h2>
+    <p>다음의 경우 배송 완료일로부터 7일 이내 환불이 가능합니다:</p>
+    <ul>
+      <li>배송된 상품이 주문한 상품과 다른 경우</li>
+      <li>상품에 하자(불량, 파손 등)가 있는 경우</li>
+      <li>배송 중 상품이 훼손된 경우</li>
+    </ul>
+  </div>
+
+  <div class="article">
+    <h2>제4조 (환불 절차)</h2>
+    <ol>
+      <li>고객센터로 환불 요청 (이메일 또는 채널톡)</li>
+      <li>환불 사유 확인 및 상품 회수</li>
+      <li>환불 승인 후 3~5영업일 내 환불 처리</li>
+    </ol>
+    <p><strong>※ 환불은 원 결제수단으로 환불됩니다 (토스페이 결제 → 토스페이 환불)</strong></p>
+  </div>
+
+  <div class="article">
+    <h2>제5조 (환불 비용)</h2>
+    <ul>
+      <li>판매자 귀책사유(상품 하자, 오배송 등): 왕복 배송비 판매자 부담</li>
+      <li>구매자 단순 변심: 왕복 배송비 구매자 부담 (단, 맞춤 제작 상품은 환불 불가)</li>
+    </ul>
+  </div>
+
+  <div class="contact">
+    <h2>고객센터</h2>
+    <p><strong>이메일:</strong> support@merchandisegpt.com</p>
+    <p><strong>운영시간:</strong> 평일 10:00 - 18:00 (주말 및 공휴일 제외)</p>
+    <p><strong>상호:</strong> Merchandise GPT</p>
+  </div>
+
+  <p style="margin-top: 40px; color: #666; font-size: 14px;">
+    본 약관은 「전자상거래 등에서의 소비자 보호에 관한 법률」, 「소비자기본법」 등 관련 법령을 준수합니다.
+  </p>
+</body>
+</html>
+  `;
+  res.setHeader('Content-Type', 'text/html; charset=utf-8');
+  res.send(html);
+});
+
 // Initialize database and start server
 async function startServer() {
   try {
