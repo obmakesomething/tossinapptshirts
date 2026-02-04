@@ -71,6 +71,7 @@ function Page() {
     if (activeJob?.status === 'succeeded' && activeJob.result?.preview_url) {
       setResultUrl(activeJob.result.preview_url);
       setDesignPrompt(prompt.trim() || '');
+      setError(''); // Clear any previous errors
       trackImageGenerated(prompt.trim(), style, ratio);
       showToast({
         type: 'success',
@@ -107,11 +108,13 @@ function Page() {
     '거의 다 됐어요!',
   ];
   const [loadingMessageIndex, setLoadingMessageIndex] = useState(0);
+  const [localEta, setLocalEta] = useState<number | null>(null);
 
   // Change loading message over time
   useEffect(() => {
     if (!isLoading) {
       setLoadingMessageIndex(0);
+      setLocalEta(null);
       return;
     }
 
@@ -126,6 +129,29 @@ function Page() {
       timers.forEach(clearTimeout);
     };
   }, [isLoading]);
+
+  // Initialize and countdown ETA
+  useEffect(() => {
+    if (!isLoading) {
+      setLocalEta(null);
+      return;
+    }
+
+    // Initialize from activeJob ETA
+    if (activeJob?.etaMs && localEta === null) {
+      setLocalEta(activeJob.etaMs);
+    }
+
+    // Countdown every second
+    const timer = setInterval(() => {
+      setLocalEta((prev) => {
+        if (prev === null || prev <= 0) return prev;
+        return Math.max(0, prev - 1000);
+      });
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [isLoading, activeJob?.etaMs, localEta]);
 
   const goNext = () => {
     if (resultUrl) {
@@ -337,9 +363,9 @@ function Page() {
                 : '이미지를 만들고 있어요...'}
             </Text>
           </View>
-          {activeJob?.etaMs && activeJob.etaMs > 0 && (
+          {localEta !== null && localEta > 0 && (
             <Text style={styles.etaText}>
-              예상 대기 시간: 약 {Math.ceil(activeJob.etaMs / 1000)}초
+              남은 시간: 약 {Math.ceil(localEta / 1000)}초
             </Text>
           )}
           <Text style={styles.backgroundHint}>
