@@ -312,10 +312,15 @@ function Page() {
       </CollapsibleSection>
 
       <PrimaryButton
-        label={isLoading ? '생성 취소하기' : '이미지 만들기'}
+        label={isLoading ? '생성 취소하기' : resultUrl ? '다시 생성하기' : '이미지 만들기'}
         onPress={isLoading ? handleCancel : handleGenerate}
         disabled={false}
       />
+      {resultUrl && !isLoading && (
+        <Text style={styles.regenerateHint}>
+          프롬프트를 수정하거나 그대로 다시 생성해 보세요
+        </Text>
+      )}
 
       {isLoading && (
         <View style={styles.loadingSection}>
@@ -493,6 +498,14 @@ const styles = StyleSheet.create({
     color: theme.colors.success,
     marginTop: theme.spacing.sm,
     fontWeight: '600',
+  },
+  regenerateHint: {
+    fontSize: 12,
+    lineHeight: 18,
+    color: theme.colors.primary,
+    marginTop: theme.spacing.sm,
+    textAlign: 'center',
+    fontWeight: '500',
   },
   stickyFooterSpacer: {
     height: 80,

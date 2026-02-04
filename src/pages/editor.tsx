@@ -99,6 +99,10 @@ function Page() {
     navigation.navigate('/preview');
   };
 
+  const goOrder = () => {
+    navigation.navigate('/order');
+  };
+
   const pricing = calcPricing({
     product: selectedProduct,
     orderLines,
@@ -655,7 +659,10 @@ function Page() {
 
       {/* ── 하단 고정 CTA ── */}
       <View style={styles.ctaBar}>
-        <PrimaryButton label="완성된 모습 보기" onPress={goPreview} />
+        <View style={styles.ctaButtonRow}>
+          <SecondaryButton label="미리보기" onPress={goPreview} style={styles.ctaSecondary} />
+          <PrimaryButton label="💰 바로 주문" onPress={goOrder} style={styles.ctaPrimary} />
+        </View>
       </View>
     </SafeAreaView>
   );
@@ -843,6 +850,16 @@ const styles = StyleSheet.create({
     paddingVertical: theme.spacing.md,
     borderTopWidth: 1,
     borderTopColor: theme.colors.border,
+  },
+  ctaButtonRow: {
+    flexDirection: 'row',
+    gap: theme.spacing.sm,
+  },
+  ctaSecondary: {
+    flex: 1,
+  },
+  ctaPrimary: {
+    flex: 2,
   },
 
   /* ── Layer tab ── */

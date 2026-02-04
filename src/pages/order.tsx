@@ -138,13 +138,6 @@ function Page() {
   const handleSubmit = async () => {
     setError('');
 
-    // Check if user is logged in (has userKey)
-    if (!userKey) {
-      // Trigger login flow first
-      await handleTossLogin();
-      return; // User will need to press submit again after login
-    }
-
     if (!name || !phone || !email || !address1) {
       setError('이름, 연락처, 이메일, 주소를 모두 입력해 주세요.');
       return;
@@ -279,6 +272,49 @@ function Page() {
     }
   };
 
+  // If not logged in, show simple login screen
+  if (!userKey) {
+    return (
+      <Screen>
+        <TopBar title="주문하기" />
+
+        <Card style={styles.summaryCard}>
+          <Text style={styles.summaryTitle}>{selectedProduct.name}</Text>
+          <Text style={styles.summaryMeta}>
+            {selectedColor} · {sizeSummary || `${totalQuantity}개`}
+            {printBackEnabled ? ' · 뒷면도 프린팅' : ''}
+          </Text>
+          <Text style={styles.summaryMeta}>
+            예상 결제 {formatPrice(pricing.total)} (배송비{' '}
+            {pricing.shippingFee === 0
+              ? '무료'
+              : formatPrice(pricing.shippingFee)}
+            )
+          </Text>
+        </Card>
+
+        <Card style={styles.loginCard}>
+          <Text style={styles.loginTitle}>토스 로그인이 필요해요</Text>
+          <Text style={styles.loginDesc}>
+            안전한 결제를 위해 토스 계정으로 로그인해 주세요. 로그인하시면 바로 주문을 진행할 수 있어요.
+          </Text>
+        </Card>
+
+        {error ? <Text style={styles.errorText}>{error}</Text> : null}
+
+        <View style={styles.actionRow}>
+          <PrimaryButton
+            label={loginLoading ? '로그인 중...' : '🔐 토스 로그인하고 주문하기'}
+            onPress={handleTossLogin}
+            disabled={loginLoading}
+          />
+          <SecondaryButton label="돌아가기" onPress={() => navigation.goBack()} />
+        </View>
+      </Screen>
+    );
+  }
+
+  // If logged in, show full order form
   return (
     <Screen>
       <TopBar title="주문하기" />
@@ -476,5 +512,26 @@ const styles = StyleSheet.create({
   },
   addressSearchButton: {
     marginBottom: theme.spacing.sm,
+  },
+  loginCard: {
+    marginBottom: theme.spacing.lg,
+    backgroundColor: theme.colors.primarySoft,
+    borderColor: theme.colors.primary,
+    borderWidth: 2,
+    alignItems: 'center',
+    padding: theme.spacing.lg,
+  },
+  loginTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: theme.colors.primary,
+    marginBottom: theme.spacing.sm,
+    textAlign: 'center',
+  },
+  loginDesc: {
+    fontSize: 14,
+    color: theme.colors.textSecondary,
+    lineHeight: 20,
+    textAlign: 'center',
   },
 });

@@ -14,6 +14,8 @@ import {
 import { useCatalog } from '../context/catalog';
 import { resolveColorValue } from '../data/colorMap';
 import { buildTemplate } from '../data/mockupTemplates';
+import { calcPricing } from '../data/pricing';
+import { formatPrice } from '../utils/format';
 
 export const Route = createRoute('/preview', {
   component: Page,
@@ -37,11 +39,21 @@ function Page() {
     backTextLayer,
     backTextTransform,
     saveCurrentDesign,
+    orderLines,
+    totalQuantity,
+    selectedPrint,
   } = useCatalog();
   const [saving, setSaving] = useState(false);
   const filteredShots = printBackEnabled
     ? mockupShots
     : mockupShots.slice(0, 1);
+
+  const pricing = calcPricing({
+    product: selectedProduct,
+    orderLines,
+    printOption: selectedPrint,
+    printBackEnabled,
+  });
 
   const handleSave = async () => {
     if (saving) return;
@@ -133,6 +145,19 @@ function Page() {
         </View>
       </View>
 
+      <Card style={styles.priceCard}>
+        <Text style={styles.priceLabel}>예상 결제 금액</Text>
+        <Text style={styles.priceAmount}>{formatPrice(pricing.total)}</Text>
+        <View style={styles.priceDetail}>
+          <Text style={styles.priceDetailText}>
+            기본가 {formatPrice(pricing.subtotal)} + 배송비{' '}
+            {pricing.shippingFee === 0
+              ? '무료'
+              : formatPrice(pricing.shippingFee)}
+          </Text>
+        </View>
+      </Card>
+
       <Card style={styles.infoCard}>
         <Text style={styles.infoTitle}>파일 준비가 완료됐어요</Text>
         <Text style={styles.infoDesc}>
@@ -140,12 +165,13 @@ function Page() {
         </Text>
       </Card>
 
+      <View style={styles.primaryActionRow}>
+        <Button type="primary" size="large" onPress={goOrder}>
+          💰 바로 주문하기
+        </Button>
+      </View>
+
       <View style={styles.actionRow}>
-        <View style={styles.flex1}>
-          <Button type="primary" size="medium" onPress={goOrder}>
-            주문하기
-          </Button>
-        </View>
         <View style={styles.flex1}>
           <Button
             type="light"
@@ -207,8 +233,35 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
   },
-  infoCard: {
+  priceCard: {
     marginTop: theme.spacing.lg,
+    backgroundColor: theme.colors.primarySoft,
+    borderColor: theme.colors.primary,
+    borderWidth: 2,
+    alignItems: 'center',
+    padding: theme.spacing.lg,
+  },
+  priceLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: theme.colors.textSecondary,
+    marginBottom: theme.spacing.xs,
+  },
+  priceAmount: {
+    fontSize: 28,
+    fontWeight: '700',
+    color: theme.colors.primary,
+    marginBottom: theme.spacing.xs,
+  },
+  priceDetail: {
+    marginTop: theme.spacing.xs,
+  },
+  priceDetailText: {
+    fontSize: 13,
+    color: theme.colors.textSecondary,
+  },
+  infoCard: {
+    marginTop: theme.spacing.md,
     backgroundColor: theme.colors.successSoft,
     borderColor: theme.colors.successBorder,
   },
@@ -224,8 +277,11 @@ const styles = StyleSheet.create({
     color: theme.colors.textSecondary,
     lineHeight: 20,
   },
-  actionRow: {
+  primaryActionRow: {
     marginTop: theme.spacing.lg,
+  },
+  actionRow: {
+    marginTop: theme.spacing.md,
     gap: theme.spacing.sm,
     flexDirection: 'row',
   },
