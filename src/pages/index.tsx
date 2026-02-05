@@ -100,10 +100,15 @@ function Page() {
       </View>
 
       <View style={styles.hero}>
-        <Text style={styles.heroTitle}>AI로 나만의 굿즈를 만들어 보세요</Text>
+        <Text style={styles.heroTitle}>사진으로 티셔츠·후드·맨투맨 만들기</Text>
         <Text style={styles.heroSubtitle}>
-          내 이미지를 업로드하거나 AI로 새 이미지를 만들어서 티셔츠, 후디, 맨투맨을 제작할 수 있어요.
+          내 사진을 업로드하거나 AI로 새로 만들어서 나만의 굿즈를 제작해요.
         </Text>
+        <View style={styles.trustBadge}>
+          <Text style={styles.trustBadgeText}>제작 7-14일</Text>
+          <Text style={styles.trustBadgeDivider}>|</Text>
+          <Text style={styles.trustBadgeText}>배송비 무료 (3만원 이상)</Text>
+        </View>
       </View>
 
       <View style={styles.section}>
@@ -122,20 +127,30 @@ function Page() {
       </View>
 
       <View style={styles.exampleSection}>
-        <View style={styles.exampleImageContainer}>
-          <MockupCanvas
-            template={buildTemplate(categoryProduct, selectedColor, 'front')}
-            width={260}
-            height={340}
-            showDesign
-            designImageUri={heroDesignImageUri}
-            imageTransform={{
-              offsetX: 0,
-              offsetY: 0,
-              scale: 0.9,
-              rotation: 0,
-            }}
-          />
+        <Text style={styles.exampleSectionTitle}>이런 굿즈를 만들 수 있어요</Text>
+        <View style={styles.exampleRow}>
+          {categories.map((category) => {
+            const product = products.find((p) => p.category === category);
+            if (!product) return null;
+            return (
+              <View key={category} style={styles.exampleCard}>
+                <MockupCanvas
+                  template={buildTemplate(product, product.colors[0] || '화이트', 'front')}
+                  width={90}
+                  height={115}
+                  showDesign
+                  designImageUri={heroDesignImageUri}
+                  imageTransform={{
+                    offsetX: 0,
+                    offsetY: 0,
+                    scale: 0.9,
+                    rotation: 0,
+                  }}
+                />
+                <Text style={styles.exampleLabel}>{category}</Text>
+              </View>
+            );
+          })}
         </View>
       </View>
 
@@ -207,8 +222,8 @@ function Page() {
         </View>
       )}
 
-      {/* 최근 작업 섹션 - 인터랙션 완료 후 렌더 */}
-      {interactionComplete && (
+      {/* 최근 작업 섹션 - 실제 작업이 있을 때만 표시 */}
+      {interactionComplete && designImageUri && (
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>최근 작업</Text>
@@ -228,8 +243,8 @@ function Page() {
               textTransform={textTransform}
             />
             <View style={styles.recentText}>
-              <Text style={styles.recentTitle}>Ocean Wave Tee</Text>
-              <Text style={styles.recentDesc}>블랙 / M · 2시간 전</Text>
+              <Text style={styles.recentTitle}>{selectedProduct.name}</Text>
+              <Text style={styles.recentDesc}>{selectedColor}</Text>
             </View>
           </Card>
         </View>
@@ -295,7 +310,28 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: theme.colors.textSecondary,
     lineHeight: 22,
-    marginBottom: theme.spacing.lg,
+    marginBottom: theme.spacing.md,
+  },
+  trustBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: theme.colors.primarySoft,
+    paddingVertical: theme.spacing.sm,
+    paddingHorizontal: theme.spacing.md,
+    borderRadius: 999,
+    alignSelf: 'flex-start',
+  },
+  trustBadgeText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: theme.colors.primary,
+    lineHeight: 18,
+  },
+  trustBadgeDivider: {
+    fontSize: 12,
+    color: theme.colors.primary,
+    marginHorizontal: theme.spacing.sm,
   },
   heroActions: {
     marginTop: theme.spacing.xs,
@@ -335,24 +371,32 @@ const styles = StyleSheet.create({
   },
   exampleSection: {
     marginBottom: theme.spacing.xl,
-    marginTop: theme.spacing.xxl + theme.spacing.xl,
-    alignItems: 'center',
+    marginTop: theme.spacing.xl,
   },
-  exampleImageContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
+  exampleSectionTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: theme.colors.textPrimary,
+    lineHeight: 26,
+    marginBottom: theme.spacing.lg,
+    textAlign: 'center',
   },
   stepGrid: {
     marginTop: theme.spacing.sm,
   },
   exampleRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    justifyContent: 'space-around',
+    gap: theme.spacing.md,
   },
   exampleCard: {
-    width: '31%',
-    padding: theme.spacing.sm,
+    flex: 1,
     alignItems: 'center',
+    backgroundColor: theme.colors.surface,
+    borderRadius: theme.radius.md,
+    padding: theme.spacing.md,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
   },
   exampleImage: {
     width: '100%',
@@ -362,10 +406,12 @@ const styles = StyleSheet.create({
     marginBottom: theme.spacing.sm,
   },
   exampleLabel: {
-    fontSize: 11,
-    color: theme.colors.textSecondary,
+    fontSize: 13,
+    fontWeight: '600',
+    color: theme.colors.textPrimary,
     textAlign: 'center',
-    lineHeight: 18,
+    lineHeight: 20,
+    marginTop: theme.spacing.sm,
   },
   stepCard: {
     paddingVertical: theme.spacing.lg,

@@ -75,6 +75,11 @@ type CatalogContextValue = {
   backImageTransform: LayerTransform;
   backTextTransform: LayerTransform;
   backTextLayer: TextLayer;
+  // Photo management (max 3 photos per placement)
+  frontPhotos: string[];
+  backPhotos: string[];
+  frontPhotoIndex: number;
+  backPhotoIndex: number;
   setSelectedProductId: (id: string) => void;
   setSelectedColor: (color: string) => void;
   addOrderLine: (sizeLabel: string, quantity?: number) => void;
@@ -94,6 +99,11 @@ type CatalogContextValue = {
   loadDesign: (design: SavedDesign) => void;
   deleteDesign: (designId: string) => Promise<void>;
   refreshSavedDesigns: () => Promise<void>;
+  // Photo management methods
+  addPhoto: (uri: string) => void;
+  replacePhoto: (uri: string) => void;
+  deletePhoto: (index: number) => void;
+  selectPhoto: (index: number) => void;
 };
 
 const CatalogContext = createContext<CatalogContextValue | null>(null);
@@ -170,13 +180,25 @@ export function CatalogProvider({ children }: { children: React.ReactNode }) {
   const [backTextLayer, setBackTextLayer] =
     useState<TextLayer>(defaultTextLayer);
 
+  // Photo management state (max 3 photos per placement)
+  const [frontPhotos, setFrontPhotos] = useState<string[]>([]);
+  const [backPhotos, setBackPhotos] = useState<string[]>([]);
+  const [frontPhotoIndex, setFrontPhotoIndex] = useState(0);
+  const [backPhotoIndex, setBackPhotoIndex] = useState(0);
+
   const [designPrompt, setDesignPrompt] = useState('');
   const [activeLayer, setActiveLayer] = useState<'image' | 'text'>('image');
   const [savedDesigns, setSavedDesigns] = useState<SavedDesign[]>([]);
 
   // Current placement design accessors
-  const designImageUri =
-    selectedPlacement === 'front' ? frontDesignImageUri : backDesignImageUri;
+  const currentPhotos = selectedPlacement === 'front' ? frontPhotos : backPhotos;
+  const currentPhotoIndex = selectedPlacement === 'front' ? frontPhotoIndex : backPhotoIndex;
+
+  // prioritize photos array over legacy single image URI
+  const designImageUri = currentPhotos.length > 0
+    ? currentPhotos[currentPhotoIndex] || null
+    : (selectedPlacement === 'front' ? frontDesignImageUri : backDesignImageUri);
+
   const imageTransform =
     selectedPlacement === 'front' ? frontImageTransform : backImageTransform;
   const textTransform =
@@ -303,11 +325,100 @@ export function CatalogProvider({ children }: { children: React.ReactNode }) {
       setFrontDesignImageUri(uri);
       if (uri) {
         setFrontImageTransform(defaultImageTransform);
+        // If photos array is empty, add this as first photo
+        if (frontPhotos.length === 0) {
+          setFrontPhotos([uri]);
+          setFrontPhotoIndex(0);
+        }
       }
     } else {
       setBackDesignImageUri(uri);
       if (uri) {
         setBackImageTransform(defaultImageTransform);
+        // If photos array is empty, add this as first photo
+        if (backPhotos.length === 0) {
+          setBackPhotos([uri]);
+          setBackPhotoIndex(0);
+        }
+      }
+    }
+  };
+
+  // Photo management methods
+  const addPhoto = (uri: string) => {
+    if (selectedPlacement === 'front') {
+      if (frontPhotos.length >= 3) return; // max 3 photos
+      setFrontPhotos((prev) => [...prev, uri]);
+      setFrontPhotoIndex(frontPhotos.length); // switch to new photo
+      setFrontDesignImageUri(uri);
+      setFrontImageTransform(defaultImageTransform);
+    } else {
+      if (backPhotos.length >= 3) return; // max 3 photos
+      setBackPhotos((prev) => [...prev, uri]);
+      setBackPhotoIndex(backPhotos.length); // switch to new photo
+      setBackDesignImageUri(uri);
+      setBackImageTransform(defaultImageTransform);
+    }
+  };
+
+  const replacePhoto = (uri: string) => {
+    if (selectedPlacement === 'front') {
+      const newPhotos = [...frontPhotos];
+      if (newPhotos.length === 0) {
+        newPhotos.push(uri);
+        setFrontPhotoIndex(0);
+      } else {
+        newPhotos[frontPhotoIndex] = uri;
+      }
+      setFrontPhotos(newPhotos);
+      setFrontDesignImageUri(uri);
+      setFrontImageTransform(defaultImageTransform);
+    } else {
+      const newPhotos = [...backPhotos];
+      if (newPhotos.length === 0) {
+        newPhotos.push(uri);
+        setBackPhotoIndex(0);
+      } else {
+        newPhotos[backPhotoIndex] = uri;
+      }
+      setBackPhotos(newPhotos);
+      setBackDesignImageUri(uri);
+      setBackImageTransform(defaultImageTransform);
+    }
+  };
+
+  const deletePhoto = (index: number) => {
+    if (selectedPlacement === 'front') {
+      const newPhotos = frontPhotos.filter((_, i) => i !== index);
+      setFrontPhotos(newPhotos);
+      // Adjust index if needed
+      if (frontPhotoIndex >= newPhotos.length) {
+        setFrontPhotoIndex(Math.max(0, newPhotos.length - 1));
+      }
+      // Update legacy URI
+      setFrontDesignImageUri(newPhotos[Math.min(frontPhotoIndex, newPhotos.length - 1)] || null);
+    } else {
+      const newPhotos = backPhotos.filter((_, i) => i !== index);
+      setBackPhotos(newPhotos);
+      // Adjust index if needed
+      if (backPhotoIndex >= newPhotos.length) {
+        setBackPhotoIndex(Math.max(0, newPhotos.length - 1));
+      }
+      // Update legacy URI
+      setBackDesignImageUri(newPhotos[Math.min(backPhotoIndex, newPhotos.length - 1)] || null);
+    }
+  };
+
+  const selectPhoto = (index: number) => {
+    if (selectedPlacement === 'front') {
+      if (index >= 0 && index < frontPhotos.length) {
+        setFrontPhotoIndex(index);
+        setFrontDesignImageUri(frontPhotos[index] || null);
+      }
+    } else {
+      if (index >= 0 && index < backPhotos.length) {
+        setBackPhotoIndex(index);
+        setBackDesignImageUri(backPhotos[index] || null);
       }
     }
   };
@@ -388,6 +499,10 @@ export function CatalogProvider({ children }: { children: React.ReactNode }) {
     backImageTransform,
     backTextTransform,
     backTextLayer,
+    frontPhotos,
+    backPhotos,
+    frontPhotoIndex,
+    backPhotoIndex,
     setSelectedProductId,
     setSelectedColor,
     addOrderLine,
@@ -408,6 +523,10 @@ export function CatalogProvider({ children }: { children: React.ReactNode }) {
     loadDesign,
     deleteDesign,
     refreshSavedDesigns,
+    addPhoto,
+    replacePhoto,
+    deletePhoto,
+    selectPhoto,
   };
 
   return (

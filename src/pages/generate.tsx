@@ -166,8 +166,9 @@ function Page() {
   };
 
   const handleGenerate = async () => {
-    // Prevent multiple submissions
-    if (isLoading) {
+    // Prevent multiple submissions only if actually running (not if job just completed)
+    const isActuallyRunning = isPolling || activeJob?.status === 'queued' || activeJob?.status === 'running';
+    if (isActuallyRunning) {
       return;
     }
 
@@ -178,6 +179,11 @@ function Page() {
     setError('');
     setResultUrl(null);
     setDesignPrompt(prompt.trim());
+
+    // Clear any previous completed job before starting new one
+    if (activeJob?.status === 'succeeded' || activeJob?.status === 'failed') {
+      clearJob();
+    }
 
     // Start background job
     const jobId = await startJob({
@@ -257,6 +263,7 @@ function Page() {
         <View style={styles.resultSection}>
           <View style={styles.resultCenter}>
             <Card style={styles.resultCard}>
+              <View style={styles.checkerboardBg} />
               <Image
                 source={{ uri: resultUrl }}
                 style={styles.resultImage}
@@ -469,6 +476,18 @@ const styles = StyleSheet.create({
     height: 220,
     alignItems: 'center',
     justifyContent: 'center',
+    position: 'relative',
+    overflow: 'hidden',
+  },
+  checkerboardBg: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: '#F0F0F0',
+    // Checkerboard pattern simulation using background
+    // In React Native, we'll use a simple gray background to indicate transparency
   },
   resultImage: {
     width: '100%',

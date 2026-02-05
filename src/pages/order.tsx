@@ -1,15 +1,18 @@
 import { createRoute } from '@granite-js/react-native';
 import { TossPay, appLogin } from '@apps-in-toss/framework';
 import React, { useMemo, useRef, useState, useCallback } from 'react';
-import { StyleSheet, Text, TextInput, View } from 'react-native';
+import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import {
   Card,
+  Chip,
+  ColorSwatch,
   PrimaryButton,
   Screen,
   SecondaryButton,
   TopBar,
   theme,
 } from '../components/ui';
+import { resolveColorValue } from '../data/colorMap';
 import { DaumPostcodeModal, type AddressData } from '../components/DaumPostcodeModal';
 import { API_BASE_URL } from '../config';
 import { useCatalog } from '../context/catalog';
@@ -32,6 +35,10 @@ function Page() {
     selectedPrint,
     designImageUri,
     textLayer,
+    setSelectedColor,
+    addOrderLine,
+    removeOrderLine,
+    setOrderLineQuantity,
   } = useCatalog();
 
   const [name, setName] = useState('');
@@ -50,6 +57,7 @@ function Page() {
   const [userKey, setUserKey] = useState<string>('');
   const [loginLoading, setLoginLoading] = useState(false);
   const address2InputRef = useRef<TextInput>(null);
+  const [editingOrder, setEditingOrder] = useState(false);
 
   // Toss Login to get userKey
   const handleTossLogin = useCallback(async () => {
@@ -279,11 +287,80 @@ function Page() {
         <TopBar title="주문하기" />
 
         <Card style={styles.summaryCard}>
-          <Text style={styles.summaryTitle}>{selectedProduct.name}</Text>
-          <Text style={styles.summaryMeta}>
-            {selectedColor} · {sizeSummary || `${totalQuantity}개`}
-            {printBackEnabled ? ' · 뒷면도 프린팅' : ''}
-          </Text>
+          <View style={styles.summaryHeader}>
+            <Text style={styles.summaryTitle}>{selectedProduct.name}</Text>
+            <Pressable onPress={() => setEditingOrder(!editingOrder)}>
+              <Text style={styles.editButton}>{editingOrder ? '완료' : '수정'}</Text>
+            </Pressable>
+          </View>
+
+          {editingOrder ? (
+            <View style={styles.editSection}>
+              <Text style={styles.editSectionTitle}>색상</Text>
+              <View style={styles.colorOptions}>
+                {selectedProduct.colors.map((color) => (
+                  <ColorSwatch
+                    key={color}
+                    label={color}
+                    color={resolveColorValue(color)}
+                    selected={selectedColor === color}
+                    onPress={() => setSelectedColor(color)}
+                    style={styles.colorSwatchSpacing}
+                  />
+                ))}
+              </View>
+
+              <Text style={styles.editSectionTitle}>사이즈 & 수량</Text>
+              {orderLines.map((line) => (
+                <View key={line.id} style={styles.orderLineRow}>
+                  <Text style={styles.orderLineSize}>{line.sizeLabel}</Text>
+                  <View style={styles.quantityControl}>
+                    <Pressable
+                      onPress={() => {
+                        if (line.quantity > 1) {
+                          setOrderLineQuantity(line.id, line.quantity - 1);
+                        } else if (orderLines.length > 1) {
+                          removeOrderLine(line.id);
+                        }
+                      }}
+                      style={styles.quantityButton}
+                    >
+                      <Text style={styles.quantityButtonText}>−</Text>
+                    </Pressable>
+                    <Text style={styles.quantityValue}>{line.quantity}</Text>
+                    <Pressable
+                      onPress={() => setOrderLineQuantity(line.id, line.quantity + 1)}
+                      style={styles.quantityButton}
+                    >
+                      <Text style={styles.quantityButtonText}>+</Text>
+                    </Pressable>
+                  </View>
+                </View>
+              ))}
+
+              <Text style={styles.editSectionTitle}>사이즈 추가</Text>
+              <View style={styles.chipRow}>
+                {selectedProduct.sizes
+                  .filter((size) => !orderLines.some((line) => line.sizeLabel === size.label))
+                  .map((size) => (
+                    <Chip
+                      key={size.label}
+                      label={size.label}
+                      onPress={() => addOrderLine(size.label, 1)}
+                      style={styles.chipSpacing}
+                    />
+                  ))}
+              </View>
+            </View>
+          ) : (
+            <>
+              <Text style={styles.summaryMeta}>
+                {selectedColor} · {sizeSummary || `${totalQuantity}개`}
+                {printBackEnabled ? ' · 뒷면도 프린팅' : ''}
+              </Text>
+            </>
+          )}
+
           <Text style={styles.summaryMeta}>
             예상 결제 {formatPrice(pricing.total)} (배송비{' '}
             {pricing.shippingFee === 0
@@ -320,11 +397,80 @@ function Page() {
       <TopBar title="주문하기" />
 
       <Card style={styles.summaryCard}>
-        <Text style={styles.summaryTitle}>{selectedProduct.name}</Text>
-        <Text style={styles.summaryMeta}>
-          {selectedColor} · {sizeSummary || `${totalQuantity}개`}
-          {printBackEnabled ? ' · 뒷면도 프린팅' : ''}
-        </Text>
+        <View style={styles.summaryHeader}>
+          <Text style={styles.summaryTitle}>{selectedProduct.name}</Text>
+          <Pressable onPress={() => setEditingOrder(!editingOrder)}>
+            <Text style={styles.editButton}>{editingOrder ? '완료' : '수정'}</Text>
+          </Pressable>
+        </View>
+
+        {editingOrder ? (
+          <View style={styles.editSection}>
+            <Text style={styles.editSectionTitle}>색상</Text>
+            <View style={styles.colorOptions}>
+              {selectedProduct.colors.map((color) => (
+                <ColorSwatch
+                  key={color}
+                  label={color}
+                  color={resolveColorValue(color)}
+                  selected={selectedColor === color}
+                  onPress={() => setSelectedColor(color)}
+                  style={styles.colorSwatchSpacing}
+                />
+              ))}
+            </View>
+
+            <Text style={styles.editSectionTitle}>사이즈 & 수량</Text>
+            {orderLines.map((line) => (
+              <View key={line.id} style={styles.orderLineRow}>
+                <Text style={styles.orderLineSize}>{line.sizeLabel}</Text>
+                <View style={styles.quantityControl}>
+                  <Pressable
+                    onPress={() => {
+                      if (line.quantity > 1) {
+                        setOrderLineQuantity(line.id, line.quantity - 1);
+                      } else if (orderLines.length > 1) {
+                        removeOrderLine(line.id);
+                      }
+                    }}
+                    style={styles.quantityButton}
+                  >
+                    <Text style={styles.quantityButtonText}>−</Text>
+                  </Pressable>
+                  <Text style={styles.quantityValue}>{line.quantity}</Text>
+                  <Pressable
+                    onPress={() => setOrderLineQuantity(line.id, line.quantity + 1)}
+                    style={styles.quantityButton}
+                  >
+                    <Text style={styles.quantityButtonText}>+</Text>
+                  </Pressable>
+                </View>
+              </View>
+            ))}
+
+            <Text style={styles.editSectionTitle}>사이즈 추가</Text>
+            <View style={styles.chipRow}>
+              {selectedProduct.sizes
+                .filter((size) => !orderLines.some((line) => line.sizeLabel === size.label))
+                .map((size) => (
+                  <Chip
+                    key={size.label}
+                    label={size.label}
+                    onPress={() => addOrderLine(size.label, 1)}
+                    style={styles.chipSpacing}
+                  />
+                ))}
+            </View>
+          </View>
+        ) : (
+          <>
+            <Text style={styles.summaryMeta}>
+              {selectedColor} · {sizeSummary || `${totalQuantity}개`}
+              {printBackEnabled ? ' · 뒷면도 프린팅' : ''}
+            </Text>
+          </>
+        )}
+
         <Text style={styles.summaryMeta}>
           예상 결제 {formatPrice(pricing.total)} (배송비{' '}
           {pricing.shippingFee === 0
@@ -449,15 +595,92 @@ const styles = StyleSheet.create({
   summaryCard: {
     marginBottom: theme.spacing.lg,
   },
+  summaryHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: theme.spacing.xs,
+  },
   summaryTitle: {
     fontSize: 16,
     fontWeight: '700',
     color: theme.colors.textPrimary,
-    marginBottom: theme.spacing.xs,
+  },
+  editButton: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: theme.colors.primary,
   },
   summaryMeta: {
     fontSize: 12,
     color: theme.colors.textSecondary,
+  },
+  editSection: {
+    marginTop: theme.spacing.md,
+    paddingTop: theme.spacing.md,
+    borderTopWidth: 1,
+    borderTopColor: theme.colors.border,
+  },
+  editSectionTitle: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: theme.colors.textPrimary,
+    marginTop: theme.spacing.md,
+    marginBottom: theme.spacing.sm,
+  },
+  colorOptions: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: theme.spacing.sm,
+  },
+  colorSwatchSpacing: {
+    marginRight: 0,
+  },
+  orderLineRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: theme.spacing.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.border,
+  },
+  orderLineSize: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: theme.colors.textPrimary,
+  },
+  quantityControl: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.md,
+  },
+  quantityButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: theme.colors.primarySoft,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  quantityButtonText: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: theme.colors.primary,
+  },
+  quantityValue: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: theme.colors.textPrimary,
+    minWidth: 32,
+    textAlign: 'center',
+  },
+  chipRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+  },
+  chipSpacing: {
+    marginRight: theme.spacing.sm,
+    marginBottom: theme.spacing.sm,
   },
   formCard: {
     marginBottom: theme.spacing.lg,

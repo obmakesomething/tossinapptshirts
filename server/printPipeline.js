@@ -2,9 +2,7 @@ const fs = require('fs');
 const fsp = require('fs/promises');
 const path = require('path');
 const sharp = require('sharp');
-
-const ASYNC_UPSCALE_ENDPOINT =
-  'https://clipdrop-api.co/image-upscaling/v1/async-upscale';
+const { GoogleAuth } = require('google-auth-library');
 
 const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -22,105 +20,77 @@ const getExtensionFromType = (contentType) => {
 
 const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
 
-async function submitClipdropUpscale({
+async function submitImagenUpscale({
   masterPath,
   targetWidth,
   targetHeight,
-  apiKey,
+  projectId,
+  location = 'us-central1',
 }) {
-  const form = new FormData();
+  // Read and encode image
   const fileBuffer = await fsp.readFile(masterPath);
-  form.append('image_file', new Blob([fileBuffer]), path.basename(masterPath));
-  form.append('target_width', String(targetWidth));
-  form.append('target_height', String(targetHeight));
+  const base64Image = fileBuffer.toString('base64');
 
-  const response = await fetch(ASYNC_UPSCALE_ENDPOINT, {
-    method: 'POST',
-    headers: {
-      'x-api-key': apiKey,
+  // Get authentication
+  const auth = new GoogleAuth({
+    scopes: 'https://www.googleapis.com/auth/cloud-platform',
+  });
+  const client = await auth.getClient();
+
+  // Calculate upscale factor based on target size
+  const metadata = await sharp(masterPath).metadata();
+  const currentWidth = metadata.width || 1;
+  const currentHeight = metadata.height || 1;
+
+  // Determine upscale factor (2x or 4x based on target)
+  const widthRatio = targetWidth / currentWidth;
+  const heightRatio = targetHeight / currentHeight;
+  const maxRatio = Math.max(widthRatio, heightRatio);
+
+  let upscaleFactor = 'x2';
+  if (maxRatio > 3) {
+    upscaleFactor = 'x4';
+  }
+
+  const url = `https://${location}-aiplatform.googleapis.com/v1/projects/${projectId}/locations/${location}/publishers/google/models/imagen-4.0-upscale-preview:predict`;
+
+  const requestBody = {
+    instances: [
+      {
+        prompt: 'Upscale the image while maintaining quality',
+        image: {
+          bytesBase64Encoded: base64Image,
+        },
+      },
+    ],
+    parameters: {
+      mode: 'upscale',
+      upscaleConfig: {
+        upscaleFactor,
+      },
+      outputOptions: {
+        mimeType: 'image/png',
+      },
     },
-    body: form,
+  };
+
+  const response = await client.request({
+    url,
+    method: 'POST',
+    data: requestBody,
   });
 
-  if (!response.ok) {
-    const text = await response.text();
-    throw new Error(`clipdrop_submit_failed: ${text}`);
+  // Extract upscaled image from response
+  const predictions = response.data?.predictions || [];
+  if (!predictions[0]?.bytesBase64Encoded) {
+    throw new Error('imagen_upscale_no_result');
   }
 
-  const contentType = response.headers.get('content-type') || '';
-  if (!contentType.includes('application/json')) {
-    const buffer = Buffer.from(await response.arrayBuffer());
-    return { immediate: true, buffer, contentType };
-  }
-
-  const data = await response.json();
-  return { immediate: false, data };
+  const buffer = Buffer.from(predictions[0].bytesBase64Encoded, 'base64');
+  return { buffer, contentType: 'image/png' };
 }
 
-const resolveStatusUrl = (data) => {
-  if (!data || typeof data !== 'object') return null;
-  const direct =
-    data.status_url ||
-    data.url ||
-    data.href ||
-    data.result_url ||
-    data._links?.self?.href;
-  if (direct) return direct;
-  const jobId = data.id || data.job_id || data.task_id;
-  const base = process.env.CLIPDROP_STATUS_URL_BASE;
-  if (!jobId || !base) return null;
-  return `${base.replace(/\/$/, '')}/${jobId}`;
-};
-
-async function pollClipdropResult({ data, apiKey }) {
-  const statusUrl = resolveStatusUrl(data);
-  if (!statusUrl) {
-    throw new Error('clipdrop_submit_failed');
-  }
-
-  for (let attempt = 0; attempt < 60; attempt += 1) {
-    const response = await fetch(statusUrl, {
-      headers: {
-        'x-api-key': apiKey,
-      },
-    });
-
-    const contentType = response.headers.get('content-type') || '';
-    if (contentType.startsWith('image/')) {
-      const buffer = Buffer.from(await response.arrayBuffer());
-      return { buffer, contentType };
-    }
-
-    const payloadText = await response.text();
-    let payload = null;
-    try {
-      payload = JSON.parse(payloadText);
-    } catch {
-      payload = null;
-    }
-
-    const status = payload?.status || payload?.state;
-    if (status === 'error' || status === 'failed') {
-      throw new Error('clipdrop_job_error');
-    }
-    if (payload?.result_url) {
-      const resultResponse = await fetch(payload.result_url, {
-        headers: {
-          'x-api-key': apiKey,
-        },
-      });
-      if (!resultResponse.ok) {
-        throw new Error('clipdrop_job_error');
-      }
-      const resultType = resultResponse.headers.get('content-type') || '';
-      const buffer = Buffer.from(await resultResponse.arrayBuffer());
-      return { buffer, contentType: resultType };
-    }
-
-    await wait(2000);
-  }
-  throw new Error('clipdrop_timeout');
-}
+// Removed Clipdrop polling functions - Imagen returns results immediately
 
 async function loadPixels(pngPath) {
   const { data, info } = await sharp(pngPath).raw().toBuffer({ resolveWithObject: true });
@@ -224,7 +194,8 @@ async function runPrintPipeline(input) {
     order_id,
     target_width_px,
     target_height_px,
-    clipdrop_api_key,
+    gcp_project_id,
+    gcp_location,
     output_dir,
     allow_warn_to_pass,
   } = input;
@@ -235,7 +206,7 @@ async function runPrintPipeline(input) {
     order_id: order_id || '',
     paths: {
       master_input: master_png_path || '',
-      clipdrop_raw: null,
+      upscaled_raw: null,
       print_ready_png: null,
       qc_report_json: null,
     },
@@ -265,10 +236,14 @@ async function runPrintPipeline(input) {
         reasons: ['master_not_found'],
       };
     }
-    if (!clipdrop_api_key) {
+
+    const projectId = gcp_project_id || process.env.GCP_PROJECT_ID;
+    const location = gcp_location || process.env.GCP_LOCATION || 'us-central1';
+
+    if (!projectId) {
       return {
         ...baseOutput,
-        reasons: ['clipdrop_api_key_missing'],
+        reasons: ['gcp_project_id_missing'],
       };
     }
 
@@ -284,40 +259,28 @@ async function runPrintPipeline(input) {
     const workDir = path.join(output_dir, order_id);
     await ensureDir(workDir);
 
-    const clipdropRawPath = path.join(workDir, 'upscaled_raw');
+    const upscaledRawPath = path.join(workDir, 'upscaled_raw.png');
     const printReadyPath = path.join(workDir, 'print_ready.png');
     const qcPath = path.join(workDir, 'qc_report.json');
 
-    const submitResult = await submitClipdropUpscale({
+    // Call Imagen upscale
+    const upscaleResult = await submitImagenUpscale({
       masterPath: master_png_path,
       targetWidth,
       targetHeight,
-      apiKey: clipdrop_api_key,
+      projectId,
+      location,
     });
 
-    let clipdropBuffer = null;
-    let clipdropContentType = 'application/octet-stream';
+    // Save upscaled result
+    await fsp.writeFile(upscaledRawPath, upscaleResult.buffer);
 
-    if (submitResult.immediate) {
-      clipdropBuffer = submitResult.buffer;
-      clipdropContentType = submitResult.contentType;
-    } else {
-      const pollResult = await pollClipdropResult({
-        data: submitResult.data,
-        apiKey: clipdrop_api_key,
-      });
-      clipdropBuffer = pollResult.buffer;
-      clipdropContentType = pollResult.contentType;
-    }
-
-    const extension = getExtensionFromType(clipdropContentType);
-    const clipdropRawFile = `${clipdropRawPath}.${extension}`;
-    await fsp.writeFile(clipdropRawFile, clipdropBuffer);
-
-    await sharp(clipdropRawFile)
+    // Convert to PNG (already PNG from Imagen, but ensure format)
+    await sharp(upscaledRawPath)
       .png()
       .toFile(printReadyPath);
 
+    // Run quality checks
     const { data, info } = await loadPixels(printReadyPath);
     const qc = runQc({ data, info, targetWidth, targetHeight });
 
@@ -347,12 +310,13 @@ async function runPrintPipeline(input) {
       order_id,
       paths: {
         master_input: master_png_path,
-        clipdrop_raw: clipdropRawFile,
+        upscaled_raw: upscaledRawPath,
         print_ready_png: status === 'FAILED' ? null : printReadyPath,
         qc_report_json: qcPath,
       },
       qc,
       reasons,
+      output_path: status === 'FAILED' ? null : printReadyPath,
     };
   } catch (error) {
     return {

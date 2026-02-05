@@ -77,3 +77,43 @@ export const trackImageUploaded = (source: string) => {
     timestamp: new Date().toISOString(),
   });
 };
+
+// Photo management events
+export const trackPhotoReplaceClick = (placement: string) => {
+  trackEvent('photo_replace_click', {
+    placement,
+    timestamp: new Date().toISOString(),
+  });
+};
+
+export const trackPhotoAddClick = (placement: string, currentCount: number) => {
+  trackEvent('photo_add_click', {
+    placement,
+    current_photo_count: currentCount,
+    timestamp: new Date().toISOString(),
+  });
+};
+
+export const trackPhotoRemoveClick = (placement: string, photoIndex: number) => {
+  trackEvent('photo_remove_click', {
+    placement,
+    photo_index: photoIndex,
+    timestamp: new Date().toISOString(),
+  });
+};
+
+export const trackPhotoRemoveConfirm = (placement: string, photoIndex: number) => {
+  trackEvent('photo_remove_confirm', {
+    placement,
+    photo_index: photoIndex,
+    timestamp: new Date().toISOString(),
+  });
+};
+
+export const trackPhotoSelectThumbnail = (placement: string, photoIndex: number) => {
+  trackEvent('photo_select_thumbnail', {
+    placement,
+    photo_index: photoIndex,
+    timestamp: new Date().toISOString(),
+  });
+};

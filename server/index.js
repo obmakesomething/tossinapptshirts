@@ -972,7 +972,8 @@ app.post('/v1/print-files/process', strictLimiter, async (req, res) => {
       order_id: payload.order_id,
       target_width_px: payload.target_width_px,
       target_height_px: payload.target_height_px,
-      clipdrop_api_key: payload.clipdrop_api_key || CLIPDROP_API_KEY,
+      gcp_project_id: payload.gcp_project_id || process.env.GCP_PROJECT_ID,
+      gcp_location: payload.gcp_location || process.env.GCP_LOCATION,
       output_dir: payload.output_dir || ORDER_OUTPUT_DIR,
       allow_warn_to_pass: false,
     });
@@ -1074,7 +1075,8 @@ app.post('/v1/orders/submit', strictLimiter, async (req, res) => {
             order_id: orderId,
             target_width_px: targetWidth,
             target_height_px: targetHeight,
-            clipdrop_api_key: CLIPDROP_API_KEY,
+            gcp_project_id: process.env.GCP_PROJECT_ID,
+            gcp_location: process.env.GCP_LOCATION,
             output_dir: ORDER_OUTPUT_DIR,
             allow_warn_to_pass: true, // Allow warnings to pass, only fail on errors
           });
@@ -2197,7 +2199,8 @@ app.post('/v1/payment/execute', strictLimiter, async (req, res) => {
                   order_id: orderId,
                   target_width_px: targetWidth,
                   target_height_px: targetHeight,
-                  clipdrop_api_key: CLIPDROP_API_KEY,
+                  gcp_project_id: process.env.GCP_PROJECT_ID,
+                  gcp_location: process.env.GCP_LOCATION,
                   output_dir: ORDER_OUTPUT_DIR,
                   allow_warn_to_pass: true,
                 });

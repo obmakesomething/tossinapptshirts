@@ -1,8 +1,12 @@
+import { fetchAlbumPhotos } from '@apps-in-toss/native-modules';
 import { createRoute } from '@granite-js/react-native';
 import { TextField } from '@toss/tds-react-native';
 import React, { useEffect, useMemo, useState } from 'react';
 import {
+  ActivityIndicator,
   Dimensions,
+  Image,
+  Modal,
   Pressable,
   SafeAreaView,
   ScrollView,
@@ -29,6 +33,13 @@ import { resolveColorValue } from '../data/colorMap';
 import { buildTemplate, printSizeByCategory } from '../data/mockupTemplates';
 import { calcPricing } from '../data/pricing';
 import { formatPrice } from '../utils/format';
+import {
+  trackPhotoAddClick,
+  trackPhotoRemoveClick,
+  trackPhotoRemoveConfirm,
+  trackPhotoReplaceClick,
+  trackPhotoSelectThumbnail,
+} from '../utils/analytics';
 
 export const Route = createRoute('/editor', {
   component: Page,
@@ -50,6 +61,10 @@ function Page() {
     textTransform,
     activeLayer,
     textLayer,
+    frontPhotos,
+    backPhotos,
+    frontPhotoIndex,
+    backPhotoIndex,
     setSelectedColor,
     setSelectedPlacement,
     setPrintBackEnabled,
@@ -59,7 +74,14 @@ function Page() {
     setTextTransform,
     setActiveLayer,
     setTextLayer,
+    addPhoto,
+    replacePhoto,
+    deletePhoto,
+    selectPhoto,
   } = useCatalog();
+
+  const currentPhotos = selectedPlacement === 'front' ? frontPhotos : backPhotos;
+  const currentPhotoIndex = selectedPlacement === 'front' ? frontPhotoIndex : backPhotoIndex;
 
 
 
@@ -67,6 +89,12 @@ function Page() {
   const [editorTab, setEditorTab] = useState(0);
   const [focusMode, setFocusMode] = useState(false);
   const [expandedPanel, setExpandedPanel] = useState(false);
+
+  // Photo management state
+  const [loadingPhoto, setLoadingPhoto] = useState(false);
+  const [photoError, setPhotoError] = useState('');
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deletePhotoIndex, setDeletePhotoIndex] = useState<number | null>(null);
 
   // Draft state for current size/quantity selection (not yet confirmed)
   const [draftSize, setDraftSize] = useState<string>(
@@ -182,6 +210,82 @@ function Page() {
       color: autoColor,
     });
     setActiveLayer('text');
+  };
+
+  const pickPhoto = async () => {
+    setPhotoError('');
+    setLoadingPhoto(true);
+    try {
+      const permission = await fetchAlbumPhotos.getPermission();
+      if (permission !== 'allowed') {
+        const next = await fetchAlbumPhotos.openPermissionDialog();
+        if (next !== 'allowed') {
+          setPhotoError('사진 앨범에 접근하려면 권한이 필요해요.');
+          setLoadingPhoto(false);
+          return null;
+        }
+      }
+      const photos = await fetchAlbumPhotos({
+        maxCount: 1,
+        maxWidth: 1024,
+        base64: true,
+      });
+      const photo = photos[0];
+      if (!photo || !photo.dataUri) {
+        setPhotoError('사진을 불러오지 못했어요. 다시 시도해 주세요.');
+        setLoadingPhoto(false);
+        return null;
+      }
+      const dataUrl = photo.dataUri.startsWith('data:')
+        ? photo.dataUri
+        : `data:image/jpeg;base64,${photo.dataUri}`;
+      setLoadingPhoto(false);
+      return dataUrl;
+    } catch (err) {
+      setPhotoError('앨범을 불러오지 못했어요. 잠시 후 다시 시도해 주세요.');
+      setLoadingPhoto(false);
+      return null;
+    }
+  };
+
+  const handleAddPhoto = async () => {
+    trackPhotoAddClick(selectedPlacement, currentPhotos.length);
+    if (currentPhotos.length >= 3) {
+      setPhotoError('최대 3장까지 추가할 수 있어요.');
+      return;
+    }
+    const dataUrl = await pickPhoto();
+    if (dataUrl) {
+      addPhoto(dataUrl);
+    }
+  };
+
+  const handleReplacePhoto = async () => {
+    trackPhotoReplaceClick(selectedPlacement);
+    const dataUrl = await pickPhoto();
+    if (dataUrl) {
+      replacePhoto(dataUrl);
+    }
+  };
+
+  const handleDeletePhoto = (index: number) => {
+    trackPhotoRemoveClick(selectedPlacement, index);
+    setDeletePhotoIndex(index);
+    setShowDeleteConfirm(true);
+  };
+
+  const confirmDeletePhoto = () => {
+    if (deletePhotoIndex !== null) {
+      trackPhotoRemoveConfirm(selectedPlacement, deletePhotoIndex);
+      deletePhoto(deletePhotoIndex);
+    }
+    setShowDeleteConfirm(false);
+    setDeletePhotoIndex(null);
+  };
+
+  const handleSelectPhoto = (index: number) => {
+    trackPhotoSelectThumbnail(selectedPlacement, index);
+    selectPhoto(index);
   };
 
   return (
@@ -307,6 +411,85 @@ function Page() {
           {/* ── 탭 0: 레이어 ── */}
           {editorTab === 0 && (
             <View>
+              {/* Photo Management Section */}
+              <View style={styles.photoManagementSection}>
+                <Text style={styles.sectionTitle}>사진 관리</Text>
+                {photoError ? (
+                  <Text style={styles.photoError}>{photoError}</Text>
+                ) : null}
+                {currentPhotos.length > 0 ? (
+                  <View>
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.photoScroll}>
+                      {currentPhotos.map((photoUri, index) => (
+                        <Pressable
+                          key={index}
+                          onPress={() => handleSelectPhoto(index)}
+                          style={[
+                            styles.photoThumbnail,
+                            index === currentPhotoIndex && styles.photoThumbnailActive,
+                          ]}
+                        >
+                          <Image source={{ uri: photoUri }} style={styles.photoThumbnailImage} />
+                          {currentPhotos.length > 1 && (
+                            <Pressable
+                              style={styles.photoDeleteBtn}
+                              onPress={() => handleDeletePhoto(index)}
+                            >
+                              <Text style={styles.photoDeleteText}>✕</Text>
+                            </Pressable>
+                          )}
+                          {index === currentPhotoIndex && (
+                            <View style={styles.photoActiveIndicator}>
+                              <Text style={styles.photoActiveText}>선택됨</Text>
+                            </View>
+                          )}
+                        </Pressable>
+                      ))}
+                    </ScrollView>
+                    <View style={styles.photoActions}>
+                      <SecondaryButton
+                        label="사진 바꾸기"
+                        onPress={handleReplacePhoto}
+                        disabled={loadingPhoto}
+                        style={styles.photoActionBtn}
+                      />
+                      <SecondaryButton
+                        label="사진 추가"
+                        onPress={handleAddPhoto}
+                        disabled={loadingPhoto || currentPhotos.length >= 3}
+                        style={styles.photoActionBtn}
+                      />
+                    </View>
+                    {currentPhotos.length >= 3 && (
+                      <Text style={styles.photoHint}>최대 3장까지 추가할 수 있어요.</Text>
+                    )}
+                    {loadingPhoto && (
+                      <View style={styles.photoLoadingRow}>
+                        <ActivityIndicator color={theme.colors.primary} />
+                        <Text style={styles.photoLoadingText}>사진을 불러오고 있어요...</Text>
+                      </View>
+                    )}
+                  </View>
+                ) : (
+                  <View>
+                    <Text style={styles.sectionHint}>
+                      아직 사진이 없어요. 업로드 페이지에서 사진을 추가해 주세요.
+                    </Text>
+                    <SecondaryButton
+                      label="사진 추가"
+                      onPress={handleAddPhoto}
+                      disabled={loadingPhoto}
+                    />
+                    {loadingPhoto && (
+                      <View style={styles.photoLoadingRow}>
+                        <ActivityIndicator color={theme.colors.primary} />
+                        <Text style={styles.photoLoadingText}>사진을 불러오고 있어요...</Text>
+                      </View>
+                    )}
+                  </View>
+                )}
+              </View>
+
               <View style={styles.layerRow}>
                 <Chip
                   label="이미지"
@@ -664,6 +847,41 @@ function Page() {
           <PrimaryButton label="💰 바로 주문" onPress={goOrder} style={styles.ctaPrimary} />
         </View>
       </View>
+
+      {/* Delete Photo Confirmation Modal */}
+      <Modal
+        visible={showDeleteConfirm}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowDeleteConfirm(false)}
+      >
+        <Pressable
+          style={styles.modalOverlay}
+          onPress={() => setShowDeleteConfirm(false)}
+        >
+          <Pressable
+            style={styles.modalContent}
+            onPress={(e) => e.stopPropagation()}
+          >
+            <Text style={styles.modalTitle}>사진을 삭제할까요?</Text>
+            <Text style={styles.modalSubtitle}>
+              삭제한 사진은 복구할 수 없어요. 정말 삭제하시겠어요?
+            </Text>
+            <View style={styles.modalButtons}>
+              <SecondaryButton
+                label="취소"
+                onPress={() => setShowDeleteConfirm(false)}
+                style={styles.modalCancelButton}
+              />
+              <PrimaryButton
+                label="삭제하기"
+                onPress={confirmDeletePhoto}
+                style={styles.modalDeleteButton}
+              />
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -1060,5 +1278,136 @@ const styles = StyleSheet.create({
   },
   fontButtonTextSelected: {
     color: theme.colors.primary,
+  },
+
+  /* ── Photo Management ── */
+  photoManagementSection: {
+    marginBottom: theme.spacing.md,
+    paddingBottom: theme.spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.border,
+  },
+  photoError: {
+    fontSize: 12,
+    lineHeight: 18,
+    color: theme.colors.error,
+    marginBottom: theme.spacing.sm,
+  },
+  photoScroll: {
+    marginBottom: theme.spacing.sm,
+  },
+  photoThumbnail: {
+    width: 80,
+    height: 80,
+    borderRadius: theme.radius.md,
+    marginRight: theme.spacing.sm,
+    borderWidth: 2,
+    borderColor: theme.colors.border,
+    overflow: 'hidden',
+    position: 'relative',
+  },
+  photoThumbnailActive: {
+    borderColor: theme.colors.primary,
+    borderWidth: 3,
+  },
+  photoThumbnailImage: {
+    width: '100%',
+    height: '100%',
+    resizeMode: 'cover',
+  },
+  photoDeleteBtn: {
+    position: 'absolute',
+    top: 2,
+    right: 2,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  photoDeleteText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  photoActiveIndicator: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: theme.colors.primary,
+    paddingVertical: 2,
+  },
+  photoActiveText: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: '#FFFFFF',
+    textAlign: 'center',
+  },
+  photoActions: {
+    flexDirection: 'row',
+    gap: theme.spacing.sm,
+    marginBottom: theme.spacing.sm,
+  },
+  photoActionBtn: {
+    flex: 1,
+  },
+  photoHint: {
+    fontSize: 11,
+    lineHeight: 16,
+    color: theme.colors.textSecondary,
+    marginTop: theme.spacing.xs,
+  },
+  photoLoadingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: theme.spacing.sm,
+  },
+  photoLoadingText: {
+    fontSize: 12,
+    lineHeight: 18,
+    color: theme.colors.textSecondary,
+    marginLeft: theme.spacing.sm,
+  },
+
+  /* ── Modal ── */
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: theme.spacing.lg,
+  },
+  modalContent: {
+    backgroundColor: theme.colors.surface,
+    borderRadius: theme.radius.lg,
+    padding: theme.spacing.xl,
+    width: '100%',
+    maxWidth: 400,
+  },
+  modalTitle: {
+    fontSize: 18,
+    lineHeight: 26,
+    fontWeight: '700',
+    color: theme.colors.textPrimary,
+    marginBottom: theme.spacing.xs,
+  },
+  modalSubtitle: {
+    fontSize: 13,
+    lineHeight: 20,
+    color: theme.colors.textSecondary,
+    marginBottom: theme.spacing.lg,
+  },
+  modalButtons: {
+    flexDirection: 'row',
+    gap: theme.spacing.sm,
+  },
+  modalCancelButton: {
+    flex: 1,
+  },
+  modalDeleteButton: {
+    flex: 1,
+    backgroundColor: theme.colors.error,
   },
 });
