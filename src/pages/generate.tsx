@@ -65,6 +65,7 @@ function Page() {
   const [showExamples, setShowExamples] = useState(true);
   const [error, setError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
+  const [isGenerating, setIsGenerating] = useState(false);
 
   // Watch for job completion and update UI
   useEffect(() => {
@@ -72,6 +73,7 @@ function Page() {
       setResultUrl(activeJob.result.preview_url);
       setDesignPrompt(prompt.trim() || '');
       setError(''); // Clear any previous errors
+      setIsGenerating(false);
       trackImageGenerated(prompt.trim(), style, ratio);
       showToast({
         type: 'success',
@@ -84,9 +86,11 @@ function Page() {
           },
         },
       });
-      clearJob();
+      // Clear job in next tick to avoid race conditions
+      setTimeout(() => clearJob(), 100);
     } else if (activeJob?.status === 'failed') {
       setError(activeJob.failReason || '이미지를 만들지 못했어요.');
+      setIsGenerating(false);
       showToast({
         type: 'error',
         message: activeJob.failReason || '이미지 생성에 실패했어요.',
@@ -95,11 +99,12 @@ function Page() {
           onPress: handleRetry,
         },
       });
-      clearJob();
+      // Clear job in next tick to avoid race conditions
+      setTimeout(() => clearJob(), 100);
     }
   }, [activeJob?.status]);
 
-  const isLoading = isPolling || (activeJob?.status === 'queued' || activeJob?.status === 'running');
+  const isLoading = isGenerating || isPolling || (activeJob?.status === 'queued' || activeJob?.status === 'running');
 
   // Loading message progression
   const loadingMessages = [
@@ -166,9 +171,8 @@ function Page() {
   };
 
   const handleGenerate = async () => {
-    // Prevent multiple submissions only if actually running (not if job just completed)
-    const isActuallyRunning = isPolling || activeJob?.status === 'queued' || activeJob?.status === 'running';
-    if (isActuallyRunning) {
+    // Prevent double clicks
+    if (isGenerating) {
       return;
     }
 
@@ -176,6 +180,9 @@ function Page() {
       setError('어떤 이미지를 만들지 알려주세요.');
       return;
     }
+
+    // Set generating immediately to prevent double clicks
+    setIsGenerating(true);
     setError('');
     setResultUrl(null);
     setDesignPrompt(prompt.trim());
@@ -183,6 +190,8 @@ function Page() {
     // Clear any previous completed job before starting new one
     if (activeJob?.status === 'succeeded' || activeJob?.status === 'failed') {
       clearJob();
+      // Wait a bit to ensure clearJob completes
+      await new Promise(resolve => setTimeout(resolve, 50));
     }
 
     // Start background job
@@ -194,20 +203,26 @@ function Page() {
 
     if (!jobId) {
       setError('작업을 시작하지 못했어요. 다시 시도해 주세요.');
+      setIsGenerating(false);
     }
   };
 
   const handleRetry = async () => {
+    if (isGenerating) return;
+
+    setIsGenerating(true);
     setError('');
     const jobId = await retryJob();
     if (!jobId) {
       setError('재시도에 실패했어요.');
+      setIsGenerating(false);
     }
   };
 
   const handleCancel = async () => {
     await cancelJob();
     setError('');
+    setIsGenerating(false);
   };
 
   const handleRemoveBackground = async () => {
