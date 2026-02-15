@@ -15,9 +15,13 @@ yarn-error.log
 .granite
 .swc
 .DS_Store
+.tmp/
+.worktrees/
 
 data/downloads/
 data/optimized/
+server/test-output/
+order-output/
 
 # mTLS Certificates (Sensitive)
 mTLS인증서관련/
