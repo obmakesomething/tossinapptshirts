@@ -2,9 +2,11 @@
 .git
 .worktrees
 .vscode
+.venv-cutout
 node_modules
 dist
 tmp
+repo
 assets
 public
 src
@@ -12,4 +14,3 @@ pages
 docs
 data
 *.ait
-
