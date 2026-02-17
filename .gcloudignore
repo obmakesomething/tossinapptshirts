@@ -1,0 +1,15 @@
+# Keep Cloud Build context small. Dockerfile only copies server + server-public + package manifests.
+.git
+.worktrees
+.vscode
+node_modules
+dist
+tmp
+assets
+public
+src
+pages
+docs
+data
+*.ait
+

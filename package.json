@@ -14,7 +14,7 @@
   },
   "dependencies": {
     "@apps-in-toss/framework": "^1.0.0",
-    "@aws-sdk/client-s3": "^3.962.0",
+    "@google-cloud/storage": "^7.19.0",
     "@google/genai": "^1.39.0",
     "@granite-js/native": "0.1.33",
     "@granite-js/react-native": "0.1.33",

@@ -3,8 +3,8 @@
 Toss miniapp for apparel mockups + order request.
 
 ## Setup
-- Update `src/config.ts` with your Railway base URL.
-- Configure env vars from `.env.example` on Railway.
+- Update `src/config.ts` with your API server base URL (Cloud Run).
+- Configure env vars from `.env.example` on Cloud Run (Secret Manager recommended).
 - Fonts are bundled from `assets/fonts` (Noto Sans KR).
 
 ## Build
@@ -15,12 +15,19 @@ npm run build
 
 ## Production Deployment
 
-### Railway Configuration
-1. Set environment variables from `.env.example`
-2. The `nixpacks.toml` file is pre-configured for optimal Railway deployment
-3. For cluster mode (recommended for production):
-   - Set Start Command to: `npm run start:cluster`
-   - Adjust `WEB_CONCURRENCY` env var based on your Railway plan
+### GCP Cloud Run (Primary)
+1. Build/deploy the server container using `Dockerfile`.
+2. Set environment variables from `.env.example` (use Secret Manager for secrets).
+3. Use Cloud SQL (`DATABASE_URL`) and GCS (`GCS_UPLOAD_BUCKET`, `GCS_ORDER_BUCKET`) in production.
+
+### Quick Deploy
+```bash
+gcloud run deploy merchandisegpt-api \
+  --source . \
+  --region asia-northeast3 \
+  --platform managed \
+  --allow-unauthenticated
+```
 
 ### Traffic Scaling
 The server includes production-ready features:

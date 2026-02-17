@@ -11,9 +11,19 @@ function getPool() {
       return null;
     }
 
+    // Cloud Run + Cloud SQL: if we connect via unix socket (/cloudsql/...), SSL is unnecessary
+    // and can cause connection issues depending on proxy/driver behavior.
+    const looksLikeCloudSqlSocket = String(DATABASE_URL).includes('host=/cloudsql/');
+    const forceDisableSsl = String(process.env.PG_DISABLE_SSL || 'false') === 'true';
+
     pool = new Pool({
       connectionString: DATABASE_URL,
-      ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
+      ssl:
+        looksLikeCloudSqlSocket || forceDisableSsl
+          ? false
+          : process.env.NODE_ENV === 'production'
+            ? { rejectUnauthorized: false }
+            : false,
     });
 
     pool.on('error', (err) => {
@@ -67,6 +77,29 @@ async function initializeDatabase() {
       CREATE INDEX IF NOT EXISTS idx_inquiry_replies_inquiry_id ON inquiry_replies(inquiry_id)
     `);
 
+    // Async generation job tracking (Cloud Run-safe, survives instance restart)
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS generation_jobs (
+        job_id VARCHAR(128) PRIMARY KEY,
+        status VARCHAR(32) NOT NULL,
+        stage VARCHAR(64),
+        created_at TIMESTAMPTZ NOT NULL,
+        updated_at TIMESTAMPTZ NOT NULL,
+        eta_ms INTEGER NOT NULL DEFAULT 0,
+        latency_ms INTEGER,
+        result JSONB NOT NULL DEFAULT '{}'::jsonb,
+        fail_reason TEXT,
+        params JSONB NOT NULL DEFAULT '{}'::jsonb,
+        expires_at TIMESTAMPTZ NOT NULL
+      )
+    `);
+    await pool.query(`
+      CREATE INDEX IF NOT EXISTS idx_generation_jobs_status ON generation_jobs(status)
+    `);
+    await pool.query(`
+      CREATE INDEX IF NOT EXISTS idx_generation_jobs_expires_at ON generation_jobs(expires_at)
+    `);
+
     console.log('Database initialized successfully');
   } catch (error) {
     console.error('Failed to initialize database:', error);
@@ -74,7 +107,17 @@ async function initializeDatabase() {
   }
 }
 
+async function closePool() {
+  if (!pool) return;
+  try {
+    await pool.end();
+  } finally {
+    pool = null;
+  }
+}
+
 module.exports = {
   getPool,
   initializeDatabase,
+  closePool,
 };

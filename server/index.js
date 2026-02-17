@@ -6,9 +6,9 @@ const compression = require('compression');
 const rateLimit = require('express-rate-limit');
 const nodemailer = require('nodemailer');
 const PDFDocument = require('pdfkit');
-const { S3Client, PutObjectCommand } = require('@aws-sdk/client-s3');
+const { isGcsConfigured, uploadToGcs, getSignedReadUrl } = require('./gcs');
 const OpenAI = require('openai');
-const { GoogleGenAI } = require('@google/genai');
+const { GoogleGenAI, RawReferenceImage, MaskReferenceImage, MaskReferenceMode, EditMode } = require('@google/genai');
 const fs = require('fs');
 const fsp = require('fs/promises');
 const path = require('path');
@@ -16,12 +16,12 @@ const https = require('https');
 const axios = require('axios');
 const { runPrintPipeline } = require('./printPipeline');
 const generationsRouter = require('./generations');
-const { getPool, initializeDatabase } = require('./db');
+const { getPool, initializeDatabase, closePool } = require('./db');
 
 const app = express();
 
-// Trust proxy - required for Railway/reverse proxy environments
-app.set('trust proxy', true);
+// Trust proxy for Cloud Run / reverse proxies.
+app.set('trust proxy', 1);
 
 // Security headers
 app.use(helmet({
@@ -32,14 +32,47 @@ app.use(helmet({
 // Compression for responses
 app.use(compression());
 
-// Trust proxy - Required for Railway deployment to get correct client IPs
-app.set('trust proxy', 1);
+const DEFAULT_CORS_ORIGINS = [
+  'https://apps-in-toss.toss.im',
+  'https://appsintoss.toss.im',
+  'https://service.toss.im',
+  'https://developers.toss.im',
+  'https://docs.tosspayments.com',
+  'http://localhost:3000',
+  'http://127.0.0.1:3000',
+];
+const configuredCorsOrigins = String(process.env.CORS_ORIGINS || '')
+  .split(',')
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+const ALLOWED_CORS_ORIGINS = new Set(
+  configuredCorsOrigins.length ? configuredCorsOrigins : DEFAULT_CORS_ORIGINS,
+);
 
-// CORS
-app.use(cors({ origin: true }));
+// CORS (restricted by allowlist; override with CORS_ORIGINS)
+app.use(
+  cors({
+    origin(origin, callback) {
+      // Allow non-browser clients (no Origin header) such as server-to-server callbacks.
+      if (!origin) return callback(null, true);
+      if (ALLOWED_CORS_ORIGINS.has(origin)) return callback(null, true);
+      return callback(new Error('Not allowed by CORS'));
+    },
+    methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Request-Id'],
+    optionsSuccessStatus: 204,
+  }),
+);
 
 // Body parser with size limit
 app.use(express.json({ limit: '15mb' }));
+
+app.use((error, _req, res, next) => {
+  if (error && String(error.message || '').includes('Not allowed by CORS')) {
+    return res.status(403).json({ error: 'CORS origin not allowed.' });
+  }
+  return next(error);
+});
 
 // Global rate limiter: 100 requests per 15 minutes per IP
 const globalLimiter = rateLimit({
@@ -124,14 +157,20 @@ app.use((req, res, next) => {
   });
   next();
 });
-const IMAGE_BUCKET = process.env.S3_BUCKET || '';
-const IMAGE_BASE_URL = process.env.S3_PUBLIC_BASE_URL || '';
-const IMAGE_PREFIX = process.env.S3_IMAGE_PREFIX || 'uploads';
-const PDF_PREFIX = process.env.S3_PDF_PREFIX || 'orders';
+const IMAGE_PREFIX = process.env.GCS_IMAGE_PREFIX || 'uploads';
+const PDF_PREFIX = process.env.GCS_PDF_PREFIX || 'orders';
+const GCS_UPLOAD_BUCKET = process.env.GCS_UPLOAD_BUCKET || '';
+const GCS_ORDER_BUCKET = process.env.GCS_ORDER_BUCKET || '';
+const SIGNED_URL_TTL_SECONDS = Number(process.env.SIGNED_URL_TTL_SECONDS) || 60 * 60 * 24 * 7; // 7 days (v4 max)
 const OPENAI_IMAGE_MODEL = process.env.OPENAI_IMAGE_MODEL || 'gpt-image-1';
 const OPENAI_IMAGE_QUALITY = process.env.OPENAI_IMAGE_QUALITY || 'medium';
 const IMAGEN_MODEL = process.env.IMAGEN_MODEL || 'imagen-4.0-generate-001';
-const ORDER_OUTPUT_DIR = process.env.ORDER_OUTPUT_DIR || path.join(process.cwd(), 'order-output');
+const IMAGEN_EDIT_MODEL = process.env.IMAGEN_EDIT_MODEL || 'imagen-3.0-capability-001';
+const VERTEX_PROJECT_ID = process.env.VERTEX_PROJECT_ID || process.env.GOOGLE_CLOUD_PROJECT || '';
+const VERTEX_LOCATION = process.env.VERTEX_LOCATION || process.env.GOOGLE_CLOUD_LOCATION || 'us-central1';
+const VERTEX_API_KEY = process.env.VERTEX_API_KEY || process.env.GOOGLE_API_KEY || '';
+const REMOVE_BG_PROVIDER = process.env.REMOVE_BG_PROVIDER || (VERTEX_PROJECT_ID ? 'vertex_imagen' : 'clipdrop');
+const ORDER_OUTPUT_DIR = process.env.ORDER_OUTPUT_DIR || path.join('/tmp', 'order-output');
 const CLIPDROP_API_KEY = process.env.CLIPDROP_API_KEY || '';
 const KAKAO_WEBHOOK_URL = process.env.KAKAO_WEBHOOK_URL || '';
 const KAKAO_WEBHOOK_TOKEN = process.env.KAKAO_WEBHOOK_TOKEN || '';
@@ -188,40 +227,6 @@ function getHttpsAgent() {
   }
 }
 
-let s3Client;
-function resolveS3Endpoint() {
-  let endpoint = process.env.S3_ENDPOINT || '';
-  if (!endpoint) {
-    const baseUrl = IMAGE_BASE_URL.replace(/\/$/, '');
-    if (baseUrl.includes('storage.railway.app')) {
-      endpoint = 'https://storage.railway.app';
-    }
-  }
-  return endpoint;
-}
-
-let cachedS3Endpoint;
-function getS3Client() {
-  if (s3Client) return s3Client;
-  if (!process.env.AWS_ACCESS_KEY_ID || !process.env.AWS_SECRET_ACCESS_KEY) {
-    return null;
-  }
-  const region = process.env.AWS_REGION || process.env.S3_REGION || 'us-east-1';
-  const endpoint = resolveS3Endpoint();
-  cachedS3Endpoint = endpoint;
-  const forcePathStyle = String(process.env.S3_FORCE_PATH_STYLE || 'false') === 'true';
-  s3Client = new S3Client({
-    region,
-    ...(endpoint ? { endpoint } : {}),
-    forcePathStyle,
-    credentials: {
-      accessKeyId: process.env.AWS_ACCESS_KEY_ID,
-      secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
-    },
-  });
-  return s3Client;
-}
-
 let openaiClient;
 function getOpenAIClient() {
   if (openaiClient) return openaiClient;
@@ -244,57 +249,167 @@ function getImagenClient() {
   return imagenClient;
 }
 
-function resolveBaseUrl() {
-  if (IMAGE_BASE_URL) {
-    const trimmed = IMAGE_BASE_URL.replace(/\/$/, '');
-    if (
-      trimmed === 'https://storage.railway.app' ||
-      trimmed === 'http://storage.railway.app'
-    ) {
-      return IMAGE_BUCKET ? `https://${IMAGE_BUCKET}.storage.railway.app` : trimmed;
+let vertexClient;
+function getVertexClient() {
+  if (vertexClient) return vertexClient;
+
+  if (!VERTEX_PROJECT_ID || !VERTEX_LOCATION) {
+    throw new Error('VERTEX_PROJECT_ID and VERTEX_LOCATION are required for Vertex AI image editing.');
+  }
+
+  const apiKey = VERTEX_API_KEY;
+  const serviceAccountJson =
+    process.env.GOOGLE_SERVICE_ACCOUNT_JSON ||
+    process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON ||
+    '';
+  const serviceAccountBase64 =
+    process.env.GOOGLE_SERVICE_ACCOUNT_JSON_BASE64 ||
+    process.env.GOOGLE_APPLICATION_CREDENTIALS_BASE64 ||
+    '';
+
+  let googleAuthOptions;
+  const rawCreds = serviceAccountJson || (serviceAccountBase64 ? Buffer.from(serviceAccountBase64, 'base64').toString('utf8') : '');
+  if (!apiKey && rawCreds) {
+    try {
+      googleAuthOptions = { credentials: JSON.parse(rawCreds) };
+    } catch (error) {
+      throw new Error(`Invalid service account JSON for Vertex auth: ${error?.message || 'unknown_error'}`);
     }
-    return trimmed;
   }
-  const endpoint = process.env.S3_ENDPOINT || '';
-  if (IMAGE_BUCKET && endpoint.includes('storage.railway.app')) {
-    return `https://${IMAGE_BUCKET}.storage.railway.app`;
-  }
-  return '';
+
+  vertexClient = new GoogleGenAI({
+    vertexai: true,
+    project: VERTEX_PROJECT_ID,
+    location: VERTEX_LOCATION,
+    ...(apiKey ? { apiKey } : {}),
+    ...(googleAuthOptions ? { googleAuthOptions } : {}),
+  });
+
+  return vertexClient;
 }
 
-function buildPublicUrl(key) {
-  const baseUrl = resolveBaseUrl();
-  if (!baseUrl) return '';
-  return `${baseUrl}/${key}`;
+function isGcsEnabled() {
+  return isGcsConfigured();
 }
 
-async function uploadToS3({ key, body, contentType }) {
-  const client = getS3Client();
-  if (!client || !IMAGE_BUCKET || !resolveBaseUrl()) {
-    throw new Error('S3 configuration is missing. Check S3_BUCKET, S3_ENDPOINT, S3_PUBLIC_BASE_URL.');
+function resolveGcsBucket(kind) {
+  if (kind === 'pdf') return GCS_ORDER_BUCKET;
+  return GCS_UPLOAD_BUCKET;
+}
+
+async function uploadToStorage({ kind, key, body, contentType }) {
+  if (!isGcsEnabled()) {
+    throw new Error('GCS is not configured. Set GCS_UPLOAD_BUCKET/GCS_ORDER_BUCKET.');
   }
+
+  const bucketName = resolveGcsBucket(kind);
+  if (!bucketName) {
+    throw new Error(`GCS bucket for kind "${kind}" is not configured.`);
+  }
+
   try {
-    await client.send(
-      new PutObjectCommand({
-        Bucket: IMAGE_BUCKET,
-        Key: key,
-        Body: body,
-        ContentType: contentType,
-      })
-    );
-  } catch (error) {
-    logEvent('error', 's3_upload_failed', {
-      bucket: IMAGE_BUCKET,
+    await uploadToGcs({ bucketName, key, body, contentType });
+    return await getSignedReadUrl({
+      bucketName,
       key,
-      endpoint: cachedS3Endpoint || process.env.S3_ENDPOINT || resolveS3Endpoint() || '',
-      baseUrl: resolveBaseUrl(),
-      forcePathStyle: String(process.env.S3_FORCE_PATH_STYLE || 'false'),
-      region: process.env.AWS_REGION || process.env.S3_REGION || 'us-east-1',
+      ttlSeconds: SIGNED_URL_TTL_SECONDS,
+    });
+  } catch (error) {
+    logEvent('error', 'gcs_upload_failed', {
+      bucketName,
+      key,
       ...formatError(error),
     });
     throw error;
   }
-  return buildPublicUrl(key);
+}
+
+async function safeUnlink(filePath) {
+  if (!filePath) return;
+  try {
+    await fsp.unlink(filePath);
+  } catch (error) {
+    if (error && error.code !== 'ENOENT') {
+      logEvent('warn', 'temp_file_cleanup_failed', {
+        filePath,
+        ...formatError(error),
+      });
+    }
+  }
+}
+
+async function safeRemoveDir(dirPath) {
+  if (!dirPath) return;
+  try {
+    await fsp.rm(dirPath, { recursive: true, force: true });
+  } catch (error) {
+    logEvent('warn', 'temp_dir_cleanup_failed', {
+      dirPath,
+      ...formatError(error),
+    });
+  }
+}
+
+function buildPipelineArtifactKey(orderId, filename) {
+  const safeOrder = String(orderId || 'unknown-order').replace(/[^a-zA-Z0-9-_]/g, '');
+  const safeName = String(filename || 'artifact').replace(/[^a-zA-Z0-9-_.]/g, '');
+  return `${IMAGE_PREFIX}/pipeline/${safeOrder}/${safeName}`;
+}
+
+function derivePipelineWorkDir(pipelineResult) {
+  if (!pipelineResult) return null;
+  const candidates = [
+    pipelineResult?.paths?.print_ready_png,
+    pipelineResult?.paths?.upscaled_raw,
+    pipelineResult?.paths?.qc_report_json,
+    pipelineResult?.output_path,
+  ].filter(Boolean);
+  if (!candidates.length) return null;
+  return path.dirname(candidates[0]);
+}
+
+function isPathInTmp(targetPath) {
+  if (!targetPath) return false;
+  const resolvedTarget = path.resolve(targetPath);
+  const resolvedTmp = path.resolve('/tmp');
+  return resolvedTarget === resolvedTmp || resolvedTarget.startsWith(`${resolvedTmp}${path.sep}`);
+}
+
+async function persistPipelineArtifacts({ orderId, pipelineResult }) {
+  if (!pipelineResult || !pipelineResult.paths || !isGcsEnabled()) {
+    return pipelineResult;
+  }
+
+  const artifactUrls = {};
+
+  const printReadyPath = pipelineResult.paths.print_ready_png;
+  if (printReadyPath && fs.existsSync(printReadyPath)) {
+    const printReadyBuffer = await fsp.readFile(printReadyPath);
+    const key = buildPipelineArtifactKey(orderId, 'print_ready.png');
+    artifactUrls.print_ready_png = await uploadToStorage({
+      kind: 'image',
+      key,
+      body: printReadyBuffer,
+      contentType: 'image/png',
+    });
+  }
+
+  const qcPath = pipelineResult.paths.qc_report_json;
+  if (qcPath && fs.existsSync(qcPath)) {
+    const qcBuffer = await fsp.readFile(qcPath);
+    const key = buildPipelineArtifactKey(orderId, 'qc_report.json');
+    artifactUrls.qc_report_json = await uploadToStorage({
+      kind: 'image',
+      key,
+      body: qcBuffer,
+      contentType: 'application/json',
+    });
+  }
+
+  return {
+    ...pipelineResult,
+    artifact_urls: artifactUrls,
+  };
 }
 
 function decodeDataUrl(dataUrl) {
@@ -319,6 +434,11 @@ async function downloadToFile(url, destPath) {
 }
 
 async function downloadToBuffer(url) {
+  if (!url) return null;
+  if (typeof url === 'string' && url.startsWith('data:')) {
+    const decoded = decodeDataUrl(url);
+    return decoded ? decoded.buffer : null;
+  }
   try {
     const response = await fetch(url);
     if (!response.ok) {
@@ -371,6 +491,147 @@ async function removeBackgroundClipdrop({ sourcePath, apiKey, outputPath }) {
   return outputPath;
 }
 
+function clampNumber(value, min, max) {
+  if (value < min) return min;
+  if (value > max) return max;
+  return value;
+}
+
+function medianNumber(values) {
+  if (!values.length) return 0;
+  const sorted = [...values].sort((a, b) => a - b);
+  const mid = Math.floor(sorted.length / 2);
+  if (sorted.length % 2 === 1) return sorted[mid];
+  return Math.round((sorted[mid - 1] + sorted[mid]) / 2);
+}
+
+async function estimateBackgroundKeyColorRgb(inputBuffer) {
+  const sharp = require('sharp');
+  const { data, info } = await sharp(inputBuffer)
+    .resize(64, 64, { fit: 'fill' })
+    .raw()
+    .toBuffer({ resolveWithObject: true });
+
+  const w = info.width;
+  const h = info.height;
+  const ch = info.channels;
+  const coords = [
+    [0, 0],
+    [w - 1, 0],
+    [0, h - 1],
+    [w - 1, h - 1],
+    [Math.floor(w / 2), 0],
+    [Math.floor(w / 2), h - 1],
+    [0, Math.floor(h / 2)],
+    [w - 1, Math.floor(h / 2)],
+  ];
+
+  const rs = [];
+  const gs = [];
+  const bs = [];
+  for (const [x, y] of coords) {
+    const idx = (y * w + x) * ch;
+    rs.push(data[idx]);
+    gs.push(data[idx + 1]);
+    bs.push(data[idx + 2]);
+  }
+
+  return {
+    r: medianNumber(rs),
+    g: medianNumber(gs),
+    b: medianNumber(bs),
+  };
+}
+
+async function chromaKeyToTransparentPng(inputBuffer, options) {
+  const sharp = require('sharp');
+  const keyColor = options?.keyColor || { r: 0, g: 255, b: 0 };
+  const low = Number.isFinite(options?.low) ? options.low : 40;
+  const high = Number.isFinite(options?.high) ? options.high : 140;
+  if (high <= low) {
+    throw new Error('invalid_chroma_key_thresholds');
+  }
+
+  const { data, info } = await sharp(inputBuffer).raw().toBuffer({ resolveWithObject: true });
+  const w = info.width;
+  const h = info.height;
+  const ch = info.channels;
+  const pxCount = w * h;
+  const out = Buffer.alloc(pxCount * 4);
+
+  for (let i = 0; i < pxCount; i++) {
+    const base = i * ch;
+    const r = data[base];
+    const g = data[base + 1];
+    const b = data[base + 2];
+    const a = ch >= 4 ? data[base + 3] : 255;
+
+    const dr = r - keyColor.r;
+    const dg = g - keyColor.g;
+    const db = b - keyColor.b;
+    const dist = Math.sqrt(dr * dr + dg * dg + db * db);
+
+    let keep = 0;
+    if (dist <= low) keep = 0;
+    else if (dist >= high) keep = 1;
+    else keep = (dist - low) / (high - low);
+
+    const outBase = i * 4;
+    out[outBase] = r;
+    out[outBase + 1] = g;
+    out[outBase + 2] = b;
+    out[outBase + 3] = Math.round(a * clampNumber(keep, 0, 1));
+  }
+
+  return sharp(out, { raw: { width: w, height: h, channels: 4 } }).png().toBuffer();
+}
+
+async function removeBackgroundVertexImagen({ inputBuffer, inputMimeType, requestId }) {
+  const ai = getVertexClient();
+
+  const raw = new RawReferenceImage();
+  raw.referenceId = 1;
+  raw.referenceImage = { imageBytes: inputBuffer.toString('base64'), mimeType: inputMimeType };
+
+  const mask = new MaskReferenceImage();
+  mask.referenceId = 2;
+  // Let the model infer the mask: we want the background only.
+  mask.config = { maskMode: MaskReferenceMode.MASK_MODE_BACKGROUND };
+
+  // We intentionally force a chroma-key background to deterministically create a transparent PNG.
+  const prompt = 'Replace the background with a uniform solid neon green (#00FF00). No gradients, no shadows. Keep the subject unchanged.';
+
+  const response = await ai.models.editImage({
+    model: IMAGEN_EDIT_MODEL,
+    prompt,
+    referenceImages: [raw, mask],
+    config: {
+      numberOfImages: 1,
+      editMode: EditMode.EDIT_MODE_BGSWAP,
+      outputMimeType: 'image/png',
+      addWatermark: false,
+    },
+  });
+
+  const imageBytes = response?.generatedImages?.[0]?.image?.imageBytes;
+  if (!imageBytes) {
+    throw new Error('vertex_remove_bg_empty');
+  }
+
+  const bgswapBuffer = Buffer.from(imageBytes, 'base64');
+  const keyColor = await estimateBackgroundKeyColorRgb(bgswapBuffer);
+
+  logEvent('info', 'remove_background_vertex_keycolor', {
+    requestId,
+    provider: 'vertex_imagen',
+    model: IMAGEN_EDIT_MODEL,
+    keyColor,
+  });
+
+  // Thresholds tuned for typical "solid-ish" backgrounds that still include some compression / model variance.
+  return chromaKeyToTransparentPng(bgswapBuffer, { keyColor, low: 40, high: 140 });
+}
+
 async function buildOrderPdf(order) {
   return new Promise((resolve, reject) => {
     const doc = new PDFDocument({ size: 'A4', margin: 48 });
@@ -384,44 +645,44 @@ async function buildOrderPdf(order) {
       try {
 
         // Header
-        doc.fontSize(18).text('Order Summary', { align: 'left' });
+        doc.fontSize(18).text('주문서', { align: 'left' });
         doc.moveDown(0.5);
         doc.fontSize(11).fillColor('#333');
 
         const createdAt = order.createdAt || new Date().toISOString();
-        doc.text(`Order ID: ${order.orderId || 'N/A'}`);
-        doc.text(`Created At: ${createdAt}`);
-        doc.text(`Channel: ${order.channel || 'Toss Miniapp'}`);
+        doc.text(`주문번호: ${order.orderId || 'N/A'}`);
+        doc.text(`주문일시: ${createdAt}`);
+        doc.text(`채널: ${order.channel || 'Toss Miniapp'}`);
         doc.moveDown();
 
         // Customer Info
-        doc.fontSize(13).text('Customer');
+        doc.fontSize(13).text('주문자 정보');
         doc.fontSize(11);
         if (order.customer) {
-          doc.text(`Name: ${order.customer.name || ''}`);
-          doc.text(`Phone: ${order.customer.phone || ''}`);
-          doc.text(`Email: ${order.customer.email || ''}`);
+          doc.text(`이름: ${order.customer.name || ''}`);
+          doc.text(`연락처: ${order.customer.phone || ''}`);
+          doc.text(`이메일: ${order.customer.email || ''}`);
         }
         doc.moveDown();
 
         // Shipping Info
-        doc.fontSize(13).text('Shipping');
+        doc.fontSize(13).text('배송 정보');
         doc.fontSize(11);
         if (order.shipping) {
-          doc.text(`Recipient: ${order.shipping.name || order.customer?.name || ''}`);
-          doc.text(`Phone: ${order.shipping.phone || order.customer?.phone || ''}`);
-          doc.text(`Address1: ${order.shipping.address1 || ''}`);
-          doc.text(`Address2: ${order.shipping.address2 || ''}`);
-          doc.text(`City: ${order.shipping.city || ''}`);
-          doc.text(`State: ${order.shipping.state || ''}`);
-          doc.text(`Zip: ${order.shipping.zip || ''}`);
-          doc.text(`Country: ${order.shipping.country || ''}`);
-          doc.text(`Memo: ${order.shipping.memo || ''}`);
+          doc.text(`수령인: ${order.shipping.name || order.customer?.name || ''}`);
+          doc.text(`연락처: ${order.shipping.phone || order.customer?.phone || ''}`);
+          doc.text(`주소: ${order.shipping.address1 || ''}`);
+          doc.text(`상세주소: ${order.shipping.address2 || ''}`);
+          doc.text(`시/군/구: ${order.shipping.city || ''}`);
+          doc.text(`시/도: ${order.shipping.state || ''}`);
+          doc.text(`우편번호: ${order.shipping.zip || ''}`);
+          doc.text(`국가: ${order.shipping.country || ''}`);
+          doc.text(`배송 메모: ${order.shipping.memo || ''}`);
         }
         doc.moveDown();
 
         // Items with images
-        doc.fontSize(13).text('Items');
+        doc.fontSize(13).text('주문 상품');
         doc.fontSize(11);
         const items = Array.isArray(order.items) ? order.items : [];
 
@@ -433,21 +694,21 @@ async function buildOrderPdf(order) {
             doc.addPage();
           }
 
-          doc.fontSize(12).fillColor('#000').text(`Item ${index + 1}`, { underline: true });
+          doc.fontSize(12).fillColor('#000').text(`상품 ${index + 1}`, { underline: true });
           doc.fontSize(10).fillColor('#333');
-          doc.text(`- Product: ${item.productName || ''}`);
-          doc.text(`- Model: ${item.modelName || ''}`);
-          doc.text(`- Color: ${item.color || ''}`);
-          doc.text(`- Size: ${item.size || ''}`);
-          doc.text(`- Quantity: ${item.quantity || ''}`);
-          doc.text(`- Print Method: ${item.print?.method || ''}`);
-          doc.text(`- Print Placement: ${item.print?.placement || ''}`);
-          doc.text(`- Print Size: ${item.print?.sizeLabel || ''}`);
-          doc.text(`- Print Dimension: ${item.print?.sizeCm || ''}`);
+          doc.text(`- 제품: ${item.productName || ''}`);
+          doc.text(`- 모델: ${item.modelName || ''}`);
+          doc.text(`- 색상: ${item.color || ''}`);
+          doc.text(`- 사이즈: ${item.size || ''}`);
+          doc.text(`- 수량: ${item.quantity || ''}`);
+          doc.text(`- 인쇄 방식: ${item.print?.method || ''}`);
+          doc.text(`- 인쇄 위치: ${item.print?.placement || ''}`);
+          doc.text(`- 인쇄 사이즈: ${item.print?.sizeLabel || ''}`);
+          doc.text(`- 인쇄 크기: ${item.print?.sizeCm || ''}`);
 
           if (item.text?.text) {
             doc.text(
-              `- Text Layer: "${item.text.text}" (${item.text.fontWeight || ''}, ${item.text.fontSize || ''}px)`
+              `- 텍스트 레이어: "${item.text.text}" (${item.text.fontWeight || ''}, ${item.text.fontSize || ''}px)`
             );
           }
           doc.moveDown(0.5);
@@ -457,7 +718,7 @@ async function buildOrderPdf(order) {
             const designBuffer = await downloadToBuffer(item.designUrl);
             if (designBuffer) {
               try {
-                doc.fontSize(11).fillColor('#1E40AF').text('Design Image:', { continued: false });
+                doc.fontSize(11).fillColor('#1E40AF').text('디자인 이미지:', { continued: false });
                 doc.moveDown(0.3);
 
                 const maxWidth = 250;
@@ -489,7 +750,7 @@ async function buildOrderPdf(order) {
 
           // Mockup Images
           if (Array.isArray(item.mockupUrls) && item.mockupUrls.length > 0) {
-            doc.fontSize(11).fillColor('#1E40AF').text('Mockup Images:', { continued: false });
+            doc.fontSize(11).fillColor('#1E40AF').text('목업 이미지:', { continued: false });
             doc.moveDown(0.3);
 
             for (let mi = 0; mi < item.mockupUrls.length; mi++) {
@@ -505,7 +766,7 @@ async function buildOrderPdf(order) {
                     doc.addPage();
                   }
 
-                  doc.fontSize(9).fillColor('#6B7280').text(`Mockup ${mi + 1}:`, { continued: false });
+                  doc.fontSize(9).fillColor('#6B7280').text(`목업 ${mi + 1}:`, { continued: false });
                   doc.moveDown(0.2);
                   doc.image(mockupBuffer, {
                     fit: [maxWidth, maxHeight],
@@ -519,10 +780,10 @@ async function buildOrderPdf(order) {
                     mockupIndex: mi,
                     error: err.message,
                   });
-                  doc.fontSize(9).fillColor('#DC2626').text(`Mockup ${mi + 1} URL: ${mockupUrl}`);
+                  doc.fontSize(9).fillColor('#DC2626').text(`목업 ${mi + 1} URL: ${mockupUrl}`);
                 }
               } else {
-                doc.fontSize(9).fillColor('#6B7280').text(`Mockup ${mi + 1} URL: ${mockupUrl}`);
+                doc.fontSize(9).fillColor('#6B7280').text(`목업 ${mi + 1} URL: ${mockupUrl}`);
               }
             }
             doc.moveDown(0.5);
@@ -535,13 +796,13 @@ async function buildOrderPdf(order) {
         if (doc.y > 700) {
           doc.addPage();
         }
-        doc.fontSize(13).fillColor('#000').text('Pricing');
+        doc.fontSize(13).fillColor('#000').text('가격 정보');
         doc.fontSize(11).fillColor('#333');
         if (order.pricing) {
-          doc.text(`Unit Price: ${order.pricing.unitPrice || ''}`);
-          doc.text(`Quantity: ${order.pricing.quantity || ''}`);
-          doc.text(`Shipping: ${order.pricing.shipping || ''}`);
-          doc.text(`Total: ${order.pricing.total || ''}`);
+          doc.text(`소계: ${order.pricing.subtotal || order.pricing.unitPrice || ''}`);
+          doc.text(`수량: ${order.pricing.quantity || ''}`);
+          doc.text(`배송비: ${order.pricing.shipping || ''}`);
+          doc.text(`합계: ${order.pricing.total || ''}`);
         }
 
         // Footer note
@@ -572,12 +833,53 @@ function getMailer() {
   });
 }
 
-// Serve static mockup images
-app.use('/mockups', express.static(path.join(process.cwd(), 'server-public/mockups')));
+// Serve static mockup images.
+// Helmet sets `Cross-Origin-Resource-Policy: same-origin` by default, which can block
+// images from being rendered in cross-origin contexts (e.g. Apps in Toss preview/webview).
+// Allow these public mockups to be embedded cross-origin.
+const MOCKUPS_DIR = path.join(process.cwd(), 'server-public/mockups');
+app.use(
+  '/mockups',
+  (_req, res, next) => {
+    res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+    next();
+  },
+  (req, _res, next) => {
+    if (!req.path.toLowerCase().endsWith('.png')) return next();
+    const relPath = req.path.replace(/^\/+/, '');
+    const pngPath = path.join(MOCKUPS_DIR, relPath);
+    if (fs.existsSync(pngPath)) return next();
+    const jpgPath = pngPath.replace(/\.png$/i, '.jpg');
+    if (fs.existsSync(jpgPath)) {
+      req.url = req.url.replace(/\.png(\?.*)?$/i, '.jpg$1');
+    }
+    return next();
+  },
+  express.static(MOCKUPS_DIR),
+);
 
-app.get('/health', (_req, res) => {
+app.get('/health', async (_req, res) => {
+  const databaseConfigured = Boolean(process.env.DATABASE_URL);
+  let databaseHealthy = true;
+  let databaseError = '';
+
+  if (databaseConfigured) {
+    try {
+      const pool = getPool();
+      if (!pool) {
+        databaseHealthy = false;
+        databaseError = 'database_pool_unavailable';
+      } else {
+        await pool.query('SELECT 1');
+      }
+    } catch (error) {
+      databaseHealthy = false;
+      databaseError = error?.message || 'database_connection_failed';
+    }
+  }
+
   const health = {
-    ok: true,
+    ok: databaseConfigured ? databaseHealthy : true,
     timestamp: new Date().toISOString(),
     uptime: process.uptime(),
     memory: {
@@ -591,13 +893,19 @@ app.get('/health', (_req, res) => {
       pid: process.pid,
     },
     services: {
-      s3: Boolean(getS3Client() && IMAGE_BUCKET),
+      gcs: Boolean(isGcsEnabled()),
       openai: Boolean(process.env.OPENAI_API_KEY),
       smtp: Boolean(process.env.SMTP_USER && process.env.SMTP_PASS),
       clipdrop: Boolean(CLIPDROP_API_KEY),
+      db: databaseConfigured ? databaseHealthy : true,
+      databaseConfigured,
+      vertex: Boolean(VERTEX_PROJECT_ID && VERTEX_LOCATION && (VERTEX_API_KEY || process.env.GOOGLE_SERVICE_ACCOUNT_JSON || process.env.GOOGLE_SERVICE_ACCOUNT_JSON_BASE64)),
     },
   };
-  res.json(health);
+  if (databaseError) {
+    health.services.dbError = databaseError;
+  }
+  res.status(health.ok ? 200 : 503).json(health);
 });
 
 // Job-based generation API
@@ -631,7 +939,7 @@ app.post('/v1/images/upload', strictLimiter, async (req, res) => {
     const key = `${IMAGE_PREFIX}/${Date.now()}-${Math.random()
       .toString(36)
       .slice(2)}-${safeName || 'upload'}.${extension}`;
-    const url = await uploadToS3({ key, body: buffer, contentType: mimeType });
+    const url = await uploadToStorage({ kind: 'image', key, body: buffer, contentType: mimeType });
     logEvent('info', 'image_upload_result', {
       requestId: req.requestId,
       url,
@@ -662,12 +970,21 @@ app.post('/v1/images/generate', strictLimiter, async (req, res) => {
 
     // Add white background instruction to prompt for easier background removal
     const enhancedPrompt = `${prompt}, on a plain white background`;
+    const size =
+      aspectRatio === '3:4'
+        ? '1024x1536'
+        : aspectRatio === '4:3'
+          ? '1536x1024'
+          : '1024x1024';
 
-    const ai = getImagenClient();
+    const client = getOpenAIClient();
     logEvent('info', 'image_generate_request', {
       requestId: req.requestId,
-      model: IMAGEN_MODEL,
+      provider: 'openai',
+      model: OPENAI_IMAGE_MODEL,
+      quality: OPENAI_IMAGE_QUALITY,
       aspectRatio,
+      size,
       count,
       originalPrompt: prompt,
       enhancedPrompt: enhancedPrompt,
@@ -676,32 +993,32 @@ app.post('/v1/images/generate', strictLimiter, async (req, res) => {
       returnBase64: !!returnBase64,
     });
 
-    const response = await ai.models.generateImages({
-      model: IMAGEN_MODEL,
+    const response = await client.images.generate({
+      model: OPENAI_IMAGE_MODEL,
       prompt: enhancedPrompt,
-      config: {
-        numberOfImages: count,
-        aspectRatio: aspectRatio,
-      },
+      n: count,
+      size,
+      quality: OPENAI_IMAGE_QUALITY,
+      background: 'opaque',
+      output_format: 'png',
     });
 
     const results = [];
-    const generated = response?.generatedImages || [];
+    const generated = response?.data || [];
     for (const item of generated) {
-      const imageBytes = item?.image?.imageBytes;
-      if (!imageBytes) continue;
-
-      const buffer = Buffer.from(imageBytes, 'base64');
-
-      logEvent('info', 'imagen_image_generated', {
-        requestId: req.requestId,
-        bufferSize: buffer.length,
-        bufferHeader: buffer.slice(0, 4).toString('hex'),
-      });
+      let buffer = null;
+      if (item?.b64_json) {
+        buffer = Buffer.from(item.b64_json, 'base64');
+      } else if (item?.url) {
+        const imgRes = await fetch(item.url);
+        if (!imgRes.ok) continue;
+        buffer = Buffer.from(await imgRes.arrayBuffer());
+      }
+      if (!buffer) continue;
 
       const mimeType = 'image/png';
-      const key = `${IMAGE_PREFIX}/imagen-${Date.now()}-${Math.random().toString(36).slice(2)}.png`;
-      const url = await uploadToS3({ key, body: buffer, contentType: mimeType });
+      const key = `${IMAGE_PREFIX}/openai-${Date.now()}-${Math.random().toString(36).slice(2)}.png`;
+      const url = await uploadToStorage({ kind: 'image', key, body: buffer, contentType: mimeType });
       const result = { url, mimeType };
       if (returnBase64) {
         result.dataUrl = `data:${mimeType};base64,${buffer.toString('base64')}`;
@@ -724,55 +1041,70 @@ app.post('/v1/images/generate', strictLimiter, async (req, res) => {
       status: error.status,
       ...formatError(error),
     });
-    res.status(500).json({ error: error.message || 'Imagen image generation failed.', requestId: req.requestId });
+    res.status(500).json({ error: error.message || 'Image generation failed.', requestId: req.requestId });
   }
 });
 
 app.post('/v1/images/remove-background', strictLimiter, async (req, res) => {
+  let clipdropTempDir = '';
   try {
     const { imageUrl, dataUrl, filename, returnBase64 } = req.body || {};
-    if (!CLIPDROP_API_KEY) {
-      return res.status(500).json({ error: 'CLIPDROP_API_KEY is required.' });
-    }
     if (!imageUrl && !dataUrl) {
       return res.status(400).json({ error: 'imageUrl or dataUrl is required.' });
     }
+    const baseName = filename || `remove-bg-${Date.now()}`;
+    const safeBaseName = String(baseName).replace(/[^a-zA-Z0-9-_]/g, '_');
     logEvent('info', 'remove_background_request', {
       requestId: req.requestId,
       sourceType: imageUrl ? 'url' : 'dataUrl',
       imageHost: imageUrl ? new URL(imageUrl).host : '',
       filename: filename || '',
       returnBase64: !!returnBase64,
+      provider: REMOVE_BG_PROVIDER,
     });
-    const tempDir = path.join(ORDER_OUTPUT_DIR, 'temp');
-    await fsp.mkdir(tempDir, { recursive: true });
-    const baseName = filename || `remove-bg-${Date.now()}`;
-    const inputPath = path.join(tempDir, `${baseName}.png`);
+
+    let inputBuffer;
+    let inputMimeType = 'image/png';
     if (dataUrl) {
       const decoded = decodeDataUrl(dataUrl);
-      if (!decoded) {
-        return res.status(400).json({ error: 'Invalid dataUrl.' });
-      }
-      await fsp.writeFile(inputPath, decoded.buffer);
+      if (!decoded) return res.status(400).json({ error: 'Invalid dataUrl.' });
+      inputBuffer = decoded.buffer;
+      inputMimeType = decoded.mimeType || inputMimeType;
     } else {
-      await downloadToFile(imageUrl, inputPath);
+      inputBuffer = await downloadToBuffer(imageUrl);
+      if (!inputBuffer) return res.status(400).json({ error: 'Failed to download imageUrl.' });
     }
 
-    const outputPath = path.join(tempDir, `${baseName}-nobg.png`);
-    await removeBackgroundClipdrop({
-      sourcePath: inputPath,
-      apiKey: CLIPDROP_API_KEY,
-      outputPath,
-    });
-    const outputBuffer = await fsp.readFile(outputPath);
+    let outputBuffer;
+    if (REMOVE_BG_PROVIDER === 'clipdrop') {
+      if (!CLIPDROP_API_KEY) {
+        return res.status(500).json({ error: 'CLIPDROP_API_KEY is required when REMOVE_BG_PROVIDER=clipdrop.' });
+      }
+      clipdropTempDir = await fsp.mkdtemp(path.join('/tmp', 'clipdrop-'));
+      const inputPath = path.join(clipdropTempDir, `${safeBaseName}.png`);
+      await fsp.writeFile(inputPath, inputBuffer);
+      const outputPath = path.join(clipdropTempDir, `${safeBaseName}-nobg.png`);
+      await removeBackgroundClipdrop({ sourcePath: inputPath, apiKey: CLIPDROP_API_KEY, outputPath });
+      outputBuffer = await fsp.readFile(outputPath);
+    } else if (REMOVE_BG_PROVIDER === 'vertex_imagen') {
+      outputBuffer = await removeBackgroundVertexImagen({
+        inputBuffer,
+        inputMimeType,
+        requestId: req.requestId,
+      });
+    } else {
+      return res.status(400).json({ error: `Unsupported REMOVE_BG_PROVIDER: ${REMOVE_BG_PROVIDER}` });
+    }
+
     const key = `${IMAGE_PREFIX}/${Date.now()}-${Math.random()
       .toString(36)
       .slice(2)}-${baseName}.png`;
-    const url = await uploadToS3({ key, body: outputBuffer, contentType: 'image/png' });
+    const url = await uploadToStorage({ kind: 'image', key, body: outputBuffer, contentType: 'image/png' });
     logEvent('info', 'remove_background_result', {
       requestId: req.requestId,
       url,
       bytes: outputBuffer.length,
+      provider: REMOVE_BG_PROVIDER,
     });
 
     const result = { url, requestId: req.requestId };
@@ -786,6 +1118,10 @@ app.post('/v1/images/remove-background', strictLimiter, async (req, res) => {
       ...formatError(error),
     });
     res.status(500).json({ error: error.message || 'Remove background failed.', requestId: req.requestId });
+  } finally {
+    if (clipdropTempDir && isPathInTmp(clipdropTempDir)) {
+      await safeRemoveDir(clipdropTempDir);
+    }
   }
 });
 
@@ -826,9 +1162,9 @@ app.post('/v1/images/crop', strictLimiter, async (req, res) => {
       .png()
       .toBuffer();
 
-    // Upload to S3
+    // Upload to storage
     const key = `${IMAGE_PREFIX}/${Date.now()}-${Math.random().toString(36).slice(2)}-cropped.png`;
-    const url = await uploadToS3({ key, body: croppedBuffer, contentType: 'image/png' });
+    const url = await uploadToStorage({ kind: 'image', key, body: croppedBuffer, contentType: 'image/png' });
 
     logEvent('info', 'crop_result', {
       requestId: req.requestId,
@@ -855,24 +1191,15 @@ app.post('/v1/images/style-transfer', strictLimiter, async (req, res) => {
   try {
     const { dataUrl, style, returnBase64 } = req.body || {};
 
-    console.log('[StyleTransfer] Request received:', {
-      hasDataUrl: !!dataUrl,
-      dataUrlLength: dataUrl?.length || 0,
-      style,
-      returnBase64,
-    });
-
     if (!dataUrl) {
-      console.error('[StyleTransfer] Missing dataUrl');
       return res.status(400).json({ error: 'dataUrl is required.' });
     }
     if (!style) {
-      console.error('[StyleTransfer] Missing style');
       return res.status(400).json({ error: 'style is required.' });
     }
-    if (!process.env.GOOGLE_API_KEY) {
-      console.error('[StyleTransfer] Missing GOOGLE_API_KEY');
-      return res.status(500).json({ error: 'GOOGLE_API_KEY is required.' });
+    const decoded = decodeDataUrl(dataUrl);
+    if (!decoded) {
+      return res.status(400).json({ error: 'Invalid dataUrl.' });
     }
 
     logEvent('info', 'style_transfer_request', {
@@ -881,8 +1208,6 @@ app.post('/v1/images/style-transfer', strictLimiter, async (req, res) => {
       returnBase64: !!returnBase64,
       dataUrlLength: dataUrl.length,
     });
-
-    const ai = getImagenClient();
 
     const stylePrompts = {
       'watercolor': 'watercolor painting style, soft and flowing watercolor textures, gentle color blending, artistic brush strokes, on white background',
@@ -894,43 +1219,36 @@ app.post('/v1/images/style-transfer', strictLimiter, async (req, res) => {
     };
 
     const styleDescription = stylePrompts[style] || stylePrompts['watercolor'];
-    const enhancedPrompt = `Convert the original image to ${styleDescription}. IMPORTANT: Keep the exact same subject, shape, composition, and layout as the original image. Only change the artistic style and rendering technique. Do not add, remove, or modify any elements from the original image.`;
+    const enhancedPrompt = `Transform this image into ${styleDescription}. IMPORTANT: Keep the exact same subject, shape, composition, and layout as the original image. Only change the artistic style and rendering technique. Do not add, remove, or modify any elements from the original image.`;
 
-    logEvent('info', 'style_transfer_generate', {
-      requestId: req.requestId,
-      style,
-      model: IMAGEN_MODEL,
+    const client = getOpenAIClient();
+    const inputFile = await OpenAI.toFile(decoded.buffer, 'input.png', {
+      type: decoded.mimeType || 'image/png',
+    });
+    const response = await client.images.edit({
+      model: OPENAI_IMAGE_MODEL,
+      image: inputFile,
       prompt: enhancedPrompt,
+      n: 1,
+      size: '1024x1024',
+      quality: OPENAI_IMAGE_QUALITY,
+      background: 'opaque',
     });
 
-    console.log('[StyleTransfer] Calling Imagen with prompt:', enhancedPrompt);
-
-    const response = await ai.models.generateImages({
-      model: IMAGEN_MODEL,
-      prompt: enhancedPrompt,
-      config: {
-        numberOfImages: 1,
-        aspectRatio: '1:1',
-      },
-    });
-
-    console.log('[StyleTransfer] Imagen response received');
-
-    const imageBytes = response?.generatedImages?.[0]?.image?.imageBytes;
-    if (!imageBytes) {
-      console.error('[StyleTransfer] No imageBytes in Imagen response');
-      throw new Error('No image generated from Imagen.');
+    const b64 = response?.data?.[0]?.b64_json;
+    if (!b64) {
+      throw new Error('style_transfer_empty');
     }
 
-    const styledBuffer = Buffer.from(imageBytes, 'base64');
-    console.log('[StyleTransfer] Image generated, size:', styledBuffer.length, 'bytes');
+    const styledBuffer = Buffer.from(b64, 'base64');
 
-    // Upload to S3
     const key = `${IMAGE_PREFIX}/${Date.now()}-${Math.random().toString(36).slice(2)}-styled.png`;
-    console.log('[StyleTransfer] Uploading to S3:', key);
-    const url = await uploadToS3({ key, body: styledBuffer, contentType: 'image/png' });
-
-    console.log('[StyleTransfer] S3 URL:', url);
+    const url = await uploadToStorage({
+      kind: 'image',
+      key,
+      body: styledBuffer,
+      contentType: 'image/png',
+    });
 
     logEvent('info', 'style_transfer_result', {
       requestId: req.requestId,
@@ -942,14 +1260,10 @@ app.post('/v1/images/style-transfer', strictLimiter, async (req, res) => {
     const result = { url, requestId: req.requestId };
     if (returnBase64) {
       result.dataUrl = `data:image/png;base64,${styledBuffer.toString('base64')}`;
-      console.log('[StyleTransfer] Added base64 data, length:', result.dataUrl.length);
     }
 
-    console.log('[StyleTransfer] Sending response with keys:', Object.keys(result));
     res.json(result);
   } catch (error) {
-    console.error('[StyleTransfer] Error occurred:', error.message);
-    console.error('[StyleTransfer] Stack trace:', error.stack);
     logEvent('error', 'style_transfer_failed', {
       requestId: req.requestId,
       ...formatError(error),
@@ -959,17 +1273,19 @@ app.post('/v1/images/style-transfer', strictLimiter, async (req, res) => {
 });
 
 app.post('/v1/print-files/process', strictLimiter, async (req, res) => {
+  let workDirToCleanup = null;
   try {
     const payload = req.body || {};
+    const orderId = payload.order_id || `manual-${Date.now()}`;
     logEvent('info', 'print_pipeline_request', {
       requestId: req.requestId,
-      orderId: payload.order_id || '',
+      orderId,
       targetWidth: payload.target_width_px,
       targetHeight: payload.target_height_px,
     });
     const result = await runPrintPipeline({
       master_png_path: payload.master_png_path,
-      order_id: payload.order_id,
+      order_id: orderId,
       target_width_px: payload.target_width_px,
       target_height_px: payload.target_height_px,
       gcp_project_id: payload.gcp_project_id || process.env.GCP_PROJECT_ID,
@@ -977,17 +1293,24 @@ app.post('/v1/print-files/process', strictLimiter, async (req, res) => {
       output_dir: payload.output_dir || ORDER_OUTPUT_DIR,
       allow_warn_to_pass: false,
     });
-    res.json({ ...result, requestId: req.requestId });
+    const persisted = await persistPipelineArtifacts({ orderId, pipelineResult: result });
+    workDirToCleanup = derivePipelineWorkDir(result);
+    res.json({ ...persisted, requestId: req.requestId });
   } catch (error) {
     logEvent('error', 'print_pipeline_failed', {
       requestId: req.requestId,
       ...formatError(error),
     });
     res.status(500).json({ error: error.message || 'pipeline_failed', requestId: req.requestId });
+  } finally {
+    if (workDirToCleanup && isPathInTmp(workDirToCleanup)) {
+      await safeRemoveDir(workDirToCleanup);
+    }
   }
 });
 
 app.post('/v1/orders/submit', strictLimiter, async (req, res) => {
+  let pipelineWorkDir = null;
   try {
     const order = req.body || {};
     logEvent('info', 'order_submit_request', {
@@ -1037,6 +1360,7 @@ app.post('/v1/orders/submit', strictLimiter, async (req, res) => {
     if (pipelineEnabled) {
       const orderId = order.orderId || String(Date.now());
       const workDir = path.join(ORDER_OUTPUT_DIR, orderId);
+      pipelineWorkDir = workDir;
       await fsp.mkdir(workDir, { recursive: true });
 
       // Get source image URL (design with text embedded)
@@ -1079,7 +1403,10 @@ app.post('/v1/orders/submit', strictLimiter, async (req, res) => {
             gcp_location: process.env.GCP_LOCATION,
             output_dir: ORDER_OUTPUT_DIR,
             allow_warn_to_pass: true, // Allow warnings to pass, only fail on errors
+            text_layer: order.pipeline?.textLayer || order.items?.[0]?.text || null,
+            image_transform: order.pipeline?.imageTransform || null,
           });
+          pipelineResult = await persistPipelineArtifacts({ orderId, pipelineResult });
 
           logEvent('info', 'pipeline_completed', {
             orderId,
@@ -1103,7 +1430,7 @@ app.post('/v1/orders/submit', strictLimiter, async (req, res) => {
     let pdfUrl = '';
     if (order.storePdf) {
       const key = `${PDF_PREFIX}/${pdfName}`;
-      pdfUrl = await uploadToS3({ key, body: pdfBuffer, contentType: 'application/pdf' });
+      pdfUrl = await uploadToStorage({ kind: 'pdf', key, body: pdfBuffer, contentType: 'application/pdf' });
     }
 
     const adminTo = process.env.ORDER_EMAIL_TO;
@@ -1289,6 +1616,10 @@ ${pdfUrl ? `\n📄 PDF 다운로드: ${pdfUrl}` : ''}
       ...formatError(error),
     });
     res.status(500).json({ error: error.message || 'Order submit failed.', requestId: req.requestId });
+  } finally {
+    if (pipelineWorkDir && isPathInTmp(pipelineWorkDir)) {
+      await safeRemoveDir(pipelineWorkDir);
+    }
   }
 });
 
@@ -1725,6 +2056,71 @@ app.get('/v1/address/search', async (req, res) => {
   }
 });
 
+function parseBasicAuthCredentials(rawHeaderValue) {
+  const queue = [String(rawHeaderValue || '').trim()];
+  const seen = new Set();
+  const maxHops = 12;
+  const isLikelyBase64 = (value) =>
+    value.length >= 4 &&
+    value.length <= 2048 &&
+    value.length % 4 === 0 &&
+    /^[A-Za-z0-9+/=]+$/.test(value);
+
+  const pushCandidate = (value) => {
+    const normalized = String(value || '').trim().replace(/^["']|["']$/g, '');
+    if (!normalized || seen.has(normalized)) return;
+    queue.push(normalized);
+  };
+
+  while (queue.length > 0 && seen.size < maxHops) {
+    const current = queue.shift();
+    if (!current || seen.has(current)) continue;
+    seen.add(current);
+
+    if (current.includes(':')) {
+      const separatorIndex = current.indexOf(':');
+      const username = current.slice(0, separatorIndex).trim();
+      const password = current.slice(separatorIndex + 1).trim();
+      if (username && password) {
+        return { username, password };
+      }
+    }
+
+    if (current.toLowerCase().startsWith('basic ')) {
+      pushCandidate(current.slice(6));
+    }
+
+    if (current.includes(' ')) {
+      const segments = current.split(/\s+/).filter(Boolean);
+      if (segments.length >= 2) {
+        pushCandidate(segments[segments.length - 1]);
+      }
+    }
+
+    try {
+      const decodedUri = decodeURIComponent(current);
+      if (decodedUri !== current) {
+        pushCandidate(decodedUri);
+      }
+    } catch (error) {
+      // Ignore malformed URI encoding and continue.
+    }
+
+    if (isLikelyBase64(current)) {
+      try {
+        const decodedBase64 = Buffer.from(current, 'base64').toString('utf-8').trim();
+        if (decodedBase64 && decodedBase64 !== current) {
+          pushCandidate(decodedBase64);
+        }
+      } catch (error) {
+        // Ignore invalid base64 and continue.
+      }
+    }
+  }
+
+  return null;
+}
+
 // Middleware to verify Basic Auth for Toss disconnect callback
 function verifyTossCallbackAuth(req, res, next) {
   const TOSS_CALLBACK_USERNAME = process.env.TOSS_CALLBACK_USERNAME;
@@ -1736,18 +2132,46 @@ function verifyTossCallbackAuth(req, res, next) {
     return next();
   }
 
-  const authHeader = req.headers.authorization;
-  if (!authHeader || !authHeader.startsWith('Basic ')) {
+  const authHeader =
+    req.headers.authorization ||
+    req.headers['x-authorization'] ||
+    req.headers['x-basic-auth'] ||
+    req.headers['basic-auth'] ||
+    '';
+
+  logEvent('info', 'toss_callback_auth_received', {
+    requestId: req.requestId,
+    method: req.method,
+    path: req.path,
+    hasAuthHeader: Boolean(authHeader),
+    authLength: typeof authHeader === 'string' ? authHeader.length : 0,
+    authPrefix:
+      typeof authHeader === 'string' && authHeader.trim().length > 0
+        ? authHeader.trim().split(/\s+/)[0]
+        : '',
+    origin: req.headers.origin || '',
+    userAgent: req.headers['user-agent'] || '',
+  });
+
+  if (!authHeader) {
+    logEvent('warn', 'toss_callback_auth_missing', {
+      requestId: req.requestId,
+      method: req.method,
+      path: req.path,
+    });
     return res.status(401).json({ error: 'Unauthorized - Basic Auth required' });
   }
 
-  const base64Credentials = authHeader.split(' ')[1];
-  const credentials = Buffer.from(base64Credentials, 'base64').toString('utf-8');
-  const [username, password] = credentials.split(':');
-
-  if (username === TOSS_CALLBACK_USERNAME && password === TOSS_CALLBACK_PASSWORD) {
+  const parsed = parseBasicAuthCredentials(authHeader);
+  if (parsed && parsed.username === TOSS_CALLBACK_USERNAME && parsed.password === TOSS_CALLBACK_PASSWORD) {
     next();
   } else {
+    logEvent('warn', 'toss_callback_auth_invalid', {
+      requestId: req.requestId,
+      method: req.method,
+      path: req.path,
+      parsedUsername: parsed?.username || '',
+    });
     res.status(401).json({ error: 'Unauthorized - Invalid credentials' });
   }
 }
@@ -2129,6 +2553,7 @@ app.post('/v1/payment/execute', strictLimiter, async (req, res) => {
 
     // If orderData is provided, also process the order (send emails, PDF, etc.)
     if (orderData) {
+      let orderPipelineWorkDir = null;
       try {
         // Set the order ID from payment if not set
         orderData.orderId = orderData.orderId || orderNo || data.success?.orderNo;
@@ -2165,6 +2590,7 @@ app.post('/v1/payment/execute', strictLimiter, async (req, res) => {
           if (orderData.pipeline?.enabled !== false) {
             const orderId = orderData.orderId || String(Date.now());
             const workDir = path.join(ORDER_OUTPUT_DIR, orderId);
+            orderPipelineWorkDir = workDir;
             await fsp.mkdir(workDir, { recursive: true });
 
             let masterPath = orderData.pipeline?.masterPngPath || null;
@@ -2204,6 +2630,7 @@ app.post('/v1/payment/execute', strictLimiter, async (req, res) => {
                   output_dir: ORDER_OUTPUT_DIR,
                   allow_warn_to_pass: true,
                 });
+                pipelineResult = await persistPipelineArtifacts({ orderId, pipelineResult });
 
                 logEvent('info', 'pipeline_completed', {
                   orderId,
@@ -2226,7 +2653,7 @@ app.post('/v1/payment/execute', strictLimiter, async (req, res) => {
           let pdfUrl = '';
           if (orderData.storePdf !== false) {
             const key = `${PDF_PREFIX}/${pdfName}`;
-            pdfUrl = await uploadToS3({ key, body: pdfBuffer, contentType: 'application/pdf' });
+            pdfUrl = await uploadToStorage({ kind: 'pdf', key, body: pdfBuffer, contentType: 'application/pdf' });
           }
 
           const adminTo = process.env.ORDER_EMAIL_TO;
@@ -2278,6 +2705,10 @@ app.post('/v1/payment/execute', strictLimiter, async (req, res) => {
           ...formatError(orderError),
         });
         // Don't fail the payment response even if order processing fails
+      } finally {
+        if (orderPipelineWorkDir && isPathInTmp(orderPipelineWorkDir)) {
+          await safeRemoveDir(orderPipelineWorkDir);
+        }
       }
     }
 
@@ -2459,6 +2890,9 @@ app.get('/refund-policy', (req, res) => {
 });
 
 // Initialize database and start server
+let serverInstance = null;
+let isShuttingDown = false;
+
 async function startServer() {
   try {
     await initializeDatabase();
@@ -2466,23 +2900,61 @@ async function startServer() {
     console.error('Database initialization failed, but continuing:', error.message);
   }
 
-  app.listen(PORT, () => {
+  serverInstance = app.listen(PORT, () => {
     logEvent('info', 'server_config', {
       port: PORT,
-      s3Bucket: IMAGE_BUCKET,
-      s3Endpoint: cachedS3Endpoint || process.env.S3_ENDPOINT || resolveS3Endpoint() || '',
-      s3BaseUrl: resolveBaseUrl(),
-      s3ForcePathStyle: String(process.env.S3_FORCE_PATH_STYLE || 'false'),
+      gcsEnabled: isGcsEnabled(),
+      gcsUploadBucket: GCS_UPLOAD_BUCKET || '',
+      gcsOrderBucket: GCS_ORDER_BUCKET || '',
+      imagePrefix: IMAGE_PREFIX,
+      pdfPrefix: PDF_PREFIX,
+      signedUrlTtlSeconds: SIGNED_URL_TTL_SECONDS,
       openaiModel: OPENAI_IMAGE_MODEL,
       openaiQuality: OPENAI_IMAGE_QUALITY,
       imagenModel: IMAGEN_MODEL,
       imagenEnabled: Boolean(process.env.GOOGLE_API_KEY),
+      vertexEnabled: Boolean(VERTEX_PROJECT_ID),
+      vertexLocation: VERTEX_LOCATION,
       clipdropEnabled: Boolean(CLIPDROP_API_KEY),
       databaseEnabled: Boolean(process.env.DATABASE_URL),
       kakaoApiEnabled: Boolean(process.env.KAKAO_REST_API_KEY),
+      orderOutputDir: ORDER_OUTPUT_DIR,
     });
     console.log(`server listening on ${PORT}`);
   });
 }
+
+async function gracefulShutdown(signal) {
+  if (isShuttingDown) return;
+  isShuttingDown = true;
+
+  logEvent('info', 'shutdown_started', { signal });
+
+  try {
+    if (serverInstance) {
+      await Promise.race([
+        new Promise((resolve) => serverInstance.close(() => resolve())),
+        new Promise((resolve) => setTimeout(resolve, 10000)),
+      ]);
+    }
+    await closePool();
+    logEvent('info', 'shutdown_completed', { signal });
+    process.exit(0);
+  } catch (error) {
+    logEvent('error', 'shutdown_failed', {
+      signal,
+      ...formatError(error),
+    });
+    process.exit(1);
+  }
+}
+
+process.on('SIGTERM', () => {
+  void gracefulShutdown('SIGTERM');
+});
+
+process.on('SIGINT', () => {
+  void gracefulShutdown('SIGINT');
+});
 
 startServer();

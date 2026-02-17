@@ -188,6 +188,45 @@ function runQc({ data, info, targetWidth, targetHeight }) {
   return qc;
 }
 
+function escapeXml(str) {
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&apos;');
+}
+
+async function compositeTextLayer(imagePath, textLayer, outputPath) {
+  if (!textLayer || !textLayer.text) return imagePath;
+
+  const metadata = await sharp(imagePath).metadata();
+  const w = metadata.width;
+  const h = metadata.height;
+
+  // Scale font size proportionally to image width
+  const baseFontSize = textLayer.fontSize || 24;
+  const fontSize = Math.round(baseFontSize * (w / 400));
+  const fontWeight = textLayer.fontWeight || 'bold';
+  const color = textLayer.color || '#000000';
+
+  // Position text at bottom portion of the design area (85% from top)
+  const textY = Math.round(h * 0.85);
+
+  const svg = `<svg width="${w}" height="${h}" xmlns="http://www.w3.org/2000/svg">
+    <text x="50%" y="${textY}" text-anchor="middle"
+      font-size="${fontSize}" font-weight="${fontWeight}" fill="${escapeXml(color)}"
+      font-family="sans-serif">${escapeXml(textLayer.text)}</text>
+  </svg>`;
+
+  await sharp(imagePath)
+    .composite([{ input: Buffer.from(svg), top: 0, left: 0 }])
+    .png()
+    .toFile(outputPath);
+
+  return outputPath;
+}
+
 async function runPrintPipeline(input) {
   const {
     master_png_path,
@@ -198,6 +237,7 @@ async function runPrintPipeline(input) {
     gcp_location,
     output_dir,
     allow_warn_to_pass,
+    text_layer,
   } = input;
 
   const baseOutput = {
@@ -256,7 +296,11 @@ async function runPrintPipeline(input) {
       };
     }
 
-    const workDir = path.join(output_dir, order_id);
+    const resolvedOutputDir =
+      output_dir && String(output_dir).trim().length > 0
+        ? output_dir
+        : path.join('/tmp', 'order-output');
+    const workDir = path.join(resolvedOutputDir, order_id || `order-${Date.now()}`);
     await ensureDir(workDir);
 
     const upscaledRawPath = path.join(workDir, 'upscaled_raw.png');
@@ -279,6 +323,15 @@ async function runPrintPipeline(input) {
     await sharp(upscaledRawPath)
       .png()
       .toFile(printReadyPath);
+
+    // Composite text layer onto upscaled image (if provided)
+    if (text_layer && text_layer.text) {
+      const compositedPath = path.join(workDir, 'composited.png');
+      await compositeTextLayer(printReadyPath, text_layer, compositedPath);
+      // Replace print_ready with composited version
+      await fsp.copyFile(compositedPath, printReadyPath);
+      await fsp.unlink(compositedPath);
+    }
 
     // Run quality checks
     const { data, info } = await loadPixels(printReadyPath);
