@@ -328,6 +328,18 @@ function Page() {
     }
   };
 
+  const handleOpenBgRemoval = () => {
+    if (!designImageUri) {
+      setPhotoError('배경 제거할 사진을 먼저 추가해 주세요.');
+      return;
+    }
+    trackClick('editor_open_background_removal_click', {
+      placement: selectedPlacement,
+      has_selection: Boolean(currentPhotos.length > 0),
+    });
+    navigation.navigate('/upload');
+  };
+
   const handleDeletePhoto = (index: number) => {
     trackPhotoRemoveClick(selectedPlacement, index);
     setDeletePhotoIndex(index);
@@ -584,7 +596,29 @@ function Page() {
                         disabled={loadingPhoto || currentPhotos.length >= 3}
                         style={styles.photoActionBtn}
                       />
+                      <SecondaryButton
+                        label="배경 제거"
+                        onPress={handleOpenBgRemoval}
+                        disabled={loadingPhoto}
+                        style={styles.photoActionBtn}
+                      />
                     </View>
+                    {selectedProduct.colors.length > 1 ? (
+                      <View>
+                        <Text style={styles.photoSectionHint}>옷 색상</Text>
+                        <View style={styles.photoColorRow}>
+                          {selectedProduct.colors.map((color) => (
+                            <ColorSwatch
+                              key={color}
+                              label={color}
+                              color={resolveColorValue(color)}
+                              selected={selectedColor === color}
+                              onPress={() => setSelectedColor(color)}
+                            />
+                          ))}
+                        </View>
+                      </View>
+                    ) : null}
                     {currentPhotos.length >= 3 && (
                       <Text style={styles.photoHint}>최대 3장까지 추가할 수 있어요.</Text>
                     )}
@@ -1510,7 +1544,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  photoDeleteText: {
+      photoDeleteText: {
     color: '#FFFFFF',
     fontSize: 12,
     fontWeight: '700',
@@ -1542,6 +1576,18 @@ const styles = StyleSheet.create({
     lineHeight: 16,
     color: '#a8c2e6',
     marginTop: theme.spacing.xs,
+  },
+  photoSectionHint: {
+    fontSize: 11,
+    lineHeight: 18,
+    color: '#a8c2e6',
+    marginBottom: theme.spacing.xs,
+  },
+  photoColorRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: theme.spacing.sm,
+    marginBottom: theme.spacing.sm,
   },
   photoLoadingRow: {
     flexDirection: 'row',

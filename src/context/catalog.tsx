@@ -118,7 +118,7 @@ export function CatalogProvider({ children }: { children: React.ReactNode }) {
   if (!fallbackPrint) {
     throw new Error('Print options are missing.');
   }
-  const resolveAutoPrint = (product: CatalogProduct) => {
+  const resolveAutoPrint = (_product: CatalogProduct) => {
     // 기본값은 standard (A4 미만)
     return (
       printOptions.find((option) => option.id === 'standard') ?? fallbackPrint
@@ -241,12 +241,16 @@ export function CatalogProvider({ children }: { children: React.ReactNode }) {
   }, [selectedProduct?.id]);
 
   useEffect(() => {
-    setImageTransform((prev) => ({
+    // Keep existing position/rotation while syncing print scale.
+    setFrontImageTransform((prev) => ({
       ...prev,
       scale: selectedPrint.designScale,
     }));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedPrint.id]);
+    setBackImageTransform((prev) => ({
+      ...prev,
+      scale: selectedPrint.designScale,
+    }));
+  }, [selectedPrint.designScale]);
 
   const refreshSavedDesigns = useCallback(async () => {
     try {
@@ -298,7 +302,7 @@ export function CatalogProvider({ children }: { children: React.ReactNode }) {
   const loadDesign = useCallback((design: SavedDesign) => {
     setSelectedProductId(design.productId);
     setSelectedColor(design.color);
-    setDesignImageUri(design.designImageUri);
+    handleSetDesignImageUri(design.designImageUri);
     setDesignPrompt(design.designPrompt);
     setImageTransform(design.imageTransform);
     setTextTransform(design.textTransform);
@@ -323,65 +327,96 @@ export function CatalogProvider({ children }: { children: React.ReactNode }) {
   const handleSetDesignImageUri = (uri: string | null) => {
     if (selectedPlacement === 'front') {
       setFrontDesignImageUri(uri);
-      if (uri) {
+      if (!uri) {
+        // Reset photo state for the current placement so UI can truly clear.
+        setFrontPhotos([]);
+        setFrontPhotoIndex(0);
         setFrontImageTransform(defaultImageTransform);
-        // If photos array is empty, add this as first photo
-        if (frontPhotos.length === 0) {
-          setFrontPhotos([uri]);
-          setFrontPhotoIndex(0);
-        }
+        return;
       }
+
+      setFrontImageTransform(defaultImageTransform);
+      setFrontPhotos((prev) => {
+        if (prev.length === 0) {
+          setFrontPhotoIndex(0);
+          return [uri];
+        }
+        const next = [...prev];
+        const safeIndex = Math.min(frontPhotoIndex, next.length - 1);
+        next[safeIndex] = uri;
+        return next;
+      });
     } else {
       setBackDesignImageUri(uri);
-      if (uri) {
+      if (!uri) {
+        setBackPhotos([]);
+        setBackPhotoIndex(0);
         setBackImageTransform(defaultImageTransform);
-        // If photos array is empty, add this as first photo
-        if (backPhotos.length === 0) {
-          setBackPhotos([uri]);
-          setBackPhotoIndex(0);
-        }
+        return;
       }
+
+      setBackImageTransform(defaultImageTransform);
+      setBackPhotos((prev) => {
+        if (prev.length === 0) {
+          setBackPhotoIndex(0);
+          return [uri];
+        }
+        const next = [...prev];
+        const safeIndex = Math.min(backPhotoIndex, next.length - 1);
+        next[safeIndex] = uri;
+        return next;
+      });
     }
   };
 
   // Photo management methods
   const addPhoto = (uri: string) => {
     if (selectedPlacement === 'front') {
-      if (frontPhotos.length >= 3) return; // max 3 photos
-      setFrontPhotos((prev) => [...prev, uri]);
-      setFrontPhotoIndex(frontPhotos.length); // switch to new photo
-      setFrontDesignImageUri(uri);
-      setFrontImageTransform(defaultImageTransform);
+      setFrontPhotos((prev) => {
+        if (prev.length >= 3) return prev; // max 3 photos
+        setFrontPhotoIndex(prev.length);
+        setFrontDesignImageUri(uri);
+        setFrontImageTransform(defaultImageTransform);
+        return [...prev, uri];
+      });
     } else {
-      if (backPhotos.length >= 3) return; // max 3 photos
-      setBackPhotos((prev) => [...prev, uri]);
-      setBackPhotoIndex(backPhotos.length); // switch to new photo
-      setBackDesignImageUri(uri);
-      setBackImageTransform(defaultImageTransform);
+      setBackPhotos((prev) => {
+        if (prev.length >= 3) return prev; // max 3 photos
+        setBackPhotoIndex(prev.length);
+        setBackDesignImageUri(uri);
+        setBackImageTransform(defaultImageTransform);
+        return [...prev, uri];
+      });
     }
   };
 
   const replacePhoto = (uri: string) => {
     if (selectedPlacement === 'front') {
-      const newPhotos = [...frontPhotos];
-      if (newPhotos.length === 0) {
-        newPhotos.push(uri);
-        setFrontPhotoIndex(0);
-      } else {
-        newPhotos[frontPhotoIndex] = uri;
-      }
-      setFrontPhotos(newPhotos);
+      setFrontPhotos((prev) => {
+        if (prev.length === 0) {
+          setFrontPhotoIndex(0);
+          return [uri];
+        }
+        const next = [...prev];
+        const safeIndex = Math.min(frontPhotoIndex, next.length - 1);
+        next[safeIndex] = uri;
+        setFrontPhotoIndex(safeIndex);
+        return next;
+      });
       setFrontDesignImageUri(uri);
       setFrontImageTransform(defaultImageTransform);
     } else {
-      const newPhotos = [...backPhotos];
-      if (newPhotos.length === 0) {
-        newPhotos.push(uri);
-        setBackPhotoIndex(0);
-      } else {
-        newPhotos[backPhotoIndex] = uri;
-      }
-      setBackPhotos(newPhotos);
+      setBackPhotos((prev) => {
+        if (prev.length === 0) {
+          setBackPhotoIndex(0);
+          return [uri];
+        }
+        const next = [...prev];
+        const safeIndex = Math.min(backPhotoIndex, next.length - 1);
+        next[safeIndex] = uri;
+        setBackPhotoIndex(safeIndex);
+        return next;
+      });
       setBackDesignImageUri(uri);
       setBackImageTransform(defaultImageTransform);
     }
