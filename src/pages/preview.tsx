@@ -1,14 +1,15 @@
 import { share, getTossShareLink } from '@apps-in-toss/framework';
 import { createRoute } from '@granite-js/react-native';
-import { Button } from '@toss/tds-react-native';
 import React, { useState } from 'react';
 import { Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { MockupCanvas } from '../components/MockupCanvas';
 import {
   Card,
   ColorSwatch,
+  PageHeader,
+  PrimaryButton,
+  SecondaryButton,
   Screen,
-  TopBar,
   theme,
 } from '../components/ui';
 import { useCatalog } from '../context/catalog';
@@ -16,6 +17,10 @@ import { resolveColorValue } from '../data/colorMap';
 import { buildTemplate } from '../data/mockupTemplates';
 import { calcPricing } from '../data/pricing';
 import { formatPrice } from '../utils/format';
+
+const ORANGE_RED = '#FF5000';
+const NAVY_DEEP = '#071a35';
+const NAVY_PANEL = '#15325d';
 
 export const Route = createRoute('/preview', {
   component: Page,
@@ -40,7 +45,6 @@ function Page() {
     backTextTransform,
     saveCurrentDesign,
     orderLines,
-    totalQuantity,
     selectedPrint,
   } = useCatalog();
   const [saving, setSaving] = useState(false);
@@ -92,8 +96,10 @@ function Page() {
   };
 
   return (
-    <Screen>
-      <TopBar title="완성 미리보기" />
+    <Screen contentStyle={styles.screenContent}>
+      <View style={styles.bgOrbTop} />
+      <View style={styles.bgOrbBottom} />
+      <PageHeader title="완성 미리보기" onBack={() => navigation.goBack()} />
 
       <Text style={styles.title}>{selectedProduct.name}</Text>
       <Text style={styles.subtitle}>다른 색상으로도 확인해 보세요</Text>
@@ -166,26 +172,15 @@ function Page() {
       </Card>
 
       <View style={styles.primaryActionRow}>
-        <Button type="primary" size="large" onPress={goOrder}>
-          💰 바로 주문하기
-        </Button>
+        <PrimaryButton label="💰 바로 주문하기" onPress={goOrder} style={styles.orderNowButton} />
       </View>
 
       <View style={styles.actionRow}>
         <View style={styles.flex1}>
-          <Button
-            type="light"
-            size="medium"
-            onPress={handleSave}
-            disabled={saving}
-          >
-            {saving ? '저장하고 있어요...' : '저장하기'}
-          </Button>
+          <SecondaryButton label={saving ? '저장하고 있어요...' : '저장하기'} onPress={handleSave} disabled={saving} />
         </View>
         <View style={styles.flex1}>
-          <Button type="light" size="medium" onPress={handleShare}>
-            공유하기
-          </Button>
+          <SecondaryButton label="공유하기" onPress={handleShare} />
         </View>
       </View>
     </Screen>
@@ -193,29 +188,75 @@ function Page() {
 }
 
 const styles = StyleSheet.create({
-  title: {
-    fontSize: 16,
+  screenContent: {
+    backgroundColor: NAVY_DEEP,
+    paddingBottom: theme.spacing.xl,
+  },
+  bgOrbTop: {
+    position: 'absolute',
+    top: -100,
+    right: -80,
+    width: 230,
+    height: 230,
+    borderRadius: 115,
+    backgroundColor: 'rgba(56, 120, 214, 0.14)',
+  },
+  bgOrbBottom: {
+    position: 'absolute',
+    bottom: 20,
+    left: -70,
+    width: 210,
+    height: 210,
+    borderRadius: 105,
+    backgroundColor: 'rgba(25, 70, 146, 0.12)',
+  },
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: theme.spacing.md,
+  },
+  headerTitle: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: '#eef5ff',
+  },
+  headerBack: {
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.24)',
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+  },
+  headerBackText: {
+    fontSize: 12,
+    color: '#dbeaff',
     fontWeight: '700',
-    color: theme.colors.textPrimary,
-    lineHeight: 22,
+  },
+  title: {
+    ...theme.typography.heading,
+    color: '#f0f6ff',
   },
   subtitle: {
-    fontSize: 13,
-    color: theme.colors.textSecondary,
-    lineHeight: 20,
+    ...theme.typography.body,
+    color: '#bdd2ef',
     marginTop: theme.spacing.xs,
     marginBottom: theme.spacing.md,
   },
   mockupCard: {
     width: 220,
     alignItems: 'center',
+    backgroundColor: NAVY_PANEL,
+    borderColor: 'rgba(255,255,255,0.14)',
+    borderWidth: 1,
   },
   mockupSpacing: {
     marginLeft: theme.spacing.md,
   },
   mockupLabel: {
     fontSize: 13,
-    color: theme.colors.textSecondary,
+    color: '#b8ceee',
     lineHeight: 20,
     marginTop: theme.spacing.sm,
   },
@@ -223,10 +264,8 @@ const styles = StyleSheet.create({
     marginTop: theme.spacing.lg,
   },
   sectionTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: theme.colors.textPrimary,
-    lineHeight: 22,
+    ...theme.typography.subheading,
+    color: '#eff6ff',
     marginBottom: theme.spacing.sm,
   },
   swatchRow: {
@@ -235,22 +274,22 @@ const styles = StyleSheet.create({
   },
   priceCard: {
     marginTop: theme.spacing.lg,
-    backgroundColor: theme.colors.primarySoft,
-    borderColor: theme.colors.primary,
-    borderWidth: 2,
+    backgroundColor: NAVY_PANEL,
+    borderColor: 'rgba(255,255,255,0.14)',
+    borderWidth: 1,
     alignItems: 'center',
     padding: theme.spacing.lg,
   },
   priceLabel: {
     fontSize: 14,
     fontWeight: '600',
-    color: theme.colors.textSecondary,
+    color: '#bdd2ef',
     marginBottom: theme.spacing.xs,
   },
   priceAmount: {
     fontSize: 28,
     fontWeight: '700',
-    color: theme.colors.primary,
+    color: ORANGE_RED,
     marginBottom: theme.spacing.xs,
   },
   priceDetail: {
@@ -258,27 +297,31 @@ const styles = StyleSheet.create({
   },
   priceDetailText: {
     fontSize: 13,
-    color: theme.colors.textSecondary,
+    color: '#bdd2ef',
   },
   infoCard: {
     marginTop: theme.spacing.md,
-    backgroundColor: theme.colors.successSoft,
-    borderColor: theme.colors.successBorder,
+    backgroundColor: NAVY_PANEL,
+    borderColor: 'rgba(255,255,255,0.14)',
+    borderWidth: 1,
   },
   infoTitle: {
     fontSize: 15,
     fontWeight: '700',
-    color: theme.colors.success,
+    color: '#eff6ff',
     lineHeight: 22,
     marginBottom: theme.spacing.xs,
   },
   infoDesc: {
     fontSize: 13,
-    color: theme.colors.textSecondary,
+    color: '#c2d6f3',
     lineHeight: 20,
   },
   primaryActionRow: {
     marginTop: theme.spacing.lg,
+  },
+  orderNowButton: {
+    backgroundColor: ORANGE_RED,
   },
   actionRow: {
     marginTop: theme.spacing.md,

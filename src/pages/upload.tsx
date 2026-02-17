@@ -1,6 +1,6 @@
 import { fetchAlbumPhotos } from '@apps-in-toss/native-modules';
 import { createRoute } from '@granite-js/react-native';
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Image,
@@ -14,16 +14,26 @@ import {
   Card,
   Chip,
   DisabledHint,
+  PageHeader,
   PrimaryButton,
   Screen,
   SecondaryButton,
-  StickyFooter,
-  TopBar,
   theme,
 } from '../components/ui';
 import { API_BASE_URL } from '../config';
 import { useCatalog } from '../context/catalog';
-import { trackImageUploaded } from '../utils/analytics';
+import { faqItems } from '../data/faq';
+import {
+  trackClick,
+  trackEvent,
+  trackImageUploaded,
+  trackScreenView,
+} from '../utils/analytics';
+
+const ORANGE_RED = '#FF5000';
+const NAVY_DEEP = '#071a35';
+const NAVY_MID = '#0f2a53';
+const NAVY_PANEL = '#15325d';
 
 export const Route = createRoute('/upload', {
   component: Page,
@@ -37,15 +47,35 @@ function Page() {
   const [bgRemovalStatus, setBgRemovalStatus] = useState<
     'idle' | 'loading' | 'success' | 'error'
   >('idle');
+  const [bgRemovalUndoUri, setBgRemovalUndoUri] = useState<string | null>(null);
   const [lastDataUrl, setLastDataUrl] = useState<string | null>(null);
   const [error, setError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
   const [stylingImage, setStylingImage] = useState(false);
   const [showStyleOptions, setShowStyleOptions] = useState(false);
 
+  const uploadFaqs = useMemo(
+    () =>
+      [
+        'quality-1',
+        'quality-2',
+        'delivery-1',
+      ]
+        .map((id) => faqItems.find((item) => item.id === id))
+        .filter((item): item is NonNullable<typeof item> => !!item),
+    [],
+  );
+
   const previewUri = designImageUri ?? lastDataUrl;
 
+  React.useEffect(() => {
+    trackScreenView('upload');
+  }, []);
+
   const goNext = () => {
+    trackClick('upload_next_editor_click', {
+      has_design_image: !!designImageUri,
+    });
     navigation.navigate('/editor');
   };
 
@@ -105,6 +135,7 @@ function Page() {
   };
 
   const handlePick = async () => {
+    trackClick('upload_pick_photo_click', { source: 'album' });
     setError('');
     setLoadingAlbum(true);
     try {
@@ -112,25 +143,32 @@ function Page() {
       if (permission !== 'allowed') {
         const next = await fetchAlbumPhotos.openPermissionDialog();
         if (next !== 'allowed') {
+          trackEvent('upload_album_permission_denied', { source: 'album' });
           setError('사진 앨범에 접근하려면 권한이 필요해요. 설정에서 허용해 주세요.');
           return;
         }
       }
       const photos = await fetchAlbumPhotos({
         maxCount: 1,
-        maxWidth: 1024,
+        maxWidth: 2048,
         base64: true,
       });
       const photo = photos[0];
       if (!photo || !photo.dataUri) {
+        trackEvent('upload_photo_pick_failed', { reason: 'empty_photo' });
         setError('앨범에서 사진을 불러오지 못했어요. 다시 선택해 주세요.');
         return;
       }
       const dataUrl = photo.dataUri.startsWith('data:')
         ? photo.dataUri
         : `data:image/jpeg;base64,${photo.dataUri}`;
+      trackEvent('upload_photo_pick_success', {
+        source: 'album',
+        has_photo_id: !!photo.id,
+      });
       setDesignImageUri(null);
       setLastDataUrl(dataUrl);
+      setBgRemovalUndoUri(null);
       await uploadDataUrl(dataUrl, `album-${photo.id || 'unknown'}`);
     } catch (err) {
       setError(
@@ -143,9 +181,14 @@ function Page() {
 
   const handleRemoveBackground = async () => {
     if (!designImageUri && !lastDataUrl) return;
+    const before = designImageUri ?? lastDataUrl;
+    trackClick('upload_remove_background_click', {
+      source_type: lastDataUrl ? 'local_data_url' : 'uploaded_data_url',
+    });
     setBgRemovalStatus('loading');
     setError('');
     setSuccessMessage('');
+    setBgRemovalUndoUri(before ?? null);
     try {
       const response = await fetch(
         `${API_BASE_URL}/v1/images/remove-background`,
@@ -171,6 +214,7 @@ function Page() {
         throw new Error('배경 제거 결과를 확인하지 못했어요. 다시 시도해 주세요.');
       }
       trackImageUploaded('background_removed');
+      trackEvent('upload_remove_background_success');
       setDesignImageUri(data.dataUrl);
       setLastDataUrl(null);
       setBgRemovalStatus('success');
@@ -181,9 +225,23 @@ function Page() {
       }, 3000);
     } catch (err) {
       setBgRemovalStatus('error');
+      trackEvent('upload_remove_background_failed', {
+        reason: err instanceof Error ? err.message : 'unknown',
+      });
       setError(err instanceof Error ? err.message : '배경을 제거하지 못했어요. 다시 시도해 주세요.');
       setTimeout(() => setBgRemovalStatus('idle'), 3000);
     }
+  };
+
+  const handleUndoBackground = () => {
+    if (!bgRemovalUndoUri) return;
+    trackClick('upload_remove_background_undo_click');
+    setDesignImageUri(bgRemovalUndoUri);
+    setLastDataUrl(null);
+    setBgRemovalUndoUri(null);
+    setBgRemovalStatus('idle');
+    setSuccessMessage('원본으로 되돌렸어요.');
+    setTimeout(() => setSuccessMessage(''), 2500);
   };
 
   const handleStyleTransfer = async (style: string) => {
@@ -192,6 +250,7 @@ function Page() {
       return;
     }
 
+    trackClick('upload_style_transfer_click', { style });
     console.log('[StyleTransfer] Starting style transfer:', style);
     setStylingImage(true);
     setError('');
@@ -230,12 +289,18 @@ function Page() {
 
       console.log('[StyleTransfer] Success! Data URL length:', data.dataUrl.length);
       trackImageUploaded('style_transfer');
+      trackEvent('upload_style_transfer_success', { style });
       setDesignImageUri(data.dataUrl);
       setLastDataUrl(null);
+      setBgRemovalUndoUri(null);
       setSuccessMessage('✓ 스타일을 변환했어요!');
       setTimeout(() => setSuccessMessage(''), 3000);
     } catch (err) {
       console.error('[StyleTransfer] Error:', err);
+      trackEvent('upload_style_transfer_failed', {
+        style,
+        reason: err instanceof Error ? err.message : 'unknown',
+      });
       setError(
         err instanceof Error ? err.message : '스타일을 변환하지 못했어요. 다시 시도해 주세요.',
       );
@@ -246,15 +311,17 @@ function Page() {
 
 
   return (
-    <Screen>
-      <TopBar title="내 이미지 업로드하기" />
+    <Screen contentStyle={styles.screenContent}>
+      <View style={styles.bgOrbTop} />
+      <View style={styles.bgOrbBottom} />
+      <PageHeader title="사진 편집 시작" onBack={() => navigation.goBack()} />
 
-      <Text style={styles.title}>먼저 사진을 가져와 주세요</Text>
+      <Text style={styles.title}>먼저 사진을 올려주세요</Text>
       <Text style={styles.subtitle}>
-        아래 + 버튼을 눌러 앨범에서 사진을 선택해 주세요.
+        + 버튼으로 사진을 불러오고 배경 제거/스타일 변경까지 한 번에 진행할 수 있어요.
       </Text>
       <Text style={styles.cropGuide}>
-        💡 팁: 정사각형 이미지를 원하시면 사진 앱에서 미리 잘라서 업로드해 주세요.
+        💡 팁: 중앙 피사체가 크게 보이는 사진일수록 인쇄 결과가 더 또렷해요.
       </Text>
 
       <Card style={styles.uploadCard}>
@@ -284,7 +351,38 @@ function Page() {
           label={getBgRemovalButtonText()}
           onPress={handleRemoveBackground}
           disabled={!previewUri || bgRemovalStatus === 'loading' || stylingImage}
-          style={[styles.bgRemoveButton, previewUri ? getBgRemovalButtonStyle() : undefined]}
+          style={[
+            styles.bgRemoveButton,
+            previewUri ? getBgRemovalButtonStyle() : styles.disabledToolButton,
+          ]}
+        />
+        {bgRemovalUndoUri ? (
+          <View style={styles.undoRow}>
+            <Pressable
+              onPress={handleUndoBackground}
+              disabled={bgRemovalStatus === 'loading' || uploading || stylingImage}
+              style={({ pressed }) => [
+                styles.undoButton,
+                pressed && styles.undoButtonPressed,
+                (bgRemovalStatus === 'loading' || uploading || stylingImage) &&
+                styles.undoButtonDisabled,
+              ]}
+            >
+              <Text style={styles.undoButtonText}>되돌리기</Text>
+            </Pressable>
+          </View>
+        ) : null}
+        <SecondaryButton
+          label={stylingImage ? '스타일을 바꾸고 있어요...' : 'AI 스타일 바꾸기'}
+          onPress={() => {
+            trackClick('upload_style_modal_open_click');
+            setShowStyleOptions(true);
+          }}
+          disabled={!previewUri || stylingImage}
+          style={[
+            styles.styleButton,
+            !previewUri ? styles.disabledToolButton : undefined,
+          ]}
         />
         <DisabledHint
           text="사진 업로드 후 사용할 수 있어요"
@@ -295,6 +393,19 @@ function Page() {
       {successMessage ? (
         <Text style={styles.successText}>{successMessage}</Text>
       ) : null}
+
+      <Card style={styles.quickFaqCard}>
+        <Text style={styles.quickFaqTitle}>업로드 전에 많이 묻는 질문</Text>
+        {uploadFaqs.map((item) => (
+          <View key={item.id} style={styles.quickFaqRow}>
+            <Text style={styles.quickFaqQ}>Q.</Text>
+            <View style={styles.quickFaqBody}>
+              <Text style={styles.quickFaqQuestion}>{item.question}</Text>
+              <Text style={styles.quickFaqAnswer}>{item.answer}</Text>
+            </View>
+          </View>
+        ))}
+      </Card>
 
       {/* Style Options Modal */}
       <Modal
@@ -347,7 +458,7 @@ function Page() {
                 style={styles.styleChip}
               />
             </View>
-            <SecondaryButton
+            <PrimaryButton
               label="다음에 할게요"
               onPress={() => setShowStyleOptions(false)}
               style={styles.modalCancelButton}
@@ -356,42 +467,86 @@ function Page() {
         </Pressable>
       </Modal>
 
-      <View style={styles.stickyFooterSpacer} />
-
-      <StickyFooter>
+      <View style={styles.actionRow}>
         <PrimaryButton
           label="디자인 편집하러 가기"
           onPress={goNext}
           disabled={!designImageUri}
+          style={styles.nextButton}
         />
         <DisabledHint
           text="사진을 선택하면 다음 단계로 갈 수 있어요"
           visible={!designImageUri}
         />
-      </StickyFooter>
+      </View>
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  title: {
-    fontSize: 18,
-    lineHeight: 26,
+  screenContent: {
+    backgroundColor: NAVY_DEEP,
+    paddingBottom: theme.spacing.xl,
+  },
+  bgOrbTop: {
+    position: 'absolute',
+    top: -100,
+    right: -80,
+    width: 240,
+    height: 240,
+    borderRadius: 120,
+    backgroundColor: 'rgba(56, 120, 214, 0.16)',
+  },
+  bgOrbBottom: {
+    position: 'absolute',
+    bottom: 10,
+    left: -70,
+    width: 220,
+    height: 220,
+    borderRadius: 110,
+    backgroundColor: 'rgba(30, 74, 149, 0.13)',
+  },
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: theme.spacing.md,
+  },
+  headerTitle: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: '#eef5ff',
+  },
+  headerBack: {
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.24)',
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+  },
+  headerBackText: {
+    fontSize: 12,
+    color: '#dbe9fe',
     fontWeight: '700',
-    color: theme.colors.textPrimary,
+  },
+  title: {
+    ...theme.typography.heading,
+    color: '#f5f9ff',
     marginBottom: theme.spacing.xs,
   },
   subtitle: {
-    fontSize: 13,
-    lineHeight: 20,
-    color: theme.colors.textSecondary,
+    ...theme.typography.body,
+    color: '#c4d7f5',
     marginBottom: theme.spacing.xs,
   },
   cropGuide: {
     fontSize: 12,
     lineHeight: 18,
-    color: theme.colors.primary,
-    backgroundColor: theme.colors.primarySoft,
+    color: '#d4e5ff',
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.14)',
     padding: theme.spacing.sm,
     borderRadius: theme.radius.sm,
     marginBottom: theme.spacing.lg,
@@ -399,14 +554,22 @@ const styles = StyleSheet.create({
   uploadCard: {
     alignItems: 'center',
     marginBottom: theme.spacing.lg,
+    backgroundColor: NAVY_PANEL,
+    borderColor: 'rgba(255,255,255,0.12)',
+    borderWidth: 1,
+    shadowColor: '#010a1a',
+    shadowOpacity: 0.28,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 10 },
+    elevation: 7,
   },
   uploadPreview: {
     width: '100%',
-    height: 160,
+    height: 280,
     borderRadius: theme.radius.md,
-    backgroundColor: theme.colors.primarySoft,
+    backgroundColor: NAVY_MID,
     borderWidth: 1,
-    borderColor: theme.colors.border,
+    borderColor: 'rgba(255,255,255,0.16)',
     marginBottom: theme.spacing.md,
     alignItems: 'center',
     justifyContent: 'center',
@@ -419,7 +582,7 @@ const styles = StyleSheet.create({
     fontSize: 36,
     lineHeight: 44,
     fontWeight: '700',
-    color: theme.colors.primary,
+    color: ORANGE_RED,
     marginBottom: theme.spacing.xs,
   },
   previewImage: {
@@ -430,7 +593,7 @@ const styles = StyleSheet.create({
   previewText: {
     fontSize: 12,
     lineHeight: 18,
-    color: theme.colors.textSecondary,
+    color: '#c7d9f6',
   },
   loadingRow: {
     flexDirection: 'row',
@@ -440,24 +603,59 @@ const styles = StyleSheet.create({
   loadingText: {
     fontSize: 12,
     lineHeight: 18,
-    color: theme.colors.textSecondary,
+    color: '#c3d6f5',
     marginLeft: theme.spacing.sm,
   },
   errorText: {
     fontSize: 12,
     lineHeight: 18,
-    color: theme.colors.error,
+    color: '#ffb8b8',
     marginBottom: theme.spacing.sm,
   },
   successText: {
     fontSize: 12,
     lineHeight: 18,
-    color: theme.colors.success,
+    color: '#8ee0b2',
     marginBottom: theme.spacing.sm,
     fontWeight: '600',
   },
   bgRemoveButton: {
     marginTop: theme.spacing.md,
+    width: '100%',
+    backgroundColor: ORANGE_RED,
+  },
+  styleButton: {
+    marginTop: theme.spacing.sm,
+    width: '100%',
+    backgroundColor: 'rgba(255,255,255,0.16)',
+  },
+  undoRow: {
+    width: '100%',
+    marginTop: theme.spacing.sm,
+    alignItems: 'flex-end',
+  },
+  undoButton: {
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.18)',
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  undoButtonPressed: {
+    opacity: 0.9,
+  },
+  undoButtonDisabled: {
+    opacity: 0.5,
+  },
+  undoButtonText: {
+    fontSize: 12,
+    lineHeight: 18,
+    fontWeight: '700',
+    color: ORANGE_RED,
+  },
+  disabledToolButton: {
+    backgroundColor: 'rgba(255,255,255,0.10)',
   },
   modalOverlay: {
     flex: 1,
@@ -467,7 +665,7 @@ const styles = StyleSheet.create({
     padding: theme.spacing.lg,
   },
   modalContent: {
-    backgroundColor: theme.colors.surface,
+    backgroundColor: '#fcfdff',
     borderRadius: theme.radius.lg,
     padding: theme.spacing.xl,
     width: '100%',
@@ -498,8 +696,54 @@ const styles = StyleSheet.create({
   },
   modalCancelButton: {
     marginTop: theme.spacing.sm,
+    backgroundColor: 'rgba(15,42,83,0.92)',
   },
-  stickyFooterSpacer: {
-    height: 80,
+  actionRow: {
+    marginTop: theme.spacing.md,
+    marginBottom: theme.spacing.md,
+    gap: theme.spacing.sm,
+  },
+  quickFaqCard: {
+    marginTop: theme.spacing.md,
+    marginBottom: theme.spacing.md,
+    backgroundColor: NAVY_PANEL,
+    borderColor: 'rgba(255,255,255,0.12)',
+    borderWidth: 1,
+  },
+  quickFaqTitle: {
+    ...theme.typography.subheading,
+    color: '#eef6ff',
+    marginBottom: theme.spacing.sm,
+  },
+  quickFaqRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: theme.spacing.sm,
+  },
+  quickFaqQ: {
+    width: 18,
+    fontSize: 12,
+    lineHeight: 18,
+    fontWeight: '700',
+    color: ORANGE_RED,
+    marginTop: 1,
+  },
+  quickFaqBody: {
+    flex: 1,
+  },
+  quickFaqQuestion: {
+    fontSize: 12,
+    lineHeight: 18,
+    color: '#dceafe',
+    fontWeight: '600',
+  },
+  quickFaqAnswer: {
+    fontSize: 12,
+    lineHeight: 18,
+    color: '#bcd1ef',
+    marginTop: 2,
+  },
+  nextButton: {
+    backgroundColor: ORANGE_RED,
   },
 });

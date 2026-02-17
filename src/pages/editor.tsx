@@ -1,7 +1,7 @@
 import { fetchAlbumPhotos } from '@apps-in-toss/native-modules';
 import { createRoute } from '@granite-js/react-native';
 import { TextField } from '@toss/tds-react-native';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Dimensions,
@@ -15,7 +15,6 @@ import {
   View,
 } from 'react-native';
 import { DesignStage } from '../components/DesignStage';
-import { MockupCanvas } from '../components/MockupCanvas';
 import { ScaleSlider } from '../components/ScaleSlider';
 import {
   Card,
@@ -25,7 +24,6 @@ import {
   PrimaryButton,
   SecondaryButton,
   TabBar,
-  TopBar,
   theme,
 } from '../components/ui';
 import { useCatalog } from '../context/catalog';
@@ -34,12 +32,18 @@ import { buildTemplate, printSizeByCategory } from '../data/mockupTemplates';
 import { calcPricing } from '../data/pricing';
 import { formatPrice } from '../utils/format';
 import {
+  trackClick,
   trackPhotoAddClick,
   trackPhotoRemoveClick,
   trackPhotoRemoveConfirm,
   trackPhotoReplaceClick,
   trackPhotoSelectThumbnail,
+  trackScreenView,
 } from '../utils/analytics';
+
+const ORANGE_RED = '#FF5000';
+const NAVY_MID = '#0f2a53';
+const NAVY_PANEL = '#15325d';
 
 export const Route = createRoute('/editor', {
   component: Page,
@@ -88,7 +92,10 @@ function Page() {
   const [scrollEnabled, setScrollEnabled] = useState(true);
   const [editorTab, setEditorTab] = useState(0);
   const [focusMode, setFocusMode] = useState(false);
-  const [expandedPanel, setExpandedPanel] = useState(false);
+  const [shrinkView, setShrinkView] = useState(false);
+  const [expandedPanel, setExpandedPanel] = useState(true);
+  const [showStartModal, setShowStartModal] = useState(false);
+  const [startModalDismissed, setStartModalDismissed] = useState(false);
 
   // Photo management state
   const [loadingPhoto, setLoadingPhoto] = useState(false);
@@ -113,7 +120,7 @@ function Page() {
   const printAreaFrac = { x: 0.32, y: 0.22, w: 0.36, h: 0.46 };
   const cameraScale = focusMode
     ? Math.min(canvasWidth / (canvasWidth * printAreaFrac.w), canvasHeight / (canvasHeight * printAreaFrac.h))
-    : 1;
+    : (shrinkView ? 0.86 : 1);
   const cameraTranslateX = focusMode
     ? -(printAreaFrac.x + printAreaFrac.w / 2 - 0.5) * canvasWidth * cameraScale
     : 0;
@@ -121,13 +128,22 @@ function Page() {
     ? -(printAreaFrac.y + printAreaFrac.h / 2 - 0.5) * canvasHeight * cameraScale
     : 0;
 
-  const EDITOR_TABS = ['레이어', '조정', '옵션'];
+  const EDITOR_TABS = ['이미지 편집', '조정', '주문'];
 
   const goPreview = () => {
+    trackClick('editor_preview_click', {
+      product_id: selectedProduct.id,
+      placement: selectedPlacement,
+    });
     navigation.navigate('/preview');
   };
 
   const goOrder = () => {
+    trackClick('editor_order_click', {
+      product_id: selectedProduct.id,
+      order_line_count: orderLines.length,
+      total_quantity: totalQuantity,
+    });
     navigation.navigate('/order');
   };
 
@@ -137,6 +153,33 @@ function Page() {
     printOption: selectedPrint,
     printBackEnabled,
   });
+
+  // Auto-expand panel when switching to 조정/옵션 tabs
+  useEffect(() => {
+    if (editorTab === 1 || editorTab === 2) {
+      setExpandedPanel(true);
+    }
+  }, [editorTab]);
+
+  useEffect(() => {
+    trackScreenView('editor', {
+      product_id: selectedProduct.id,
+      product_category: selectedProduct.category,
+      selected_color: selectedColor,
+      placement: selectedPlacement,
+    });
+  }, []);
+
+  useEffect(() => {
+    if (currentPhotos.length > 0) {
+      setShowStartModal(false);
+      setStartModalDismissed(false);
+      return;
+    }
+    if (!startModalDismissed) {
+      setShowStartModal(true);
+    }
+  }, [currentPhotos.length, startModalDismissed]);
 
   // Reset draft state when product changes
   useEffect(() => {
@@ -152,6 +195,15 @@ function Page() {
   // Check if current draft size is already in confirmed orders
   const isDraftSizeUsed = usedSizes.has(draftSize);
 
+  const imageTransformRef = useRef(imageTransform);
+  const textTransformRef = useRef(textTransform);
+  useEffect(() => {
+    imageTransformRef.current = imageTransform;
+  }, [imageTransform]);
+  useEffect(() => {
+    textTransformRef.current = textTransform;
+  }, [textTransform]);
+
   const activeTransform =
     activeLayer === 'text' ? textTransform : imageTransform;
   const updateActiveTransform = (next: typeof activeTransform) => {
@@ -166,37 +218,40 @@ function Page() {
   // Individual transform property updaters to avoid closure issues
   const updateScale = (scale: number) => {
     if (activeLayer === 'text') {
-      setTextTransform({ ...textTransform, scale });
+      setTextTransform({ ...textTransformRef.current, scale });
     } else {
-      setImageTransform({ ...imageTransform, scale });
+      setImageTransform({ ...imageTransformRef.current, scale });
     }
   };
 
   const updateOffsetX = (offsetX: number) => {
     if (activeLayer === 'text') {
-      setTextTransform({ ...textTransform, offsetX });
+      setTextTransform({ ...textTransformRef.current, offsetX });
     } else {
-      setImageTransform({ ...imageTransform, offsetX });
+      setImageTransform({ ...imageTransformRef.current, offsetX });
     }
   };
 
   const updateOffsetY = (offsetY: number) => {
     if (activeLayer === 'text') {
-      setTextTransform({ ...textTransform, offsetY });
+      setTextTransform({ ...textTransformRef.current, offsetY });
     } else {
-      setImageTransform({ ...imageTransform, offsetY });
+      setImageTransform({ ...imageTransformRef.current, offsetY });
     }
   };
 
   const updateRotation = (rotation: number) => {
     if (activeLayer === 'text') {
-      setTextTransform({ ...textTransform, rotation });
+      setTextTransform({ ...textTransformRef.current, rotation });
     } else {
-      setImageTransform({ ...imageTransform, rotation });
+      setImageTransform({ ...imageTransformRef.current, rotation });
     }
   };
 
   const handleAddText = () => {
+    trackClick('editor_add_text_click', {
+      placement: selectedPlacement,
+    });
     const colorKey = selectedColor.toLowerCase();
     const isDark = ['블랙', '네이비', '차콜', 'black', 'navy', 'charcoal'].some(
       (c) => colorKey.includes(c),
@@ -248,11 +303,16 @@ function Page() {
     }
   };
 
-  const handleAddPhoto = async () => {
+  const handleAddPhoto = async (closeAfterSuccess = false) => {
     trackPhotoAddClick(selectedPlacement, currentPhotos.length);
     if (currentPhotos.length >= 3) {
       setPhotoError('최대 3장까지 추가할 수 있어요.');
       return;
+    }
+    if (closeAfterSuccess) {
+      // Give immediate UI feedback when pressed from start modal.
+      setShowStartModal(false);
+      setStartModalDismissed(true);
     }
     const dataUrl = await pickPhoto();
     if (dataUrl) {
@@ -288,11 +348,46 @@ function Page() {
     selectPhoto(index);
   };
 
+  const handleStartModalClose = () => {
+    trackClick('editor_start_modal_dismiss_click');
+    setShowStartModal(false);
+    setStartModalDismissed(true);
+  };
+
+  const handlePlacementChange = (placement: 'front' | 'back') => {
+    if (placement !== selectedPlacement) {
+      trackClick('editor_placement_switch_click', {
+        from: selectedPlacement,
+        to: placement,
+      });
+    }
+    setSelectedPlacement(placement);
+    if (placement === 'back' && !printBackEnabled) {
+      setPrintBackEnabled(true);
+    }
+  };
+
+  const handleTabChange = (nextIndex: number) => {
+    trackClick('editor_tab_change_click', {
+      tab: EDITOR_TABS[nextIndex] ?? String(nextIndex),
+      tab_index: nextIndex,
+    });
+    setEditorTab(nextIndex);
+  };
+
   return (
     <SafeAreaView style={styles.safe}>
       {/* ── 컴팩트 상단 ── */}
       <View style={styles.compactHeader}>
-        <TopBar title="옷 위에 프린팅하기" />
+        <View style={styles.editorTopRow}>
+          <Text style={styles.editorTopTitle}>이미지 편집</Text>
+          <Pressable
+            style={styles.editorTopAction}
+            onPress={() => navigation.navigate('/products')}
+          >
+            <Text style={styles.editorTopActionText}>상품 변경</Text>
+          </Pressable>
+        </View>
         <View style={styles.compactProduct}>
           <View style={[styles.compactDot, { backgroundColor: resolveColorValue(selectedColor) }]} />
           <Text style={styles.compactName} numberOfLines={1}>
@@ -309,7 +404,7 @@ function Page() {
         <View style={styles.placementSegment}>
           <Pressable
             style={[styles.segmentButton, selectedPlacement === 'front' && styles.segmentButtonActive]}
-            onPress={() => setSelectedPlacement('front')}
+            onPress={() => handlePlacementChange('front')}
           >
             <Text style={[styles.segmentButtonText, selectedPlacement === 'front' && styles.segmentButtonTextActive]}>
               앞면
@@ -317,10 +412,7 @@ function Page() {
           </Pressable>
           <Pressable
             style={[styles.segmentButton, selectedPlacement === 'back' && styles.segmentButtonActive]}
-            onPress={() => {
-              setSelectedPlacement('back');
-              if (!printBackEnabled) setPrintBackEnabled(true);
-            }}
+            onPress={() => handlePlacementChange('back')}
           >
             <Text style={[styles.segmentButtonText, selectedPlacement === 'back' && styles.segmentButtonTextActive]}>
               뒷면
@@ -332,43 +424,76 @@ function Page() {
       {/* ── 캔버스 (최대화) ── */}
       <View style={styles.canvasArea}>
         <View style={styles.canvasToolbar}>
-          <Pressable
-            style={[styles.focusButton, focusMode && styles.focusButtonActive]}
-            onPress={() => setFocusMode(!focusMode)}
-          >
-            <Text style={[styles.focusButtonText, focusMode && styles.focusButtonTextActive]}>
-              {focusMode ? '전체 보기' : '확대 편집'}
+          <View style={styles.activeLayerBadge}>
+            <Text style={styles.activeLayerBadgeText}>
+              선택: {activeLayer === 'text' ? '텍스트' : '이미지'}
             </Text>
-          </Pressable>
-        </View>
-        <View style={[styles.canvasClip, { width: canvasWidth, height: canvasHeight }]}>
-          <View
-            style={{
-              transform: [
-                { translateX: cameraTranslateX },
-                { translateY: cameraTranslateY },
-                { scale: cameraScale },
-              ],
-            }}
-          >
-            <DesignStage
-              template={buildTemplate(selectedProduct, selectedColor, selectedPlacement)}
-              width={canvasWidth}
-              height={canvasHeight}
-              showPrintArea
-              showGuides
-              cameraScale={cameraScale}
-              imageUri={designImageUri}
-              imageTransform={imageTransform}
-              textLayer={textLayer}
-              textTransform={textTransform}
-              activeLayer={activeLayer}
-              onImageTransformChange={setImageTransform}
-              onTextTransformChange={setTextTransform}
-              onInteractionStart={() => setScrollEnabled(false)}
-              onInteractionEnd={() => setScrollEnabled(true)}
-            />
           </View>
+          <View style={styles.toolbarButtons}>
+            <Pressable
+              style={[styles.focusButton, shrinkView && styles.focusButtonActive]}
+              onPress={() => {
+                setShrinkView(!shrinkView);
+                if (!shrinkView) setFocusMode(false);
+              }}
+            >
+              <Text style={[styles.focusButtonText, shrinkView && styles.focusButtonTextActive]}>
+                {shrinkView ? '기본 보기' : '축소 보기'}
+              </Text>
+            </Pressable>
+            <Pressable
+              style={[styles.focusButton, focusMode && styles.focusButtonActive]}
+              onPress={() => {
+                setFocusMode(!focusMode);
+                if (!focusMode) setShrinkView(false);
+              }}
+            >
+              <Text style={[styles.focusButtonText, focusMode && styles.focusButtonTextActive]}>
+                {focusMode ? '전체 보기' : '확대 편집'}
+              </Text>
+            </Pressable>
+          </View>
+        </View>
+        <View style={styles.canvasFrame}>
+          <View style={[styles.canvasClip, { width: canvasWidth, height: canvasHeight }]}>
+            <View
+              style={{
+                transform: [
+                  { translateX: cameraTranslateX },
+                  { translateY: cameraTranslateY },
+                  { scale: cameraScale },
+                ],
+              }}
+            >
+              <DesignStage
+                template={buildTemplate(selectedProduct, selectedColor, selectedPlacement)}
+                width={canvasWidth}
+                height={canvasHeight}
+                showPrintArea
+                showGuides
+                cameraScale={cameraScale}
+                imageUri={designImageUri}
+                imageTransform={imageTransform}
+                textLayer={textLayer}
+                textTransform={textTransform}
+                activeLayer={activeLayer}
+                onImageTransformChange={setImageTransform}
+                onTextTransformChange={setTextTransform}
+                onInteractionStart={() => setScrollEnabled(false)}
+                onInteractionEnd={() => setScrollEnabled(true)}
+              />
+            </View>
+          </View>
+          <Pressable
+            style={[
+              styles.canvasAddButton,
+              (loadingPhoto || currentPhotos.length >= 3) && styles.canvasAddButtonDisabled,
+            ]}
+            onPress={() => handleAddPhoto(false)}
+            disabled={loadingPhoto || currentPhotos.length >= 3}
+          >
+            <Text style={styles.canvasAddButtonPlus}>＋</Text>
+          </Pressable>
         </View>
         {/* 출력 크기 + 해상도 안내 */}
         <View style={styles.canvasInfo}>
@@ -399,7 +524,7 @@ function Page() {
         <TabBar
           tabs={EDITOR_TABS}
           activeIndex={editorTab}
-          onChangeIndex={setEditorTab}
+          onChangeIndex={handleTabChange}
         />
         <ScrollView
           style={styles.panelScroll}
@@ -413,7 +538,7 @@ function Page() {
             <View>
               {/* Photo Management Section */}
               <View style={styles.photoManagementSection}>
-                <Text style={styles.sectionTitle}>사진 관리</Text>
+                <Text style={styles.sectionTitle}>이미지 편집</Text>
                 {photoError ? (
                   <Text style={styles.photoError}>{photoError}</Text>
                 ) : null}
@@ -473,11 +598,11 @@ function Page() {
                 ) : (
                   <View>
                     <Text style={styles.sectionHint}>
-                      아직 사진이 없어요. 업로드 페이지에서 사진을 추가해 주세요.
+                      아직 사진이 없어요. 아래 버튼으로 바로 추가해 주세요.
                     </Text>
                     <SecondaryButton
-                      label="사진 추가"
-                      onPress={handleAddPhoto}
+                      label="사진 추가하기"
+                      onPress={() => handleAddPhoto(false)}
                       disabled={loadingPhoto}
                     />
                     {loadingPhoto && (
@@ -602,43 +727,6 @@ function Page() {
                 </View>
               )}
 
-              {/* 뒷면 프린팅 토글 */}
-              <View style={styles.backSection}>
-                {!printBackEnabled ? (
-                  <SecondaryButton
-                    label="뒷면 프린팅 추가하기"
-                    onPress={() => {
-                      setPrintBackEnabled(true);
-                      setSelectedPlacement('back');
-                    }}
-                  />
-                ) : (
-                  <>
-                    <View style={styles.optionRow}>
-                      <Text style={styles.sectionTitle}>뒷면 프린팅</Text>
-                      <SecondaryButton
-                        label="뒷면 빼기"
-                        onPress={() => {
-                          setPrintBackEnabled(false);
-                          setSelectedPlacement('front');
-                        }}
-                      />
-                    </View>
-                    <View style={styles.backPreviewContainer}>
-                      <MockupCanvas
-                        template={buildTemplate(selectedProduct, selectedColor, 'back')}
-                        width={160}
-                        height={200}
-                        showDesign
-                        designImageUri={designImageUri}
-                        imageTransform={imageTransform}
-                        textLayer={textLayer}
-                        textTransform={textTransform}
-                      />
-                    </View>
-                  </>
-                )}
-              </View>
             </View>
           )}
 
@@ -651,7 +739,7 @@ function Page() {
               <View style={styles.sliderRow}>
                 <Text style={styles.sliderLabel}>크기</Text>
                 <ScaleSlider
-                  min={0.2}
+                  min={0.1}
                   max={2.0}
                   value={activeTransform.scale}
                   onChange={updateScale}
@@ -882,6 +970,44 @@ function Page() {
           </Pressable>
         </Pressable>
       </Modal>
+
+      <Modal
+        visible={showStartModal}
+        transparent
+        animationType="fade"
+        onRequestClose={handleStartModalClose}
+      >
+        <Pressable style={styles.modalOverlay} onPress={handleStartModalClose}>
+          <Pressable
+            style={styles.startModalContent}
+            onPress={(e) => e.stopPropagation()}
+          >
+            <Text style={styles.modalTitle}>사진 편집 시작</Text>
+            <Text style={styles.modalSubtitle}>
+              사진을 올려 바로 배경 제거/위치 조정을 시작하거나, AI 이미지 생성으로 시작할 수 있어요.
+            </Text>
+            <PrimaryButton
+              label="사진 추가하기"
+              onPress={() => {
+                trackClick('editor_start_modal_upload_click');
+                void handleAddPhoto(true);
+              }}
+              style={styles.startModalPrimary}
+            />
+            <SecondaryButton
+              label="AI로 만들기"
+              onPress={() => {
+                trackClick('editor_start_modal_ai_click');
+                setShowStartModal(false);
+                navigation.navigate('/generate');
+              }}
+            />
+            <Pressable onPress={handleStartModalClose} style={styles.startModalClose}>
+              <Text style={styles.startModalCloseText}>나중에 할게요</Text>
+            </Pressable>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -895,6 +1021,33 @@ const styles = StyleSheet.create({
   /* ── Compact Header ── */
   compactHeader: {
     paddingHorizontal: 24,
+    paddingBottom: theme.spacing.sm,
+  },
+  editorTopRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: theme.spacing.sm,
+  },
+  editorTopTitle: {
+    fontSize: 20,
+    lineHeight: 28,
+    fontWeight: '800',
+    color: theme.colors.textPrimary,
+  },
+  editorTopAction: {
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    borderRadius: 999,
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: 6,
+    backgroundColor: theme.colors.surfaceSecondary,
+  },
+  editorTopActionText: {
+    fontSize: 12,
+    lineHeight: 18,
+    color: theme.colors.textSecondary,
+    fontWeight: '700',
   },
   compactProduct: {
     flexDirection: 'row',
@@ -913,27 +1066,29 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 14,
     fontWeight: '600',
-    color: theme.colors.textPrimary,
+    color: '#e8f2ff',
   },
   compactChange: {
     paddingHorizontal: theme.spacing.md,
     paddingVertical: theme.spacing.xs,
     borderRadius: 999,
-    backgroundColor: theme.colors.primarySoft,
+    backgroundColor: 'rgba(255,255,255,0.10)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.16)',
   },
   compactChangeText: {
     fontSize: 12,
     fontWeight: '600',
-    color: theme.colors.primary,
+    color: ORANGE_RED,
   },
 
   /* ── Placement Segment ── */
   placementSegment: {
     flexDirection: 'row',
-    backgroundColor: theme.colors.surface,
+    backgroundColor: NAVY_MID,
     borderRadius: 999,
     borderWidth: 1,
-    borderColor: theme.colors.border,
+    borderColor: 'rgba(255,255,255,0.18)',
     padding: 2,
     marginBottom: theme.spacing.sm,
   },
@@ -944,15 +1099,15 @@ const styles = StyleSheet.create({
     borderRadius: 999,
   },
   segmentButtonActive: {
-    backgroundColor: theme.colors.primarySoft,
+    backgroundColor: 'rgba(255,255,255,0.14)',
   },
   segmentButtonText: {
     fontSize: 13,
     fontWeight: '600',
-    color: theme.colors.textSecondary,
+    color: '#9ebbe3',
   },
   segmentButtonTextActive: {
-    color: theme.colors.primary,
+    color: '#f5f9ff',
   },
 
   /* ── Canvas ── */
@@ -963,33 +1118,82 @@ const styles = StyleSheet.create({
   },
   canvasToolbar: {
     flexDirection: 'row',
-    justifyContent: 'flex-end',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     width: '100%',
     marginBottom: theme.spacing.xs,
+  },
+  toolbarButtons: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.xs,
+  },
+  activeLayerBadge: {
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.2)',
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    paddingVertical: 4,
+    paddingHorizontal: 10,
+  },
+  activeLayerBadgeText: {
+    fontSize: 11,
+    lineHeight: 16,
+    color: '#d8e9ff',
+    fontWeight: '700',
+  },
+  canvasFrame: {
+    position: 'relative',
   },
   canvasClip: {
     overflow: 'hidden',
     borderRadius: 18,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.14)',
+    backgroundColor: NAVY_MID,
+  },
+  canvasAddButton: {
+    position: 'absolute',
+    right: 14,
+    top: 14,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.16)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  canvasAddButtonDisabled: {
+    opacity: 0.45,
+  },
+  canvasAddButtonPlus: {
+    color: ORANGE_RED,
+    fontSize: 19,
+    lineHeight: 19,
+    fontWeight: '500',
+    marginTop: -1,
   },
   focusButton: {
     paddingHorizontal: theme.spacing.md,
     paddingVertical: theme.spacing.xs,
     borderRadius: 999,
     borderWidth: 1,
-    borderColor: theme.colors.border,
-    backgroundColor: theme.colors.surface,
+    borderColor: 'rgba(255,255,255,0.2)',
+    backgroundColor: 'rgba(255,255,255,0.08)',
   },
   focusButtonActive: {
-    borderColor: theme.colors.primary,
-    backgroundColor: theme.colors.primarySoft,
+    borderColor: 'rgba(255,255,255,0.38)',
+    backgroundColor: 'rgba(255,255,255,0.2)',
   },
   focusButtonText: {
     fontSize: 12,
     fontWeight: '600',
-    color: theme.colors.textSecondary,
+    color: '#b8cfef',
   },
   focusButtonTextActive: {
-    color: theme.colors.primary,
+    color: '#f1f7ff',
   },
 
   /* ── Canvas Info ── */
@@ -1002,25 +1206,25 @@ const styles = StyleSheet.create({
   },
   canvasInfoText: {
     fontSize: 11,
-    color: theme.colors.textTertiary,
+    color: '#a2bde3',
   },
   canvasInfoWarn: {
     fontSize: 11,
-    color: theme.colors.warning,
+    color: '#ffc06e',
   },
 
   /* ── Bottom Panel ── */
   panel: {
-    flex: 1,
-    backgroundColor: theme.colors.surface,
+    flex: 1.25,
+    backgroundColor: NAVY_PANEL,
     borderTopLeftRadius: theme.radius.xl,
     borderTopRightRadius: theme.radius.xl,
     borderTopWidth: 1,
-    borderTopColor: theme.colors.border,
+    borderTopColor: 'rgba(255,255,255,0.15)',
     marginTop: theme.spacing.sm,
   },
   panelExpanded: {
-    flex: 2.5,
+    flex: 3.2,
   },
   dragHandle: {
     alignItems: 'center',
@@ -1032,13 +1236,13 @@ const styles = StyleSheet.create({
     width: 40,
     height: 4,
     borderRadius: 2,
-    backgroundColor: theme.colors.border,
+    backgroundColor: 'rgba(255,255,255,0.3)',
     marginBottom: theme.spacing.xs,
   },
   dragHint: {
     fontSize: 12,
     fontWeight: '600',
-    color: theme.colors.primary,
+    color: '#c9ddfb',
   },
   outOfBoundsInfo: {
     backgroundColor: theme.colors.surface,
@@ -1063,11 +1267,11 @@ const styles = StyleSheet.create({
 
   /* ── CTA ── */
   ctaBar: {
-    backgroundColor: theme.colors.surface,
+    backgroundColor: NAVY_PANEL,
     paddingHorizontal: theme.spacing.lg,
     paddingVertical: theme.spacing.md,
     borderTopWidth: 1,
-    borderTopColor: theme.colors.border,
+    borderTopColor: 'rgba(255,255,255,0.15)',
   },
   ctaButtonRow: {
     flexDirection: 'row',
@@ -1078,6 +1282,7 @@ const styles = StyleSheet.create({
   },
   ctaPrimary: {
     flex: 2,
+    backgroundColor: ORANGE_RED,
   },
 
   /* ── Layer tab ── */
@@ -1093,43 +1298,25 @@ const styles = StyleSheet.create({
     marginBottom: theme.spacing.md,
     paddingBottom: theme.spacing.md,
     borderBottomWidth: 1,
-    borderBottomColor: theme.colors.border,
+    borderBottomColor: 'rgba(255,255,255,0.14)',
   },
   sectionTitle: {
-    fontSize: 15,
-    lineHeight: 22,
-    fontWeight: '700',
-    color: theme.colors.textPrimary,
+    ...theme.typography.subheading,
+    color: '#f0f6ff',
     marginBottom: theme.spacing.sm,
   },
   sectionHint: {
     fontSize: 13,
     lineHeight: 20,
-    color: theme.colors.textSecondary,
+    color: '#b7ccea',
     marginBottom: theme.spacing.md,
-  },
-  backSection: {
-    marginTop: theme.spacing.md,
-    paddingTop: theme.spacing.md,
-    borderTopWidth: 1,
-    borderTopColor: theme.colors.border,
-  },
-  optionRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: theme.spacing.sm,
-  },
-  backPreviewContainer: {
-    alignItems: 'center',
-    marginVertical: theme.spacing.sm,
   },
 
   /* ── Adjust tab ── */
   transformHint: {
     fontSize: 13,
     lineHeight: 20,
-    color: theme.colors.textSecondary,
+    color: '#bfd2ee',
     marginBottom: theme.spacing.sm,
   },
   sliderRow: {
@@ -1138,7 +1325,7 @@ const styles = StyleSheet.create({
   sliderLabel: {
     fontSize: 12,
     lineHeight: 18,
-    color: theme.colors.textSecondary,
+    color: '#a8c2e6',
     marginBottom: theme.spacing.sm,
   },
   outOfBoundsWarning: {
@@ -1174,9 +1361,8 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
   },
   sizeHint: {
-    fontSize: 11,
-    lineHeight: 16,
-    color: theme.colors.textSecondary,
+    ...theme.typography.caption,
+    color: '#a8c2e6',
     marginTop: theme.spacing.xs,
   },
   quantityRow: {
@@ -1187,7 +1373,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     lineHeight: 22,
     fontWeight: '700',
-    color: theme.colors.textPrimary,
+    color: '#eef5ff',
     marginHorizontal: theme.spacing.lg,
   },
   addLineButton: {
@@ -1199,12 +1385,12 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingVertical: theme.spacing.sm,
     borderBottomWidth: 1,
-    borderBottomColor: theme.colors.border,
+    borderBottomColor: 'rgba(255,255,255,0.12)',
   },
   confirmText: {
     fontSize: 14,
     lineHeight: 20,
-    color: theme.colors.textPrimary,
+    color: '#eef5ff',
     fontWeight: '600',
   },
   removeText: {
@@ -1215,32 +1401,30 @@ const styles = StyleSheet.create({
   },
   priceCard: {
     marginTop: theme.spacing.lg,
-    backgroundColor: theme.colors.infoSoft,
-    borderColor: theme.colors.infoBorder,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    borderColor: 'rgba(255,255,255,0.18)',
   },
   priceTitle: {
-    fontSize: 15,
-    lineHeight: 22,
-    fontWeight: '700',
-    color: theme.colors.textPrimary,
+    ...theme.typography.subheading,
+    color: '#f2f8ff',
     marginBottom: theme.spacing.xs,
   },
   priceValue: {
     fontSize: 22,
     lineHeight: 30,
     fontWeight: '800',
-    color: theme.colors.primary,
+    color: ORANGE_RED,
     marginBottom: theme.spacing.xs,
   },
   priceOption: {
     fontSize: 12,
     lineHeight: 18,
-    color: theme.colors.textSecondary,
+    color: '#bdd2ef',
   },
   priceNote: {
     fontSize: 12,
     lineHeight: 18,
-    color: theme.colors.textSecondary,
+    color: '#bdd2ef',
     marginTop: theme.spacing.xs,
   },
 
@@ -1252,7 +1436,7 @@ const styles = StyleSheet.create({
   fontLabel: {
     fontSize: 12,
     lineHeight: 18,
-    color: theme.colors.textSecondary,
+    color: '#a8c2e6',
     marginBottom: theme.spacing.sm,
   },
   fontButtons: {
@@ -1263,21 +1447,21 @@ const styles = StyleSheet.create({
     paddingVertical: theme.spacing.sm,
     borderRadius: 999,
     borderWidth: 1,
-    borderColor: theme.colors.border,
+    borderColor: 'rgba(255,255,255,0.20)',
     marginRight: theme.spacing.sm,
-    backgroundColor: theme.colors.surface,
+    backgroundColor: 'rgba(255,255,255,0.08)',
   },
   fontButtonSelected: {
-    borderColor: theme.colors.primary,
-    backgroundColor: theme.colors.primarySoft,
+    borderColor: ORANGE_RED,
+    backgroundColor: 'rgba(255,80,0,0.14)',
   },
   fontButtonText: {
     fontSize: 12,
     lineHeight: 18,
-    color: theme.colors.textSecondary,
+    color: '#d3e4fb',
   },
   fontButtonTextSelected: {
-    color: theme.colors.primary,
+    color: '#ffd8c9',
   },
 
   /* ── Photo Management ── */
@@ -1285,7 +1469,7 @@ const styles = StyleSheet.create({
     marginBottom: theme.spacing.md,
     paddingBottom: theme.spacing.md,
     borderBottomWidth: 1,
-    borderBottomColor: theme.colors.border,
+    borderBottomColor: 'rgba(255,255,255,0.12)',
   },
   photoError: {
     fontSize: 12,
@@ -1297,8 +1481,8 @@ const styles = StyleSheet.create({
     marginBottom: theme.spacing.sm,
   },
   photoThumbnail: {
-    width: 80,
-    height: 80,
+    width: 96,
+    height: 96,
     borderRadius: theme.radius.md,
     marginRight: theme.spacing.sm,
     borderWidth: 2,
@@ -1307,7 +1491,7 @@ const styles = StyleSheet.create({
     position: 'relative',
   },
   photoThumbnailActive: {
-    borderColor: theme.colors.primary,
+    borderColor: ORANGE_RED,
     borderWidth: 3,
   },
   photoThumbnailImage: {
@@ -1336,7 +1520,7 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    backgroundColor: theme.colors.primary,
+    backgroundColor: ORANGE_RED,
     paddingVertical: 2,
   },
   photoActiveText: {
@@ -1356,7 +1540,7 @@ const styles = StyleSheet.create({
   photoHint: {
     fontSize: 11,
     lineHeight: 16,
-    color: theme.colors.textSecondary,
+    color: '#a8c2e6',
     marginTop: theme.spacing.xs,
   },
   photoLoadingRow: {
@@ -1367,7 +1551,7 @@ const styles = StyleSheet.create({
   photoLoadingText: {
     fontSize: 12,
     lineHeight: 18,
-    color: theme.colors.textSecondary,
+    color: '#bed3ef',
     marginLeft: theme.spacing.sm,
   },
 
@@ -1409,5 +1593,25 @@ const styles = StyleSheet.create({
   modalDeleteButton: {
     flex: 1,
     backgroundColor: theme.colors.error,
+  },
+  startModalContent: {
+    backgroundColor: '#fcfdff',
+    borderRadius: theme.radius.lg,
+    padding: theme.spacing.xl,
+    width: '100%',
+    maxWidth: 400,
+  },
+  startModalPrimary: {
+    marginBottom: theme.spacing.sm,
+    backgroundColor: ORANGE_RED,
+  },
+  startModalClose: {
+    marginTop: theme.spacing.md,
+    alignItems: 'center',
+  },
+  startModalCloseText: {
+    fontSize: 12,
+    color: '#637186',
+    fontWeight: '600',
   },
 });

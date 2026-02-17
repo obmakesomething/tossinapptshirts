@@ -3,29 +3,40 @@ import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Image,
+  Pressable,
   StyleSheet,
   Text,
   TextInput,
   View,
 } from 'react-native';
+
 import {
   Card,
   Chip,
   CollapsibleSection,
   DisabledHint,
   FullScreenLoader,
+  PageHeader,
   PrimaryButton,
   Screen,
   SecondaryButton,
-  StickyFooter,
-  TopBar,
   theme,
 } from '../components/ui';
 import { API_BASE_URL } from '../config';
 import { useCatalog } from '../context/catalog';
 import { useJobTracker, type JobStage } from '../context/jobTracker';
 import { useToast } from '../context/toastContext';
-import { trackImageGenerated } from '../utils/analytics';
+import {
+  trackClick,
+  trackEvent,
+  trackImageGenerated,
+  trackScreenView,
+} from '../utils/analytics';
+
+const ORANGE_RED = '#FF5000';
+const NAVY_DEEP = '#071a35';
+const NAVY_MID = '#0f2a53';
+const NAVY_PANEL = '#15325d';
 
 export const Route = createRoute('/generate', {
   component: Page,
@@ -62,6 +73,7 @@ function Page() {
   const [ratio, setRatio] = useState<string>(ratioOptions[0] ?? '1:1');
   const [resultUrl, setResultUrl] = useState<string | null>(null);
   const [removingBg, setRemovingBg] = useState(false);
+  const [bgRemovalUndoUrl, setBgRemovalUndoUrl] = useState<string | null>(null);
   const [showExamples, setShowExamples] = useState(true);
   const [error, setError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
@@ -71,6 +83,7 @@ function Page() {
   useEffect(() => {
     if (activeJob?.status === 'succeeded' && activeJob.result?.preview_url) {
       setResultUrl(activeJob.result.preview_url);
+      setBgRemovalUndoUrl(null);
       setDesignPrompt(prompt.trim() || '');
       setError(''); // Clear any previous errors
       setIsGenerating(false);
@@ -114,6 +127,10 @@ function Page() {
   ];
   const [loadingMessageIndex, setLoadingMessageIndex] = useState(0);
   const [localEta, setLocalEta] = useState<number | null>(null);
+
+  useEffect(() => {
+    trackScreenView('generate');
+  }, []);
 
   // Change loading message over time
   useEffect(() => {
@@ -159,6 +176,9 @@ function Page() {
   }, [isLoading, activeJob?.etaMs, localEta]);
 
   const goNext = () => {
+    trackClick('generate_next_editor_click', {
+      has_result_image: !!resultUrl,
+    });
     if (resultUrl) {
       setDesignImageUri(resultUrl);
       navigation.navigate('/editor');
@@ -166,6 +186,7 @@ function Page() {
   };
 
   const handleSelectExample = (value: string) => {
+    trackClick('generate_prompt_example_click', { example: value });
     setPrompt(value);
     setShowExamples(false);
   };
@@ -180,11 +201,17 @@ function Page() {
       setError('어떤 이미지를 만들지 알려주세요.');
       return;
     }
+    trackClick('generate_submit_click', {
+      style,
+      aspect_ratio: ratio,
+      prompt_length: prompt.trim().length,
+    });
 
     // Set generating immediately to prevent double clicks
     setIsGenerating(true);
     setError('');
     setResultUrl(null);
+    setBgRemovalUndoUrl(null);
     setDesignPrompt(prompt.trim());
 
     // Clear any previous completed job before starting new one
@@ -210,6 +237,7 @@ function Page() {
   const handleRetry = async () => {
     if (isGenerating) return;
 
+    trackClick('generate_retry_click');
     setIsGenerating(true);
     setError('');
     const jobId = await retryJob();
@@ -220,6 +248,7 @@ function Page() {
   };
 
   const handleCancel = async () => {
+    trackClick('generate_cancel_click');
     await cancelJob();
     setError('');
     setIsGenerating(false);
@@ -227,6 +256,8 @@ function Page() {
 
   const handleRemoveBackground = async () => {
     if (!resultUrl) return;
+    trackClick('generate_remove_background_click');
+    setBgRemovalUndoUrl(resultUrl);
     setRemovingBg(true);
     setError('');
     setSuccessMessage('');
@@ -247,14 +278,27 @@ function Page() {
       if (!data.dataUrl) {
         throw new Error('배경 제거 결과를 확인하지 못했어요. 다시 시도해 주세요.');
       }
+      trackEvent('generate_remove_background_success');
       setResultUrl(data.dataUrl);
       setSuccessMessage('✓ 배경을 제거했어요!');
       setTimeout(() => setSuccessMessage(''), 3000);
     } catch (err) {
+      trackEvent('generate_remove_background_failed', {
+        reason: err instanceof Error ? err.message : 'unknown',
+      });
       setError(err instanceof Error ? err.message : '배경을 제거하지 못했어요. 다시 시도해 주세요.');
     } finally {
       setRemovingBg(false);
     }
+  };
+
+  const handleUndoBackground = () => {
+    if (!bgRemovalUndoUrl) return;
+    trackClick('generate_remove_background_undo_click');
+    setResultUrl(bgRemovalUndoUrl);
+    setBgRemovalUndoUrl(null);
+    setSuccessMessage('원본으로 되돌렸어요!');
+    setTimeout(() => setSuccessMessage(''), 2500);
   };
 
   // Get current stage progress
@@ -269,151 +313,168 @@ function Page() {
 
   return (
     <>
-      <Screen>
-      <TopBar title="AI 이미지 생성" />
+      <Screen contentStyle={styles.screenContent}>
+        <View style={styles.bgOrbTop} />
+        <View style={styles.bgOrbBottom} />
+        <PageHeader title="AI 이미지 생성" onBack={() => navigation.goBack()} />
 
-      <Text style={styles.title}>AI로 이미지를 만들어 볼까요?</Text>
+        <Text style={styles.title}>AI로 이미지를 만들어 볼까요?</Text>
 
-      {resultUrl ? (
-        <View style={styles.resultSection}>
-          <View style={styles.resultCenter}>
-            <Card style={styles.resultCard}>
-              <View style={styles.checkerboardBg} />
-              <Image
-                source={{ uri: resultUrl }}
-                style={styles.resultImage}
-                resizeMode="contain"
-              />
-            </Card>
+        {resultUrl ? (
+          <View style={styles.resultSection}>
+            <View style={styles.resultCenter}>
+              <Card style={styles.resultCard}>
+                <View style={styles.checkerboardBg} />
+                <Image
+                  source={{ uri: resultUrl }}
+                  style={styles.resultImage}
+                  resizeMode="contain"
+                />
+              </Card>
+            </View>
+            <SecondaryButton
+              label={removingBg ? '배경 제거하고 있어요...' : '배경 제거하기'}
+              onPress={handleRemoveBackground}
+              disabled={removingBg}
+              style={styles.bgRemoveButton}
+            />
+            {bgRemovalUndoUrl ? (
+              <View style={styles.undoRow}>
+                <Pressable
+                  onPress={handleUndoBackground}
+                  disabled={removingBg}
+                  style={({ pressed }) => [
+                    styles.undoButton,
+                    pressed && styles.undoButtonPressed,
+                    removingBg && styles.undoButtonDisabled,
+                  ]}
+                >
+                  <Text style={styles.undoButtonText}>되돌리기</Text>
+                </Pressable>
+              </View>
+            ) : null}
           </View>
-          <SecondaryButton
-            label={removingBg ? '배경 제거하고 있어요...' : '배경 제거하기'}
-            onPress={handleRemoveBackground}
-            disabled={removingBg}
-            style={styles.bgRemoveButton}
+        ) : null}
+
+        <TextInput
+          style={styles.input}
+          placeholder="예: 파도 일러스트, 깔끔한 벡터 스타일로..."
+          placeholderTextColor={theme.colors.muted}
+          value={prompt}
+          onChangeText={setPrompt}
+          onFocus={() => setShowExamples(false)}
+          onBlur={() => {
+            if (!prompt.trim()) {
+              setShowExamples(true);
+            }
+          }}
+          multiline
+          editable={!isLoading}
+        />
+        <Text style={styles.helperText}>
+          짧고 명확하게 적어 주세요. 영어로 쓰면 결과가 더 좋아요.
+        </Text>
+        {showExamples ? (
+          <View style={styles.exampleSection}>
+            <Text style={styles.sectionTitle}>이런 문구는 어때요?</Text>
+            <View style={styles.chipRow}>
+              {promptExamples.map((example) => (
+                <Chip
+                  key={example}
+                  label={example}
+                  onPress={() => handleSelectExample(example)}
+                  style={styles.chipSpacing}
+                />
+              ))}
+            </View>
+          </View>
+        ) : null}
+
+        <CollapsibleSection title={`스타일: ${style} · 비율: ${ratio} 변경`}>
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>스타일 선택</Text>
+            <View style={styles.chipRow}>
+              {styleOptions.map((option) => (
+                <Chip
+                  key={option}
+                  label={option}
+                  selected={style === option}
+                  onPress={() => setStyle(option)}
+                  style={styles.chipSpacing}
+                />
+              ))}
+            </View>
+            {isLoading && (
+              <Text style={styles.helperHint}>변경 사항은 다음 생성에 적용돼요.</Text>
+            )}
+          </View>
+
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>비율 선택</Text>
+            <View style={styles.chipRow}>
+              {ratioOptions.map((option) => (
+                <Chip
+                  key={option}
+                  label={option}
+                  selected={ratio === option}
+                  onPress={() => setRatio(option)}
+                  style={styles.chipSpacing}
+                />
+              ))}
+            </View>
+          </View>
+        </CollapsibleSection>
+
+        <PrimaryButton
+          label={isLoading ? '생성 취소하기' : resultUrl ? '다시 생성하기' : '이미지 만들기'}
+          onPress={isLoading ? handleCancel : handleGenerate}
+          disabled={false}
+          style={styles.generateButton}
+        />
+        {resultUrl && !isLoading && (
+          <Text style={styles.regenerateHint}>
+            프롬프트를 수정하거나 그대로 다시 생성해 보세요
+          </Text>
+        )}
+
+        {isLoading && (
+          <View style={styles.loadingSection}>
+            <View style={styles.loadingRow}>
+              <ActivityIndicator color={theme.colors.primary} />
+              <Text style={styles.loadingText}>
+                {stageProgress
+                  ? `${stageProgress.label} (${stageProgress.current}/${stageProgress.total})`
+                  : '이미지를 만들고 있어요...'}
+              </Text>
+            </View>
+            {localEta !== null && localEta > 0 && (
+              <Text style={styles.etaText}>
+                남은 시간: 약 {Math.ceil(localEta / 1000)}초
+              </Text>
+            )}
+            <Text style={styles.backgroundHint}>
+              🎯 다른 화면으로 이동해도 계속 생성돼요.
+            </Text>
+          </View>
+        )}
+
+        {error ? <Text style={styles.errorText}>{error}</Text> : null}
+        {successMessage ? (
+          <Text style={styles.successText}>{successMessage}</Text>
+        ) : null}
+
+        <View style={styles.bottomAction}>
+          <PrimaryButton
+            label="이 이미지로 굿즈 만들기"
+            onPress={goNext}
+            disabled={!resultUrl}
+            style={styles.useImageButton}
+          />
+          <DisabledHint
+            text="이미지를 먼저 만들어 주세요"
+            visible={!resultUrl}
           />
         </View>
-      ) : null}
-
-      <TextInput
-        style={styles.input}
-        placeholder="예: 파도 일러스트, 깔끔한 벡터 스타일로..."
-        placeholderTextColor={theme.colors.muted}
-        value={prompt}
-        onChangeText={setPrompt}
-        onFocus={() => setShowExamples(false)}
-        onBlur={() => {
-          if (!prompt.trim()) {
-            setShowExamples(true);
-          }
-        }}
-        multiline
-        editable={!isLoading}
-      />
-      <Text style={styles.helperText}>
-        짧고 명확하게 적어 주세요. 영어로 쓰면 결과가 더 좋아요.
-      </Text>
-      {showExamples ? (
-        <View style={styles.exampleSection}>
-          <Text style={styles.sectionTitle}>이런 문구는 어때요?</Text>
-          <View style={styles.chipRow}>
-            {promptExamples.map((example) => (
-              <Chip
-                key={example}
-                label={example}
-                onPress={() => handleSelectExample(example)}
-                style={styles.chipSpacing}
-              />
-            ))}
-          </View>
-        </View>
-      ) : null}
-
-      <CollapsibleSection title={`스타일: ${style} · 비율: ${ratio} 변경`}>
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>스타일 선택</Text>
-          <View style={styles.chipRow}>
-            {styleOptions.map((option) => (
-              <Chip
-                key={option}
-                label={option}
-                selected={style === option}
-                onPress={() => setStyle(option)}
-                style={styles.chipSpacing}
-              />
-            ))}
-          </View>
-          {isLoading && (
-            <Text style={styles.helperHint}>변경 사항은 다음 생성에 적용돼요.</Text>
-          )}
-        </View>
-
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>비율 선택</Text>
-          <View style={styles.chipRow}>
-            {ratioOptions.map((option) => (
-              <Chip
-                key={option}
-                label={option}
-                selected={ratio === option}
-                onPress={() => setRatio(option)}
-                style={styles.chipSpacing}
-              />
-            ))}
-          </View>
-        </View>
-      </CollapsibleSection>
-
-      <PrimaryButton
-        label={isLoading ? '생성 취소하기' : resultUrl ? '다시 생성하기' : '이미지 만들기'}
-        onPress={isLoading ? handleCancel : handleGenerate}
-        disabled={false}
-      />
-      {resultUrl && !isLoading && (
-        <Text style={styles.regenerateHint}>
-          프롬프트를 수정하거나 그대로 다시 생성해 보세요
-        </Text>
-      )}
-
-      {isLoading && (
-        <View style={styles.loadingSection}>
-          <View style={styles.loadingRow}>
-            <ActivityIndicator color={theme.colors.primary} />
-            <Text style={styles.loadingText}>
-              {stageProgress
-                ? `${stageProgress.label} (${stageProgress.current}/${stageProgress.total})`
-                : '이미지를 만들고 있어요...'}
-            </Text>
-          </View>
-          {localEta !== null && localEta > 0 && (
-            <Text style={styles.etaText}>
-              남은 시간: 약 {Math.ceil(localEta / 1000)}초
-            </Text>
-          )}
-          <Text style={styles.backgroundHint}>
-            🎯 다른 화면으로 이동해도 계속 생성돼요.
-          </Text>
-        </View>
-      )}
-
-      {error ? <Text style={styles.errorText}>{error}</Text> : null}
-      {successMessage ? (
-        <Text style={styles.successText}>{successMessage}</Text>
-      ) : null}
-
-      <View style={styles.stickyFooterSpacer} />
-
-      <StickyFooter>
-        <PrimaryButton
-          label="이 이미지로 굿즈 만들기"
-          onPress={goNext}
-          disabled={!resultUrl}
-        />
-        <DisabledHint
-          text="이미지를 먼저 만들어 주세요"
-          visible={!resultUrl}
-        />
-      </StickyFooter>
       </Screen>
       <FullScreenLoader
         visible={isLoading}
@@ -424,34 +485,78 @@ function Page() {
 }
 
 const styles = StyleSheet.create({
-  title: {
-    fontSize: 18,
-    lineHeight: 26,
+  screenContent: {
+    backgroundColor: NAVY_DEEP,
+    paddingBottom: theme.spacing.xl,
+  },
+  bgOrbTop: {
+    position: 'absolute',
+    top: -100,
+    right: -80,
+    width: 230,
+    height: 230,
+    borderRadius: 115,
+    backgroundColor: 'rgba(56, 120, 214, 0.14)',
+  },
+  bgOrbBottom: {
+    position: 'absolute',
+    bottom: 20,
+    left: -70,
+    width: 210,
+    height: 210,
+    borderRadius: 105,
+    backgroundColor: 'rgba(25, 70, 146, 0.12)',
+  },
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: theme.spacing.md,
+  },
+  headerTitle: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: '#eef5ff',
+  },
+  headerBack: {
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.24)',
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+  },
+  headerBackText: {
+    fontSize: 12,
+    color: '#dbeaff',
     fontWeight: '700',
-    color: theme.colors.textPrimary,
+  },
+  title: {
+    ...theme.typography.heading,
+    color: '#f0f6ff',
     marginBottom: theme.spacing.sm,
   },
   input: {
     minHeight: 96,
     borderWidth: 1,
-    borderColor: theme.colors.border,
+    borderColor: 'rgba(255,255,255,0.20)',
     borderRadius: theme.radius.md,
     padding: theme.spacing.md,
-    backgroundColor: theme.colors.surface,
+    backgroundColor: NAVY_MID,
     fontSize: 14,
-    color: theme.colors.textPrimary,
+    color: '#f4f8ff',
   },
   helperText: {
     fontSize: 12,
     lineHeight: 18,
-    color: theme.colors.textSecondary,
+    color: '#a8c2e6',
     marginTop: theme.spacing.sm,
     marginBottom: theme.spacing.lg,
   },
   helperHint: {
     fontSize: 11,
     lineHeight: 16,
-    color: theme.colors.primary,
+    color: ORANGE_RED,
     marginTop: theme.spacing.xs,
     fontStyle: 'italic',
   },
@@ -468,10 +573,8 @@ const styles = StyleSheet.create({
     marginTop: theme.spacing.lg,
   },
   sectionTitle: {
-    fontSize: 16,
-    lineHeight: 22,
-    fontWeight: '700',
-    color: theme.colors.textPrimary,
+    ...theme.typography.subheading,
+    color: '#eff6ff',
     marginBottom: theme.spacing.sm,
   },
   chipRow: {
@@ -493,6 +596,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     position: 'relative',
     overflow: 'hidden',
+    backgroundColor: NAVY_PANEL,
+    borderColor: 'rgba(255,255,255,0.14)',
+    borderWidth: 1,
   },
   checkerboardBg: {
     position: 'absolute',
@@ -500,9 +606,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: '#F0F0F0',
-    // Checkerboard pattern simulation using background
-    // In React Native, we'll use a simple gray background to indicate transparency
+    backgroundColor: NAVY_MID,
   },
   resultImage: {
     width: '100%',
@@ -512,18 +616,45 @@ const styles = StyleSheet.create({
   resultPlaceholder: {
     fontSize: 12,
     lineHeight: 18,
-    color: theme.colors.textSecondary,
+    color: '#a8c2e6',
     textAlign: 'center',
     paddingHorizontal: theme.spacing.md,
   },
   bgRemoveButton: {
     marginTop: theme.spacing.md,
+    backgroundColor: ORANGE_RED,
+  },
+  undoRow: {
+    marginTop: theme.spacing.sm,
+    alignItems: 'flex-end',
+  },
+  undoButton: {
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.18)',
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  undoButtonPressed: {
+    opacity: 0.9,
+  },
+  undoButtonDisabled: {
+    opacity: 0.5,
+  },
+  undoButtonText: {
+    fontSize: 12,
+    lineHeight: 18,
+    fontWeight: '700',
+    color: ORANGE_RED,
   },
   loadingSection: {
     marginTop: theme.spacing.md,
     paddingVertical: theme.spacing.md,
     paddingHorizontal: theme.spacing.md,
-    backgroundColor: theme.colors.surfaceSecondary,
+    backgroundColor: NAVY_PANEL,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.14)',
     borderRadius: theme.radius.md,
   },
   loadingRow: {
@@ -533,46 +664,52 @@ const styles = StyleSheet.create({
   loadingText: {
     fontSize: 14,
     lineHeight: 20,
-    color: theme.colors.textPrimary,
+    color: '#eff6ff',
     marginLeft: theme.spacing.sm,
     fontWeight: '600',
   },
   etaText: {
     fontSize: 12,
     lineHeight: 18,
-    color: theme.colors.textSecondary,
+    color: '#b8ceee',
     marginTop: theme.spacing.xs,
     marginLeft: 28,
   },
   backgroundHint: {
     fontSize: 12,
     lineHeight: 18,
-    color: theme.colors.primary,
+    color: ORANGE_RED,
     marginTop: theme.spacing.sm,
     fontWeight: '500',
   },
   errorText: {
     fontSize: 12,
     lineHeight: 18,
-    color: theme.colors.error,
+    color: '#ffb8b8',
     marginTop: theme.spacing.sm,
   },
   successText: {
     fontSize: 12,
     lineHeight: 18,
-    color: theme.colors.success,
+    color: '#8ee0b2',
     marginTop: theme.spacing.sm,
     fontWeight: '600',
   },
   regenerateHint: {
     fontSize: 12,
     lineHeight: 18,
-    color: theme.colors.primary,
+    color: ORANGE_RED,
     marginTop: theme.spacing.sm,
     textAlign: 'center',
     fontWeight: '500',
   },
-  stickyFooterSpacer: {
-    height: 80,
+  bottomAction: {
+    marginTop: theme.spacing.lg,
+  },
+  generateButton: {
+    backgroundColor: ORANGE_RED,
+  },
+  useImageButton: {
+    backgroundColor: ORANGE_RED,
   },
 });

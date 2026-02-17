@@ -6,15 +6,19 @@ import { MockupCanvas } from '../components/MockupCanvas';
 import {
   Card,
   DangerButton,
+  PageHeader,
   PrimaryButton,
   Screen,
   SecondaryButton,
-  TopBar,
   theme,
 } from '../components/ui';
 import { type SavedDesign, useCatalog } from '../context/catalog';
 import { catalogProducts } from '../data/catalog';
 import { buildTemplate } from '../data/mockupTemplates';
+
+const ORANGE_RED = '#FF5000';
+const NAVY_DEEP = '#071a35';
+const NAVY_PANEL = '#15325d';
 
 export const Route = createRoute('/designs', {
   component: Page,
@@ -83,8 +87,8 @@ function Page() {
   };
 
   return (
-    <Screen>
-      <TopBar title="내 디자인" />
+    <Screen contentStyle={styles.screenContent}>
+      <PageHeader title="내 디자인" onBack={() => navigation.goBack()} />
 
       <Text style={styles.title}>
         저장한 디자인이에요. 다시 편집하거나 공유할 수 있어요.
@@ -150,16 +154,34 @@ function Page() {
         )}
       </View>
 
-      <PrimaryButton label="새로 만들기" onPress={goHome} />
+      <PrimaryButton label="새로 만들기" onPress={goHome} style={styles.newButton} />
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
+  screenContent: {
+    backgroundColor: NAVY_DEEP,
+  },
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: theme.spacing.md,
+  },
+  headerTitle: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: '#eef5ff',
+  },
+  headerBackText: {
+    fontSize: 12,
+    color: '#dbeaff',
+    fontWeight: '700',
+  },
   title: {
-    fontSize: 15,
-    color: theme.colors.textSecondary,
-    lineHeight: 22,
+    ...theme.typography.body,
+    color: '#c2d6f3',
     marginBottom: theme.spacing.lg,
   },
   list: {
@@ -169,6 +191,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     padding: theme.spacing.md,
     marginBottom: theme.spacing.md,
+    backgroundColor: NAVY_PANEL,
+    borderColor: 'rgba(255,255,255,0.14)',
+    borderWidth: 1,
   },
   cardBody: {
     flex: 1,
@@ -176,13 +201,13 @@ const styles = StyleSheet.create({
   cardTitle: {
     fontSize: 16,
     fontWeight: '700',
-    color: theme.colors.textPrimary,
+    color: '#eff6ff',
     lineHeight: 22,
     marginBottom: theme.spacing.xs,
   },
   cardMeta: {
     fontSize: 12,
-    color: theme.colors.textSecondary,
+    color: '#bcd2ef',
     lineHeight: 18,
     marginBottom: theme.spacing.sm,
   },
@@ -197,17 +222,20 @@ const styles = StyleSheet.create({
   emptyCard: {
     alignItems: 'center',
     paddingVertical: theme.spacing.xl,
+    backgroundColor: NAVY_PANEL,
+    borderColor: 'rgba(255,255,255,0.14)',
+    borderWidth: 1,
   },
   emptyText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: theme.colors.textPrimary,
-    lineHeight: 22,
+    ...theme.typography.heading,
+    color: '#eef5ff',
     marginBottom: theme.spacing.xs,
   },
   emptySubtext: {
-    fontSize: 14,
-    color: theme.colors.textSecondary,
-    lineHeight: 20,
+    ...theme.typography.body,
+    color: '#c1d5f3',
+  },
+  newButton: {
+    backgroundColor: ORANGE_RED,
   },
 });

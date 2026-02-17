@@ -3,15 +3,20 @@ import React from 'react';
 import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import {
   Card,
-  Chip,
   ColorSwatch,
+  PageHeader,
   PrimaryButton,
   Screen,
-  TopBar,
   theme,
 } from '../components/ui';
 import { useCatalog } from '../context/catalog';
 import { resolveColorValue } from '../data/colorMap';
+import { trackClick, trackScreenView } from '../utils/analytics';
+
+const ORANGE_RED = '#FF5000';
+const NAVY_DEEP = '#071a35';
+const NAVY_MID = '#0f2a53';
+const NAVY_PANEL = '#15325d';
 
 export const Route = createRoute('/products', {
   component: Page,
@@ -22,7 +27,6 @@ function Page() {
   const {
     products,
     selectedProduct,
-    selectedColor,
     setSelectedProductId,
     setSelectedColor,
   } = useCatalog();
@@ -47,7 +51,20 @@ function Page() {
     ),
   ];
 
+  React.useEffect(() => {
+    trackScreenView('products', {
+      selected_product_id: selectedProduct.id,
+      selected_category: selectedProduct.category,
+    });
+  }, []);
+
   const handleProductClick = (product: (typeof products)[0]) => {
+    const nextAction = expandedProductId === product.id ? 'collapse' : 'expand';
+    trackClick('products_product_card_click', {
+      product_id: product.id,
+      category: product.category,
+      action: nextAction,
+    });
     if (expandedProductId === product.id) {
       setExpandedProductId(null);
     } else {
@@ -58,6 +75,10 @@ function Page() {
 
   const handleConfirm = () => {
     if (expandedProductId && tempColor) {
+      trackClick('products_confirm_selection_click', {
+        product_id: expandedProductId,
+        color: tempColor,
+      });
       setSelectedProductId(expandedProductId);
       setSelectedColor(tempColor);
       navigation.goBack();
@@ -65,8 +86,10 @@ function Page() {
   };
 
   return (
-    <Screen>
-      <TopBar title="상품 선택" />
+    <Screen contentStyle={styles.screenContent}>
+      <View style={styles.bgOrbTop} />
+      <View style={styles.bgOrbBottom} />
+      <PageHeader title="상품 선택" onBack={() => navigation.goBack()} />
 
       <Text style={styles.subtitle}>어떤 제품으로 만들어 볼까요?</Text>
 
@@ -79,14 +102,7 @@ function Page() {
               return (
                 <View key={product.id} style={styles.cardPressable}>
                   <Pressable onPress={() => handleProductClick(product)}>
-                    <Card
-                      style={[
-                        styles.card,
-                        selectedProduct.id === product.id &&
-                        styles.cardSelected,
-                        isExpanded && styles.cardExpanded,
-                      ]}
-                    >
+                    <Card style={[styles.card, selectedProduct.id === product.id && styles.cardSelected, isExpanded && styles.cardExpanded]}>
                       <Image
                         source={product.mainImage}
                         style={styles.thumbnail}
@@ -111,7 +127,13 @@ function Page() {
                             label={color}
                             color={resolveColorValue(color)}
                             selected={tempColor === color}
-                            onPress={() => setTempColor(color)}
+                            onPress={() => {
+                              trackClick('products_color_swatch_click', {
+                                product_id: product.id,
+                                color,
+                              });
+                              setTempColor(color);
+                            }}
                           />
                         ))}
                       </View>
@@ -134,10 +156,54 @@ function Page() {
 }
 
 const styles = StyleSheet.create({
+  screenContent: {
+    backgroundColor: NAVY_DEEP,
+  },
+  bgOrbTop: {
+    position: 'absolute',
+    top: -100,
+    right: -80,
+    width: 230,
+    height: 230,
+    borderRadius: 115,
+    backgroundColor: 'rgba(56, 122, 214, 0.14)',
+  },
+  bgOrbBottom: {
+    position: 'absolute',
+    bottom: 40,
+    left: -80,
+    width: 210,
+    height: 210,
+    borderRadius: 105,
+    backgroundColor: 'rgba(23, 71, 146, 0.12)',
+  },
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: theme.spacing.md,
+  },
+  headerTitle: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: '#eef5ff',
+  },
+  headerBack: {
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.24)',
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+  },
+  headerBackText: {
+    fontSize: 12,
+    color: '#dbeaff',
+    fontWeight: '700',
+  },
   subtitle: {
-    fontSize: 13,
-    color: theme.colors.textSecondary,
-    lineHeight: 20,
+    ...theme.typography.body,
+    color: '#bdd2ef',
     marginBottom: theme.spacing.lg,
   },
   list: {},
@@ -145,10 +211,8 @@ const styles = StyleSheet.create({
     marginBottom: theme.spacing.lg,
   },
   categoryTitle: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: theme.colors.textPrimary,
-    lineHeight: 22,
+    ...theme.typography.subheading,
+    color: '#eff6ff',
     marginBottom: theme.spacing.sm,
   },
   cardPressable: {
@@ -157,13 +221,16 @@ const styles = StyleSheet.create({
   card: {
     flexDirection: 'row',
     alignItems: 'center',
+    backgroundColor: NAVY_PANEL,
+    borderColor: 'rgba(255,255,255,0.14)',
+    borderWidth: 1,
   },
   cardSelected: {
-    borderColor: theme.colors.primary,
-    backgroundColor: theme.colors.primarySoft,
+    borderColor: ORANGE_RED,
+    backgroundColor: NAVY_MID,
   },
   cardExpanded: {
-    borderColor: theme.colors.primary,
+    borderColor: ORANGE_RED,
   },
   thumbnail: {
     width: 72,
@@ -173,16 +240,16 @@ const styles = StyleSheet.create({
   },
   colorSection: {
     padding: theme.spacing.md,
-    backgroundColor: theme.colors.surface,
+    backgroundColor: NAVY_MID,
     borderRadius: theme.radius.md,
     marginTop: theme.spacing.sm,
     borderWidth: 1,
-    borderColor: theme.colors.border,
+    borderColor: 'rgba(255,255,255,0.14)',
   },
   colorTitle: {
     fontSize: 14,
     fontWeight: '600',
-    color: theme.colors.textPrimary,
+    color: '#eef5ff',
     lineHeight: 20,
     marginBottom: theme.spacing.sm,
   },
@@ -193,20 +260,18 @@ const styles = StyleSheet.create({
   },
   confirmButton: {
     marginTop: theme.spacing.xs,
+    backgroundColor: ORANGE_RED,
   },
   cardBody: {
     flex: 1,
   },
   cardTitle: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: theme.colors.textPrimary,
-    lineHeight: 22,
+    ...theme.typography.subheading,
+    color: '#eef5ff',
     marginBottom: theme.spacing.xs,
   },
   cardMeta: {
-    fontSize: 12,
-    color: theme.colors.textSecondary,
-    lineHeight: 18,
+    ...theme.typography.caption,
+    color: '#b8ceee',
   },
 });

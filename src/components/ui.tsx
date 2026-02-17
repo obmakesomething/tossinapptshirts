@@ -15,27 +15,33 @@ import {
 
 export const theme = {
   colors: {
-    background: '#F2F5F9',
-    surface: '#FFFFFF',
-    surfaceSecondary: '#F8FAFC',
-    primary: '#3182F6',
-    primarySoft: '#E8F1FF',
-    textPrimary: '#0F172A',
-    textSecondary: '#475569',
-    textTertiary: '#94A3B8',
-    border: '#E2E8F0',
-    muted: '#94A3B8',
-    success: '#16A34A',
-    successSoft: '#ECFDF3',
-    successBorder: '#BBF7D0',
-    warning: '#F59E0B',
-    error: '#DC2626',
-    errorSoft: '#FEF2F2',
-    errorBorder: '#FCA5A5',
-    errorPressed: '#FECACA',
-    info: '#3182F6',
-    infoSoft: '#EFF6FF',
-    infoBorder: '#BFDBFE',
+    // ── Dark Navy Base ──
+    background: '#071a35',
+    surface: '#15325d',
+    surfaceSecondary: '#0f2a53',
+    // ── Accent ──
+    primary: '#FF5000',
+    primarySoft: 'rgba(255,80,0,0.14)',
+    primaryPressed: '#E04500',
+    // ── Text (light-on-dark) ──
+    textPrimary: '#eef5ff',
+    textSecondary: '#bdd2ef',
+    textTertiary: '#8badd4',
+    // ── Borders ──
+    border: 'rgba(255,255,255,0.16)',
+    muted: '#7a9bc4',
+    // ── Semantic ──
+    success: '#4ADE80',
+    successSoft: 'rgba(74,222,128,0.12)',
+    successBorder: 'rgba(74,222,128,0.30)',
+    warning: '#FBBF24',
+    error: '#F87171',
+    errorSoft: 'rgba(248,113,113,0.12)',
+    errorBorder: 'rgba(248,113,113,0.30)',
+    errorPressed: 'rgba(248,113,113,0.22)',
+    info: '#60A5FA',
+    infoSoft: 'rgba(96,165,250,0.12)',
+    infoBorder: 'rgba(96,165,250,0.30)',
   },
   spacing: {
     xs: 4,
@@ -46,10 +52,18 @@ export const theme = {
     xxl: 32,
   },
   radius: {
-    sm: 8,
+    sm: 6,
     md: 12,
     lg: 16,
     xl: 20,
+  },
+  typography: {
+    display: { fontSize: 28, lineHeight: 36, fontWeight: '900' as const },
+    heading: { fontSize: 20, lineHeight: 28, fontWeight: '800' as const },
+    subheading: { fontSize: 16, lineHeight: 24, fontWeight: '700' as const },
+    body: { fontSize: 14, lineHeight: 22, fontWeight: '400' as const },
+    label: { fontSize: 13, lineHeight: 20, fontWeight: '600' as const },
+    caption: { fontSize: 12, lineHeight: 18, fontWeight: '500' as const },
   },
 };
 
@@ -76,6 +90,23 @@ export function Screen({
         {children}
       </ScrollView>
     </SafeAreaView>
+  );
+}
+
+/* ── Page Header ── */
+type PageHeaderProps = {
+  title: string;
+  onBack: () => void;
+};
+
+export function PageHeader({ title, onBack }: PageHeaderProps) {
+  return (
+    <View style={styles.pageHeaderRow}>
+      <Text style={styles.pageHeaderTitle}>{title}</Text>
+      <Pressable onPress={onBack} style={styles.pageHeaderBack}>
+        <Text style={styles.pageHeaderBackText}>이전</Text>
+      </Pressable>
+    </View>
   );
 }
 
@@ -401,6 +432,32 @@ export function FullScreenLoader({ visible, message = '로딩 중...' }: FullScr
   );
 }
 
+/* ── InfoBox ──────────────────────────────────────────── */
+
+type InfoBoxProps = {
+  children: React.ReactNode;
+  type?: 'info' | 'warning' | 'success';
+};
+
+const infoBoxColors = {
+  info: { bg: 'rgba(96,165,250,0.12)', border: '#60A5FA' },
+  warning: { bg: 'rgba(251,191,36,0.12)', border: '#FBBF24' },
+  success: { bg: 'rgba(74,222,128,0.12)', border: '#4ADE80' },
+};
+
+export function InfoBox({ children, type = 'info' }: InfoBoxProps) {
+  const c = infoBoxColors[type];
+  return (
+    <View style={[styles.infoBox, { backgroundColor: c.bg, borderLeftColor: c.border }]}>
+      {typeof children === 'string' ? (
+        <Text style={styles.infoBoxText}>{children}</Text>
+      ) : (
+        children
+      )}
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   safe: {
     flex: 1,
@@ -431,6 +488,8 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: theme.colors.textPrimary,
   },
+
+  /* ── Primary Button ── */
   primaryButton: {
     backgroundColor: theme.colors.primary,
     paddingVertical: 14,
@@ -441,32 +500,36 @@ const styles = StyleSheet.create({
     minHeight: 48,
   },
   primaryButtonPressed: {
-    opacity: 0.9,
+    backgroundColor: theme.colors.primaryPressed,
   },
   primaryButtonText: {
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '700',
   },
+
+  /* ── Secondary Button (glassmorphic dark) ── */
   secondaryButton: {
     borderWidth: 1,
-    borderColor: theme.colors.border,
+    borderColor: 'rgba(255,255,255,0.20)',
     paddingVertical: 14,
     paddingHorizontal: theme.spacing.lg,
     borderRadius: theme.radius.md,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: theme.colors.surface,
+    backgroundColor: 'rgba(255,255,255,0.08)',
     minHeight: 48,
   },
   secondaryButtonPressed: {
-    backgroundColor: theme.colors.primarySoft,
+    backgroundColor: 'rgba(255,255,255,0.16)',
   },
   secondaryButtonText: {
-    color: theme.colors.textPrimary,
+    color: '#dbeaff',
     fontSize: 16,
     fontWeight: '600',
   },
+
+  /* ── Danger Button ── */
   dangerButton: {
     borderWidth: 1,
     borderColor: theme.colors.errorBorder,
@@ -487,8 +550,10 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   buttonDisabled: {
-    opacity: 0.5,
+    opacity: 0.45,
   },
+
+  /* ── Chip ── */
   chip: {
     paddingHorizontal: 14,
     paddingVertical: 8,
@@ -496,8 +561,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   chipDefault: {
-    borderColor: theme.colors.border,
-    backgroundColor: theme.colors.surface,
+    borderColor: 'rgba(255,255,255,0.18)',
+    backgroundColor: 'rgba(255,255,255,0.06)',
   },
   chipSelected: {
     borderColor: theme.colors.primary,
@@ -505,12 +570,14 @@ const styles = StyleSheet.create({
   },
   chipText: {
     fontSize: 14,
-    color: theme.colors.textSecondary,
+    color: '#bdd2ef',
     fontWeight: '600',
   },
   chipTextSelected: {
-    color: theme.colors.primary,
+    color: '#ffd8c9',
   },
+
+  /* ── ColorSwatch ── */
   swatchWrapper: {
     alignItems: 'center',
     marginRight: theme.spacing.sm,
@@ -520,7 +587,7 @@ const styles = StyleSheet.create({
     height: 36,
     borderRadius: 18,
     borderWidth: 1,
-    borderColor: theme.colors.border,
+    borderColor: 'rgba(255,255,255,0.24)',
     marginBottom: 6,
   },
   swatchSelected: {
@@ -529,14 +596,21 @@ const styles = StyleSheet.create({
   },
   swatchLabel: {
     fontSize: 12,
-    color: theme.colors.textSecondary,
+    color: '#b8ceee',
   },
+
+  /* ── Card ── */
   card: {
-    backgroundColor: theme.colors.surface,
-    borderRadius: theme.radius.lg,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
+    backgroundColor: '#15325d',
+    borderRadius: theme.radius.md,
     padding: theme.spacing.lg,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.12)',
+    shadowColor: '#010a1a',
+    shadowOpacity: 0.22,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 4,
   },
 
   /* StickyFooter */
@@ -549,7 +623,6 @@ const styles = StyleSheet.create({
   stickyFooterFade: {
     height: 24,
     backgroundColor: 'transparent',
-    // RN doesn't support CSS gradients natively; approximate with a semi-transparent bar
     borderTopWidth: 0,
     opacity: 0.95,
   },
@@ -563,7 +636,7 @@ const styles = StyleSheet.create({
   /* DisabledHint */
   disabledHint: {
     fontSize: 13,
-    color: theme.colors.textTertiary,
+    color: '#8badd4',
     textAlign: 'center',
     marginTop: theme.spacing.sm,
   },
@@ -581,11 +654,11 @@ const styles = StyleSheet.create({
   collapsibleTitle: {
     fontSize: 15,
     fontWeight: '600',
-    color: theme.colors.textSecondary,
+    color: '#c4d8f4',
   },
   collapsibleArrow: {
     fontSize: 12,
-    color: theme.colors.textTertiary,
+    color: '#8badd4',
   },
   collapsibleBody: {
     paddingTop: theme.spacing.sm,
@@ -594,7 +667,7 @@ const styles = StyleSheet.create({
   /* BottomSheet */
   sheetOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.35)',
+    backgroundColor: 'rgba(0,0,0,0.55)',
   },
   sheetContainer: {
     position: 'absolute',
@@ -602,9 +675,11 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     maxHeight: SCREEN_HEIGHT * 0.7,
-    backgroundColor: theme.colors.surface,
+    backgroundColor: '#15325d',
     borderTopLeftRadius: theme.radius.xl,
     borderTopRightRadius: theme.radius.xl,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255,255,255,0.15)',
   },
   sheetHandleRow: {
     alignItems: 'center',
@@ -615,7 +690,7 @@ const styles = StyleSheet.create({
     width: 36,
     height: 4,
     borderRadius: 2,
-    backgroundColor: theme.colors.border,
+    backgroundColor: 'rgba(255,255,255,0.30)',
   },
   sheetTitleRow: {
     flexDirection: 'row',
@@ -624,16 +699,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: theme.spacing.xl,
     paddingVertical: theme.spacing.md,
     borderBottomWidth: 1,
-    borderBottomColor: theme.colors.border,
+    borderBottomColor: 'rgba(255,255,255,0.12)',
   },
   sheetTitle: {
     fontSize: 17,
     fontWeight: '700',
-    color: theme.colors.textPrimary,
+    color: '#eef5ff',
   },
   sheetClose: {
     fontSize: 18,
-    color: theme.colors.textTertiary,
+    color: '#8badd4',
     padding: theme.spacing.xs,
   },
   sheetScroll: {
@@ -648,7 +723,7 @@ const styles = StyleSheet.create({
   tabBar: {
     flexDirection: 'row',
     borderBottomWidth: 1,
-    borderBottomColor: theme.colors.border,
+    borderBottomColor: 'rgba(255,255,255,0.12)',
   },
   tabItem: {
     flex: 1,
@@ -662,29 +737,71 @@ const styles = StyleSheet.create({
   tabText: {
     fontSize: 14,
     fontWeight: '600',
-    color: theme.colors.textTertiary,
+    color: '#8badd4',
   },
   tabTextActive: {
-    color: theme.colors.primary,
+    color: '#ffd8c9',
   },
+
+  /* FullScreenLoader */
   fullScreenLoader: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    backgroundColor: 'rgba(0, 0, 0, 0.75)',
     justifyContent: 'center',
     alignItems: 'center',
   },
   loaderContent: {
-    backgroundColor: theme.colors.surface,
+    backgroundColor: '#15325d',
     borderRadius: theme.radius.lg,
     padding: theme.spacing.xxl,
     alignItems: 'center',
     minWidth: 200,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.14)',
   },
   loaderMessage: {
     marginTop: theme.spacing.lg,
     fontSize: 16,
     fontWeight: '600',
-    color: theme.colors.textPrimary,
+    color: '#eef5ff',
     textAlign: 'center',
+  },
+
+  /* InfoBox */
+  infoBox: {
+    borderLeftWidth: 4,
+    padding: 12,
+    marginBottom: 15,
+    borderRadius: 4,
+  },
+  infoBoxText: {
+    fontSize: 14,
+    color: '#c9ddf6',
+    lineHeight: 20,
+  },
+
+  /* PageHeader */
+  pageHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: theme.spacing.md,
+  },
+  pageHeaderTitle: {
+    ...theme.typography.heading,
+    color: theme.colors.textPrimary,
+  },
+  pageHeaderBack: {
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.24)',
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+  },
+  pageHeaderBackText: {
+    fontSize: 12,
+    color: '#dbeaff',
+    fontWeight: '700',
   },
 });
