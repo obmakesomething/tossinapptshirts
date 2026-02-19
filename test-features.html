@@ -1,449 +1,511 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>기능 테스트 - 티셔츠 메이커</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AIT 주문 화면 패리티 테스트</title>
+  <style>
+    :root {
+      --orange: #ff5000;
+      --navy-deep: #071a35;
+      --navy-mid: #0f2a53;
+      --navy-panel: #15325d;
+      --text-primary: #eef5ff;
+      --text-secondary: #bdd2ef;
+      --text-muted: #8badd4;
+      --border: rgba(255, 255, 255, 0.18);
+      --ok: #4ade80;
+      --warn: #f87171;
+      --radius: 12px;
+    }
 
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-            padding: 20px;
-            background: #f5f5f5;
-            max-width: 600px;
-            margin: 0 auto;
-        }
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
 
-        .section {
-            background: white;
-            border-radius: 12px;
-            padding: 20px;
-            margin-bottom: 20px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-        }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: var(--navy-deep);
+      color: var(--text-primary);
+      max-width: 480px;
+      margin: 0 auto;
+      min-height: 100vh;
+      padding: 20px 16px 48px;
+    }
 
-        h1 {
-            font-size: 24px;
-            margin-bottom: 10px;
-            color: #333;
-        }
+    .orb-top,
+    .orb-bottom {
+      position: fixed;
+      border-radius: 999px;
+      pointer-events: none;
+      z-index: -1;
+      filter: blur(40px);
+    }
 
-        h2 {
-            font-size: 18px;
-            margin-bottom: 15px;
-            color: #0064FF;
-        }
+    .orb-top {
+      top: -90px;
+      right: -80px;
+      width: 240px;
+      height: 240px;
+      background: rgba(56, 122, 216, 0.18);
+    }
 
-        .info {
-            background: #E8F4FF;
-            border-left: 4px solid #0064FF;
-            padding: 12px;
-            margin-bottom: 15px;
-            border-radius: 4px;
-            font-size: 14px;
-            color: #333;
-        }
+    .orb-bottom {
+      left: -80px;
+      bottom: -60px;
+      width: 220px;
+      height: 220px;
+      background: rgba(25, 71, 147, 0.16);
+    }
 
-        button {
-            width: 100%;
-            padding: 14px;
-            background: #0064FF;
-            color: white;
-            border: none;
-            border-radius: 8px;
-            font-size: 16px;
-            font-weight: 600;
-            cursor: pointer;
-            margin-bottom: 10px;
-        }
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 14px;
+    }
 
-        button:hover {
-            background: #0052CC;
-        }
+    .header h1 {
+      font-size: 20px;
+      font-weight: 800;
+      letter-spacing: -0.3px;
+    }
 
-        button:disabled {
-            background: #ccc;
-            cursor: not-allowed;
-        }
+    .badge {
+      background: rgba(255, 80, 0, 0.15);
+      color: var(--orange);
+      border: 1px solid rgba(255, 80, 0, 0.25);
+      border-radius: 999px;
+      padding: 4px 10px;
+      font-size: 11px;
+      font-weight: 700;
+    }
 
-        .input-group {
-            margin-bottom: 15px;
-        }
+    .card {
+      background: var(--navy-panel);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 16px;
+      margin-bottom: 12px;
+      box-shadow: 0 8px 24px rgba(1, 10, 26, 0.25);
+    }
 
-        label {
-            display: block;
-            margin-bottom: 5px;
-            font-weight: 600;
-            font-size: 14px;
-            color: #333;
-        }
+    .card-title {
+      font-size: 14px;
+      font-weight: 700;
+      margin-bottom: 10px;
+      color: var(--text-primary);
+    }
 
-        input, textarea {
-            width: 100%;
-            padding: 10px;
-            border: 1px solid #ddd;
-            border-radius: 6px;
-            font-size: 14px;
-        }
+    .meta {
+      font-size: 12px;
+      color: var(--text-secondary);
+      line-height: 1.5;
+      margin-bottom: 4px;
+    }
 
-        textarea {
-            min-height: 80px;
-            resize: vertical;
-            font-family: monospace;
-        }
+    .hint {
+      font-size: 12px;
+      color: var(--text-muted);
+      line-height: 1.5;
+    }
 
-        .result {
-            background: #f8f9fa;
-            border: 1px solid #ddd;
-            border-radius: 6px;
-            padding: 12px;
-            margin-top: 10px;
-            font-size: 13px;
-        }
+    .field {
+      margin-bottom: 10px;
+    }
 
-        .success {
-            background: #d4edda;
-            border-color: #c3e6cb;
-            color: #155724;
-        }
+    .row {
+      display: flex;
+      gap: 8px;
+    }
 
-        .error {
-            background: #f8d7da;
-            border-color: #f5c6cb;
-            color: #721c24;
-        }
+    .row .field {
+      flex: 1;
+    }
 
-        pre {
-            background: #272822;
-            color: #f8f8f2;
-            padding: 12px;
-            border-radius: 6px;
-            overflow-x: auto;
-            font-size: 12px;
-            margin-top: 10px;
-        }
+    label {
+      display: block;
+      font-size: 12px;
+      color: var(--text-secondary);
+      margin-bottom: 5px;
+      font-weight: 600;
+    }
 
-        .modal {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(0,0,0,0.5);
-            z-index: 1000;
-        }
+    input,
+    textarea,
+    select {
+      width: 100%;
+      border-radius: 10px;
+      border: 1px solid rgba(255, 255, 255, 0.24);
+      background: var(--navy-mid);
+      color: var(--text-primary);
+      padding: 10px 12px;
+      font-size: 13px;
+      outline: none;
+    }
 
-        .modal.active {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
+    input:focus,
+    textarea:focus,
+    select:focus {
+      border-color: var(--orange);
+      box-shadow: 0 0 0 2px rgba(255, 80, 0, 0.2);
+    }
 
-        .modal-content {
-            background: white;
-            border-radius: 12px;
-            width: 90%;
-            max-width: 500px;
-            max-height: 80vh;
-            overflow: hidden;
-            display: flex;
-            flex-direction: column;
-        }
+    textarea {
+      min-height: 72px;
+      resize: vertical;
+    }
 
-        .modal-header {
-            padding: 15px 20px;
-            border-bottom: 1px solid #ddd;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
+    .btn {
+      width: 100%;
+      border: 0;
+      border-radius: 10px;
+      padding: 12px 14px;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+    }
 
-        .modal-header h3 {
-            margin: 0;
-            font-size: 17px;
-        }
+    .btn + .btn {
+      margin-top: 8px;
+    }
 
-        .modal-close {
-            background: none;
-            border: none;
-            color: #0064FF;
-            font-size: 15px;
-            cursor: pointer;
-            padding: 5px 10px;
-            width: auto;
-        }
+    .btn-primary {
+      background: var(--orange);
+      color: white;
+    }
 
-        .modal-body {
-            flex: 1;
-            overflow-y: auto;
-        }
+    .btn-secondary {
+      background: rgba(255, 255, 255, 0.08);
+      color: var(--text-primary);
+      border: 1px solid rgba(255, 255, 255, 0.24);
+    }
 
-        #postcodeFrame {
-            width: 100%;
-            height: 100%;
-            border: none;
-        }
-    </style>
+    .panel {
+      border-radius: 10px;
+      border: 1px solid rgba(96, 165, 250, 0.4);
+      background: rgba(96, 165, 250, 0.1);
+      padding: 10px 12px;
+      margin-top: 10px;
+      font-size: 12px;
+      line-height: 1.6;
+      color: #d7e8ff;
+    }
+
+    .result {
+      margin-top: 10px;
+      border-radius: 10px;
+      padding: 10px;
+      font-size: 12px;
+      line-height: 1.5;
+      border: 1px solid;
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
+
+    .result.ok {
+      border-color: rgba(74, 222, 128, 0.4);
+      background: rgba(74, 222, 128, 0.1);
+    }
+
+    .result.err {
+      border-color: rgba(248, 113, 113, 0.5);
+      background: rgba(248, 113, 113, 0.12);
+    }
+
+    .log {
+      max-height: 180px;
+      overflow: auto;
+      background: #061327;
+      border-radius: 10px;
+      border: 1px solid rgba(255, 255, 255, 0.16);
+      padding: 10px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 11px;
+      line-height: 1.5;
+    }
+
+    .log-line {
+      color: #c7ddff;
+      margin-bottom: 3px;
+    }
+
+    .log-line.err {
+      color: #ffb4b4;
+    }
+
+    .address-list {
+      margin-top: 10px;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 10px;
+      overflow: hidden;
+    }
+
+    .address-item {
+      width: 100%;
+      text-align: left;
+      padding: 10px 12px;
+      border: 0;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+      background: rgba(255, 255, 255, 0.03);
+      color: var(--text-primary);
+      cursor: pointer;
+    }
+
+    .address-item:last-child {
+      border-bottom: 0;
+    }
+
+    .address-sub {
+      display: block;
+      margin-top: 3px;
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+  </style>
 </head>
 <body>
-    <div class="section">
-        <h1>🧪 티셔츠 메이커 기능 테스트</h1>
-        <div class="info">
-            이 페이지는 Toss 앱 없이도 주소 검색과 결제 API를 테스트할 수 있습니다.
-        </div>
+  <div class="orb-top"></div>
+  <div class="orb-bottom"></div>
+
+  <div class="header">
+    <h1>주문하기 (AIT 패리티 테스트)</h1>
+    <span class="badge">Browser Test</span>
+  </div>
+
+  <div class="card">
+    <div class="card-title">주문 요약 (AIT order.tsx 기준)</div>
+    <div class="meta" id="summaryMeta">오버핏 티셔츠 · 블랙 · M 1개</div>
+    <div class="meta" id="summaryPrice">예상 결제 30,000원 (배송비 무료)</div>
+    <div class="hint">색상/수량/금액은 아래 입력값으로 바로 반영됩니다.</div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">로그인/결제 전제값</div>
+    <div class="field">
+      <label>API Base URL</label>
+      <input id="apiBaseUrl" value="https://merchandisegpt-api-peaq3gmvyq-du.a.run.app" />
     </div>
-
-    <!-- 주소 검색 테스트 -->
-    <div class="section">
-        <h2>📍 주소 검색 테스트</h2>
-        <div class="info">
-            Daum Postcode API를 사용한 주소 검색 기능을 테스트합니다.
-        </div>
-
-        <button onclick="openAddressSearch()">주소 검색하기</button>
-
-        <div id="addressResult" style="display:none;" class="result">
-            <strong>선택된 주소:</strong><br>
-            <div id="addressInfo"></div>
-        </div>
+    <div class="field">
+      <label>x-toss-user-key (AIT의 appLogin 결과 대체)</label>
+      <input id="userKey" placeholder="test-user-123" value="test-user-123" />
     </div>
-
-    <!-- 결제 API 테스트 -->
-    <div class="section">
-        <h2>💳 결제 API 테스트</h2>
-        <div class="info">
-            서버의 결제 생성 API를 테스트합니다. (Toss Payments 연동)
-        </div>
-
-        <div class="input-group">
-            <label>API Base URL:</label>
-            <input type="text" id="apiBaseUrl" value="https://tossinapptshirts-production.up.railway.app" placeholder="예: https://your-server.railway.app">
-        </div>
-
-        <div class="input-group">
-            <label>User Key (테스트용):</label>
-            <input type="text" id="userKey" value="test-user-123" placeholder="test-user-123">
-        </div>
-
-        <div class="input-group">
-            <label>주문 번호:</label>
-            <input type="text" id="orderNo" value="TEST-ORDER-001" placeholder="TEST-ORDER-001">
-        </div>
-
-        <div class="input-group">
-            <label>상품 설명:</label>
-            <input type="text" id="productDesc" value="테스트 티셔츠 주문" placeholder="테스트 티셔츠 주문">
-        </div>
-
-        <div class="input-group">
-            <label>결제 금액 (원):</label>
-            <input type="number" id="amount" value="30000" placeholder="30000">
-        </div>
-
-        <div class="input-group">
-            <label>면세 금액 (원):</label>
-            <input type="number" id="amountTaxFree" value="0" placeholder="0">
-        </div>
-
-        <button onclick="testPaymentCreate()">결제 생성 테스트</button>
-
-        <div id="paymentResult" style="display:none;"></div>
+    <div class="panel">
+      브라우저 테스트에서는 AIT SDK의 <code>appLogin()</code>, <code>TossPay.checkoutPayment()</code>를 실행할 수 없습니다.
+      대신 userKey를 직접 넣고 <code>/v1/payment/create</code> 호출까지 동일하게 검증합니다.
     </div>
+  </div>
 
-    <!-- 주소 검색 모달 -->
-    <div id="addressModal" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3>주소 검색</h3>
-                <button class="modal-close" onclick="closeAddressSearch()">닫기</button>
-            </div>
-            <div class="modal-body">
-                <iframe id="postcodeFrame"></iframe>
-            </div>
-        </div>
+  <div class="card">
+    <div class="card-title">주문자/배송 정보 (AIT 폼 구조 맞춤)</div>
+    <div class="row">
+      <div class="field"><label>이름</label><input id="name" value="홍길동" /></div>
+      <div class="field"><label>연락처</label><input id="phone" value="010-1234-5678" /></div>
     </div>
+    <div class="field"><label>이메일</label><input id="email" value="user@example.com" /></div>
+    <div class="field"><label>주소 검색어</label><input id="addressQuery" placeholder="예: 역삼동" /></div>
+    <button class="btn btn-secondary" id="searchAddressBtn">주소 검색</button>
+    <div id="addressSearchResult" class="address-list" style="display:none;"></div>
+    <div class="field" style="margin-top:10px;"><label>기본 주소</label><input id="address1" /></div>
+    <div class="field"><label>상세 주소</label><input id="address2" /></div>
+    <div class="row">
+      <div class="field"><label>시/도</label><input id="city" /></div>
+      <div class="field"><label>구/군</label><input id="state" /></div>
+      <div class="field"><label>우편번호</label><input id="zip" /></div>
+    </div>
+    <div class="field"><label>배송 메모</label><textarea id="memo"></textarea></div>
+  </div>
 
-    <script src="https://t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js"></script>
-    <script>
-        // 주소 검색 관련
-        function openAddressSearch() {
-            const modal = document.getElementById('addressModal');
-            const frame = document.getElementById('postcodeFrame');
+  <div class="card">
+    <div class="card-title">상품/결제 파라미터</div>
+    <div class="row">
+      <div class="field">
+        <label>상품명</label>
+        <input id="productName" value="오버핏 티셔츠" />
+      </div>
+      <div class="field">
+        <label>색상</label>
+        <input id="color" value="블랙" />
+      </div>
+    </div>
+    <div class="row">
+      <div class="field"><label>사이즈</label><input id="size" value="M" /></div>
+      <div class="field"><label>수량</label><input id="qty" type="number" value="1" min="1" /></div>
+    </div>
+    <div class="row">
+      <div class="field"><label>주문번호(orderNo)</label><input id="orderNo" value="MG-TEST-001" /></div>
+      <div class="field"><label>결제금액(amount)</label><input id="amount" type="number" value="30000" min="1" /></div>
+    </div>
+    <button class="btn btn-primary" id="paymentCreateBtn">결제 생성 테스트 (/v1/payment/create)</button>
+    <div id="paymentResult" style="display:none;"></div>
+  </div>
 
-            // iframe에 Daum Postcode 임베드
-            const html = `
-                <!DOCTYPE html>
-                <html>
-                <head>
-                    <meta charset="utf-8">
-                    <style>
-                        * { margin: 0; padding: 0; box-sizing: border-box; }
-                        html, body { width: 100%; height: 100%; overflow: hidden; }
-                        #layer { width: 100%; height: 100%; }
-                    </style>
-                </head>
-                <body>
-                    <div id="layer"></div>
-                    <script src="https://t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js"><\/script>
-                    <script>
-                        new daum.Postcode({
-                            oncomplete: function(data) {
-                                console.log('[Postcode] Address selected:', data);
-                                window.parent.postMessage({ type: 'address', data: data }, '*');
-                            },
-                            onclose: function(state) {
-                                console.log('[Postcode] Closed with state:', state);
-                                if (state === 'FORCE_CLOSE') {
-                                    window.parent.postMessage({ type: 'close' }, '*');
-                                }
-                            },
-                            width: '100%',
-                            height: '100%'
-                        }).embed(document.getElementById('layer'), {
-                            autoClose: true
-                        });
-                    <\/script>
-                </body>
-                </html>
-            `;
+  <div class="card">
+    <div class="card-title">AIT vs Browser 차이 체크</div>
+    <div class="panel">
+      - 동일: 주문폼 구조, 주소검색 API, 결제 생성 API 파라미터<br />
+      - 브라우저 대체: appLogin/userKey 발급, TossPay 인증/execute 단계<br />
+      - AIT 최종검증 필요: 결제 인증 UI, 뒤로가기/라이프사이클, SDK 브리지
+    </div>
+  </div>
 
-            frame.srcdoc = html;
-            modal.classList.add('active');
+  <div class="card">
+    <div class="card-title">콘솔 로그</div>
+    <div id="log" class="log"></div>
+  </div>
 
-            console.log('[Test] Address search modal opened');
+  <script>
+    const logEl = document.getElementById("log");
+    const currency = new Intl.NumberFormat("ko-KR");
+
+    function log(message, type) {
+      const line = document.createElement("div");
+      const time = new Date().toTimeString().slice(0, 8);
+      line.className = "log-line" + (type === "err" ? " err" : "");
+      line.textContent = `[${time}] ${message}`;
+      logEl.appendChild(line);
+      logEl.scrollTop = logEl.scrollHeight;
+    }
+
+    function setResult(node, ok, data) {
+      node.style.display = "block";
+      node.className = "result " + (ok ? "ok" : "err");
+      node.textContent = typeof data === "string" ? data : JSON.stringify(data, null, 2);
+    }
+
+    function updateSummary() {
+      const name = document.getElementById("productName").value.trim() || "상품";
+      const color = document.getElementById("color").value.trim() || "기본";
+      const size = document.getElementById("size").value.trim() || "M";
+      const qty = Math.max(1, Number(document.getElementById("qty").value || 1));
+      const amount = Math.max(1, Number(document.getElementById("amount").value || 1));
+      document.getElementById("summaryMeta").textContent = `${name} · ${color} · ${size} ${qty}개`;
+      document.getElementById("summaryPrice").textContent = `예상 결제 ${currency.format(amount)}원 (배송비 무료)`;
+    }
+
+    async function searchAddress() {
+      const baseUrl = document.getElementById("apiBaseUrl").value.trim();
+      const query = document.getElementById("addressQuery").value.trim();
+      const resultWrap = document.getElementById("addressSearchResult");
+      resultWrap.innerHTML = "";
+      resultWrap.style.display = "none";
+
+      if (!baseUrl || query.length < 2) {
+        log("주소 검색은 API URL + 2자 이상 검색어가 필요합니다.", "err");
+        return;
+      }
+
+      log(`주소 검색 요청: ${query}`);
+      try {
+        const res = await fetch(`${baseUrl}/v1/address/search?query=${encodeURIComponent(query)}`);
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          throw new Error(data.error || `HTTP ${res.status}`);
+        }
+        const rows = Array.isArray(data.addresses) ? data.addresses : [];
+        if (!rows.length) {
+          log("주소 검색 결과가 없습니다.", "err");
+          return;
         }
 
-        function closeAddressSearch() {
-            const modal = document.getElementById('addressModal');
-            modal.classList.remove('active');
-            console.log('[Test] Address search modal closed');
-        }
+        rows.slice(0, 8).forEach((item) => {
+          const road = item.road_address && item.road_address.address_name ? item.road_address.address_name : "";
+          const jibun = item.address && item.address.address_name ? item.address.address_name : "";
+          const zone = item.road_address && item.road_address.zone_no ? item.road_address.zone_no : "";
+          const sido = (item.road_address && item.road_address.region_1depth_name) || (item.address && item.address.region_1depth_name) || "";
+          const sigungu = (item.road_address && item.road_address.region_2depth_name) || (item.address && item.address.region_2depth_name) || "";
 
-        // iframe 메시지 수신
-        window.addEventListener('message', function(event) {
-            console.log('[Test] Received message from iframe:', event.data);
-
-            if (event.data.type === 'address') {
-                const data = event.data.data;
-                const resultDiv = document.getElementById('addressResult');
-                const infoDiv = document.getElementById('addressInfo');
-
-                infoDiv.innerHTML = `
-                    <strong>우편번호:</strong> ${data.zonecode}<br>
-                    <strong>도로명 주소:</strong> ${data.roadAddress || data.address}<br>
-                    <strong>지번 주소:</strong> ${data.jibunAddress || '-'}<br>
-                    <strong>건물명:</strong> ${data.buildingName || '-'}<br>
-                    <strong>상세 정보:</strong>
-                    <pre>${JSON.stringify(data, null, 2)}</pre>
-                `;
-
-                resultDiv.style.display = 'block';
-                resultDiv.className = 'result success';
-
-                closeAddressSearch();
-                console.log('[Test] Address selected successfully:', data.address);
-            } else if (event.data.type === 'close') {
-                closeAddressSearch();
-            }
+          const btn = document.createElement("button");
+          btn.className = "address-item";
+          btn.type = "button";
+          btn.innerHTML = `${road || jibun || "주소"}<span class="address-sub">${jibun && road !== jibun ? jibun + " / " : ""}우편번호 ${zone || "-"}</span>`;
+          btn.addEventListener("click", () => {
+            document.getElementById("address1").value = road || jibun;
+            document.getElementById("zip").value = zone;
+            document.getElementById("city").value = sido;
+            document.getElementById("state").value = sigungu;
+            resultWrap.style.display = "none";
+            log(`주소 선택: ${road || jibun}`);
+            document.getElementById("address2").focus();
+          });
+          resultWrap.appendChild(btn);
         });
 
-        // 결제 API 테스트
-        async function testPaymentCreate() {
-            const resultDiv = document.getElementById('paymentResult');
-            const baseUrl = document.getElementById('apiBaseUrl').value;
-            const userKey = document.getElementById('userKey').value;
-            const orderNo = document.getElementById('orderNo').value;
-            const productDesc = document.getElementById('productDesc').value;
-            const amount = parseInt(document.getElementById('amount').value);
-            const amountTaxFree = parseInt(document.getElementById('amountTaxFree').value);
+        resultWrap.style.display = "block";
+        log(`주소 검색 성공: ${rows.length}건`);
+      } catch (err) {
+        log(`주소 검색 실패: ${err.message}`, "err");
+      }
+    }
 
-            if (!baseUrl || !userKey || !orderNo || !productDesc || !amount) {
-                resultDiv.innerHTML = '<div class="error">모든 필드를 입력해주세요.</div>';
-                resultDiv.style.display = 'block';
-                return;
-            }
+    async function createPayment() {
+      updateSummary();
 
-            resultDiv.innerHTML = '<div class="result">결제 요청 중...</div>';
-            resultDiv.style.display = 'block';
+      const baseUrl = document.getElementById("apiBaseUrl").value.trim();
+      const userKey = document.getElementById("userKey").value.trim();
+      const orderNo = document.getElementById("orderNo").value.trim();
+      const amount = Number(document.getElementById("amount").value || 0);
+      const qty = Number(document.getElementById("qty").value || 1);
+      const productName = document.getElementById("productName").value.trim();
+      const color = document.getElementById("color").value.trim();
+      const productDesc = `${productName} ${color} ${qty}개`;
 
-            console.log('[Test] Creating payment with:', {
-                baseUrl,
-                userKey,
-                orderNo,
-                productDesc,
-                amount,
-                amountTaxFree
-            });
+      const resultNode = document.getElementById("paymentResult");
+      if (!baseUrl || !userKey || !orderNo || amount <= 0 || !productName || !color) {
+        setResult(resultNode, false, "필수 입력값(API URL, userKey, orderNo, 상품/색상, amount)을 확인해 주세요.");
+        return;
+      }
 
-            try {
-                const response = await fetch(`${baseUrl}/v1/payment/create`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'x-toss-user-key': userKey
-                    },
-                    body: JSON.stringify({
-                        orderNo,
-                        productDesc,
-                        amount,
-                        amountTaxFree
-                    })
-                });
+      log(`결제 생성 요청: ${orderNo} / ${productDesc} / ${amount}`);
+      try {
+        const res = await fetch(`${baseUrl}/v1/payment/create`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-toss-user-key": userKey,
+          },
+          body: JSON.stringify({
+            orderNo,
+            productDesc,
+            amount,
+            amountTaxFree: 0,
+          }),
+        });
 
-                const contentType = response.headers.get('content-type');
-                let data;
-
-                if (contentType && contentType.includes('application/json')) {
-                    data = await response.json();
-                } else {
-                    const text = await response.text();
-                    throw new Error(`서버가 JSON이 아닌 응답을 반환했습니다: ${text.substring(0, 200)}`);
-                }
-
-                console.log('[Test] Payment response:', { status: response.status, data });
-
-                if (response.ok) {
-                    resultDiv.innerHTML = `
-                        <div class="result success">
-                            <strong>✅ 결제 생성 성공!</strong><br><br>
-                            <strong>Transaction ID:</strong> ${data.transactionId || 'N/A'}<br>
-                            <strong>Request ID:</strong> ${data.requestId || 'N/A'}<br><br>
-                            <strong>전체 응답:</strong>
-                            <pre>${JSON.stringify(data, null, 2)}</pre>
-                        </div>
-                    `;
-                } else {
-                    resultDiv.innerHTML = `
-                        <div class="result error">
-                            <strong>❌ 결제 생성 실패</strong><br><br>
-                            <strong>HTTP Status:</strong> ${response.status}<br>
-                            <strong>에러 메시지:</strong> ${data.error || 'Unknown error'}<br>
-                            <strong>상세:</strong> ${data.details || 'No details'}<br><br>
-                            <strong>전체 응답:</strong>
-                            <pre>${JSON.stringify(data, null, 2)}</pre>
-                        </div>
-                    `;
-                }
-            } catch (error) {
-                console.error('[Test] Payment error:', error);
-                resultDiv.innerHTML = `
-                    <div class="result error">
-                        <strong>❌ 네트워크 오류</strong><br><br>
-                        <strong>에러:</strong> ${error.message}<br>
-                        <strong>Stack:</strong>
-                        <pre>${error.stack}</pre>
-                    </div>
-                `;
-            }
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          setResult(resultNode, false, data);
+          log(`결제 생성 실패: HTTP ${res.status}`, "err");
+          return;
         }
 
-        console.log('[Test] Test page loaded successfully');
-    </script>
+        setResult(resultNode, true, {
+          message: "결제 생성 성공",
+          request: {
+            orderNo,
+            productDesc,
+            amount,
+          },
+          response: data,
+        });
+        log(`결제 생성 성공: payToken ${data.payToken ? "수신" : "미수신"}`);
+      } catch (err) {
+        setResult(resultNode, false, err.message || "네트워크 오류");
+        log(`결제 생성 네트워크 오류: ${err.message}`, "err");
+      }
+    }
+
+    ["productName", "color", "size", "qty", "amount"].forEach((id) => {
+      document.getElementById(id).addEventListener("input", updateSummary);
+    });
+
+    document.getElementById("searchAddressBtn").addEventListener("click", searchAddress);
+    document.getElementById("paymentCreateBtn").addEventListener("click", createPayment);
+
+    updateSummary();
+    log("AIT 패리티 테스트 페이지 로드 완료");
+  </script>
 </body>
 </html>
