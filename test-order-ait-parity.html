@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AIT 주문 화면 패리티 테스트</title>
+  <style>
+    :root {
+      --orange: #ff5000;
+      --navy-deep: #071a35;
+      --navy-mid: #0f2a53;
+      --navy-panel: #15325d;
+      --text-primary: #eef5ff;
+      --text-secondary: #bdd2ef;
+      --text-muted: #8badd4;
+      --border: rgba(255, 255, 255, 0.18);
+      --ok: #4ade80;
+      --warn: #f87171;
+      --radius: 12px;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: var(--navy-deep);
+      color: var(--text-primary);
+      max-width: 480px;
+      margin: 0 auto;
+      min-height: 100vh;
+      padding: 20px 16px 48px;
+    }
+
+    .orb-top,
+    .orb-bottom {
+      position: fixed;
+      border-radius: 999px;
+      pointer-events: none;
+      z-index: -1;
+      filter: blur(40px);
+    }
+
+    .orb-top {
+      top: -90px;
+      right: -80px;
+      width: 240px;
+      height: 240px;
+      background: rgba(56, 122, 216, 0.18);
+    }
+
+    .orb-bottom {
+      left: -80px;
+      bottom: -60px;
+      width: 220px;
+      height: 220px;
+      background: rgba(25, 71, 147, 0.16);
+    }
+
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 14px;
+    }
+
+    .header h1 {
+      font-size: 20px;
+      font-weight: 800;
+      letter-spacing: -0.3px;
+    }
+
+    .badge {
+      background: rgba(255, 80, 0, 0.15);
+      color: var(--orange);
+      border: 1px solid rgba(255, 80, 0, 0.25);
+      border-radius: 999px;
+      padding: 4px 10px;
+      font-size: 11px;
+      font-weight: 700;
+    }
+
+    .card {
+      background: var(--navy-panel);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 16px;
+      margin-bottom: 12px;
+      box-shadow: 0 8px 24px rgba(1, 10, 26, 0.25);
+    }
+
+    .card-title {
+      font-size: 14px;
+      font-weight: 700;
+      margin-bottom: 10px;
+      color: var(--text-primary);
+    }
+
+    .meta {
+      font-size: 12px;
+      color: var(--text-secondary);
+      line-height: 1.5;
+      margin-bottom: 4px;
+    }
+
+    .hint {
+      font-size: 12px;
+      color: var(--text-muted);
+      line-height: 1.5;
+    }
+
+    .field {
+      margin-bottom: 10px;
+    }
+
+    .row {
+      display: flex;
+      gap: 8px;
+    }
+
+    .row .field {
+      flex: 1;
+    }
+
+    label {
+      display: block;
+      font-size: 12px;
+      color: var(--text-secondary);
+      margin-bottom: 5px;
+      font-weight: 600;
+    }
+
+    input,
+    textarea,
+    select {
+      width: 100%;
+      border-radius: 10px;
+      border: 1px solid rgba(255, 255, 255, 0.24);
+      background: var(--navy-mid);
+      color: var(--text-primary);
+      padding: 10px 12px;
+      font-size: 13px;
+      outline: none;
+    }
+
+    input:focus,
+    textarea:focus,
+    select:focus {
+      border-color: var(--orange);
+      box-shadow: 0 0 0 2px rgba(255, 80, 0, 0.2);
+    }
+
+    textarea {
+      min-height: 72px;
+      resize: vertical;
+    }
+
+    .btn {
+      width: 100%;
+      border: 0;
+      border-radius: 10px;
+      padding: 12px 14px;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .btn + .btn {
+      margin-top: 8px;
+    }
+
+    .btn-primary {
+      background: var(--orange);
+      color: white;
+    }
+
+    .btn-secondary {
+      background: rgba(255, 255, 255, 0.08);
+      color: var(--text-primary);
+      border: 1px solid rgba(255, 255, 255, 0.24);
+    }
+
+    .panel {
+      border-radius: 10px;
+      border: 1px solid rgba(96, 165, 250, 0.4);
+      background: rgba(96, 165, 250, 0.1);
+      padding: 10px 12px;
+      margin-top: 10px;
+      font-size: 12px;
+      line-height: 1.6;
+      color: #d7e8ff;
+    }
+
+    .result {
+      margin-top: 10px;
+      border-radius: 10px;
+      padding: 10px;
+      font-size: 12px;
+      line-height: 1.5;
+      border: 1px solid;
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
+
+    .result.ok {
+      border-color: rgba(74, 222, 128, 0.4);
+      background: rgba(74, 222, 128, 0.1);
+    }
+
+    .result.err {
+      border-color: rgba(248, 113, 113, 0.5);
+      background: rgba(248, 113, 113, 0.12);
+    }
+
+    .log {
+      max-height: 180px;
+      overflow: auto;
+      background: #061327;
+      border-radius: 10px;
+      border: 1px solid rgba(255, 255, 255, 0.16);
+      padding: 10px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 11px;
+      line-height: 1.5;
+    }
+
+    .log-line {
+      color: #c7ddff;
+      margin-bottom: 3px;
+    }
+
+    .log-line.err {
+      color: #ffb4b4;
+    }
+
+    .address-list {
+      margin-top: 10px;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 10px;
+      overflow: hidden;
+    }
+
+    .address-item {
+      width: 100%;
+      text-align: left;
+      padding: 10px 12px;
+      border: 0;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+      background: rgba(255, 255, 255, 0.03);
+      color: var(--text-primary);
+      cursor: pointer;
+    }
+
+    .address-item:last-child {
+      border-bottom: 0;
+    }
+
+    .address-sub {
+      display: block;
+      margin-top: 3px;
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+  </style>
+</head>
+<body>
+  <div class="orb-top"></div>
+  <div class="orb-bottom"></div>
+
+  <div class="header">
+    <h1>주문하기 (AIT 패리티 테스트)</h1>
+    <span class="badge">Browser Test</span>
+  </div>
+
+  <div class="card">
+    <div class="card-title">주문 요약 (AIT order.tsx 기준)</div>
+    <div class="meta" id="summaryMeta">오버핏 티셔츠 · 블랙 · M 1개</div>
+    <div class="meta" id="summaryPrice">예상 결제 30,000원 (배송비 무료)</div>
+    <div class="hint">색상/수량/금액은 아래 입력값으로 바로 반영됩니다.</div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">로그인/결제 전제값</div>
+    <div class="field">
+      <label>API Base URL</label>
+      <input id="apiBaseUrl" value="https://merchandisegpt-api-peaq3gmvyq-du.a.run.app" />
+    </div>
+    <div class="field">
+      <label>x-toss-user-key (AIT의 appLogin 결과 대체)</label>
+      <input id="userKey" placeholder="test-user-123" value="test-user-123" />
+    </div>
+    <div class="panel">
+      브라우저 테스트에서는 AIT SDK의 <code>appLogin()</code>, <code>TossPay.checkoutPayment()</code>를 실행할 수 없습니다.
+      대신 userKey를 직접 넣고 <code>/v1/payment/create</code> 호출까지 동일하게 검증합니다.
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">주문자/배송 정보 (AIT 폼 구조 맞춤)</div>
+    <div class="row">
+      <div class="field"><label>이름</label><input id="name" value="홍길동" /></div>
+      <div class="field"><label>연락처</label><input id="phone" value="010-1234-5678" /></div>
+    </div>
+    <div class="field"><label>이메일</label><input id="email" value="user@example.com" /></div>
+    <div class="field"><label>주소 검색어</label><input id="addressQuery" placeholder="예: 역삼동" /></div>
+    <button class="btn btn-secondary" id="searchAddressBtn">주소 검색</button>
+    <div id="addressSearchResult" class="address-list" style="display:none;"></div>
+    <div class="field" style="margin-top:10px;"><label>기본 주소</label><input id="address1" /></div>
+    <div class="field"><label>상세 주소</label><input id="address2" /></div>
+    <div class="row">
+      <div class="field"><label>시/도</label><input id="city" /></div>
+      <div class="field"><label>구/군</label><input id="state" /></div>
+      <div class="field"><label>우편번호</label><input id="zip" /></div>
+    </div>
+    <div class="field"><label>배송 메모</label><textarea id="memo"></textarea></div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">상품/결제 파라미터</div>
+    <div class="row">
+      <div class="field">
+        <label>상품명</label>
+        <input id="productName" value="오버핏 티셔츠" />
+      </div>
+      <div class="field">
+        <label>색상</label>
+        <input id="color" value="블랙" />
+      </div>
+    </div>
+    <div class="row">
+      <div class="field"><label>사이즈</label><input id="size" value="M" /></div>
+      <div class="field"><label>수량</label><input id="qty" type="number" value="1" min="1" /></div>
+    </div>
+    <div class="row">
+      <div class="field"><label>주문번호(orderNo)</label><input id="orderNo" value="MG-TEST-001" /></div>
+      <div class="field"><label>결제금액(amount)</label><input id="amount" type="number" value="30000" min="1" /></div>
+    </div>
+    <button class="btn btn-primary" id="paymentCreateBtn">결제 생성 테스트 (/v1/payment/create)</button>
+    <div id="paymentResult" style="display:none;"></div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">AIT vs Browser 차이 체크</div>
+    <div class="panel">
+      - 동일: 주문폼 구조, 주소검색 API, 결제 생성 API 파라미터<br />
+      - 브라우저 대체: appLogin/userKey 발급, TossPay 인증/execute 단계<br />
+      - AIT 최종검증 필요: 결제 인증 UI, 뒤로가기/라이프사이클, SDK 브리지
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">콘솔 로그</div>
+    <div id="log" class="log"></div>
+  </div>
+
+  <script>
+    const logEl = document.getElementById("log");
+    const currency = new Intl.NumberFormat("ko-KR");
+
+    function log(message, type) {
+      const line = document.createElement("div");
+      const time = new Date().toTimeString().slice(0, 8);
+      line.className = "log-line" + (type === "err" ? " err" : "");
+      line.textContent = `[${time}] ${message}`;
+      logEl.appendChild(line);
+      logEl.scrollTop = logEl.scrollHeight;
+    }
+
+    function setResult(node, ok, data) {
+      node.style.display = "block";
+      node.className = "result " + (ok ? "ok" : "err");
+      node.textContent = typeof data === "string" ? data : JSON.stringify(data, null, 2);
+    }
+
+    function updateSummary() {
+      const name = document.getElementById("productName").value.trim() || "상품";
+      const color = document.getElementById("color").value.trim() || "기본";
+      const size = document.getElementById("size").value.trim() || "M";
+      const qty = Math.max(1, Number(document.getElementById("qty").value || 1));
+      const amount = Math.max(1, Number(document.getElementById("amount").value || 1));
+      document.getElementById("summaryMeta").textContent = `${name} · ${color} · ${size} ${qty}개`;
+      document.getElementById("summaryPrice").textContent = `예상 결제 ${currency.format(amount)}원 (배송비 무료)`;
+    }
+
+    async function searchAddress() {
+      const baseUrl = document.getElementById("apiBaseUrl").value.trim();
+      const query = document.getElementById("addressQuery").value.trim();
+      const resultWrap = document.getElementById("addressSearchResult");
+      resultWrap.innerHTML = "";
+      resultWrap.style.display = "none";
+
+      if (!baseUrl || query.length < 2) {
+        log("주소 검색은 API URL + 2자 이상 검색어가 필요합니다.", "err");
+        return;
+      }
+
+      log(`주소 검색 요청: ${query}`);
+      try {
+        const res = await fetch(`${baseUrl}/v1/address/search?query=${encodeURIComponent(query)}`);
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          throw new Error(data.error || `HTTP ${res.status}`);
+        }
+        const rows = Array.isArray(data.addresses) ? data.addresses : [];
+        if (!rows.length) {
+          log("주소 검색 결과가 없습니다.", "err");
+          return;
+        }
+
+        rows.slice(0, 8).forEach((item) => {
+          const road = item.road_address && item.road_address.address_name ? item.road_address.address_name : "";
+          const jibun = item.address && item.address.address_name ? item.address.address_name : "";
+          const zone = item.road_address && item.road_address.zone_no ? item.road_address.zone_no : "";
+          const sido = (item.road_address && item.road_address.region_1depth_name) || (item.address && item.address.region_1depth_name) || "";
+          const sigungu = (item.road_address && item.road_address.region_2depth_name) || (item.address && item.address.region_2depth_name) || "";
+
+          const btn = document.createElement("button");
+          btn.className = "address-item";
+          btn.type = "button";
+          btn.innerHTML = `${road || jibun || "주소"}<span class="address-sub">${jibun && road !== jibun ? jibun + " / " : ""}우편번호 ${zone || "-"}</span>`;
+          btn.addEventListener("click", () => {
+            document.getElementById("address1").value = road || jibun;
+            document.getElementById("zip").value = zone;
+            document.getElementById("city").value = sido;
+            document.getElementById("state").value = sigungu;
+            resultWrap.style.display = "none";
+            log(`주소 선택: ${road || jibun}`);
+            document.getElementById("address2").focus();
+          });
+          resultWrap.appendChild(btn);
+        });
+
+        resultWrap.style.display = "block";
+        log(`주소 검색 성공: ${rows.length}건`);
+      } catch (err) {
+        log(`주소 검색 실패: ${err.message}`, "err");
+      }
+    }
+
+    async function createPayment() {
+      updateSummary();
+
+      const baseUrl = document.getElementById("apiBaseUrl").value.trim();
+      const userKey = document.getElementById("userKey").value.trim();
+      const orderNo = document.getElementById("orderNo").value.trim();
+      const amount = Number(document.getElementById("amount").value || 0);
+      const qty = Number(document.getElementById("qty").value || 1);
+      const productName = document.getElementById("productName").value.trim();
+      const color = document.getElementById("color").value.trim();
+      const productDesc = `${productName} ${color} ${qty}개`;
+
+      const resultNode = document.getElementById("paymentResult");
+      if (!baseUrl || !userKey || !orderNo || amount <= 0 || !productName || !color) {
+        setResult(resultNode, false, "필수 입력값(API URL, userKey, orderNo, 상품/색상, amount)을 확인해 주세요.");
+        return;
+      }
+
+      log(`결제 생성 요청: ${orderNo} / ${productDesc} / ${amount}`);
+      try {
+        const res = await fetch(`${baseUrl}/v1/payment/create`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-toss-user-key": userKey,
+          },
+          body: JSON.stringify({
+            orderNo,
+            productDesc,
+            amount,
+            amountTaxFree: 0,
+          }),
+        });
+
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          setResult(resultNode, false, data);
+          log(`결제 생성 실패: HTTP ${res.status}`, "err");
+          return;
+        }
+
+        setResult(resultNode, true, {
+          message: "결제 생성 성공",
+          request: {
+            orderNo,
+            productDesc,
+            amount,
+          },
+          response: data,
+        });
+        log(`결제 생성 성공: payToken ${data.payToken ? "수신" : "미수신"}`);
+      } catch (err) {
+        setResult(resultNode, false, err.message || "네트워크 오류");
+        log(`결제 생성 네트워크 오류: ${err.message}`, "err");
+      }
+    }
+
+    ["productName", "color", "size", "qty", "amount"].forEach((id) => {
+      document.getElementById(id).addEventListener("input", updateSummary);
+    });
+
+    document.getElementById("searchAddressBtn").addEventListener("click", searchAddress);
+    document.getElementById("paymentCreateBtn").addEventListener("click", createPayment);
+
+    updateSummary();
+    log("AIT 패리티 테스트 페이지 로드 완료");
+  </script>
+</body>
+</html>
