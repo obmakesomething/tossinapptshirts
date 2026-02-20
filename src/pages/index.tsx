@@ -276,7 +276,7 @@ function Page() {
                 <View style={styles.cardLinkRow}>
                   <Text style={styles.cardProductText}>{category}</Text>
                   <View style={styles.cardLinkLine} />
-                  <Text style={styles.cardActionText}>지금 바로 만들기</Text>
+                  <Text style={styles.cardActionText}>바로 목업하기</Text>
                 </View>
               </Pressable>
             );
@@ -366,7 +366,7 @@ function Page() {
         </View>
 
         <PrimaryButton
-          label="지금 바로 제작하기"
+          label="바로 목업하기"
           onPress={goToEditor}
           style={styles.createButton}
         />

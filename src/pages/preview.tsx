@@ -18,9 +18,9 @@ import { buildTemplate } from '../data/mockupTemplates';
 import { calcPricing } from '../data/pricing';
 import { formatPrice } from '../utils/format';
 
-const ORANGE_RED = '#FF5000';
-const NAVY_DEEP = '#071a35';
-const NAVY_PANEL = '#15325d';
+const ORANGE_RED = '#FF6A00';
+const NAVY_DEEP = '#FFF8F1';
+const NAVY_PANEL = '#FFFFFF';
 
 export const Route = createRoute('/preview', {
   component: Page,
@@ -120,6 +120,7 @@ function Page() {
                 )}
                 width={220}
                 height={275}
+                sizeLabel={orderLines[0]?.sizeLabel ?? selectedProduct.sizes[0]?.label}
                 showDesign
                 designImageUri={
                   isBack ? backDesignImageUri : frontDesignImageUri
@@ -199,7 +200,7 @@ const styles = StyleSheet.create({
     width: 230,
     height: 230,
     borderRadius: 115,
-    backgroundColor: 'rgba(56, 120, 214, 0.14)',
+    backgroundColor: 'rgba(255,196,146,0.35)',
   },
   bgOrbBottom: {
     position: 'absolute',
@@ -208,7 +209,7 @@ const styles = StyleSheet.create({
     width: 210,
     height: 210,
     borderRadius: 105,
-    backgroundColor: 'rgba(25, 70, 146, 0.12)',
+    backgroundColor: 'rgba(255,221,186,0.42)',
   },
   headerRow: {
     flexDirection: 'row',
@@ -219,28 +220,28 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 20,
     fontWeight: '800',
-    color: '#eef5ff',
+    color: '#2E231B',
   },
   headerBack: {
     borderRadius: 999,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.24)',
-    backgroundColor: 'rgba(255,255,255,0.08)',
+    borderColor: 'rgba(240,223,207,0.92)',
+    backgroundColor: 'rgba(255,244,232,0.92)',
     paddingVertical: 6,
     paddingHorizontal: 12,
   },
   headerBackText: {
     fontSize: 12,
-    color: '#dbeaff',
+    color: '#776556',
     fontWeight: '700',
   },
   title: {
     ...theme.typography.heading,
-    color: '#f0f6ff',
+    color: '#2E231B',
   },
   subtitle: {
     ...theme.typography.body,
-    color: '#bdd2ef',
+    color: '#776556',
     marginTop: theme.spacing.xs,
     marginBottom: theme.spacing.md,
   },
@@ -248,7 +249,7 @@ const styles = StyleSheet.create({
     width: 220,
     alignItems: 'center',
     backgroundColor: NAVY_PANEL,
-    borderColor: 'rgba(255,255,255,0.14)',
+    borderColor: 'rgba(240,223,207,0.92)',
     borderWidth: 1,
   },
   mockupSpacing: {
@@ -256,7 +257,7 @@ const styles = StyleSheet.create({
   },
   mockupLabel: {
     fontSize: 13,
-    color: '#b8ceee',
+    color: '#776556',
     lineHeight: 20,
     marginTop: theme.spacing.sm,
   },
@@ -265,7 +266,7 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     ...theme.typography.subheading,
-    color: '#eff6ff',
+    color: '#2E231B',
     marginBottom: theme.spacing.sm,
   },
   swatchRow: {
@@ -275,7 +276,7 @@ const styles = StyleSheet.create({
   priceCard: {
     marginTop: theme.spacing.lg,
     backgroundColor: NAVY_PANEL,
-    borderColor: 'rgba(255,255,255,0.14)',
+    borderColor: 'rgba(240,223,207,0.92)',
     borderWidth: 1,
     alignItems: 'center',
     padding: theme.spacing.lg,
@@ -283,7 +284,7 @@ const styles = StyleSheet.create({
   priceLabel: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#bdd2ef',
+    color: '#776556',
     marginBottom: theme.spacing.xs,
   },
   priceAmount: {
@@ -297,24 +298,24 @@ const styles = StyleSheet.create({
   },
   priceDetailText: {
     fontSize: 13,
-    color: '#bdd2ef',
+    color: '#776556',
   },
   infoCard: {
     marginTop: theme.spacing.md,
     backgroundColor: NAVY_PANEL,
-    borderColor: 'rgba(255,255,255,0.14)',
+    borderColor: 'rgba(240,223,207,0.92)',
     borderWidth: 1,
   },
   infoTitle: {
     fontSize: 15,
     fontWeight: '700',
-    color: '#eff6ff',
+    color: '#2E231B',
     lineHeight: 22,
     marginBottom: theme.spacing.xs,
   },
   infoDesc: {
     fontSize: 13,
-    color: '#c2d6f3',
+    color: '#776556',
     lineHeight: 20,
   },
   primaryActionRow: {

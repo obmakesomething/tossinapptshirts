@@ -30,14 +30,13 @@ export type CatalogProduct = {
   tags: string[];
 };
 
-// Cache for image sources to ensure identical URIs return the same object reference
+// Cache for image sources so identical URIs reuse the same object reference.
 const mockupCache: Record<string, ImageSourcePropType> = {};
 
-// Mockup images are served from configured base URL (server or S3)
+// Mockup images are served from configured base URL (server or S3).
 const resolveMockup = (filename: string): ImageSourcePropType => {
   const uri = `${MOCKUP_CONFIG.baseUrl}/${filename}`;
   if (!mockupCache[uri]) {
-    console.log('[DEBUG] Mockup URI (new):', uri);
     mockupCache[uri] = { uri };
   }
   return mockupCache[uri]!;
@@ -58,16 +57,16 @@ export const catalogProducts: CatalogProduct[] = [
     originalPrice: null,
     priceText: formatPrice(10000),
     url: 'https://www.customzone.co.kr/상품/%ed%94%84%eb%a6%b0%ed%8a%b8%ec%8a%a4%ed%83%80-148-%ed%97%a4%eb%b9%84-14%ec%88%98-%eb%9d%bc%ec%9a%b4%eb%93%9c-%eb%b0%98%ed%8c%94-%eb%82%a8%eb%85%80%ea%b3%b5%ec%9a%a9/',
-    mainImage: resolveMockup('tshirt_black_front.jpg'),
-    detailImage: resolveMockup('tshirt_black_front.jpg'),
+    mainImage: resolveMockup('tshirt_black_front.png'),
+    detailImage: resolveMockup('tshirt_black_back.png'),
     colorImages: {
       블랙: {
-        main: resolveMockup('tshirt_black_front.jpg'),
-        detail: resolveMockup('tshirt_black_front.jpg'),
+        main: resolveMockup('tshirt_black_front.png'),
+        detail: resolveMockup('tshirt_black_back.png'),
       },
       화이트: {
-        main: resolveMockup('tshirt_white_front.jpg'),
-        detail: resolveMockup('tshirt_white_front.jpg'),
+        main: resolveMockup('tshirt_white_front.png'),
+        detail: resolveMockup('tshirt_white_back.png'),
       },
     },
     colors: ['화이트', '블랙'],
@@ -91,16 +90,16 @@ export const catalogProducts: CatalogProduct[] = [
     originalPrice: 24500,
     priceText: formatPrice(23500),
     url: 'https://www.customzone.co.kr/상품/%ed%94%84%eb%a6%b0%ed%8a%b8%ec%8a%a4%ed%83%80-188-%ed%97%a4%eb%b9%84-%ed%9b%84%eb%93%9c-%eb%82%a8%eb%85%80%ea%b3%b5%ec%9a%a9/',
-    mainImage: resolveMockup('hoodie_grey_front.jpg'),
-    detailImage: resolveMockup('hoodie_grey_front.jpg'),
+    mainImage: resolveMockup('hoodie_grey_front.png'),
+    detailImage: resolveMockup('hoodie_grey_front.png'),
     colorImages: {
       블랙: {
-        main: resolveMockup('hoodie_black_front.jpg'),
-        detail: resolveMockup('hoodie_black_front.jpg'),
+        main: resolveMockup('hoodie_black_front.png'),
+        detail: resolveMockup('hoodie_black_front.png'),
       },
       그레이: {
-        main: resolveMockup('hoodie_grey_front.jpg'),
-        detail: resolveMockup('hoodie_grey_front.jpg'),
+        main: resolveMockup('hoodie_grey_front.png'),
+        detail: resolveMockup('hoodie_grey_front.png'),
       },
     },
     colors: ['그레이', '블랙'],
@@ -124,16 +123,16 @@ export const catalogProducts: CatalogProduct[] = [
     originalPrice: 18000,
     priceText: formatPrice(17000),
     url: 'https://www.customzone.co.kr/상품/%ed%94%84%eb%a6%b0%ed%8a%b8%ec%8a%a4%ed%83%80-183-%ed%97%a4%eb%b9%84-%eb%a7%a8%ed%88%ac%eb%a7%a8-%eb%82%a8%eb%85%80%ea%b3%b5%ec%9a%a9/',
-    mainImage: resolveMockup('sweatshirt_grey_front.jpg'),
-    detailImage: resolveMockup('sweatshirt_grey_front.jpg'),
+    mainImage: resolveMockup('sweatshirt_grey_front.png'),
+    detailImage: resolveMockup('sweatshirt_grey_front.png'),
     colorImages: {
       블랙: {
-        main: resolveMockup('sweatshirt_black_front.jpg'),
-        detail: resolveMockup('sweatshirt_black_front.jpg'),
+        main: resolveMockup('sweatshirt_black_front.png'),
+        detail: resolveMockup('sweatshirt_black_front.png'),
       },
       그레이: {
-        main: resolveMockup('sweatshirt_grey_front.jpg'),
-        detail: resolveMockup('sweatshirt_grey_front.jpg'),
+        main: resolveMockup('sweatshirt_grey_front.png'),
+        detail: resolveMockup('sweatshirt_grey_front.png'),
       },
     },
     colors: ['그레이', '블랙'],

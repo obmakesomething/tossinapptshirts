@@ -2,6 +2,7 @@ import React, { useMemo, useRef } from 'react';
 import { Image, PanResponder, StyleSheet, Text, View } from 'react-native';
 import type { LayerTransform, TextLayer } from '../context/catalog';
 import type { MockupTemplate } from '../data/mockupTemplates';
+import { getHemTrimInsetRatio } from '../utils/hemTrim';
 import { theme } from './ui';
 
 type DesignStageProps = {
@@ -21,6 +22,7 @@ type DesignStageProps = {
   onInteractionEnd?: () => void;
   onOutOfBounds?: (isOut: boolean, overflowPercent?: number) => void;
   cameraScale?: number;
+  sizeLabel?: string;
 };
 
 
@@ -40,7 +42,7 @@ const snapRotation = (angle: number) => {
   return angle;
 };
 
-const MIN_SCALE = 0.2;
+const MIN_SCALE = 0.1;
 const MAX_SCALE = 1.5; // Updated for Issue #5
 const MAX_OFFSET = 0.55;
 const HIT_SLOP = 12;
@@ -62,6 +64,7 @@ export function DesignStage({
   onInteractionEnd,
   onOutOfBounds,
   cameraScale: cameraScaleProp = 1,
+  sizeLabel,
 }: DesignStageProps) {
   const area = {
     left: width * template.printArea.x,
@@ -71,6 +74,11 @@ export function DesignStage({
   };
 
   const effectiveShowGuides = _showPrintArea && showGuides;
+  const hemTrimRatio = getHemTrimInsetRatio(sizeLabel);
+  const stageImageStyle = useMemo(
+    () => [styles.image, { bottom: height * hemTrimRatio }],
+    [height, hemTrimRatio],
+  );
 
   const activeTransform =
     activeLayer === 'text' ? textTransform : imageTransform;
@@ -90,12 +98,23 @@ export function DesignStage({
   const activeTransformRef = useRef(activeTransform);
   const updateTransformRef = useRef(updateTransform);
   const areaRef = useRef(area);
+  const activeLayerRef = useRef(activeLayer);
+  const imageUriRef = useRef(imageUri);
+  const textLayerRef = useRef(textLayer);
 
   const cameraScaleRef = useRef(cameraScaleProp);
+  const panSessionRef = useRef({
+    lastTouchCount: 0,
+    dxAnchor: 0,
+    dyAnchor: 0,
+  });
 
   activeTransformRef.current = activeTransform;
   updateTransformRef.current = updateTransform;
   areaRef.current = area;
+  activeLayerRef.current = activeLayer;
+  imageUriRef.current = imageUri;
+  textLayerRef.current = textLayer;
   cameraScaleRef.current = cameraScaleProp;
 
   const isWithinPrintArea = (x: number, y: number) => {
@@ -107,15 +126,37 @@ export function DesignStage({
       y <= currentArea.top + currentArea.height + HIT_SLOP
     );
   };
+  const canInteract = () => {
+    if (activeLayerRef.current === 'text') {
+      const layer = textLayerRef.current;
+      return Boolean(layer.enabled && layer.text.trim().length > 0);
+    }
+    return Boolean(imageUriRef.current);
+  };
 
   const responderRef = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: (evt) => {
+        if (!canInteract()) return false;
         const { locationX, locationY } = evt.nativeEvent;
         return isWithinPrintArea(locationX, locationY);
       },
-      onMoveShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: (evt, gestureState) => {
+        if (!canInteract()) return false;
+        const touches = evt.nativeEvent.touches ?? [];
+        const movedEnough =
+          Math.abs(gestureState.dx) > 2 || Math.abs(gestureState.dy) > 2;
+        if (touches.length >= 2 && touches[0] && touches[1]) {
+          const [a, b] = touches;
+          const midX = (a.locationX + b.locationX) / 2;
+          const midY = (a.locationY + b.locationY) / 2;
+          return isWithinPrintArea(midX, midY);
+        }
+        const { locationX, locationY } = evt.nativeEvent;
+        return movedEnough && isWithinPrintArea(locationX, locationY);
+      },
       onPanResponderTerminationRequest: () => false,
+      onShouldBlockNativeResponder: () => true,
       onPanResponderGrant: (evt) => {
         onInteractionStart?.();
 
@@ -135,16 +176,31 @@ export function DesignStage({
           distance,
           angle,
         };
+        panSessionRef.current.lastTouchCount = Math.max(1, touches.length);
+        panSessionRef.current.dxAnchor = 0;
+        panSessionRef.current.dyAnchor = 0;
       },
       onPanResponderMove: (evt, gestureState) => {
         const touches = evt.nativeEvent.touches ?? [];
         const currentArea = areaRef.current;
         const updateFn = updateTransformRef.current;
+        const session = panSessionRef.current;
 
         if (touches.length >= 2 && touches[0] && touches[1]) {
           const [a, b] = touches;
           const distance = Math.hypot(b.pageX - a.pageX, b.pageY - a.pageY);
           const angle = Math.atan2(b.pageY - a.pageY, b.pageX - a.pageX);
+          if (session.lastTouchCount < 2) {
+            const currentTransform = activeTransformRef.current;
+            startRef.current = {
+              offsetX: currentTransform.offsetX,
+              offsetY: currentTransform.offsetY,
+              scale: currentTransform.scale,
+              rotation: currentTransform.rotation,
+              distance,
+              angle,
+            };
+          }
           const scaleDelta = startRef.current.distance
             ? distance / startRef.current.distance
             : 1;
@@ -161,15 +217,32 @@ export function DesignStage({
             scale: nextScale,
             rotation: startRef.current.rotation + rotationDelta,
           });
+          session.lastTouchCount = touches.length;
         } else {
+          if (session.lastTouchCount >= 2) {
+            const currentTransform = activeTransformRef.current;
+            startRef.current = {
+              offsetX: currentTransform.offsetX,
+              offsetY: currentTransform.offsetY,
+              scale: currentTransform.scale,
+              rotation: currentTransform.rotation,
+              distance: 0,
+              angle: 0,
+            };
+            session.dxAnchor = gestureState.dx;
+            session.dyAnchor = gestureState.dy;
+          }
+          session.lastTouchCount = Math.max(1, touches.length);
+          const adjustedDx = gestureState.dx - session.dxAnchor;
+          const adjustedDy = gestureState.dy - session.dyAnchor;
           const cs = cameraScaleRef.current;
           const nextOffsetX = clamp(
-            startRef.current.offsetX + gestureState.dx / (currentArea.width * cs),
+            startRef.current.offsetX + adjustedDx / (currentArea.width * cs),
             -MAX_OFFSET,
             MAX_OFFSET,
           );
           const nextOffsetY = clamp(
-            startRef.current.offsetY + gestureState.dy / (currentArea.height * cs),
+            startRef.current.offsetY + adjustedDy / (currentArea.height * cs),
             -MAX_OFFSET,
             MAX_OFFSET,
           );
@@ -188,9 +261,15 @@ export function DesignStage({
         if (snapped !== cur.rotation) {
           updateTransformRef.current({ ...cur, rotation: snapped });
         }
+        panSessionRef.current.lastTouchCount = 0;
+        panSessionRef.current.dxAnchor = 0;
+        panSessionRef.current.dyAnchor = 0;
         onInteractionEnd?.();
       },
       onPanResponderTerminate: () => {
+        panSessionRef.current.lastTouchCount = 0;
+        panSessionRef.current.dxAnchor = 0;
+        panSessionRef.current.dyAnchor = 0;
         onInteractionEnd?.();
       },
     }),
@@ -238,7 +317,7 @@ export function DesignStage({
   };
 
   // Out-of-bounds detection (simplified, ignoring rotation)
-  const { isOutOfBounds, overflowPercent } = useMemo(() => {
+  const { isOutOfBounds } = useMemo(() => {
     const checkBounds = (transform: LayerTransform, isText: boolean) => {
       if (isText && !textLayer.enabled) return { out: false, overflow: 0 };
       if (!isText && !imageUri) return { out: false, overflow: 0 };
@@ -281,7 +360,7 @@ export function DesignStage({
     >
       <Image
         source={template.image}
-        style={styles.image}
+        style={stageImageStyle}
         resizeMode="cover"
         onError={(e) =>
           console.error(
@@ -299,7 +378,7 @@ export function DesignStage({
         }
       />
       {/* Overlay mask: darken outside print area */}
-      {_showPrintArea && (
+      {effectiveShowGuides && (
         <>
           <View style={[styles.overlayMask, { top: 0, left: 0, right: 0, height: area.top, backgroundColor: overlayColor }]} />
           <View style={[styles.overlayMask, { top: area.top + area.height, left: 0, right: 0, bottom: 0, backgroundColor: overlayColor }]} />

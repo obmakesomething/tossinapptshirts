@@ -59,7 +59,14 @@ app.use(
       return callback(new Error('Not allowed by CORS'));
     },
     methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-Request-Id'],
+    allowedHeaders: [
+      'Content-Type',
+      'Authorization',
+      'X-Request-Id',
+      'x-request-id',
+      'X-Toss-User-Key',
+      'x-toss-user-key',
+    ],
     optionsSuccessStatus: 204,
   }),
 );

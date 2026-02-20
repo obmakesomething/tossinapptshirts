@@ -41,9 +41,9 @@ import {
   trackScreenView,
 } from '../utils/analytics';
 
-const ORANGE_RED = '#FF5000';
-const NAVY_MID = '#0f2a53';
-const NAVY_PANEL = '#15325d';
+const ORANGE_RED = '#FF6A00';
+const NAVY_MID = '#FFF2E5';
+const NAVY_PANEL = '#FFFFFF';
 
 export const Route = createRoute('/editor', {
   component: Page,
@@ -113,14 +113,14 @@ function Page() {
   const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
   const canvasWidth = screenWidth - 48;
   const canvasHeight = expandedPanel
-    ? Math.min(canvasWidth * 0.8, screenHeight * 0.25)
-    : Math.min(canvasWidth * 1.25, screenHeight * 0.42);
+    ? Math.min(canvasWidth * 0.72, screenHeight * 0.17)
+    : Math.min(canvasWidth * 1.4, screenHeight * 0.46);
 
   // Zoom to print area camera transform
   const printAreaFrac = { x: 0.32, y: 0.22, w: 0.36, h: 0.46 };
   const cameraScale = focusMode
     ? Math.min(canvasWidth / (canvasWidth * printAreaFrac.w), canvasHeight / (canvasHeight * printAreaFrac.h))
-    : (shrinkView ? 0.86 : 1);
+    : (shrinkView ? 0.74 : 1);
   const cameraTranslateX = focusMode
     ? -(printAreaFrac.x + printAreaFrac.w / 2 - 0.5) * canvasWidth * cameraScale
     : 0;
@@ -450,7 +450,7 @@ function Page() {
               }}
             >
               <Text style={[styles.focusButtonText, shrinkView && styles.focusButtonTextActive]}>
-                {shrinkView ? '기본 보기' : '축소 보기'}
+                {shrinkView ? '일반 보기' : '전체 축소'}
               </Text>
             </Pressable>
             <Pressable
@@ -481,8 +481,9 @@ function Page() {
                 template={buildTemplate(selectedProduct, selectedColor, selectedPlacement)}
                 width={canvasWidth}
                 height={canvasHeight}
+                sizeLabel={orderLines[0]?.sizeLabel ?? draftSize ?? selectedProduct.sizes[0]?.label}
                 showPrintArea
-                showGuides
+                showGuides={false}
                 cameraScale={cameraScale}
                 imageUri={designImageUri}
                 imageTransform={imageTransform}
@@ -1100,15 +1101,15 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 14,
     fontWeight: '600',
-    color: '#e8f2ff',
+    color: '#2E231B',
   },
   compactChange: {
     paddingHorizontal: theme.spacing.md,
     paddingVertical: theme.spacing.xs,
     borderRadius: 999,
-    backgroundColor: 'rgba(255,255,255,0.10)',
+    backgroundColor: 'rgba(255,244,232,0.92)',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.16)',
+    borderColor: 'rgba(240,223,207,0.92)',
   },
   compactChangeText: {
     fontSize: 12,
@@ -1122,7 +1123,7 @@ const styles = StyleSheet.create({
     backgroundColor: NAVY_MID,
     borderRadius: 999,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.18)',
+    borderColor: 'rgba(240,223,207,0.92)',
     padding: 2,
     marginBottom: theme.spacing.sm,
   },
@@ -1133,15 +1134,15 @@ const styles = StyleSheet.create({
     borderRadius: 999,
   },
   segmentButtonActive: {
-    backgroundColor: 'rgba(255,255,255,0.14)',
+    backgroundColor: 'rgba(240,223,207,0.92)',
   },
   segmentButtonText: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#9ebbe3',
+    color: '#776556',
   },
   segmentButtonTextActive: {
-    color: '#f5f9ff',
+    color: '#2E231B',
   },
 
   /* ── Canvas ── */
@@ -1165,15 +1166,15 @@ const styles = StyleSheet.create({
   activeLayerBadge: {
     borderRadius: 999,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.2)',
-    backgroundColor: 'rgba(255,255,255,0.08)',
+    borderColor: 'rgba(255,244,232,0.92)',
+    backgroundColor: 'rgba(255,244,232,0.92)',
     paddingVertical: 4,
     paddingHorizontal: 10,
   },
   activeLayerBadgeText: {
     fontSize: 11,
     lineHeight: 16,
-    color: '#d8e9ff',
+    color: '#776556',
     fontWeight: '700',
   },
   canvasFrame: {
@@ -1183,7 +1184,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     borderRadius: 18,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.14)',
+    borderColor: 'rgba(240,223,207,0.92)',
     backgroundColor: NAVY_MID,
   },
   canvasAddButton: {
@@ -1193,9 +1194,9 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: 'rgba(255,255,255,0.08)',
+    backgroundColor: 'rgba(255,244,232,0.92)',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.16)',
+    borderColor: 'rgba(240,223,207,0.92)',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -1214,20 +1215,20 @@ const styles = StyleSheet.create({
     paddingVertical: theme.spacing.xs,
     borderRadius: 999,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.2)',
-    backgroundColor: 'rgba(255,255,255,0.08)',
+    borderColor: 'rgba(255,244,232,0.92)',
+    backgroundColor: 'rgba(255,244,232,0.92)',
   },
   focusButtonActive: {
-    borderColor: 'rgba(255,255,255,0.38)',
-    backgroundColor: 'rgba(255,255,255,0.2)',
+    borderColor: 'rgba(240,223,207,0.92)',
+    backgroundColor: 'rgba(255,244,232,0.92)',
   },
   focusButtonText: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#b8cfef',
+    color: '#776556',
   },
   focusButtonTextActive: {
-    color: '#f1f7ff',
+    color: '#2E231B',
   },
 
   /* ── Canvas Info ── */
@@ -1240,7 +1241,7 @@ const styles = StyleSheet.create({
   },
   canvasInfoText: {
     fontSize: 11,
-    color: '#a2bde3',
+    color: '#9D826E',
   },
   canvasInfoWarn: {
     fontSize: 11,
@@ -1249,16 +1250,16 @@ const styles = StyleSheet.create({
 
   /* ── Bottom Panel ── */
   panel: {
-    flex: 1.25,
+    flex: 1.05,
     backgroundColor: NAVY_PANEL,
     borderTopLeftRadius: theme.radius.xl,
     borderTopRightRadius: theme.radius.xl,
     borderTopWidth: 1,
-    borderTopColor: 'rgba(255,255,255,0.15)',
+    borderTopColor: 'rgba(240,223,207,0.92)',
     marginTop: theme.spacing.sm,
   },
   panelExpanded: {
-    flex: 3.2,
+    flex: 3.8,
   },
   dragHandle: {
     alignItems: 'center',
@@ -1270,13 +1271,13 @@ const styles = StyleSheet.create({
     width: 40,
     height: 4,
     borderRadius: 2,
-    backgroundColor: 'rgba(255,255,255,0.3)',
+    backgroundColor: 'rgba(240,223,207,0.92)',
     marginBottom: theme.spacing.xs,
   },
   dragHint: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#c9ddfb',
+    color: '#776556',
   },
   outOfBoundsInfo: {
     backgroundColor: theme.colors.surface,
@@ -1305,7 +1306,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: theme.spacing.lg,
     paddingVertical: theme.spacing.md,
     borderTopWidth: 1,
-    borderTopColor: 'rgba(255,255,255,0.15)',
+    borderTopColor: 'rgba(240,223,207,0.92)',
   },
   ctaButtonRow: {
     flexDirection: 'row',
@@ -1332,17 +1333,17 @@ const styles = StyleSheet.create({
     marginBottom: theme.spacing.md,
     paddingBottom: theme.spacing.md,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255,255,255,0.14)',
+    borderBottomColor: 'rgba(240,223,207,0.92)',
   },
   sectionTitle: {
     ...theme.typography.subheading,
-    color: '#f0f6ff',
+    color: '#2E231B',
     marginBottom: theme.spacing.sm,
   },
   sectionHint: {
     fontSize: 13,
     lineHeight: 20,
-    color: '#b7ccea',
+    color: '#776556',
     marginBottom: theme.spacing.md,
   },
 
@@ -1350,7 +1351,7 @@ const styles = StyleSheet.create({
   transformHint: {
     fontSize: 13,
     lineHeight: 20,
-    color: '#bfd2ee',
+    color: '#776556',
     marginBottom: theme.spacing.sm,
   },
   sliderRow: {
@@ -1359,7 +1360,7 @@ const styles = StyleSheet.create({
   sliderLabel: {
     fontSize: 12,
     lineHeight: 18,
-    color: '#a8c2e6',
+    color: '#9D826E',
     marginBottom: theme.spacing.sm,
   },
   outOfBoundsWarning: {
@@ -1396,7 +1397,7 @@ const styles = StyleSheet.create({
   },
   sizeHint: {
     ...theme.typography.caption,
-    color: '#a8c2e6',
+    color: '#9D826E',
     marginTop: theme.spacing.xs,
   },
   quantityRow: {
@@ -1407,7 +1408,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     lineHeight: 22,
     fontWeight: '700',
-    color: '#eef5ff',
+    color: '#2E231B',
     marginHorizontal: theme.spacing.lg,
   },
   addLineButton: {
@@ -1419,12 +1420,12 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingVertical: theme.spacing.sm,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255,255,255,0.12)',
+    borderBottomColor: 'rgba(240,223,207,0.92)',
   },
   confirmText: {
     fontSize: 14,
     lineHeight: 20,
-    color: '#eef5ff',
+    color: '#2E231B',
     fontWeight: '600',
   },
   removeText: {
@@ -1435,12 +1436,12 @@ const styles = StyleSheet.create({
   },
   priceCard: {
     marginTop: theme.spacing.lg,
-    backgroundColor: 'rgba(255,255,255,0.08)',
-    borderColor: 'rgba(255,255,255,0.18)',
+    backgroundColor: 'rgba(255,244,232,0.92)',
+    borderColor: 'rgba(240,223,207,0.92)',
   },
   priceTitle: {
     ...theme.typography.subheading,
-    color: '#f2f8ff',
+    color: '#2E231B',
     marginBottom: theme.spacing.xs,
   },
   priceValue: {
@@ -1453,12 +1454,12 @@ const styles = StyleSheet.create({
   priceOption: {
     fontSize: 12,
     lineHeight: 18,
-    color: '#bdd2ef',
+    color: '#776556',
   },
   priceNote: {
     fontSize: 12,
     lineHeight: 18,
-    color: '#bdd2ef',
+    color: '#776556',
     marginTop: theme.spacing.xs,
   },
 
@@ -1470,7 +1471,7 @@ const styles = StyleSheet.create({
   fontLabel: {
     fontSize: 12,
     lineHeight: 18,
-    color: '#a8c2e6',
+    color: '#9D826E',
     marginBottom: theme.spacing.sm,
   },
   fontButtons: {
@@ -1481,9 +1482,9 @@ const styles = StyleSheet.create({
     paddingVertical: theme.spacing.sm,
     borderRadius: 999,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.20)',
+    borderColor: 'rgba(240,223,207,0.92)',
     marginRight: theme.spacing.sm,
-    backgroundColor: 'rgba(255,255,255,0.08)',
+    backgroundColor: 'rgba(255,244,232,0.92)',
   },
   fontButtonSelected: {
     borderColor: ORANGE_RED,
@@ -1492,10 +1493,10 @@ const styles = StyleSheet.create({
   fontButtonText: {
     fontSize: 12,
     lineHeight: 18,
-    color: '#d3e4fb',
+    color: '#776556',
   },
   fontButtonTextSelected: {
-    color: '#ffd8c9',
+    color: '#FF6A00',
   },
 
   /* ── Photo Management ── */
@@ -1503,7 +1504,7 @@ const styles = StyleSheet.create({
     marginBottom: theme.spacing.md,
     paddingBottom: theme.spacing.md,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255,255,255,0.12)',
+    borderBottomColor: 'rgba(240,223,207,0.92)',
   },
   photoError: {
     fontSize: 12,
@@ -1531,7 +1532,8 @@ const styles = StyleSheet.create({
   photoThumbnailImage: {
     width: '100%',
     height: '100%',
-    resizeMode: 'cover',
+    resizeMode: 'contain',
+    backgroundColor: theme.colors.surfaceSecondary,
   },
   photoDeleteBtn: {
     position: 'absolute',
@@ -1574,13 +1576,13 @@ const styles = StyleSheet.create({
   photoHint: {
     fontSize: 11,
     lineHeight: 16,
-    color: '#a8c2e6',
+    color: '#9D826E',
     marginTop: theme.spacing.xs,
   },
   photoSectionHint: {
     fontSize: 11,
     lineHeight: 18,
-    color: '#a8c2e6',
+    color: '#9D826E',
     marginBottom: theme.spacing.xs,
   },
   photoColorRow: {
@@ -1597,7 +1599,7 @@ const styles = StyleSheet.create({
   photoLoadingText: {
     fontSize: 12,
     lineHeight: 18,
-    color: '#bed3ef',
+    color: '#776556',
     marginLeft: theme.spacing.sm,
   },
 
@@ -1641,7 +1643,7 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.error,
   },
   startModalContent: {
-    backgroundColor: '#fcfdff',
+    backgroundColor: '#FFFFFF',
     borderRadius: theme.radius.lg,
     padding: theme.spacing.xl,
     width: '100%',
@@ -1657,7 +1659,7 @@ const styles = StyleSheet.create({
   },
   startModalCloseText: {
     fontSize: 12,
-    color: '#637186',
+    color: '#776556',
     fontWeight: '600',
   },
 });

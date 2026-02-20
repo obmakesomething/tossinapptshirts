@@ -1,16 +1,26 @@
 import { createRoute } from '@granite-js/react-native';
 import React from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
-import { Screen, TopBar, theme } from '../components/ui';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Screen, theme } from '../components/ui';
+
+const NAVY_DEEP = '#FFF8F1';
+const NAVY_PANEL = '#FFFFFF';
 
 export const Route = createRoute('/terms', {
   component: Page,
 });
 
 function Page() {
+  const navigation = Route.useNavigation();
+
   return (
-    <Screen>
-      <TopBar title="서비스 이용약관" />
+    <Screen contentStyle={styles.screenContent}>
+      <View style={styles.headerRow}>
+        <Text style={styles.headerTitle}>서비스 이용약관</Text>
+        <Pressable onPress={() => navigation.goBack()} style={styles.headerBack}>
+          <Text style={styles.headerBackText}>이전</Text>
+        </Pressable>
+      </View>
 
       <ScrollView showsVerticalScrollIndicator={false}>
         <View style={styles.content}>
@@ -133,27 +143,60 @@ function Page() {
 }
 
 const styles = StyleSheet.create({
+  screenContent: {
+    backgroundColor: NAVY_DEEP,
+  },
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: theme.spacing.md,
+  },
+  headerTitle: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: '#2E231B',
+  },
+  headerBack: {
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: 'rgba(240,223,207,0.92)',
+    backgroundColor: 'rgba(255,244,232,0.92)',
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+  },
+  headerBackText: {
+    fontSize: 12,
+    color: '#776556',
+    fontWeight: '700',
+  },
   content: {
+    backgroundColor: NAVY_PANEL,
+    borderRadius: theme.radius.lg,
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.lg,
+    borderWidth: 1,
+    borderColor: 'rgba(240,223,207,0.92)',
     paddingBottom: theme.spacing.xl,
   },
   sectionTitle: {
     fontSize: 16,
     lineHeight: 24,
     fontWeight: '700',
-    color: theme.colors.textPrimary,
+    color: '#2E231B',
     marginTop: theme.spacing.lg,
     marginBottom: theme.spacing.sm,
   },
   paragraph: {
     fontSize: 13,
     lineHeight: 22,
-    color: theme.colors.textSecondary,
+    color: '#776556',
     marginBottom: theme.spacing.md,
   },
   footer: {
     fontSize: 12,
     lineHeight: 18,
-    color: theme.colors.textTertiary,
+    color: '#9D826E',
     marginTop: theme.spacing.xl,
     textAlign: 'center',
   },

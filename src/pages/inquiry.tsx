@@ -2,15 +2,21 @@ import { createRoute } from '@granite-js/react-native';
 import React, { useState } from 'react';
 import {
   ActivityIndicator,
+  Pressable,
   StyleSheet,
   Text,
   TextInput,
   View,
 } from 'react-native';
-import { Card, PrimaryButton, Screen, TopBar, theme } from '../components/ui';
+import { Card, PrimaryButton, Screen, theme } from '../components/ui';
 import { API_BASE_URL } from '../config';
 
-export const Route = createRoute('/inquiry', {
+const ORANGE_RED = '#FF6A00';
+const NAVY_DEEP = '#FFF8F1';
+const NAVY_PANEL = '#FFFFFF';
+const NAVY_MID = '#FFF2E5';
+
+export const Route = createRoute('/inquiry' as never, {
   component: Page,
 });
 
@@ -60,8 +66,13 @@ function Page() {
   };
 
   return (
-    <Screen>
-      <TopBar title="1대1 문의" />
+    <Screen contentStyle={styles.screenContent}>
+      <View style={styles.headerRow}>
+        <Text style={styles.headerTitle}>1대1 문의</Text>
+        <Pressable onPress={() => navigation.goBack()} style={styles.headerBack}>
+          <Text style={styles.headerBackText}>이전</Text>
+        </Pressable>
+      </View>
 
       <Text style={styles.subtitle}>
         궁금한 점을 남겨주시면 빠르게 답변드릴게요.
@@ -115,6 +126,7 @@ function Page() {
         label={submitting ? '등록하고 있어요...' : '문의 등록하기'}
         onPress={handleSubmit}
         disabled={submitting}
+        style={styles.submitButton}
       />
 
       {submitting && (
@@ -128,32 +140,62 @@ function Page() {
 }
 
 const styles = StyleSheet.create({
+  screenContent: {
+    backgroundColor: NAVY_DEEP,
+  },
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: theme.spacing.md,
+  },
+  headerTitle: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: '#2E231B',
+  },
+  headerBack: {
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: 'rgba(240,223,207,0.92)',
+    backgroundColor: 'rgba(255,244,232,0.92)',
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+  },
+  headerBackText: {
+    fontSize: 12,
+    color: '#776556',
+    fontWeight: '700',
+  },
   subtitle: {
     fontSize: 13,
     lineHeight: 20,
-    color: theme.colors.textSecondary,
+    color: '#776556',
     marginBottom: theme.spacing.lg,
   },
   formCard: {
     marginBottom: theme.spacing.lg,
+    backgroundColor: NAVY_PANEL,
+    borderColor: 'rgba(240,223,207,0.92)',
+    borderWidth: 1,
   },
   label: {
     fontSize: 14,
     lineHeight: 20,
     fontWeight: '600',
-    color: theme.colors.textPrimary,
+    color: '#2E231B',
     marginBottom: theme.spacing.xs,
   },
   input: {
     borderWidth: 1,
-    borderColor: theme.colors.border,
+    borderColor: 'rgba(240,223,207,0.92)',
     borderRadius: theme.radius.md,
     paddingHorizontal: theme.spacing.md,
     paddingVertical: theme.spacing.sm,
     fontSize: 14,
     lineHeight: 20,
-    color: theme.colors.textPrimary,
-    backgroundColor: theme.colors.surface,
+    color: '#2E231B',
+    backgroundColor: NAVY_MID,
   },
   textArea: {
     height: 120,
@@ -162,14 +204,17 @@ const styles = StyleSheet.create({
   hint: {
     fontSize: 12,
     lineHeight: 18,
-    color: theme.colors.textTertiary,
+    color: '#9D826E',
     marginTop: theme.spacing.md,
   },
   errorText: {
     fontSize: 12,
     lineHeight: 18,
-    color: theme.colors.error,
+    color: '#ffb8b8',
     marginBottom: theme.spacing.sm,
+  },
+  submitButton: {
+    backgroundColor: ORANGE_RED,
   },
   loadingRow: {
     flexDirection: 'row',
@@ -180,7 +225,7 @@ const styles = StyleSheet.create({
   loadingText: {
     fontSize: 12,
     lineHeight: 18,
-    color: theme.colors.textSecondary,
+    color: '#776556',
     marginLeft: theme.spacing.sm,
   },
 });

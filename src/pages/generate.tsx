@@ -33,10 +33,10 @@ import {
   trackScreenView,
 } from '../utils/analytics';
 
-const ORANGE_RED = '#FF5000';
-const NAVY_DEEP = '#071a35';
-const NAVY_MID = '#0f2a53';
-const NAVY_PANEL = '#15325d';
+const ORANGE_RED = '#FF6A00';
+const NAVY_DEEP = '#FFF8F1';
+const NAVY_MID = '#FFF2E5';
+const NAVY_PANEL = '#FFFFFF';
 
 export const Route = createRoute('/generate', {
   component: Page,
@@ -496,7 +496,7 @@ const styles = StyleSheet.create({
     width: 230,
     height: 230,
     borderRadius: 115,
-    backgroundColor: 'rgba(56, 120, 214, 0.14)',
+    backgroundColor: 'rgba(255,196,146,0.35)',
   },
   bgOrbBottom: {
     position: 'absolute',
@@ -505,7 +505,7 @@ const styles = StyleSheet.create({
     width: 210,
     height: 210,
     borderRadius: 105,
-    backgroundColor: 'rgba(25, 70, 146, 0.12)',
+    backgroundColor: 'rgba(255,221,186,0.42)',
   },
   headerRow: {
     flexDirection: 'row',
@@ -516,40 +516,40 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 20,
     fontWeight: '800',
-    color: '#eef5ff',
+    color: '#2E231B',
   },
   headerBack: {
     borderRadius: 999,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.24)',
-    backgroundColor: 'rgba(255,255,255,0.08)',
+    borderColor: 'rgba(240,223,207,0.92)',
+    backgroundColor: 'rgba(255,244,232,0.92)',
     paddingVertical: 6,
     paddingHorizontal: 12,
   },
   headerBackText: {
     fontSize: 12,
-    color: '#dbeaff',
+    color: '#776556',
     fontWeight: '700',
   },
   title: {
     ...theme.typography.heading,
-    color: '#f0f6ff',
+    color: '#2E231B',
     marginBottom: theme.spacing.sm,
   },
   input: {
     minHeight: 96,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.20)',
+    borderColor: 'rgba(240,223,207,0.92)',
     borderRadius: theme.radius.md,
     padding: theme.spacing.md,
     backgroundColor: NAVY_MID,
     fontSize: 14,
-    color: '#f4f8ff',
+    color: '#2E231B',
   },
   helperText: {
     fontSize: 12,
     lineHeight: 18,
-    color: '#a8c2e6',
+    color: '#9D826E',
     marginTop: theme.spacing.sm,
     marginBottom: theme.spacing.lg,
   },
@@ -574,7 +574,7 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     ...theme.typography.subheading,
-    color: '#eff6ff',
+    color: '#2E231B',
     marginBottom: theme.spacing.sm,
   },
   chipRow: {
@@ -597,7 +597,7 @@ const styles = StyleSheet.create({
     position: 'relative',
     overflow: 'hidden',
     backgroundColor: NAVY_PANEL,
-    borderColor: 'rgba(255,255,255,0.14)',
+    borderColor: 'rgba(240,223,207,0.92)',
     borderWidth: 1,
   },
   checkerboardBg: {
@@ -616,7 +616,7 @@ const styles = StyleSheet.create({
   resultPlaceholder: {
     fontSize: 12,
     lineHeight: 18,
-    color: '#a8c2e6',
+    color: '#9D826E',
     textAlign: 'center',
     paddingHorizontal: theme.spacing.md,
   },
@@ -631,8 +631,8 @@ const styles = StyleSheet.create({
   undoButton: {
     borderRadius: 999,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.18)',
-    backgroundColor: 'rgba(255,255,255,0.06)',
+    borderColor: 'rgba(240,223,207,0.92)',
+    backgroundColor: 'rgba(255,244,232,0.92)',
     paddingHorizontal: 12,
     paddingVertical: 8,
   },
@@ -654,7 +654,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: theme.spacing.md,
     backgroundColor: NAVY_PANEL,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.14)',
+    borderColor: 'rgba(240,223,207,0.92)',
     borderRadius: theme.radius.md,
   },
   loadingRow: {
@@ -664,14 +664,14 @@ const styles = StyleSheet.create({
   loadingText: {
     fontSize: 14,
     lineHeight: 20,
-    color: '#eff6ff',
+    color: '#2E231B',
     marginLeft: theme.spacing.sm,
     fontWeight: '600',
   },
   etaText: {
     fontSize: 12,
     lineHeight: 18,
-    color: '#b8ceee',
+    color: '#776556',
     marginTop: theme.spacing.xs,
     marginLeft: 28,
   },

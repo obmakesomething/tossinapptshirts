@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Image, StyleSheet, Text, View, type ViewStyle, type ImageSourcePropType } from 'react-native';
 import type { LayerTransform, TextLayer } from '../context/catalog';
 import type { MockupTemplate } from '../data/mockupTemplates';
+import { getHemTrimInsetRatio } from '../utils/hemTrim';
 import { theme } from './ui';
 
 type MockupCanvasProps = {
@@ -16,6 +17,7 @@ type MockupCanvasProps = {
   imageTransform?: LayerTransform;
   textLayer?: TextLayer;
   textTransform?: LayerTransform;
+  sizeLabel?: string;
   style?: ViewStyle;
 };
 
@@ -31,6 +33,7 @@ export function MockupCanvas({
   imageTransform,
   textLayer,
   textTransform,
+  sizeLabel,
   style,
 }: MockupCanvasProps) {
   const effectiveShowGuides = showGuides || showPrintArea;
@@ -64,12 +67,14 @@ export function MockupCanvas({
     area.top + area.height / 2 + textOffsetY * area.height - textHeight / 2;
 
   const [imageLoaded, setImageLoaded] = useState(false);
+  const hemTrimRatio = getHemTrimInsetRatio(sizeLabel);
+  const mockupImageStyle = [styles.image, { bottom: height * hemTrimRatio }];
 
   return (
     <View style={[styles.container, { width, height }, style]}>
       <Image
         source={template.image}
-        style={styles.image}
+        style={mockupImageStyle}
         resizeMode="cover"
         onError={(e) =>
           console.error(

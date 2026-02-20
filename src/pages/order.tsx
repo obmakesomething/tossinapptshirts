@@ -1,6 +1,6 @@
 import { createRoute } from '@granite-js/react-native';
 import { TossPay, appLogin } from '@apps-in-toss/framework';
-import React, { useMemo, useRef, useState, useCallback } from 'react';
+import React, { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import {
   Card,
@@ -9,16 +9,28 @@ import {
   PrimaryButton,
   Screen,
   SecondaryButton,
-  TopBar,
   theme,
 } from '../components/ui';
 import { resolveColorValue } from '../data/colorMap';
 import { DaumPostcodeModal, type AddressData } from '../components/DaumPostcodeModal';
 import { API_BASE_URL } from '../config';
 import { useCatalog } from '../context/catalog';
+import { faqItems } from '../data/faq';
 import { calcPricing } from '../data/pricing';
 import { formatPrice } from '../utils/format';
-import { trackOrderCreated, trackPaymentSuccess, trackPaymentFailed } from '../utils/analytics';
+import {
+  trackClick,
+  trackEvent,
+  trackOrderCreated,
+  trackPaymentFailed,
+  trackPaymentSuccess,
+  trackScreenView,
+} from '../utils/analytics';
+
+const ORANGE_RED = '#FF6A00';
+const NAVY_DEEP = '#FFF8F1';
+const NAVY_MID = '#FFF2E5';
+const NAVY_PANEL = '#FFFFFF';
 
 export const Route = createRoute('/order', {
   component: Page,
@@ -34,6 +46,7 @@ function Page() {
     printBackEnabled,
     selectedPrint,
     designImageUri,
+    imageTransform,
     textLayer,
     setSelectedColor,
     addOrderLine,
@@ -59,9 +72,25 @@ function Page() {
   const address2InputRef = useRef<TextInput>(null);
   const [editingOrder, setEditingOrder] = useState(false);
 
+  useEffect(() => {
+    trackScreenView(userKey ? 'order_checkout' : 'order_login', {
+      product_id: selectedProduct.id,
+      product_category: selectedProduct.category,
+      total_quantity: totalQuantity,
+      has_design_image: !!designImageUri,
+    });
+  }, [
+    userKey,
+    selectedProduct.id,
+    selectedProduct.category,
+    totalQuantity,
+    designImageUri,
+  ]);
+
   // Toss Login to get userKey
   const handleTossLogin = useCallback(async () => {
     if (loginLoading) return;
+    trackClick('order_login_click');
     setLoginLoading(true);
     setError('');
 
@@ -134,6 +163,13 @@ function Page() {
   const sizeSummary = orderLines
     .map((line) => `${line.sizeLabel} ${line.quantity}개`)
     .join(' · ');
+  const orderFaqs = useMemo(
+    () =>
+      ['delivery-1', 'order-1', 'refund-1']
+        .map((id) => faqItems.find((item) => item.id === id))
+        .filter((item): item is (typeof faqItems)[number] => !!item),
+    [],
+  );
 
   const targetSize = useMemo(() => {
     const baseWidth = 3600;
@@ -144,13 +180,27 @@ function Page() {
   }, [selectedPrint.designScale]);
 
   const handleSubmit = async () => {
+    trackClick('order_submit_click', {
+      product_id: selectedProduct.id,
+      total_quantity: totalQuantity,
+      total_amount: pricing.total,
+    });
     setError('');
 
     if (!name || !phone || !email || !address1) {
+      trackEvent('order_validation_failed', {
+        missing_name: !name,
+        missing_phone: !phone,
+        missing_email: !email,
+        missing_address1: !address1,
+      });
       setError('이름, 연락처, 이메일, 주소를 모두 입력해 주세요.');
       return;
     }
     if (!designImageUri && (!textLayer.enabled || !textLayer.text)) {
+      trackEvent('order_validation_failed', {
+        missing_design_input: true,
+      });
       setError('디자인 이미지나 텍스트를 먼저 추가해 주세요.');
       return;
     }
@@ -207,6 +257,8 @@ function Page() {
           masterPngUrl: designImageUri,
           targetWidthPx: targetSize.width,
           targetHeightPx: targetSize.height,
+          textLayer: textLayer.enabled ? textLayer : null,
+          imageTransform,
         },
       };
 
@@ -268,12 +320,17 @@ function Page() {
 
       // Track payment success
       trackPaymentSuccess(orderId, pricing.total, 'TossPay', 'KRW');
+      trackEvent('order_checkout_success', {
+        order_id: orderId,
+        amount: pricing.total,
+      });
 
       setSuccess(true);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : '결제를 완료하지 못했어요. 잠시 후 다시 시도해 주세요.';
       setError(errorMessage);
       // Track error if not already tracked
+      trackEvent('order_checkout_failed', { reason: errorMessage });
       console.error('[Order] Payment error:', errorMessage);
     } finally {
       setSubmitting(false);
@@ -283,8 +340,15 @@ function Page() {
   // If not logged in, show simple login screen
   if (!userKey) {
     return (
-      <Screen>
-        <TopBar title="주문하기" />
+      <Screen contentStyle={styles.screenContent}>
+        <View style={styles.bgOrbTop} />
+        <View style={styles.bgOrbBottom} />
+        <View style={styles.headerRow}>
+          <Text style={styles.headerTitle}>주문하기</Text>
+          <Pressable onPress={() => navigation.goBack()} style={styles.headerBack}>
+            <Text style={styles.headerBackText}>이전</Text>
+          </Pressable>
+        </View>
 
         <Card style={styles.summaryCard}>
           <View style={styles.summaryHeader}>
@@ -305,7 +369,6 @@ function Page() {
                     color={resolveColorValue(color)}
                     selected={selectedColor === color}
                     onPress={() => setSelectedColor(color)}
-                    style={styles.colorSwatchSpacing}
                   />
                 ))}
               </View>
@@ -384,6 +447,7 @@ function Page() {
             label={loginLoading ? '로그인 중...' : '🔐 토스 로그인하고 주문하기'}
             onPress={handleTossLogin}
             disabled={loginLoading}
+            style={styles.primaryCta}
           />
           <SecondaryButton label="돌아가기" onPress={() => navigation.goBack()} />
         </View>
@@ -393,8 +457,15 @@ function Page() {
 
   // If logged in, show full order form
   return (
-    <Screen>
-      <TopBar title="주문하기" />
+    <Screen contentStyle={styles.screenContent}>
+      <View style={styles.bgOrbTop} />
+      <View style={styles.bgOrbBottom} />
+      <View style={styles.headerRow}>
+        <Text style={styles.headerTitle}>주문하기</Text>
+        <Pressable onPress={() => navigation.goBack()} style={styles.headerBack}>
+          <Text style={styles.headerBackText}>이전</Text>
+        </Pressable>
+      </View>
 
       <Card style={styles.summaryCard}>
         <View style={styles.summaryHeader}>
@@ -415,7 +486,6 @@ function Page() {
                   color={resolveColorValue(color)}
                   selected={selectedColor === color}
                   onPress={() => setSelectedColor(color)}
-                  style={styles.colorSwatchSpacing}
                 />
               ))}
             </View>
@@ -508,6 +578,7 @@ function Page() {
         <SecondaryButton
           label="주소 찾기"
           onPress={() => {
+            trackClick('order_address_search_click');
             console.log('[Order] Opening address search modal');
             setPostcodeModalVisible(true);
           }}
@@ -561,8 +632,21 @@ function Page() {
         />
       </Card>
 
+      <Card style={styles.quickFaqCard}>
+        <Text style={styles.quickFaqTitle}>주문 전에 확인해 주세요</Text>
+        {orderFaqs.map((item) => (
+          <View key={item.id} style={styles.quickFaqRow}>
+            <Text style={styles.quickFaqQ}>Q.</Text>
+            <View style={styles.quickFaqBody}>
+              <Text style={styles.quickFaqQuestion}>{item.question}</Text>
+              <Text style={styles.quickFaqAnswer}>{item.answer}</Text>
+            </View>
+          </View>
+        ))}
+      </Card>
+
       <Text style={styles.noticeText}>
-        출력 이미지는 주문자가 직접 확인해 주세요. 주문서 메일을 꼭 확인해 주세요.
+        결제 전 최종 시안/사이즈/배송지를 꼭 확인해 주세요. 주문 완료 후 제작이 시작되면 변경이 제한될 수 있어요.
       </Text>
 
       {error ? <Text style={styles.errorText}>{error}</Text> : null}
@@ -572,9 +656,16 @@ function Page() {
 
       <View style={styles.actionRow}>
         <PrimaryButton
-          label={submitting ? '결제하고 있어요...' : '토스페이로 결제하기'}
+          label={
+            success
+              ? '결제가 완료됐어요'
+              : submitting
+                ? '결제하고 있어요...'
+                : '토스페이로 결제하기'
+          }
           onPress={handleSubmit}
-          disabled={submitting}
+          disabled={submitting || success}
+          style={styles.primaryCta}
         />
         <SecondaryButton label="돌아가기" onPress={() => navigation.goBack()} />
       </View>
@@ -592,8 +683,62 @@ function Page() {
 }
 
 const styles = StyleSheet.create({
+  screenContent: {
+    backgroundColor: NAVY_DEEP,
+    paddingBottom: theme.spacing.xl,
+  },
+  bgOrbTop: {
+    position: 'absolute',
+    top: -110,
+    right: -80,
+    width: 250,
+    height: 250,
+    borderRadius: 125,
+    backgroundColor: 'rgba(255,186,132,0.32)',
+  },
+  bgOrbBottom: {
+    position: 'absolute',
+    bottom: 0,
+    left: -90,
+    width: 240,
+    height: 240,
+    borderRadius: 120,
+    backgroundColor: 'rgba(255,221,186,0.42)',
+  },
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: theme.spacing.md,
+  },
+  headerTitle: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: '#2E231B',
+  },
+  headerBack: {
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: 'rgba(240,223,207,0.92)',
+    backgroundColor: 'rgba(255,244,232,0.92)',
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+  },
+  headerBackText: {
+    fontSize: 12,
+    color: '#776556',
+    fontWeight: '700',
+  },
   summaryCard: {
     marginBottom: theme.spacing.lg,
+    backgroundColor: NAVY_PANEL,
+    borderColor: 'rgba(240,223,207,0.92)',
+    borderWidth: 1,
+    shadowColor: '#5F320E',
+    shadowOpacity: 0.24,
+    shadowRadius: 14,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 6,
   },
   summaryHeader: {
     flexDirection: 'row',
@@ -604,27 +749,27 @@ const styles = StyleSheet.create({
   summaryTitle: {
     fontSize: 16,
     fontWeight: '700',
-    color: theme.colors.textPrimary,
+    color: '#2E231B',
   },
   editButton: {
     fontSize: 14,
     fontWeight: '600',
-    color: theme.colors.primary,
+    color: ORANGE_RED,
   },
   summaryMeta: {
     fontSize: 12,
-    color: theme.colors.textSecondary,
+    color: '#776556',
   },
   editSection: {
     marginTop: theme.spacing.md,
     paddingTop: theme.spacing.md,
     borderTopWidth: 1,
-    borderTopColor: theme.colors.border,
+    borderTopColor: 'rgba(240,223,207,0.92)',
   },
   editSectionTitle: {
     fontSize: 13,
     fontWeight: '600',
-    color: theme.colors.textPrimary,
+    color: '#2E231B',
     marginTop: theme.spacing.md,
     marginBottom: theme.spacing.sm,
   },
@@ -632,9 +777,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: theme.spacing.sm,
-  },
-  colorSwatchSpacing: {
-    marginRight: 0,
+    backgroundColor: 'rgba(255,255,255,0.9)',
+    borderRadius: theme.radius.md,
+    padding: theme.spacing.sm,
   },
   orderLineRow: {
     flexDirection: 'row',
@@ -642,12 +787,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: theme.spacing.sm,
     borderBottomWidth: 1,
-    borderBottomColor: theme.colors.border,
+    borderBottomColor: 'rgba(240,223,207,0.92)',
   },
   orderLineSize: {
     fontSize: 14,
     fontWeight: '600',
-    color: theme.colors.textPrimary,
+    color: '#2E231B',
   },
   quantityControl: {
     flexDirection: 'row',
@@ -658,19 +803,21 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: theme.colors.primarySoft,
+    backgroundColor: 'rgba(255,80,0,0.16)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,80,0,0.26)',
     alignItems: 'center',
     justifyContent: 'center',
   },
   quantityButtonText: {
     fontSize: 18,
     fontWeight: '600',
-    color: theme.colors.primary,
+    color: ORANGE_RED,
   },
   quantityValue: {
     fontSize: 16,
     fontWeight: '600',
-    color: theme.colors.textPrimary,
+    color: '#2E231B',
     minWidth: 32,
     textAlign: 'center',
   },
@@ -684,23 +831,66 @@ const styles = StyleSheet.create({
   },
   formCard: {
     marginBottom: theme.spacing.lg,
+    backgroundColor: NAVY_PANEL,
+    borderColor: 'rgba(240,223,207,0.92)',
+    borderWidth: 1,
+  },
+  quickFaqCard: {
+    marginBottom: theme.spacing.md,
+    backgroundColor: NAVY_PANEL,
+    borderColor: 'rgba(240,223,207,0.92)',
+    borderWidth: 1,
+  },
+  quickFaqTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#2E231B',
+    marginBottom: theme.spacing.sm,
+  },
+  quickFaqRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: theme.spacing.sm,
+  },
+  quickFaqQ: {
+    width: 18,
+    fontSize: 12,
+    lineHeight: 18,
+    fontWeight: '700',
+    color: ORANGE_RED,
+    marginTop: 1,
+  },
+  quickFaqBody: {
+    flex: 1,
+  },
+  quickFaqQuestion: {
+    fontSize: 12,
+    lineHeight: 18,
+    color: '#776556',
+    fontWeight: '600',
+  },
+  quickFaqAnswer: {
+    fontSize: 12,
+    lineHeight: 18,
+    color: '#776556',
+    marginTop: 2,
   },
   sectionTitle: {
     fontSize: 14,
     fontWeight: '700',
-    color: theme.colors.textPrimary,
+    color: '#2E231B',
     marginBottom: theme.spacing.sm,
     marginTop: theme.spacing.sm,
   },
   input: {
     borderWidth: 1,
-    borderColor: theme.colors.border,
+    borderColor: 'rgba(240,223,207,0.92)',
     borderRadius: theme.radius.md,
     paddingHorizontal: theme.spacing.md,
     paddingVertical: theme.spacing.sm,
     fontSize: 13,
-    color: theme.colors.textPrimary,
-    backgroundColor: theme.colors.surface,
+    color: '#2E231B',
+    backgroundColor: NAVY_MID,
     marginBottom: theme.spacing.sm,
   },
   memoInput: {
@@ -717,20 +907,23 @@ const styles = StyleSheet.create({
     marginTop: theme.spacing.md,
     gap: theme.spacing.sm,
   },
+  primaryCta: {
+    backgroundColor: ORANGE_RED,
+  },
   errorText: {
     fontSize: 12,
     lineHeight: 18,
-    color: theme.colors.error,
+    color: '#ffb8b8',
     marginBottom: theme.spacing.sm,
   },
   successText: {
     fontSize: 12,
-    color: theme.colors.success,
+    color: '#8de3b5',
     marginBottom: theme.spacing.sm,
   },
   noticeText: {
     fontSize: 12,
-    color: theme.colors.textSecondary,
+    color: '#776556',
     marginBottom: theme.spacing.sm,
   },
   addressSearchButton: {
@@ -738,22 +931,22 @@ const styles = StyleSheet.create({
   },
   loginCard: {
     marginBottom: theme.spacing.lg,
-    backgroundColor: theme.colors.primarySoft,
-    borderColor: theme.colors.primary,
-    borderWidth: 2,
+    backgroundColor: NAVY_PANEL,
+    borderColor: 'rgba(240,223,207,0.92)',
+    borderWidth: 1,
     alignItems: 'center',
     padding: theme.spacing.lg,
   },
   loginTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: theme.colors.primary,
+    color: '#2E231B',
     marginBottom: theme.spacing.sm,
     textAlign: 'center',
   },
   loginDesc: {
     fontSize: 14,
-    color: theme.colors.textSecondary,
+    color: '#776556',
     lineHeight: 20,
     textAlign: 'center',
   },

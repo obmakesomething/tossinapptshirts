@@ -14,17 +14,9 @@
       --text-secondary: #bdd2ef;
       --text-muted: #8badd4;
       --border: rgba(255, 255, 255, 0.18);
-      --ok: #4ade80;
-      --warn: #f87171;
       --radius: 12px;
     }
-
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-    }
-
+    * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
       background: var(--navy-deep);
@@ -34,16 +26,13 @@
       min-height: 100vh;
       padding: 20px 16px 48px;
     }
-
-    .orb-top,
-    .orb-bottom {
+    .orb-top, .orb-bottom {
       position: fixed;
       border-radius: 999px;
       pointer-events: none;
       z-index: -1;
       filter: blur(40px);
     }
-
     .orb-top {
       top: -90px;
       right: -80px;
@@ -51,7 +40,6 @@
       height: 240px;
       background: rgba(56, 122, 216, 0.18);
     }
-
     .orb-bottom {
       left: -80px;
       bottom: -60px;
@@ -59,20 +47,13 @@
       height: 220px;
       background: rgba(25, 71, 147, 0.16);
     }
-
     .header {
       display: flex;
       align-items: center;
       justify-content: space-between;
       margin-bottom: 14px;
     }
-
-    .header h1 {
-      font-size: 20px;
-      font-weight: 800;
-      letter-spacing: -0.3px;
-    }
-
+    .header h1 { font-size: 20px; font-weight: 800; letter-spacing: -0.3px; }
     .badge {
       background: rgba(255, 80, 0, 0.15);
       color: var(--orange);
@@ -82,7 +63,6 @@
       font-size: 11px;
       font-weight: 700;
     }
-
     .card {
       background: var(--navy-panel);
       border: 1px solid var(--border);
@@ -91,40 +71,17 @@
       margin-bottom: 12px;
       box-shadow: 0 8px 24px rgba(1, 10, 26, 0.25);
     }
-
     .card-title {
       font-size: 14px;
       font-weight: 700;
       margin-bottom: 10px;
       color: var(--text-primary);
     }
-
-    .meta {
-      font-size: 12px;
-      color: var(--text-secondary);
-      line-height: 1.5;
-      margin-bottom: 4px;
-    }
-
-    .hint {
-      font-size: 12px;
-      color: var(--text-muted);
-      line-height: 1.5;
-    }
-
-    .field {
-      margin-bottom: 10px;
-    }
-
-    .row {
-      display: flex;
-      gap: 8px;
-    }
-
-    .row .field {
-      flex: 1;
-    }
-
+    .meta { font-size: 12px; color: var(--text-secondary); line-height: 1.5; margin-bottom: 4px; }
+    .hint { font-size: 12px; color: var(--text-muted); line-height: 1.5; }
+    .field { margin-bottom: 10px; }
+    .row { display: flex; gap: 8px; }
+    .row .field { flex: 1; }
     label {
       display: block;
       font-size: 12px;
@@ -132,10 +89,7 @@
       margin-bottom: 5px;
       font-weight: 600;
     }
-
-    input,
-    textarea,
-    select {
+    input, textarea, select {
       width: 100%;
       border-radius: 10px;
       border: 1px solid rgba(255, 255, 255, 0.24);
@@ -145,19 +99,11 @@
       font-size: 13px;
       outline: none;
     }
-
-    input:focus,
-    textarea:focus,
-    select:focus {
+    input:focus, textarea:focus, select:focus {
       border-color: var(--orange);
       box-shadow: 0 0 0 2px rgba(255, 80, 0, 0.2);
     }
-
-    textarea {
-      min-height: 72px;
-      resize: vertical;
-    }
-
+    textarea { min-height: 72px; resize: vertical; }
     .btn {
       width: 100%;
       border: 0;
@@ -167,22 +113,18 @@
       font-weight: 700;
       cursor: pointer;
     }
-
-    .btn + .btn {
-      margin-top: 8px;
-    }
-
-    .btn-primary {
-      background: var(--orange);
-      color: white;
-    }
-
+    .btn + .btn { margin-top: 8px; }
+    .btn-primary { background: var(--orange); color: white; }
     .btn-secondary {
       background: rgba(255, 255, 255, 0.08);
       color: var(--text-primary);
       border: 1px solid rgba(255, 255, 255, 0.24);
     }
-
+    .btn-subtle {
+      background: rgba(14, 165, 233, 0.16);
+      color: #bae6fd;
+      border: 1px solid rgba(56, 189, 248, 0.4);
+    }
     .panel {
       border-radius: 10px;
       border: 1px solid rgba(96, 165, 250, 0.4);
@@ -193,7 +135,6 @@
       line-height: 1.6;
       color: #d7e8ff;
     }
-
     .result {
       margin-top: 10px;
       border-radius: 10px;
@@ -204,45 +145,12 @@
       white-space: pre-wrap;
       word-break: break-all;
     }
-
-    .result.ok {
-      border-color: rgba(74, 222, 128, 0.4);
-      background: rgba(74, 222, 128, 0.1);
-    }
-
-    .result.err {
-      border-color: rgba(248, 113, 113, 0.5);
-      background: rgba(248, 113, 113, 0.12);
-    }
-
-    .log {
-      max-height: 180px;
-      overflow: auto;
-      background: #061327;
-      border-radius: 10px;
-      border: 1px solid rgba(255, 255, 255, 0.16);
-      padding: 10px;
-      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-      font-size: 11px;
-      line-height: 1.5;
-    }
-
-    .log-line {
-      color: #c7ddff;
-      margin-bottom: 3px;
-    }
-
-    .log-line.err {
-      color: #ffb4b4;
-    }
-
-    .address-list {
-      margin-top: 10px;
-      border: 1px solid rgba(255, 255, 255, 0.2);
-      border-radius: 10px;
-      overflow: hidden;
-    }
-
+    .result.ok { border-color: rgba(74, 222, 128, 0.4); background: rgba(74, 222, 128, 0.1); }
+    .result.err { border-color: rgba(248, 113, 113, 0.5); background: rgba(248, 113, 113, 0.12); }
+    .log { max-height: 180px; overflow: auto; background: #061327; border-radius: 10px; border: 1px solid rgba(255, 255, 255, 0.16); padding: 10px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11px; line-height: 1.5; }
+    .log-line { color: #c7ddff; margin-bottom: 3px; }
+    .log-line.err { color: #ffb4b4; }
+    .address-list { margin-top: 10px; border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 10px; overflow: hidden; }
     .address-item {
       width: 100%;
       text-align: left;
@@ -253,16 +161,51 @@
       color: var(--text-primary);
       cursor: pointer;
     }
-
-    .address-item:last-child {
-      border-bottom: 0;
+    .address-item:last-child { border-bottom: 0; }
+    .address-sub { display: block; margin-top: 3px; font-size: 11px; color: var(--text-muted); }
+    .edit-toolbar { display: flex; gap: 8px; margin-top: 10px; }
+    .edit-toolbar .btn { width: auto; flex: 1; }
+    .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+    .chip {
+      border: 1px solid rgba(148, 163, 184, 0.45);
+      border-radius: 999px;
+      padding: 7px 12px;
+      background: rgba(148, 163, 184, 0.15);
+      color: #f0f6ff;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
     }
-
-    .address-sub {
-      display: block;
-      margin-top: 3px;
-      font-size: 11px;
-      color: var(--text-muted);
+    .chip.active { border-color: var(--orange); background: rgba(255, 80, 0, 0.2); color: #fff; }
+    .order-line {
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      background: rgba(255, 255, 255, 0.04);
+      border-radius: 10px;
+      padding: 8px 10px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 8px;
+    }
+    .order-line .name { flex: 1; color: #dbeaff; font-size: 13px; font-weight: 700; }
+    .qty-btn {
+      width: 32px; height: 32px;
+      border: 0; border-radius: 8px;
+      background: rgba(255, 255, 255, 0.12);
+      color: #f3f8ff; font-size: 16px; font-weight: 700;
+      cursor: pointer;
+    }
+    .qty-value {
+      width: 28px; text-align: center; color: #f0f6ff; font-size: 13px; font-weight: 700;
+    }
+    .remove-btn {
+      margin-left: 4px;
+      background: rgba(252, 165, 165, 0.24);
+      color: #fee2e2;
+      border: 1px solid rgba(248, 113, 113, 0.45);
+      width: 32px; height: 32px; border-radius: 8px;
+      font-weight: 900;
+      cursor: pointer;
     }
   </style>
 </head>
@@ -276,30 +219,60 @@
   </div>
 
   <div class="card">
-    <div class="card-title">주문 요약 (AIT order.tsx 기준)</div>
-    <div class="meta" id="summaryMeta">오버핏 티셔츠 · 블랙 · M 1개</div>
-    <div class="meta" id="summaryPrice">예상 결제 30,000원 (배송비 무료)</div>
-    <div class="hint">색상/수량/금액은 아래 입력값으로 바로 반영됩니다.</div>
-  </div>
-
-  <div class="card">
-    <div class="card-title">로그인/결제 전제값</div>
+    <div class="card-title">기본 설정</div>
     <div class="field">
       <label>API Base URL</label>
       <input id="apiBaseUrl" value="https://merchandisegpt-api-peaq3gmvyq-du.a.run.app" />
     </div>
     <div class="field">
-      <label>x-toss-user-key (AIT의 appLogin 결과 대체)</label>
+      <label>x-toss-user-key (AIT의 appLogin 대체)</label>
       <input id="userKey" placeholder="test-user-123" value="test-user-123" />
     </div>
-    <div class="panel">
-      브라우저 테스트에서는 AIT SDK의 <code>appLogin()</code>, <code>TossPay.checkoutPayment()</code>를 실행할 수 없습니다.
-      대신 userKey를 직접 넣고 <code>/v1/payment/create</code> 호출까지 동일하게 검증합니다.
+    <div class="hint">브라우저 테스트에서는 appLogin / TossPay checkoutPayment 대신 userKey와 모의 인증 단계로 확인합니다.</div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">주문 요약 / 편집 상태</div>
+    <div class="meta" id="summaryMeta">오버핏 티셔츠 · 블랙 · M 1개</div>
+    <div class="meta" id="summaryPrice">예상 결제 30,000원 (배송비 무료)</div>
+    <div class="edit-toolbar">
+      <button class="btn btn-secondary" id="toggleEditBtn">요약 편집 모드</button>
+      <button class="btn btn-subtle" id="addQuickLineBtn">사이즈 빠른 추가</button>
+    </div>
+    <div id="orderEditArea" style="display:none; margin-top:10px;">
+      <div class="field">
+        <label>색상</label>
+        <div id="colorChips" class="chips"></div>
+      </div>
+      <div class="field">
+        <label>사이즈 & 수량</label>
+        <div id="orderLines"></div>
+      </div>
+      <div class="field">
+        <label>사이즈 항목 추가</label>
+        <div id="addSizeChips" class="chips"></div>
+      </div>
+      <div class="row">
+        <div class="field">
+          <label>프린트 종류</label>
+          <select id="printKind">
+            <option value="normal">일반</option>
+            <option value="large">라지</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>양면 프린팅</label>
+          <select id="printBack">
+            <option value="0">전면만</option>
+            <option value="1">전면 + 후면</option>
+          </select>
+        </div>
+      </div>
     </div>
   </div>
 
   <div class="card">
-    <div class="card-title">주문자/배송 정보 (AIT 폼 구조 맞춤)</div>
+    <div class="card-title">주문자/배송 정보</div>
     <div class="row">
       <div class="field"><label>이름</label><input id="name" value="홍길동" /></div>
       <div class="field"><label>연락처</label><input id="phone" value="010-1234-5678" /></div>
@@ -308,8 +281,10 @@
     <div class="field"><label>주소 검색어</label><input id="addressQuery" placeholder="예: 역삼동" /></div>
     <button class="btn btn-secondary" id="searchAddressBtn">주소 검색</button>
     <div id="addressSearchResult" class="address-list" style="display:none;"></div>
-    <div class="field" style="margin-top:10px;"><label>기본 주소</label><input id="address1" /></div>
-    <div class="field"><label>상세 주소</label><input id="address2" /></div>
+    <div class="row">
+      <div class="field"><label>기본 주소</label><input id="address1" /></div>
+      <div class="field"><label>상세 주소</label><input id="address2" /></div>
+    </div>
     <div class="row">
       <div class="field"><label>시/도</label><input id="city" /></div>
       <div class="field"><label>구/군</label><input id="state" /></div>
@@ -319,35 +294,48 @@
   </div>
 
   <div class="card">
-    <div class="card-title">상품/결제 파라미터</div>
+    <div class="card-title">결제 실행 테스트 (AIT 패턴)</div>
     <div class="row">
+      <div class="field">
+        <label>주문번호(orderNo)</label>
+        <input id="orderNo" />
+      </div>
       <div class="field">
         <label>상품명</label>
         <input id="productName" value="오버핏 티셔츠" />
       </div>
-      <div class="field">
-        <label>색상</label>
-        <input id="color" value="블랙" />
-      </div>
+    </div>
+    <div class="field">
+      <label>상품 설명 (payment create productDesc)</label>
+      <input id="productDesc" readonly />
+    </div>
+    <div class="field">
+      <label>결제금액(amount) / 수동수정 불가</label>
+      <input id="amount" readonly />
     </div>
     <div class="row">
-      <div class="field"><label>사이즈</label><input id="size" value="M" /></div>
-      <div class="field"><label>수량</label><input id="qty" type="number" value="1" min="1" /></div>
+      <div class="field"><button class="btn btn-primary" id="paymentCreateBtn">1) 결제 생성 (/v1/payment/create)</button></div>
+      <div class="field"><button class="btn btn-subtle" id="paymentAuthBtn">2) 결제 인증(브라우저 대체)</button></div>
     </div>
-    <div class="row">
-      <div class="field"><label>주문번호(orderNo)</label><input id="orderNo" value="MG-TEST-001" /></div>
-      <div class="field"><label>결제금액(amount)</label><input id="amount" type="number" value="30000" min="1" /></div>
-    </div>
-    <button class="btn btn-primary" id="paymentCreateBtn">결제 생성 테스트 (/v1/payment/create)</button>
-    <div id="paymentResult" style="display:none;"></div>
+    <button class="btn btn-secondary" id="paymentExecuteBtn">3) 결제 실행 (/v1/payment/execute)</button>
+    <div class="field"><label>마지막 payToken</label><input id="payToken" readonly /></div>
+    <div id="paymentCreateResult" style="display:none;" class="result"></div>
+    <div id="paymentAuthResult" style="display:none;" class="result"></div>
+    <div id="paymentExecuteResult" style="display:none;" class="result"></div>
   </div>
 
   <div class="card">
-    <div class="card-title">AIT vs Browser 차이 체크</div>
+    <div class="card-title">주문 데이터 전체 페이로드 (orderData)</div>
+    <button class="btn btn-secondary" id="copyOrderDataBtn">orderData JSON 복사</button>
+    <div id="orderDataResult" class="result ok"></div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">비교 체크포인트</div>
     <div class="panel">
-      - 동일: 주문폼 구조, 주소검색 API, 결제 생성 API 파라미터<br />
-      - 브라우저 대체: appLogin/userKey 발급, TossPay 인증/execute 단계<br />
-      - AIT 최종검증 필요: 결제 인증 UI, 뒤로가기/라이프사이클, SDK 브리지
+      - 주문폼 구성: 이름/연락처/이메일, 주소검색, 주문 요약
+      <br />- 요약 편집 상태: 색상 변경, 사이즈별 수량 조절, 사이즈 항목 추가
+      <br />- 결제 인증/실행: 브라우저에서는 인증 모의 처리, create/execute payload는 실제 서버 동일
     </div>
   </div>
 
@@ -359,6 +347,41 @@
   <script>
     const logEl = document.getElementById("log");
     const currency = new Intl.NumberFormat("ko-KR");
+    const SHIPPING_FEE = 3000;
+    const SHIPPING_FREE_THRESHOLD = 60000;
+
+    const PRODUCT = {
+      productName: "오버핏 티셔츠",
+      modelName: "OVERTSHIRT-001",
+      category: "티셔츠",
+      basePrice: 30000,
+      colors: ["블랙", "화이트", "그레이"],
+      sizes: [
+        { size: "S", extra: 0 },
+        { size: "M", extra: 0 },
+        { size: "L", extra: 2000 },
+        { size: "XL", extra: 3000 },
+        { size: "2XL", extra: 4000 },
+      ],
+      printKind: {
+        normal: { sizeLabel: "작은 프린트", sizeCm: "18cm × 24cm", feePerPiece: 0 },
+        large: { sizeLabel: "라지 프린트", sizeCm: "24cm × 32cm", feePerPiece: 2000 },
+      },
+    };
+
+    const state = {
+      editing: false,
+      selectedColor: PRODUCT.colors[0],
+      printKind: "normal",
+      printBack: false,
+      orderLines: [{ id: "line-1", size: "M", qty: 1 }],
+      nextLineId: 2,
+      payment: {
+        payToken: "",
+        orderNo: "",
+        authDone: false,
+      },
+    };
 
     function log(message, type) {
       const line = document.createElement("div");
@@ -375,14 +398,232 @@
       node.textContent = typeof data === "string" ? data : JSON.stringify(data, null, 2);
     }
 
+    function getTotalQuantity() {
+      return state.orderLines.reduce((sum, line) => sum + line.qty, 0);
+    }
+
+    function getAmount() {
+      const lineTotal = state.orderLines.reduce((sum, line) => {
+        const sizeRule = PRODUCT.sizes.find((item) => item.size === line.size);
+        const unit = PRODUCT.basePrice + (sizeRule?.extra || 0);
+        return sum + unit * line.qty;
+      }, 0);
+
+      const printKindFee = PRODUCT.printKind[state.printKind].feePerPiece * getTotalQuantity();
+      const backFee = state.printBack ? 6000 * getTotalQuantity() : 0;
+      const subtotal = lineTotal + printKindFee + backFee;
+      const shippingFee = subtotal >= SHIPPING_FREE_THRESHOLD ? 0 : SHIPPING_FEE;
+      const amount = subtotal + shippingFee;
+
+      return {
+        quantity: getTotalQuantity(),
+        subtotal,
+        shippingFee,
+        amount,
+      };
+    }
+
+    function formatAmount(value) {
+      return `${currency.format(value)}원`;
+    }
+
+    function buildProductDesc() {
+      return `${PRODUCT.productName} ${state.selectedColor} ${getTotalQuantity()}개`;
+    }
+
     function updateSummary() {
-      const name = document.getElementById("productName").value.trim() || "상품";
-      const color = document.getElementById("color").value.trim() || "기본";
-      const size = document.getElementById("size").value.trim() || "M";
-      const qty = Math.max(1, Number(document.getElementById("qty").value || 1));
-      const amount = Math.max(1, Number(document.getElementById("amount").value || 1));
-      document.getElementById("summaryMeta").textContent = `${name} · ${color} · ${size} ${qty}개`;
-      document.getElementById("summaryPrice").textContent = `예상 결제 ${currency.format(amount)}원 (배송비 무료)`;
+      const amount = getAmount();
+      const sizeSummary = state.orderLines.map((line) => `${line.size} ${line.qty}개`).join(" · ");
+      const summaryMeta = `${PRODUCT.productName} · ${state.selectedColor} · ${sizeSummary || `${amount.quantity}개`}`;
+      const feeInfo = amount.shippingFee === 0 ? "배송비 무료" : `배송비 ${formatAmount(amount.shippingFee)}`;
+      document.getElementById("summaryMeta").textContent = summaryMeta;
+      document.getElementById("summaryPrice").textContent = `예상 결제 ${formatAmount(amount.amount)} (${feeInfo})`;
+      document.getElementById("amount").value = String(amount.amount);
+      document.getElementById("productDesc").value = buildProductDesc();
+      document.getElementById("payToken").value = state.payment.payToken || "";
+
+      if (!document.getElementById("orderNo").value) {
+        const gen = `MG-TEST-${Date.now()}`;
+        state.payment.orderNo = gen;
+        document.getElementById("orderNo").value = gen;
+      }
+
+      if (state.editing) renderOrderEdit();
+      renderOrderData();
+    }
+
+    function updateColorButtons() {
+      const container = document.getElementById("colorChips");
+      container.innerHTML = "";
+      PRODUCT.colors.forEach((color) => {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "chip" + (color === state.selectedColor ? " active" : "");
+        btn.textContent = color;
+        btn.addEventListener("click", () => {
+          state.selectedColor = color;
+          renderOrderEdit();
+          updateSummary();
+        });
+        container.appendChild(btn);
+      });
+    }
+
+    function renderOrderLines() {
+      const wrap = document.getElementById("orderLines");
+      wrap.innerHTML = "";
+      state.orderLines.forEach((line) => {
+        const row = document.createElement("div");
+        row.className = "order-line";
+
+        const name = document.createElement("div");
+        name.className = "name";
+        name.textContent = `${line.size}`;
+
+        const minus = document.createElement("button");
+        minus.className = "qty-btn";
+        minus.type = "button";
+        minus.textContent = "−";
+        minus.addEventListener("click", () => {
+          if (line.qty > 1) {
+            line.qty -= 1;
+          } else if (state.orderLines.length > 1) {
+            state.orderLines = state.orderLines.filter((item) => item.id !== line.id);
+          }
+          renderOrderEdit();
+          updateSummary();
+        });
+
+        const value = document.createElement("div");
+        value.className = "qty-value";
+        value.textContent = String(line.qty);
+
+        const plus = document.createElement("button");
+        plus.className = "qty-btn";
+        plus.type = "button";
+        plus.textContent = "+";
+        plus.addEventListener("click", () => {
+          line.qty += 1;
+          renderOrderEdit();
+          updateSummary();
+        });
+
+        const remove = document.createElement("button");
+        remove.className = "remove-btn";
+        remove.type = "button";
+        remove.textContent = "×";
+        remove.addEventListener("click", () => {
+          if (state.orderLines.length > 1) {
+            state.orderLines = state.orderLines.filter((item) => item.id !== line.id);
+            renderOrderEdit();
+            updateSummary();
+          }
+        });
+
+        row.appendChild(name);
+        row.appendChild(minus);
+        row.appendChild(value);
+        row.appendChild(plus);
+        row.appendChild(remove);
+        wrap.appendChild(row);
+      });
+    }
+
+    function renderAddSizeChips() {
+      const wrap = document.getElementById("addSizeChips");
+      wrap.innerHTML = "";
+      const existing = new Set(state.orderLines.map((line) => line.size));
+      const pending = PRODUCT.sizes.filter((size) => !existing.has(size.size));
+
+      pending.forEach((size) => {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "chip";
+        btn.textContent = size.size;
+        btn.addEventListener("click", () => {
+          state.orderLines.push({ id: `line-${state.nextLineId}`, size: size.size, qty: 1 });
+          state.nextLineId += 1;
+          state.editing = true;
+          renderOrderEdit();
+          updateSummary();
+        });
+        wrap.appendChild(btn);
+      });
+
+      if (!pending.length) {
+        const msg = document.createElement("div");
+        msg.className = "hint";
+        msg.textContent = "현재 모든 사이즈가 추가되어 있습니다.";
+        wrap.appendChild(msg);
+      }
+    }
+
+    function renderOrderEdit() {
+      renderOrderLines();
+      updateColorButtons();
+      renderAddSizeChips();
+      document.getElementById("printKind").value = state.printKind;
+      document.getElementById("printBack").value = state.printBack ? "1" : "0";
+    }
+
+    function getOrderData() {
+      const orderNo = document.getElementById("orderNo").value.trim() || state.payment.orderNo || `MG-TEST-${Date.now()}`;
+      const amount = getAmount();
+      return {
+        orderId: orderNo,
+        channel: "Toss Miniapp",
+        storePdf: true,
+        customer: {
+          name: document.getElementById("name").value.trim(),
+          phone: document.getElementById("phone").value.trim(),
+          email: document.getElementById("email").value.trim(),
+        },
+        shipping: {
+          name: document.getElementById("name").value.trim(),
+          phone: document.getElementById("phone").value.trim(),
+          address1: document.getElementById("address1").value.trim(),
+          address2: document.getElementById("address2").value.trim(),
+          city: document.getElementById("city").value.trim(),
+          state: document.getElementById("state").value.trim(),
+          zip: document.getElementById("zip").value.trim(),
+          country: "KR",
+          memo: document.getElementById("memo").value.trim(),
+        },
+        items: state.orderLines.map((line) => ({
+          productName: PRODUCT.productName,
+          modelName: PRODUCT.modelName,
+          color: state.selectedColor,
+          size: line.size,
+          quantity: line.qty,
+          print: {
+            method: "DTF/DTG",
+            placement: state.printBack ? "front/back" : "front",
+            sizeLabel: PRODUCT.printKind[state.printKind].sizeLabel,
+            sizeCm: PRODUCT.printKind[state.printKind].sizeCm,
+            scale: 1,
+          },
+          designUrl: "",
+          text: null,
+        })),
+        pricing: {
+          subtotal: formatAmount(amount.subtotal),
+          shipping: amount.shippingFee === 0 ? "무료" : formatAmount(amount.shippingFee),
+          total: formatAmount(amount.amount),
+          quantity: amount.quantity,
+        },
+        pipeline: {
+          enabled: true,
+          masterPngUrl: "https://example.com/mock-design.png",
+          targetWidthPx: 3600,
+          targetHeightPx: 4800,
+          textLayer: null,
+          imageTransform: { x: 0, y: 0, scale: 1, rotate: 0 },
+        },
+      };
+    }
+
+    function renderOrderData() {
+      setResult(document.getElementById("orderDataResult"), true, getOrderData());
     }
 
     async function searchAddress() {
@@ -420,7 +661,7 @@
           const btn = document.createElement("button");
           btn.className = "address-item";
           btn.type = "button";
-          btn.innerHTML = `${road || jibun || "주소"}<span class="address-sub">${jibun && road !== jibun ? jibun + " / " : ""}우편번호 ${zone || "-"}</span>`;
+          btn.innerHTML = `${road || jibun || "주소"}<span class="address-sub">${jibun && road !== jibun ? `${jibun} / ` : ""}우편번호 ${zone || "-"}</span>`;
           btn.addEventListener("click", () => {
             document.getElementById("address1").value = road || jibun;
             document.getElementById("zip").value = zone;
@@ -428,7 +669,7 @@
             document.getElementById("state").value = sigungu;
             resultWrap.style.display = "none";
             log(`주소 선택: ${road || jibun}`);
-            document.getElementById("address2").focus();
+            renderOrderData();
           });
           resultWrap.appendChild(btn);
         });
@@ -440,21 +681,44 @@
       }
     }
 
+    function validOrderData() {
+      const name = document.getElementById("name").value.trim();
+      const phone = document.getElementById("phone").value.trim();
+      const email = document.getElementById("email").value.trim();
+      if (!name || !phone || !email) {
+        return "주문자 이름/연락처/이메일은 필수입니다.";
+      }
+      const address1 = document.getElementById("address1").value.trim();
+      if (!address1) {
+        return "기본 주소는 필수입니다.";
+      }
+      const orderNo = document.getElementById("orderNo").value.trim();
+      if (!orderNo) {
+        return "주문번호가 필요합니다.";
+      }
+      return null;
+    }
+
     async function createPayment() {
-      updateSummary();
+      const errMsg = validOrderData();
+      if (errMsg) {
+        setResult(document.getElementById("paymentCreateResult"), false, errMsg);
+        log(errMsg, "err");
+        return;
+      }
 
       const baseUrl = document.getElementById("apiBaseUrl").value.trim();
       const userKey = document.getElementById("userKey").value.trim();
       const orderNo = document.getElementById("orderNo").value.trim();
+      const productDesc = document.getElementById("productDesc").value.trim();
       const amount = Number(document.getElementById("amount").value || 0);
-      const qty = Number(document.getElementById("qty").value || 1);
-      const productName = document.getElementById("productName").value.trim();
-      const color = document.getElementById("color").value.trim();
-      const productDesc = `${productName} ${color} ${qty}개`;
 
-      const resultNode = document.getElementById("paymentResult");
-      if (!baseUrl || !userKey || !orderNo || amount <= 0 || !productName || !color) {
-        setResult(resultNode, false, "필수 입력값(API URL, userKey, orderNo, 상품/색상, amount)을 확인해 주세요.");
+      if (!baseUrl || !userKey) {
+        setResult(document.getElementById("paymentCreateResult"), false, "API URL / userKey를 확인해 주세요.");
+        return;
+      }
+      if (!orderNo || !productDesc || amount <= 0) {
+        setResult(document.getElementById("paymentCreateResult"), false, "결제 생성 파라미터가 올바르지 않습니다.");
         return;
       }
 
@@ -476,12 +740,16 @@
 
         const data = await res.json().catch(() => ({}));
         if (!res.ok) {
-          setResult(resultNode, false, data);
+          setResult(document.getElementById("paymentCreateResult"), false, data);
           log(`결제 생성 실패: HTTP ${res.status}`, "err");
           return;
         }
 
-        setResult(resultNode, true, {
+        state.payment.payToken = data.payToken || "";
+        state.payment.orderNo = orderNo;
+        state.payment.authDone = false;
+        document.getElementById("payToken").value = state.payment.payToken;
+        setResult(document.getElementById("paymentCreateResult"), true, {
           message: "결제 생성 성공",
           request: {
             orderNo,
@@ -490,22 +758,147 @@
           },
           response: data,
         });
-        log(`결제 생성 성공: payToken ${data.payToken ? "수신" : "미수신"}`);
+        setResult(document.getElementById("paymentAuthResult"), false, "인증이 필요합니다. 브라우저 대체 버튼으로 진행해 주세요.");
+        log(`결제 생성 성공: payToken ${state.payment.payToken ? "수신" : "미수신"}`);
       } catch (err) {
-        setResult(resultNode, false, err.message || "네트워크 오류");
+        setResult(document.getElementById("paymentCreateResult"), false, err.message || "네트워크 오류");
         log(`결제 생성 네트워크 오류: ${err.message}`, "err");
       }
     }
 
-    ["productName", "color", "size", "qty", "amount"].forEach((id) => {
-      document.getElementById(id).addEventListener("input", updateSummary);
+    function authorizePayment() {
+      if (!state.payment.payToken) {
+        setResult(document.getElementById("paymentAuthResult"), false, "먼저 /v1/payment/create 호출이 완료되어야 합니다.");
+        return;
+      }
+      state.payment.authDone = true;
+      setResult(document.getElementById("paymentAuthResult"), true, {
+        message: "브라우저 테스트용 결제 인증 완료(모의)",
+        payToken: state.payment.payToken,
+        orderNo: state.payment.orderNo,
+      });
+      log("결제 인증(모의) 완료");
+    }
+
+    async function executePayment() {
+      if (!state.payment.payToken || !state.payment.authDone) {
+        setResult(document.getElementById("paymentExecuteResult"), false, "/v1/payment/create → 인증 단계가 먼저 필요합니다.");
+        return;
+      }
+
+      const baseUrl = document.getElementById("apiBaseUrl").value.trim();
+      const userKey = document.getElementById("userKey").value.trim();
+      const orderNo = document.getElementById("orderNo").value.trim();
+      const payload = getOrderData();
+
+      if (!baseUrl || !userKey || !orderNo) {
+        setResult(document.getElementById("paymentExecuteResult"), false, "API URL / userKey / 주문번호를 확인해 주세요.");
+        return;
+      }
+
+      log(`결제 실행 요청: ${orderNo}`);
+      try {
+        const res = await fetch(`${baseUrl}/v1/payment/execute`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-toss-user-key": userKey,
+          },
+          body: JSON.stringify({
+            payToken: state.payment.payToken,
+            orderNo,
+            orderData: payload,
+          }),
+        });
+
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          setResult(document.getElementById("paymentExecuteResult"), false, data);
+          log(`결제 실행 실패: HTTP ${res.status}`, "err");
+          return;
+        }
+
+        setResult(document.getElementById("paymentExecuteResult"), true, {
+          message: "결제 실행 성공",
+          request: {
+            payToken: state.payment.payToken,
+            orderNo,
+          },
+          response: data,
+        });
+        log("결제 실행 성공");
+      } catch (err) {
+        setResult(document.getElementById("paymentExecuteResult"), false, err.message || "네트워크 오류");
+        log(`결제 실행 네트워크 오류: ${err.message}`, "err");
+      }
+    }
+
+    async function copyOrderData() {
+      try {
+        await navigator.clipboard.writeText(document.getElementById("orderDataResult").textContent);
+        log("orderData를 클립보드에 복사했습니다.");
+      } catch (err) {
+        log("클립보드 복사 실패", "err");
+      }
+    }
+
+    document.getElementById("toggleEditBtn").addEventListener("click", () => {
+      state.editing = !state.editing;
+      const btn = document.getElementById("toggleEditBtn");
+      btn.textContent = state.editing ? "요약 고정 상태" : "요약 편집 모드";
+      document.getElementById("orderEditArea").style.display = state.editing ? "block" : "none";
+      if (state.editing) renderOrderEdit();
+      renderOrderData();
+    });
+
+    document.getElementById("addQuickLineBtn").addEventListener("click", () => {
+      const existing = new Set(state.orderLines.map((line) => line.size));
+      const next = PRODUCT.sizes.find((size) => !existing.has(size.size));
+      if (!next) {
+        log("추가 가능한 사이즈가 없습니다.");
+        return;
+      }
+      state.orderLines.push({ id: `line-${state.nextLineId}`, size: next.size, qty: 1 });
+      state.nextLineId += 1;
+      state.editing = true;
+      document.getElementById("orderEditArea").style.display = "block";
+      document.getElementById("toggleEditBtn").textContent = "요약 고정 상태";
+      renderOrderEdit();
+      updateSummary();
+    });
+
+    document.getElementById("printKind").addEventListener("change", (e) => {
+      state.printKind = e.target.value;
+      renderOrderData();
+      updateSummary();
+    });
+
+    document.getElementById("printBack").addEventListener("change", (e) => {
+      state.printBack = e.target.value === "1";
+      renderOrderData();
+      updateSummary();
+    });
+
+    ["name", "phone", "email", "address1", "address2", "city", "state", "zip", "memo", "orderNo", "productName"].forEach((id) => {
+      document.getElementById(id).addEventListener("input", () => {
+        if (id === "productName") {
+          PRODUCT.productName = document.getElementById("productName").value.trim();
+        }
+        updateSummary();
+      });
     });
 
     document.getElementById("searchAddressBtn").addEventListener("click", searchAddress);
     document.getElementById("paymentCreateBtn").addEventListener("click", createPayment);
+    document.getElementById("paymentAuthBtn").addEventListener("click", authorizePayment);
+    document.getElementById("paymentExecuteBtn").addEventListener("click", executePayment);
+    document.getElementById("copyOrderDataBtn").addEventListener("click", copyOrderData);
 
+    document.getElementById("orderNo").value = `MG-TEST-${Date.now()}`;
+    state.payment.orderNo = document.getElementById("orderNo").value;
+    renderOrderEdit();
     updateSummary();
-    log("AIT 패리티 테스트 페이지 로드 완료");
+    log("AIT 주문 패리티 테스트 페이지 로드 완료");
   </script>
 </body>
 </html>

@@ -1,15 +1,76 @@
-// Analytics tracking utilities
-export const trackEvent = (eventName: string, properties?: Record<string, any>) => {
+import { eventLog } from '@apps-in-toss/framework';
+
+type LogType = 'event' | 'screen' | 'click' | 'impression';
+type AnalyticsParams = Record<string, unknown>;
+const ANALYTICS_SCHEMA_DATE = '20260220';
+
+const withDateSuffix = (name: string) => `${name}_${ANALYTICS_SCHEMA_DATE}`;
+
+const suffixParamKeys = (properties?: AnalyticsParams): AnalyticsParams => {
+  if (!properties) return {};
+  return Object.fromEntries(
+    Object.entries(properties).map(([key, value]) => [withDateSuffix(key), value]),
+  );
+};
+
+const serializeParams = (properties?: AnalyticsParams) => {
+  if (!properties) return {};
+  const entries = Object.entries(properties).map(([key, value]) => {
+    if (
+      value == null ||
+      typeof value === 'string' ||
+      typeof value === 'number' ||
+      typeof value === 'boolean'
+    ) {
+      return [key, value] as const;
+    }
+    try {
+      return [key, JSON.stringify(value)] as const;
+    } catch {
+      return [key, String(value)] as const;
+    }
+  });
+  return Object.fromEntries(entries);
+};
+
+// Analytics tracking utilities (Apps in Toss eventLog)
+export const trackEvent = (
+  eventName: string,
+  properties?: AnalyticsParams,
+  logType: LogType = 'event',
+) => {
   try {
-    // Log to console for debugging
-    console.log(`[Analytics] ${eventName}`, properties);
+    const payload = {
+      log_name: withDateSuffix(eventName),
+      log_type: logType,
+      params: serializeParams(
+        suffixParamKeys({
+          ...properties,
+          tracked_at: new Date().toISOString(),
+        }),
+      ),
+    } as const;
 
-    // TODO: Add your analytics provider here (e.g., Amplitude, Mixpanel, GA)
-    // Example: amplitude.track(eventName, properties);
-
+    void eventLog(payload).catch((error) => {
+      console.error('[Analytics] Error sending event:', error);
+    });
   } catch (error) {
     console.error('[Analytics] Error tracking event:', error);
   }
+};
+
+export const trackClick = (
+  eventName: string,
+  properties?: AnalyticsParams,
+) => {
+  trackEvent(eventName, properties, 'click');
+};
+
+export const trackImpression = (
+  eventName: string,
+  properties?: AnalyticsParams,
+) => {
+  trackEvent(eventName, properties, 'impression');
 };
 
 // Order events
@@ -18,7 +79,6 @@ export const trackOrderCreated = (orderId: string, amount: number, currency: str
     order_id: orderId,
     amount,
     currency,
-    timestamp: new Date().toISOString(),
   });
 };
 
@@ -33,7 +93,6 @@ export const trackPaymentSuccess = (
     amount,
     currency,
     payment_method: paymentMethod,
-    timestamp: new Date().toISOString(),
   });
 };
 
@@ -48,17 +107,15 @@ export const trackPaymentFailed = (
     amount,
     currency,
     reason,
-    timestamp: new Date().toISOString(),
   });
 };
 
 // Screen views
-export const trackScreenView = (screenName: string, properties?: Record<string, any>) => {
-  trackEvent('screen_view', {
+export const trackScreenView = (screenName: string, properties?: AnalyticsParams) => {
+  trackEvent(`${screenName}_screen_view`, {
     screen_name: screenName,
     ...properties,
-    timestamp: new Date().toISOString(),
-  });
+  }, 'screen');
 };
 
 // Image generation events
@@ -67,53 +124,46 @@ export const trackImageGenerated = (prompt: string, style: string, aspectRatio: 
     prompt,
     style,
     aspect_ratio: aspectRatio,
-    timestamp: new Date().toISOString(),
   });
 };
 
 export const trackImageUploaded = (source: string) => {
   trackEvent('image_uploaded', {
     source,
-    timestamp: new Date().toISOString(),
   });
 };
 
 // Photo management events
 export const trackPhotoReplaceClick = (placement: string) => {
-  trackEvent('photo_replace_click', {
+  trackClick('photo_replace_click', {
     placement,
-    timestamp: new Date().toISOString(),
   });
 };
 
 export const trackPhotoAddClick = (placement: string, currentCount: number) => {
-  trackEvent('photo_add_click', {
+  trackClick('photo_add_click', {
     placement,
     current_photo_count: currentCount,
-    timestamp: new Date().toISOString(),
   });
 };
 
 export const trackPhotoRemoveClick = (placement: string, photoIndex: number) => {
-  trackEvent('photo_remove_click', {
+  trackClick('photo_remove_click', {
     placement,
     photo_index: photoIndex,
-    timestamp: new Date().toISOString(),
   });
 };
 
 export const trackPhotoRemoveConfirm = (placement: string, photoIndex: number) => {
-  trackEvent('photo_remove_confirm', {
+  trackClick('photo_remove_confirm', {
     placement,
     photo_index: photoIndex,
-    timestamp: new Date().toISOString(),
   });
 };
 
 export const trackPhotoSelectThumbnail = (placement: string, photoIndex: number) => {
-  trackEvent('photo_select_thumbnail', {
+  trackClick('photo_select_thumbnail', {
     placement,
     photo_index: photoIndex,
-    timestamp: new Date().toISOString(),
   });
 };
