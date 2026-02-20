@@ -74,13 +74,10 @@ function Page() {
   }, []);
 
   const categories = CATEGORIES;
-  const carouselCardWidth = Math.min(236, Math.max(196, screenWidth - 124));
-  const carouselGap = theme.spacing.md;
+  const carouselCardWidth = Math.min(screenWidth - 72, 330);
+  const carouselGap = theme.spacing.sm;
   const carouselInterval = carouselCardWidth + carouselGap;
-  const carouselSidePadding = Math.max(
-    theme.spacing.md,
-    Math.floor((screenWidth - carouselCardWidth) / 2),
-  );
+  const carouselSidePadding = 0;
   const productByCategory = React.useMemo(() => {
     const map: Record<string, (typeof products)[number] | undefined> = {};
     categories.forEach((category) => {
@@ -127,7 +124,7 @@ function Page() {
 
   const goToEditor = () => {
     trackClick('home_primary_cta_click', {
-      source: 'info_panel',
+      source: 'home_card',
       category: selectedCategory,
       product_id: selectedCategoryProduct.id,
     });
@@ -181,7 +178,6 @@ function Page() {
       placement: 'carousel',
     });
     selectCategory(category);
-    navigation.navigate('/editor');
   };
   const renderSizeLabel = (label: string) => {
     if (label === '2XL') return '2X';
@@ -192,7 +188,6 @@ function Page() {
 
   return (
     <Screen contentStyle={styles.screenContent}>
-
       <View style={styles.header}>
         <View style={styles.headerLeft}>
           <Image source={{ uri: APP_ICON_URL }} style={styles.headerLogo} />
@@ -203,85 +198,84 @@ function Page() {
         </Pressable>
       </View>
 
-      <View style={styles.hero}>
-        <Text style={styles.heroTitle}>굿즈 gpt</Text>
-        <Text style={styles.heroSubtitle}>
-          이미지를 업로드하거나 AI로 새로 만들어,{'\n'}
-          티셔츠·후드·맨투맨을 바로 제작하고 배송까지 해드립니다
+      <View style={styles.brandCard}>
+        <View style={styles.brandHead}>
+          <View style={styles.brandBadge}>
+            <Text style={styles.brandBadgeText}>✦</Text>
+          </View>
+          <Text style={styles.brandTitle}>굿즈 gpt</Text>
+        </View>
+        <Text style={styles.brandCopy}>
+          이미지를 업로드하거나 AI로 새로 만들어, 티셔츠·후드·맨투맨을 바로 제작하고 배송까지 해드립니다.
         </Text>
       </View>
 
-      <View style={styles.carouselSection}>
-        <Text style={styles.sectionTitle}>티셔츠 · 후드 · 맨투맨</Text>
-        <FlatList
-          ref={carouselRef}
-          data={categories}
-          keyExtractor={(category) => category}
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          bounces={false}
-          snapToInterval={carouselInterval}
-          snapToAlignment="start"
-          decelerationRate="fast"
-          disableIntervalMomentum
-          onMomentumScrollEnd={handleCarouselMomentumEnd}
-          contentContainerStyle={[
-            styles.carouselContent,
-            { paddingHorizontal: carouselSidePadding },
-          ]}
-          renderItem={({ item: category, index }) => {
-            const product = productByCategory[category];
-            if (!product) return null;
-            const diff = index - activeCategoryIndex;
-            const active = selectedCategory === category;
-            return (
-              <Pressable
-                key={category}
-                onPress={() => openProductEditor(category)}
-                onLongPress={() => selectCategory(category)}
-                style={[
-                  styles.carouselCard,
-                  {
-                    width: carouselCardWidth,
-                    marginRight: index === categories.length - 1 ? 0 : carouselGap,
-                    opacity: active ? 1 : 0.84,
-                    transform: [
-                      { perspective: 1000 },
-                      { rotateY: `${diff * -8}deg` },
-                      { scale: active ? 1 : 0.94 },
-                      { translateY: active ? 0 : 8 },
-                    ],
-                  },
-                ]}
-              >
-                <View style={styles.cardImageWrap}>
-                  <MockupCanvas
-                    template={buildTemplate(
-                      product,
-                      product.colors[0] || '블랙',
-                      'front',
-                    )}
-                    width={150}
-                    height={180}
-                    showDesign
-                    designImageUri={heroDesignImageUri}
-                    imageTransform={{
-                      offsetX: 0,
-                      offsetY: 0,
-                      scale: 0.9,
-                      rotation: 0,
-                    }}
-                  />
-                </View>
-                <View style={styles.cardLinkRow}>
-                  <Text style={styles.cardProductText}>{category}</Text>
-                  <View style={styles.cardLinkLine} />
-                  <Text style={styles.cardActionText}>바로 목업하기</Text>
-                </View>
-              </Pressable>
-            );
-          }}
-        />
+      <View style={styles.homeGuide}>
+        <Text style={styles.homeGuideTitle}>무엇을 만들까요?</Text>
+        <Text style={styles.homeGuideText}>상품을 선택하고 디자인을 시작하세요</Text>
+      </View>
+
+      <View style={styles.homeCard}>
+        <View style={styles.carouselShell}>
+          <FlatList
+            ref={carouselRef}
+            data={categories}
+            keyExtractor={(category) => category}
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            bounces={false}
+            snapToInterval={carouselInterval}
+            snapToAlignment="start"
+            decelerationRate="fast"
+            disableIntervalMomentum
+            onMomentumScrollEnd={handleCarouselMomentumEnd}
+            contentContainerStyle={[
+              styles.carouselContent,
+              { paddingHorizontal: carouselSidePadding },
+            ]}
+            renderItem={({ item: category, index }) => {
+              const product = productByCategory[category];
+              if (!product) return null;
+              const active = selectedCategory === category;
+              const mockupWidth = Math.max(180, carouselCardWidth - 44);
+              const mockupHeight = Math.round(mockupWidth * 1.22);
+              return (
+                <Pressable
+                  key={category}
+                  onPress={() => openProductEditor(category)}
+                  style={[
+                    styles.carouselCard,
+                    {
+                      width: carouselCardWidth,
+                      marginRight: index === categories.length - 1 ? 0 : carouselGap,
+                      opacity: active ? 1 : 0.84,
+                    },
+                  ]}
+                >
+                  <View style={styles.cardImageWrap}>
+                    <MockupCanvas
+                      template={buildTemplate(
+                        product,
+                        product.colors[0] || '블랙',
+                        'front',
+                      )}
+                      width={mockupWidth}
+                      height={mockupHeight}
+                      showDesign
+                      designImageUri={heroDesignImageUri}
+                      imageTransform={{
+                        offsetX: 0,
+                        offsetY: 0,
+                        scale: 0.86,
+                        rotation: 0,
+                      }}
+                    />
+                  </View>
+                </Pressable>
+              );
+            }}
+          />
+        </View>
         <View style={styles.carouselDots}>
           {categories.map((category, index) => {
             const active = index === activeCategoryIndex;
@@ -308,23 +302,14 @@ function Page() {
             );
           })}
         </View>
-        <Text style={styles.carouselHint}>
-          카드 탭으로 바로 편집 화면에 들어갈 수 있어요.
-        </Text>
-      </View>
 
-      <Card style={styles.infoPanel}>
-        <View style={styles.infoTopRow}>
-          <View style={styles.infoTitleWrap}>
-            <Text style={styles.infoTitle}>{selectedCategoryProduct.name}</Text>
-            <Text style={styles.infoSubtitle}>
-              {selectedCategoryProduct.modelName}
-            </Text>
-          </View>
-          <Pressable onPress={goToProducts} style={styles.detailButton}>
-            <Text style={styles.detailButtonText}>세부 정보 보기</Text>
-          </Pressable>
+        <View style={styles.productMetaHead}>
+          <Text style={styles.productName}>{selectedCategoryProduct.category}</Text>
+          <Text style={styles.productPrice}>{selectedCategoryProduct.priceText}</Text>
         </View>
+        <Text style={styles.productSpecLine}>
+          {MATERIAL_BY_CATEGORY[selectedCategoryProduct.category] ?? '코튼 혼방'} · {selectedCategoryProduct.modelName}
+        </Text>
 
         <View style={styles.metaRow}>
           <View style={styles.metaCol}>
@@ -366,11 +351,14 @@ function Page() {
         </View>
 
         <PrimaryButton
-          label="바로 목업하기"
+          label="✦ 지금 만들어보기"
           onPress={goToEditor}
           style={styles.createButton}
         />
-      </Card>
+        <Pressable onPress={goToProducts} style={styles.detailLinkButton}>
+          <Text style={styles.detailLinkText}>세부 정보 보기 {'>'}</Text>
+        </Pressable>
+      </View>
 
       <Text style={styles.noticeText}>
         제작 주문 특성상 제작/배송은 보통 7-14일 소요될 수 있어요. (3만원 이상 배송비 무료)
@@ -475,86 +463,101 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: theme.colors.primary,
   },
-  hero: {
-    backgroundColor: theme.colors.surface,
-    borderRadius: theme.radius.md,
-    padding: theme.spacing.xl,
-    marginBottom: theme.spacing.xl,
-    overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 2,
+  brandCard: {
+    backgroundColor: '#FFF4E7',
+    borderWidth: 1,
+    borderColor: '#F7DFC8',
+    borderRadius: 22,
+    paddingVertical: theme.spacing.md,
+    paddingHorizontal: theme.spacing.md,
+    marginBottom: theme.spacing.md,
+    shadowColor: '#5F320E',
+    shadowOpacity: 0.14,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 10 },
+    elevation: 3,
   },
-  heroTitle: {
-    ...theme.typography.display,
-    color: theme.colors.textPrimary,
-    marginBottom: theme.spacing.sm,
-    textTransform: 'lowercase',
+  brandHead: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: theme.spacing.xs,
   },
-  heroSubtitle: {
-    ...theme.typography.body,
-    color: theme.colors.textSecondary,
-    fontWeight: '500',
+  brandBadge: {
+    width: 26,
+    height: 26,
+    borderRadius: 10,
+    backgroundColor: theme.colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: theme.spacing.sm,
   },
-  sectionTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: theme.colors.textPrimary,
-    lineHeight: 26,
-  },
-  sectionAction: {
+  brandBadgeText: {
+    color: '#FFFFFF',
     fontSize: 14,
-    color: theme.colors.primary,
-    fontWeight: '700',
-    lineHeight: 20,
+    fontWeight: '800',
   },
-  carouselSection: {
-    marginBottom: theme.spacing.lg,
+  brandTitle: {
+    fontSize: 19,
+    fontWeight: '800',
+    color: '#402E20',
+  },
+  brandCopy: {
+    fontSize: 12,
+    lineHeight: 18,
+    color: '#715D4D',
+  },
+  homeGuide: {
+    marginBottom: theme.spacing.sm,
+    paddingHorizontal: 2,
+  },
+  homeGuideTitle: {
+    fontSize: 20,
+    lineHeight: 24,
+    fontWeight: '800',
+    color: '#32251B',
+    marginBottom: 2,
+  },
+  homeGuideText: {
+    fontSize: 13,
+    lineHeight: 18,
+    color: '#776556',
+  },
+  homeCard: {
+    backgroundColor: theme.colors.surface,
+    borderWidth: 1,
+    borderColor: '#F1E0CE',
+    borderRadius: 26,
+    padding: theme.spacing.md,
+    marginBottom: theme.spacing.md,
+    shadowColor: '#5F320E',
+    shadowOpacity: 0.14,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 10 },
+    elevation: 3,
+  },
+  carouselShell: {
+    borderRadius: 20,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: '#F6E5D3',
+    backgroundColor: '#FFF3E6',
   },
   carouselContent: {
-    paddingVertical: theme.spacing.md,
+    paddingVertical: theme.spacing.sm,
   },
   carouselCard: {
     borderRadius: 18,
-    backgroundColor: theme.colors.surface,
-    paddingVertical: theme.spacing.md,
-    paddingHorizontal: theme.spacing.sm,
-    shadowColor: '#000',
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 3,
-  },
-  cardImageWrap: {
     alignItems: 'center',
     justifyContent: 'center',
-    minHeight: 190,
+    paddingHorizontal: theme.spacing.sm,
   },
-  cardLinkRow: {
-    marginTop: theme.spacing.sm,
-    flexDirection: 'row',
+  cardImageWrap: {
+    width: '100%',
+    aspectRatio: 4 / 5,
     alignItems: 'center',
-    paddingHorizontal: theme.spacing.xs,
-  },
-  cardProductText: {
-    fontSize: 13,
-    color: theme.colors.textSecondary,
-    fontWeight: '500',
-    letterSpacing: 0.3,
-  },
-  cardLinkLine: {
-    flex: 1,
-    height: 1,
-    marginHorizontal: theme.spacing.sm,
-    backgroundColor: theme.colors.border,
-  },
-  cardActionText: {
-    fontSize: 13,
-    color: theme.colors.primary,
-    fontWeight: '800',
-    letterSpacing: 0.1,
+    justifyContent: 'center',
+    backgroundColor: '#FFF8EF',
+    borderRadius: 18,
   },
   carouselDots: {
     marginTop: theme.spacing.sm,
@@ -576,55 +579,30 @@ const styles = StyleSheet.create({
     width: 20,
     backgroundColor: theme.colors.primary,
   },
-  carouselHint: {
-    marginTop: theme.spacing.sm,
-    fontSize: 12,
-    color: theme.colors.textTertiary,
-    textAlign: 'center',
-  },
-  infoPanel: {
-    backgroundColor: theme.colors.surface,
-    borderRadius: 18,
-    marginBottom: theme.spacing.md,
-    shadowColor: '#000',
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 2,
-  },
-  infoTopRow: {
+  productMetaHead: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
+    alignItems: 'flex-end',
     justifyContent: 'space-between',
+    marginTop: theme.spacing.sm,
   },
-  infoTitleWrap: {
-    flex: 1,
-    paddingRight: theme.spacing.md,
-  },
-  infoTitle: {
-    fontSize: 16,
+  productName: {
+    fontSize: 22,
+    lineHeight: 28,
     fontWeight: '800',
-    color: theme.colors.textPrimary,
-    lineHeight: 23,
+    color: '#2F241B',
+    letterSpacing: -0.4,
   },
-  infoSubtitle: {
+  productPrice: {
+    fontSize: 21,
+    lineHeight: 28,
+    fontWeight: '800',
+    color: theme.colors.primary,
+  },
+  productSpecLine: {
     marginTop: 2,
     fontSize: 12,
-    color: theme.colors.textSecondary,
     lineHeight: 18,
-  },
-  detailButton: {
-    borderRadius: 999,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    paddingVertical: 6,
-    paddingHorizontal: 10,
-    backgroundColor: theme.colors.surfaceSecondary,
-  },
-  detailButtonText: {
-    fontSize: 11,
-    color: theme.colors.textSecondary,
-    fontWeight: '600',
+    color: '#765F4E',
   },
   metaRow: {
     flexDirection: 'row',
@@ -693,9 +671,32 @@ const styles = StyleSheet.create({
     lineHeight: 14,
   },
   createButton: {
-    marginTop: theme.spacing.lg,
+    marginTop: theme.spacing.md,
     backgroundColor: theme.colors.primary,
-    borderRadius: 12,
+    borderRadius: 18,
+    minHeight: 50,
+  },
+  detailLinkButton: {
+    alignItems: 'center',
+    marginTop: theme.spacing.sm,
+  },
+  detailLinkText: {
+    fontSize: 13,
+    lineHeight: 18,
+    color: '#CC590A',
+    fontWeight: '700',
+  },
+  sectionTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: theme.colors.textPrimary,
+    lineHeight: 26,
+  },
+  sectionAction: {
+    fontSize: 14,
+    color: theme.colors.primary,
+    fontWeight: '700',
+    lineHeight: 20,
   },
   noticeText: {
     ...theme.typography.caption,

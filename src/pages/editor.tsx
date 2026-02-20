@@ -93,7 +93,7 @@ function Page() {
   const [editorTab, setEditorTab] = useState(0);
   const [focusMode, setFocusMode] = useState(false);
   const [shrinkView, setShrinkView] = useState(false);
-  const [expandedPanel, setExpandedPanel] = useState(true);
+  const [expandedPanel, setExpandedPanel] = useState(false);
   const [showStartModal, setShowStartModal] = useState(false);
   const [startModalDismissed, setStartModalDismissed] = useState(false);
 
@@ -109,12 +109,13 @@ function Page() {
   );
   const [draftQuantity, setDraftQuantity] = useState<number>(1);
 
-  // 패딩 24 통일 (좌우 24 × 2 = 48)
+  // Image-first canvas layout (preview parity)
   const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
-  const canvasWidth = screenWidth - 48;
-  const canvasHeight = expandedPanel
-    ? Math.min(canvasWidth * 0.72, screenHeight * 0.17)
-    : Math.min(canvasWidth * 1.4, screenHeight * 0.46);
+  const canvasWidth = Math.min(screenWidth - 24, 420);
+  const canvasHeight = Math.min(
+    canvasWidth * 1.28,
+    screenHeight * (expandedPanel ? 0.4 : 0.54),
+  );
 
   // Zoom to print area camera transform
   const printAreaFrac = { x: 0.32, y: 0.22, w: 0.36, h: 0.46 };
@@ -153,13 +154,6 @@ function Page() {
     printOption: selectedPrint,
     printBackEnabled,
   });
-
-  // Auto-expand panel when switching to 조정/옵션 tabs
-  useEffect(() => {
-    if (editorTab === 1 || editorTab === 2) {
-      setExpandedPanel(true);
-    }
-  }, [editorTab]);
 
   useEffect(() => {
     trackScreenView('editor', {
@@ -392,12 +386,18 @@ function Page() {
       {/* ── 컴팩트 상단 ── */}
       <View style={styles.compactHeader}>
         <View style={styles.editorTopRow}>
+          <Pressable
+            style={styles.headerIconButton}
+            onPress={() => navigation.navigate('/')}
+          >
+            <Text style={styles.headerIconText}>←</Text>
+          </Pressable>
           <Text style={styles.editorTopTitle}>이미지 편집</Text>
           <Pressable
-            style={styles.editorTopAction}
-            onPress={() => navigation.navigate('/products')}
+            style={styles.orderMiniButton}
+            onPress={goOrder}
           >
-            <Text style={styles.editorTopActionText}>상품 변경</Text>
+            <Text style={styles.orderMiniButtonText}>🛒 주문</Text>
           </Pressable>
         </View>
         <View style={styles.compactProduct}>
@@ -406,10 +406,16 @@ function Page() {
             {selectedProduct.name} · {selectedColor}
           </Text>
           <Pressable
+            onPress={goPreview}
+            style={styles.compactPreview}
+          >
+            <Text style={styles.compactPreviewText}>미리보기</Text>
+          </Pressable>
+          <Pressable
             onPress={() => navigation.navigate('/products')}
             style={styles.compactChange}
           >
-            <Text style={styles.compactChangeText}>변경</Text>
+            <Text style={styles.compactChangeText}>상품 변경</Text>
           </Pressable>
         </View>
         {/* 앞/뒤면 세그먼트 */}
@@ -963,14 +969,6 @@ function Page() {
         </ScrollView>
       </View>
 
-      {/* ── 하단 고정 CTA ── */}
-      <View style={styles.ctaBar}>
-        <View style={styles.ctaButtonRow}>
-          <SecondaryButton label="미리보기" onPress={goPreview} style={styles.ctaSecondary} />
-          <PrimaryButton label="💰 바로 주문" onPress={goOrder} style={styles.ctaPrimary} />
-        </View>
-      </View>
-
       {/* Delete Photo Confirmation Modal */}
       <Modal
         visible={showDeleteConfirm}
@@ -1064,24 +1062,39 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginBottom: theme.spacing.sm,
   },
+  headerIconButton: {
+    width: 34,
+    height: 34,
+    borderRadius: 11,
+    borderWidth: 1,
+    borderColor: '#ECDCCA',
+    backgroundColor: '#FFF9F2',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerIconText: {
+    fontSize: 16,
+    color: '#5A4637',
+    fontWeight: '700',
+  },
   editorTopTitle: {
     fontSize: 20,
     lineHeight: 28,
     fontWeight: '800',
     color: theme.colors.textPrimary,
   },
-  editorTopAction: {
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    borderRadius: 999,
-    paddingHorizontal: theme.spacing.md,
-    paddingVertical: 6,
-    backgroundColor: theme.colors.surfaceSecondary,
+  orderMiniButton: {
+    borderRadius: 11,
+    height: 34,
+    paddingHorizontal: 11,
+    backgroundColor: ORANGE_RED,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  editorTopActionText: {
-    fontSize: 12,
+  orderMiniButtonText: {
+    fontSize: 13,
     lineHeight: 18,
-    color: theme.colors.textSecondary,
+    color: '#FFFFFF',
     fontWeight: '700',
   },
   compactProduct: {
@@ -1115,6 +1128,20 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
     color: ORANGE_RED,
+  },
+  compactPreview: {
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.xs,
+    borderRadius: 999,
+    marginRight: theme.spacing.xs,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#ECDCCA',
+  },
+  compactPreviewText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#776556',
   },
 
   /* ── Placement Segment ── */
@@ -1150,6 +1177,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 24,
+    marginBottom: theme.spacing.xs,
   },
   canvasToolbar: {
     flexDirection: 'row',
@@ -1182,7 +1210,7 @@ const styles = StyleSheet.create({
   },
   canvasClip: {
     overflow: 'hidden',
-    borderRadius: 18,
+    borderRadius: 22,
     borderWidth: 1,
     borderColor: 'rgba(240,223,207,0.92)',
     backgroundColor: NAVY_MID,
@@ -1250,7 +1278,7 @@ const styles = StyleSheet.create({
 
   /* ── Bottom Panel ── */
   panel: {
-    flex: 1.05,
+    flex: 0.92,
     backgroundColor: NAVY_PANEL,
     borderTopLeftRadius: theme.radius.xl,
     borderTopRightRadius: theme.radius.xl,
@@ -1259,7 +1287,7 @@ const styles = StyleSheet.create({
     marginTop: theme.spacing.sm,
   },
   panelExpanded: {
-    flex: 3.8,
+    flex: 1.75,
   },
   dragHandle: {
     alignItems: 'center',
@@ -1297,27 +1325,7 @@ const styles = StyleSheet.create({
   },
   panelContent: {
     padding: theme.spacing.lg,
-    paddingBottom: theme.spacing.xxl,
-  },
-
-  /* ── CTA ── */
-  ctaBar: {
-    backgroundColor: NAVY_PANEL,
-    paddingHorizontal: theme.spacing.lg,
-    paddingVertical: theme.spacing.md,
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(240,223,207,0.92)',
-  },
-  ctaButtonRow: {
-    flexDirection: 'row',
-    gap: theme.spacing.sm,
-  },
-  ctaSecondary: {
-    flex: 1,
-  },
-  ctaPrimary: {
-    flex: 2,
-    backgroundColor: ORANGE_RED,
+    paddingBottom: theme.spacing.xl,
   },
 
   /* ── Layer tab ── */
