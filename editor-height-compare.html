@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Editor Height Compare</title>
+  <style>
+    :root {
+      --bg: #071a35;
+      --panel: #15325d;
+      --line: rgba(255,255,255,.2);
+      --text: #eef5ff;
+      --muted: #bdd2ef;
+      --brand: #ff5000;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; background: var(--bg); color: var(--text); padding: 16px; }
+    .wrap { max-width: 1100px; margin: 0 auto; display: grid; gap: 12px; }
+    .card { border: 1px solid var(--line); border-radius: 12px; background: rgba(255,255,255,.04); padding: 12px; }
+    .row { display: grid; gap: 12px; grid-template-columns: 1fr 1fr; }
+    .controls { display: grid; grid-template-columns: repeat(4,1fr); gap: 8px; }
+    label { font-size: 12px; color: var(--muted); display: block; margin-bottom: 4px; }
+    input, select { width: 100%; padding: 8px; border-radius: 8px; border: 1px solid var(--line); background: #0f2a53; color: var(--text); }
+    .phone { border: 1px solid var(--line); border-radius: 16px; overflow: hidden; background: #0f2a53; }
+    .phone h3 { font-size: 14px; padding: 10px; border-bottom: 1px solid var(--line); }
+    .screen { padding: 10px; height: 560px; display: flex; flex-direction: column; gap: 8px; }
+    .canvas { border: 1px dashed rgba(255,255,255,.35); border-radius: 10px; overflow: hidden; background: repeating-linear-gradient(45deg, rgba(255,255,255,.03) 0 10px, rgba(255,255,255,.06) 10px 20px); position: relative; }
+    .canvas img { width: 100%; height: 100%; object-fit: contain; display: block; }
+    .canvas .txt { position: absolute; left: 50%; top: 48%; transform: translate(-50%,-50%); font-weight: 800; text-shadow: 0 2px 5px rgba(0,0,0,.5); }
+    .panel { border: 1px solid var(--line); border-radius: 10px; background: var(--panel); padding: 8px; color: var(--muted); }
+    .meta { font-size: 12px; line-height: 1.5; margin-top: 8px; }
+    .strong { color: #ffd9ca; font-weight: 700; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card">
+      <div class="controls">
+        <div>
+          <label>Screen Width</label>
+          <input id="sw" type="number" value="390" />
+        </div>
+        <div>
+          <label>Screen Height</label>
+          <input id="sh" type="number" value="844" />
+        </div>
+        <div>
+          <label>패널 상태</label>
+          <select id="expanded">
+            <option value="true">확장</option>
+            <option value="false">축소</option>
+          </select>
+        </div>
+        <div>
+          <label>샘플 이미지</label>
+          <select id="img">
+            <option value="/public/mockups/tshirt_black_front.jpg">티셔츠 앞</option>
+            <option value="/public/mockups/tshirt_black_back.jpg">티셔츠 뒤</option>
+            <option value="/public/mockups/hoodie_black_front.jpg">후드 앞</option>
+            <option value="/public/mockups/sweatshirt_black_front.jpg">맨투맨 앞</option>
+          </select>
+        </div>
+      </div>
+      <div class="meta">왼쪽은 <span class="strong">지금 루트(editor.tsx)</span>, 오른쪽은 <span class="strong">워크트리 구버전(editor.tsx)</span> 계산식입니다.</div>
+    </div>
+
+    <div class="row">
+      <div class="phone">
+        <h3>현재(루트) 수식</h3>
+        <div class="screen">
+          <div class="canvas" id="canvasNow"><img id="imgNow" /><div class="txt">ROOT</div></div>
+          <div class="panel" id="panelNow"></div>
+        </div>
+      </div>
+      <div class="phone">
+        <h3>이전(워크트리) 수식</h3>
+        <div class="screen">
+          <div class="canvas" id="canvasOld"><img id="imgOld" /><div class="txt">OLD</div></div>
+          <div class="panel" id="panelOld"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const $ = (q) => document.querySelector(q);
+
+    function calcNow(sw, sh, expanded) {
+      const cw = sw - 48;
+      const ch = expanded ? Math.min(cw * 0.72, sh * 0.17) : Math.min(cw * 1.4, sh * 0.46);
+      return { cw, ch, panel: expanded ? 3.8 : 1.05, scale: expanded ? 0.74 : 1 };
+    }
+
+    function calcOld(sw, sh, expanded) {
+      const cw = sw - 48;
+      const ch = expanded ? Math.min(cw * 0.8, sh * 0.25) : Math.min(cw * 1.25, sh * 0.42);
+      return { cw, ch, panel: expanded ? 2.5 : 1.0, scale: 1 };
+    }
+
+    function render() {
+      const sw = Number($('#sw').value || 390);
+      const sh = Number($('#sh').value || 844);
+      const expanded = $('#expanded').value === 'true';
+      const src = $('#img').value;
+
+      const now = calcNow(sw, sh, expanded);
+      const old = calcOld(sw, sh, expanded);
+
+      $('#imgNow').src = src;
+      $('#imgOld').src = src;
+
+      $('#canvasNow').style.height = `${Math.round(now.ch)}px`;
+      $('#canvasOld').style.height = `${Math.round(old.ch)}px`;
+
+      $('#panelNow').textContent = `canvasHeight=${Math.round(now.ch)}px | panelFlex=${now.panel} | cameraScale=${now.scale}`;
+      $('#panelOld').textContent = `canvasHeight=${Math.round(old.ch)}px | panelFlex=${old.panel} | cameraScale=${old.scale}`;
+    }
+
+    ['sw','sh','expanded','img'].forEach((id) => $("#" + id).addEventListener('input', render));
+    render();
+  </script>
+</body>
+</html>

@@ -1,10 +1,8 @@
 import { fetchAlbumPhotos } from '@apps-in-toss/native-modules';
 import { createRoute } from '@granite-js/react-native';
 import { TextField } from '@toss/tds-react-native';
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
-  ActivityIndicator,
-  Dimensions,
   Image,
   Modal,
   Pressable,
@@ -12,15 +10,13 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
+  useWindowDimensions,
   View,
 } from 'react-native';
 import { DesignStage } from '../components/DesignStage';
 import { ScaleSlider } from '../components/ScaleSlider';
 import {
-  Card,
-  Chip,
-  CollapsibleSection,
-  ColorSwatch,
   PrimaryButton,
   SecondaryButton,
   TabBar,
@@ -29,8 +25,6 @@ import {
 import { useCatalog } from '../context/catalog';
 import { resolveColorValue } from '../data/colorMap';
 import { buildTemplate, printSizeByCategory } from '../data/mockupTemplates';
-import { calcPricing } from '../data/pricing';
-import { formatPrice } from '../utils/format';
 import {
   trackClick,
   trackPhotoAddClick,
@@ -44,6 +38,7 @@ import {
 const ORANGE_RED = '#FF6A00';
 const NAVY_MID = '#FFF2E5';
 const NAVY_PANEL = '#FFFFFF';
+const EDITOR_HEADER_RESERVED = 250;
 
 export const Route = createRoute('/editor', {
   component: Page,
@@ -69,11 +64,8 @@ function Page() {
     backPhotos,
     frontPhotoIndex,
     backPhotoIndex,
-    setSelectedColor,
     setSelectedPlacement,
     setPrintBackEnabled,
-    addOrderLine,
-    removeOrderLine,
     setImageTransform,
     setTextTransform,
     setActiveLayer,
@@ -89,11 +81,8 @@ function Page() {
 
 
 
-  const [scrollEnabled, setScrollEnabled] = useState(true);
-  const [editorTab, setEditorTab] = useState(0);
-  const [focusMode, setFocusMode] = useState(false);
-  const [shrinkView, setShrinkView] = useState(false);
-  const [expandedPanel, setExpandedPanel] = useState(false);
+  const [editorTab, setEditorTab] = useState(1);
+  const [aiPrompt, setAiPrompt] = useState('');
   const [showStartModal, setShowStartModal] = useState(false);
   const [startModalDismissed, setStartModalDismissed] = useState(false);
 
@@ -103,33 +92,21 @@ function Page() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deletePhotoIndex, setDeletePhotoIndex] = useState<number | null>(null);
 
-  // Draft state for current size/quantity selection (not yet confirmed)
-  const [draftSize, setDraftSize] = useState<string>(
-    selectedProduct.sizes[0]?.label ?? '',
+  const { width: screenWidth, height: screenHeight } = useWindowDimensions();
+  const panelHeight =
+    editorTab === 1
+      ? Math.max(340, Math.min(460, Math.round(screenHeight * 0.5)))
+      : editorTab === 0
+        ? Math.max(320, Math.min(430, Math.round(screenHeight * 0.46)))
+        : Math.max(280, Math.min(360, Math.round(screenHeight * 0.4)));
+  const availableCanvasHeight = Math.max(
+    180,
+    screenHeight - panelHeight - EDITOR_HEADER_RESERVED,
   );
-  const [draftQuantity, setDraftQuantity] = useState<number>(1);
+  const canvasWidth = Math.min(screenWidth - 44, Math.round(availableCanvasHeight * 0.75));
+  const canvasHeight = Math.round(canvasWidth * (4 / 3));
 
-  // Image-first canvas layout (preview parity)
-  const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
-  const canvasWidth = Math.min(screenWidth - 24, 420);
-  const canvasHeight = Math.min(
-    canvasWidth * 1.28,
-    screenHeight * (expandedPanel ? 0.4 : 0.54),
-  );
-
-  // Zoom to print area camera transform
-  const printAreaFrac = { x: 0.32, y: 0.22, w: 0.36, h: 0.46 };
-  const cameraScale = focusMode
-    ? Math.min(canvasWidth / (canvasWidth * printAreaFrac.w), canvasHeight / (canvasHeight * printAreaFrac.h))
-    : (shrinkView ? 0.74 : 1);
-  const cameraTranslateX = focusMode
-    ? -(printAreaFrac.x + printAreaFrac.w / 2 - 0.5) * canvasWidth * cameraScale
-    : 0;
-  const cameraTranslateY = focusMode
-    ? -(printAreaFrac.y + printAreaFrac.h / 2 - 0.5) * canvasHeight * cameraScale
-    : 0;
-
-  const EDITOR_TABS = ['이미지 편집', '조정', '주문'];
+  const EDITOR_TABS = ['Type 텍스트', '🖼 이미지', '✦ AI'];
 
   const goPreview = () => {
     trackClick('editor_preview_click', {
@@ -147,13 +124,6 @@ function Page() {
     });
     navigation.navigate('/order');
   };
-
-  const pricing = calcPricing({
-    product: selectedProduct,
-    orderLines,
-    printOption: selectedPrint,
-    printBackEnabled,
-  });
 
   useEffect(() => {
     trackScreenView('editor', {
@@ -175,20 +145,6 @@ function Page() {
     }
   }, [currentPhotos.length, startModalDismissed]);
 
-  // Reset draft state when product changes
-  useEffect(() => {
-    setDraftSize(selectedProduct.sizes[0]?.label ?? '');
-    setDraftQuantity(1);
-  }, [selectedProduct]);
-
-  const usedSizes = useMemo(
-    () => new Set(orderLines.map((line) => line.sizeLabel)),
-    [orderLines],
-  );
-
-  // Check if current draft size is already in confirmed orders
-  const isDraftSizeUsed = usedSizes.has(draftSize);
-
   const imageTransformRef = useRef(imageTransform);
   const textTransformRef = useRef(textTransform);
   useEffect(() => {
@@ -197,50 +153,6 @@ function Page() {
   useEffect(() => {
     textTransformRef.current = textTransform;
   }, [textTransform]);
-
-  const activeTransform =
-    activeLayer === 'text' ? textTransform : imageTransform;
-  const updateActiveTransform = (next: typeof activeTransform) => {
-    if (activeLayer === 'text') {
-      setTextTransform(next);
-    } else {
-      setImageTransform(next);
-    }
-  };
-
-
-  // Individual transform property updaters to avoid closure issues
-  const updateScale = (scale: number) => {
-    if (activeLayer === 'text') {
-      setTextTransform({ ...textTransformRef.current, scale });
-    } else {
-      setImageTransform({ ...imageTransformRef.current, scale });
-    }
-  };
-
-  const updateOffsetX = (offsetX: number) => {
-    if (activeLayer === 'text') {
-      setTextTransform({ ...textTransformRef.current, offsetX });
-    } else {
-      setImageTransform({ ...imageTransformRef.current, offsetX });
-    }
-  };
-
-  const updateOffsetY = (offsetY: number) => {
-    if (activeLayer === 'text') {
-      setTextTransform({ ...textTransformRef.current, offsetY });
-    } else {
-      setImageTransform({ ...imageTransformRef.current, offsetY });
-    }
-  };
-
-  const updateRotation = (rotation: number) => {
-    if (activeLayer === 'text') {
-      setTextTransform({ ...textTransformRef.current, rotation });
-    } else {
-      setImageTransform({ ...imageTransformRef.current, rotation });
-    }
-  };
 
   const handleAddText = () => {
     trackClick('editor_add_text_click', {
@@ -378,6 +290,11 @@ function Page() {
       tab: EDITOR_TABS[nextIndex] ?? String(nextIndex),
       tab_index: nextIndex,
     });
+    if (nextIndex === 0) {
+      setActiveLayer('text');
+    } else if (nextIndex === 1) {
+      setActiveLayer('image');
+    }
     setEditorTab(nextIndex);
   };
 
@@ -441,67 +358,29 @@ function Page() {
 
       {/* ── 캔버스 (최대화) ── */}
       <View style={styles.canvasArea}>
-        <View style={styles.canvasToolbar}>
-          <View style={styles.activeLayerBadge}>
-            <Text style={styles.activeLayerBadgeText}>
-              선택: {activeLayer === 'text' ? '텍스트' : '이미지'}
-            </Text>
-          </View>
-          <View style={styles.toolbarButtons}>
-            <Pressable
-              style={[styles.focusButton, shrinkView && styles.focusButtonActive]}
-              onPress={() => {
-                setShrinkView(!shrinkView);
-                if (!shrinkView) setFocusMode(false);
-              }}
-            >
-              <Text style={[styles.focusButtonText, shrinkView && styles.focusButtonTextActive]}>
-                {shrinkView ? '일반 보기' : '전체 축소'}
-              </Text>
-            </Pressable>
-            <Pressable
-              style={[styles.focusButton, focusMode && styles.focusButtonActive]}
-              onPress={() => {
-                setFocusMode(!focusMode);
-                if (!focusMode) setShrinkView(false);
-              }}
-            >
-              <Text style={[styles.focusButtonText, focusMode && styles.focusButtonTextActive]}>
-                {focusMode ? '전체 보기' : '확대 편집'}
-              </Text>
-            </Pressable>
-          </View>
+        <View style={styles.canvasStateRow}>
+          <Text style={styles.canvasStateText}>
+            선택 레이어: {activeLayer === 'text' ? '텍스트' : '이미지'}
+          </Text>
         </View>
         <View style={styles.canvasFrame}>
           <View style={[styles.canvasClip, { width: canvasWidth, height: canvasHeight }]}>
-            <View
-              style={{
-                transform: [
-                  { translateX: cameraTranslateX },
-                  { translateY: cameraTranslateY },
-                  { scale: cameraScale },
-                ],
-              }}
-            >
-              <DesignStage
-                template={buildTemplate(selectedProduct, selectedColor, selectedPlacement)}
-                width={canvasWidth}
-                height={canvasHeight}
-                sizeLabel={orderLines[0]?.sizeLabel ?? draftSize ?? selectedProduct.sizes[0]?.label}
-                showPrintArea
-                showGuides={false}
-                cameraScale={cameraScale}
-                imageUri={designImageUri}
-                imageTransform={imageTransform}
-                textLayer={textLayer}
-                textTransform={textTransform}
-                activeLayer={activeLayer}
-                onImageTransformChange={setImageTransform}
-                onTextTransformChange={setTextTransform}
-                onInteractionStart={() => setScrollEnabled(false)}
-                onInteractionEnd={() => setScrollEnabled(true)}
-              />
-            </View>
+            <DesignStage
+              template={buildTemplate(selectedProduct, selectedColor, selectedPlacement)}
+              width={canvasWidth}
+              height={canvasHeight}
+              sizeLabel={orderLines[0]?.sizeLabel ?? selectedProduct.sizes[0]?.label}
+              showPrintArea
+              showGuides={false}
+              cameraScale={1}
+              imageUri={designImageUri}
+              imageTransform={imageTransform}
+              textLayer={textLayer}
+              textTransform={textTransform}
+              activeLayer={activeLayer}
+              onImageTransformChange={setImageTransform}
+              onTextTransformChange={setTextTransform}
+            />
           </View>
           <Pressable
             style={[
@@ -513,6 +392,69 @@ function Page() {
           >
             <Text style={styles.canvasAddButtonPlus}>＋</Text>
           </Pressable>
+          {editorTab === 1 && (
+            <View
+              style={[
+                styles.liveAdjustCard,
+                { width: Math.max(190, Math.min(canvasWidth - 20, 280)) },
+              ]}
+            >
+              <View style={styles.liveAdjustHeader}>
+                <Text style={styles.liveAdjustTitle}>실시간 이미지 조정</Text>
+                <Pressable
+                  onPress={() =>
+                    setImageTransform({
+                      offsetX: 0,
+                      offsetY: 0,
+                      scale: selectedPrint.designScale,
+                      rotation: 0,
+                    })
+                  }
+                >
+                  <Text style={styles.liveAdjustResetText}>초기화</Text>
+                </Pressable>
+              </View>
+              <View style={styles.liveSliderRow}>
+                <Text style={styles.liveSliderLabel}>
+                  X {Math.round(imageTransform.offsetX * 100)}
+                </Text>
+                <ScaleSlider
+                  min={-0.55}
+                  max={0.55}
+                  value={imageTransform.offsetX}
+                  onChange={(offsetX) =>
+                    setImageTransform({ ...imageTransformRef.current, offsetX })
+                  }
+                />
+              </View>
+              <View style={styles.liveSliderRow}>
+                <Text style={styles.liveSliderLabel}>
+                  Y {Math.round(imageTransform.offsetY * 100)}
+                </Text>
+                <ScaleSlider
+                  min={-0.55}
+                  max={0.55}
+                  value={imageTransform.offsetY}
+                  onChange={(offsetY) =>
+                    setImageTransform({ ...imageTransformRef.current, offsetY })
+                  }
+                />
+              </View>
+              <View style={styles.liveSliderRow}>
+                <Text style={styles.liveSliderLabel}>
+                  크기 {imageTransform.scale.toFixed(2)}
+                </Text>
+                <ScaleSlider
+                  min={0.1}
+                  max={2.0}
+                  value={imageTransform.scale}
+                  onChange={(scale) =>
+                    setImageTransform({ ...imageTransformRef.current, scale })
+                  }
+                />
+              </View>
+            </View>
+          )}
         </View>
         {/* 출력 크기 + 해상도 안내 */}
         <View style={styles.canvasInfo}>
@@ -529,17 +471,7 @@ function Page() {
       </View>
 
       {/* ── 하단 탭 패널 ── */}
-      <View style={[styles.panel, expandedPanel && styles.panelExpanded]}>
-        {/* 드래그 핸들 */}
-        <Pressable
-          style={styles.dragHandle}
-          onPress={() => setExpandedPanel(!expandedPanel)}
-        >
-          <View style={styles.dragBar} />
-          <Text style={styles.dragHint}>
-            {expandedPanel ? '▼ 터치해서 패널 축소' : '▲ 터치해서 패널 확장'}
-          </Text>
-        </Pressable>
+      <View style={[styles.panel, { height: panelHeight }]}>
         <TabBar
           tabs={EDITOR_TABS}
           activeIndex={editorTab}
@@ -548,139 +480,23 @@ function Page() {
         <ScrollView
           style={styles.panelScroll}
           contentContainerStyle={styles.panelContent}
-          scrollEnabled={scrollEnabled}
+          scrollEnabled
           showsVerticalScrollIndicator={false}
           nestedScrollEnabled
         >
-          {/* ── 탭 0: 레이어 ── */}
+          {/* ── 탭 0: 텍스트 ── */}
           {editorTab === 0 && (
             <View>
-              {/* Photo Management Section */}
-              <View style={styles.photoManagementSection}>
-                <Text style={styles.sectionTitle}>이미지 편집</Text>
-                {photoError ? (
-                  <Text style={styles.photoError}>{photoError}</Text>
-                ) : null}
-                {currentPhotos.length > 0 ? (
-                  <View>
-                    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.photoScroll}>
-                      {currentPhotos.map((photoUri, index) => (
-                        <Pressable
-                          key={index}
-                          onPress={() => handleSelectPhoto(index)}
-                          style={[
-                            styles.photoThumbnail,
-                            index === currentPhotoIndex && styles.photoThumbnailActive,
-                          ]}
-                        >
-                          <Image source={{ uri: photoUri }} style={styles.photoThumbnailImage} />
-                          {currentPhotos.length > 1 && (
-                            <Pressable
-                              style={styles.photoDeleteBtn}
-                              onPress={() => handleDeletePhoto(index)}
-                            >
-                              <Text style={styles.photoDeleteText}>✕</Text>
-                            </Pressable>
-                          )}
-                          {index === currentPhotoIndex && (
-                            <View style={styles.photoActiveIndicator}>
-                              <Text style={styles.photoActiveText}>선택됨</Text>
-                            </View>
-                          )}
-                        </Pressable>
-                      ))}
-                    </ScrollView>
-                    <View style={styles.photoActions}>
-                      <SecondaryButton
-                        label="사진 바꾸기"
-                        onPress={handleReplacePhoto}
-                        disabled={loadingPhoto}
-                        style={styles.photoActionBtn}
-                      />
-                      <SecondaryButton
-                        label="사진 추가"
-                        onPress={handleAddPhoto}
-                        disabled={loadingPhoto || currentPhotos.length >= 3}
-                        style={styles.photoActionBtn}
-                      />
-                      <SecondaryButton
-                        label="배경 제거"
-                        onPress={handleOpenBgRemoval}
-                        disabled={loadingPhoto}
-                        style={styles.photoActionBtn}
-                      />
-                    </View>
-                    {selectedProduct.colors.length > 1 ? (
-                      <View>
-                        <Text style={styles.photoSectionHint}>옷 색상</Text>
-                        <View style={styles.photoColorRow}>
-                          {selectedProduct.colors.map((color) => (
-                            <ColorSwatch
-                              key={color}
-                              label={color}
-                              color={resolveColorValue(color)}
-                              selected={selectedColor === color}
-                              onPress={() => setSelectedColor(color)}
-                            />
-                          ))}
-                        </View>
-                      </View>
-                    ) : null}
-                    {currentPhotos.length >= 3 && (
-                      <Text style={styles.photoHint}>최대 3장까지 추가할 수 있어요.</Text>
-                    )}
-                    {loadingPhoto && (
-                      <View style={styles.photoLoadingRow}>
-                        <ActivityIndicator color={theme.colors.primary} />
-                        <Text style={styles.photoLoadingText}>사진을 불러오고 있어요...</Text>
-                      </View>
-                    )}
-                  </View>
-                ) : (
-                  <View>
-                    <Text style={styles.sectionHint}>
-                      아직 사진이 없어요. 아래 버튼으로 바로 추가해 주세요.
-                    </Text>
-                    <SecondaryButton
-                      label="사진 추가하기"
-                      onPress={() => handleAddPhoto(false)}
-                      disabled={loadingPhoto}
-                    />
-                    {loadingPhoto && (
-                      <View style={styles.photoLoadingRow}>
-                        <ActivityIndicator color={theme.colors.primary} />
-                        <Text style={styles.photoLoadingText}>사진을 불러오고 있어요...</Text>
-                      </View>
-                    )}
-                  </View>
-                )}
-              </View>
+              <Text style={styles.sectionTitle}>텍스트 편집</Text>
 
-              <View style={styles.layerRow}>
-                <Chip
-                  label="이미지"
-                  selected={activeLayer === 'image'}
-                  onPress={() => setActiveLayer('image')}
-                  style={styles.chipSpacing}
-                />
-                <Chip
-                  label="텍스트"
-                  selected={activeLayer === 'text'}
-                  onPress={() => setActiveLayer('text')}
-                />
-              </View>
-
-              {activeLayer === 'text' && !textLayer.enabled && (
+              {!textLayer.enabled && (
                 <View style={styles.textEditSection}>
-                  <Text style={styles.sectionTitle}>텍스트를 추가해 볼까요?</Text>
-                  <Text style={styles.sectionHint}>
-                    나만의 문구를 넣어서 특별한 굿즈를 만들어 보세요.
-                  </Text>
+                  <Text style={styles.sectionHint}>문구를 추가하고 위치를 조정해 보세요.</Text>
                   <SecondaryButton label="텍스트 추가하기" onPress={handleAddText} />
                 </View>
               )}
 
-              {activeLayer === 'text' && textLayer.enabled && (
+              {textLayer.enabled && (
                 <View style={styles.textEditSection}>
                   <TextField
                     variant="box"
@@ -765,65 +581,157 @@ function Page() {
                     }}
                     style={{ marginTop: theme.spacing.sm }}
                   />
+                  <View style={styles.sliderRow}>
+                    <View style={styles.sliderHeadRow}>
+                      <Text style={styles.sliderLabel}>X 위치</Text>
+                      <Text style={styles.sliderValueText}>
+                        {Math.round(textTransform.offsetX * 100)}
+                      </Text>
+                    </View>
+                    <ScaleSlider
+                      min={-0.55}
+                      max={0.55}
+                      value={textTransform.scale > 0 ? textTransform.offsetX : 0}
+                      onChange={(offsetX) =>
+                        setTextTransform({ ...textTransformRef.current, offsetX })
+                      }
+                    />
+                  </View>
+                  <View style={styles.sliderRow}>
+                    <View style={styles.sliderHeadRow}>
+                      <Text style={styles.sliderLabel}>Y 위치</Text>
+                      <Text style={styles.sliderValueText}>
+                        {Math.round(textTransform.offsetY * 100)}
+                      </Text>
+                    </View>
+                    <ScaleSlider
+                      min={-0.55}
+                      max={0.55}
+                      value={textTransform.offsetY}
+                      onChange={(offsetY) =>
+                        setTextTransform({ ...textTransformRef.current, offsetY })
+                      }
+                    />
+                  </View>
+                  <View style={styles.sliderRow}>
+                    <View style={styles.sliderHeadRow}>
+                      <Text style={styles.sliderLabel}>크기</Text>
+                      <Text style={styles.sliderValueText}>
+                        {textTransform.scale.toFixed(2)}
+                      </Text>
+                    </View>
+                    <ScaleSlider
+                      min={0.2}
+                      max={1.8}
+                      value={textTransform.scale}
+                      onChange={(scale) =>
+                        setTextTransform({ ...textTransformRef.current, scale })
+                      }
+                    />
+                  </View>
                 </View>
               )}
-
             </View>
           )}
 
-          {/* ── 탭 1: 조정 ── */}
+          {/* ── 탭 1: 이미지 ── */}
           {editorTab === 1 && (
             <View>
-              <Text style={styles.transformHint}>
-                {activeLayer === 'text' ? '텍스트' : '이미지'}의 크기와 위치를 조절해 보세요.
+              <View style={styles.photoManagementSection}>
+                <Text style={styles.sectionTitle}>이미지 편집</Text>
+                {photoError ? (
+                  <Text style={styles.photoError}>{photoError}</Text>
+                ) : null}
+                {currentPhotos.length > 0 ? (
+                  <View>
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.photoScroll}>
+                      {currentPhotos.map((photoUri, index) => (
+                        <Pressable
+                          key={index}
+                          onPress={() => handleSelectPhoto(index)}
+                          style={[
+                            styles.photoThumbnail,
+                            index === currentPhotoIndex && styles.photoThumbnailActive,
+                          ]}
+                        >
+                          <Image source={{ uri: photoUri }} style={styles.photoThumbnailImage} />
+                          {currentPhotos.length > 1 && (
+                            <Pressable
+                              style={styles.photoDeleteBtn}
+                              onPress={() => handleDeletePhoto(index)}
+                            >
+                              <Text style={styles.photoDeleteText}>✕</Text>
+                            </Pressable>
+                          )}
+                          {index === currentPhotoIndex && (
+                            <View style={styles.photoActiveIndicator}>
+                              <Text style={styles.photoActiveText}>선택됨</Text>
+                            </View>
+                          )}
+                        </Pressable>
+                      ))}
+                    </ScrollView>
+                    <View style={styles.photoActions}>
+                      <SecondaryButton
+                        label="바꾸기"
+                        onPress={handleReplacePhoto}
+                        disabled={loadingPhoto}
+                        style={styles.photoActionBtn}
+                      />
+                      <SecondaryButton
+                        label="추가"
+                        onPress={handleAddPhoto}
+                        disabled={loadingPhoto || currentPhotos.length >= 3}
+                        style={styles.photoActionBtn}
+                      />
+                      <SecondaryButton
+                        label="배경제거"
+                        onPress={handleOpenBgRemoval}
+                        disabled={loadingPhoto}
+                        style={styles.photoActionBtn}
+                      />
+                    </View>
+                  </View>
+                ) : (
+                  <View>
+                    <Text style={styles.sectionHint}>
+                      아직 사진이 없어요. 아래 버튼으로 바로 추가해 주세요.
+                    </Text>
+                    <SecondaryButton
+                      label="사진 추가"
+                      onPress={() => handleAddPhoto(false)}
+                      disabled={loadingPhoto}
+                    />
+                  </View>
+                )}
+              </View>
+              <Text style={styles.sectionHint}>
+                위치와 크기 슬라이더는 위 캔버스 카드에서 바로 조정할 수 있어요.
               </Text>
               <View style={styles.sliderRow}>
-                <Text style={styles.sliderLabel}>크기</Text>
+                <View style={styles.sliderHeadRow}>
+                  <Text style={styles.sliderLabel}>회전</Text>
+                  <Text style={styles.sliderValueText}>
+                    {Math.round(imageTransform.rotation)}°
+                  </Text>
+                </View>
                 <ScaleSlider
-                  min={0.1}
-                  max={2.0}
-                  value={activeTransform.scale}
-                  onChange={updateScale}
+                  min={-180}
+                  max={180}
+                  value={imageTransform.rotation}
+                  onChange={(rotation) =>
+                    setImageTransform({ ...imageTransformRef.current, rotation })
+                  }
                 />
               </View>
-              <CollapsibleSection title="정밀 조정 (위치/회전)">
-                <View style={styles.sliderRow}>
-                  <Text style={styles.sliderLabel}>가로 위치</Text>
-                  <ScaleSlider
-                    min={-0.55}
-                    max={0.55}
-                    value={activeTransform.offsetX}
-                    onChange={updateOffsetX}
-                  />
-                </View>
-                <View style={styles.sliderRow}>
-                  <Text style={styles.sliderLabel}>세로 위치</Text>
-                  <ScaleSlider
-                    min={-0.55}
-                    max={0.55}
-                    value={activeTransform.offsetY}
-                    onChange={updateOffsetY}
-                  />
-                </View>
-                <View style={styles.sliderRow}>
-                  <Text style={styles.sliderLabel}>회전</Text>
-                  <ScaleSlider
-                    min={-180}
-                    max={180}
-                    value={activeTransform.rotation}
-                    onChange={updateRotation}
-                  />
-                </View>
-              </CollapsibleSection>
               <View style={styles.adjustButtons}>
                 <SecondaryButton
-                  label="프린트 영역에 맞추기"
+                  label="중앙 정렬"
                   onPress={() =>
-                    updateActiveTransform({
+                    setImageTransform({
+                      ...imageTransformRef.current,
                       offsetX: 0,
                       offsetY: 0,
-                      scale: activeLayer === 'text' ? 0.9 : 1.0,
-                      rotation: 0,
                     })
                   }
                   style={styles.resetButton}
@@ -831,11 +739,10 @@ function Page() {
                 <SecondaryButton
                   label="초기화"
                   onPress={() =>
-                    updateActiveTransform({
+                    setImageTransform({
                       offsetX: 0,
                       offsetY: 0,
-                      scale:
-                        activeLayer === 'text' ? 0.45 : selectedPrint.designScale,
+                      scale: selectedPrint.designScale,
                       rotation: 0,
                     })
                   }
@@ -845,125 +752,44 @@ function Page() {
             </View>
           )}
 
-          {/* ── 탭 2: 옵션 ── */}
+          {/* ── 탭 2: AI ── */}
           {editorTab === 2 && (
-            <View>
-              {/* 컬러 */}
-              <Text style={styles.sectionTitle}>컬러</Text>
-              <View style={styles.colorOptions}>
-                {selectedProduct.colors.map((color) => (
-                  <ColorSwatch
-                    key={color}
-                    label={color}
-                    color={resolveColorValue(color)}
-                    selected={selectedColor === color}
-                    onPress={() => setSelectedColor(color)}
-                  />
-                ))}
-              </View>
-
-              {/* 사이즈 */}
-              <Text style={[styles.sectionTitle, { marginTop: theme.spacing.lg }]}>
-                사이즈
-              </Text>
-              <View style={styles.chipRow}>
-                {selectedProduct.sizes.map((size) => (
-                  <Chip
-                    key={size.label}
-                    label={size.label}
-                    selected={draftSize === size.label}
-                    onPress={() => setDraftSize(size.label)}
-                    style={styles.chipSpacing}
-                  />
-                ))}
-              </View>
-              <Text style={styles.sizeHint}>
-                XS: 155-160 · S: 160-165 · M: 165-170 · L: 170-175 · XL: 175-180 · 2XL: 180-185
-              </Text>
-
-              {/* 수량 */}
-              <Text style={[styles.sectionTitle, { marginTop: theme.spacing.lg }]}>
-                수량
-              </Text>
-              <View style={styles.quantityRow}>
-                <SecondaryButton
-                  label="-"
-                  onPress={() => setDraftQuantity((q) => Math.max(1, q - 1))}
-                />
-                <Text style={styles.quantityValue}>{draftQuantity}</Text>
-                <SecondaryButton
-                  label="+"
-                  onPress={() => setDraftQuantity((q) => q + 1)}
-                />
-              </View>
-
-              <SecondaryButton
-                label="장바구니에 추가"
-                onPress={() => {
-                  if (isDraftSizeUsed) return;
-                  addOrderLine(draftSize, draftQuantity);
-                  const nextSize = selectedProduct.sizes.find(
-                    (s) => !usedSizes.has(s.label) && s.label !== draftSize,
-                  );
-                  setDraftSize(nextSize?.label ?? selectedProduct.sizes[0]?.label ?? '');
-                  setDraftQuantity(1);
-                }}
-                disabled={isDraftSizeUsed}
-                style={styles.addLineButton}
+            <View style={styles.aiPanel}>
+              <Text style={styles.sectionTitle}>AI 이미지</Text>
+              <TextInput
+                style={styles.aiPromptInput}
+                placeholder="예) 오렌지 톤 플랫 아이콘 느낌의 볼드 로고"
+                placeholderTextColor="#9D826E"
+                value={aiPrompt}
+                onChangeText={setAiPrompt}
+                multiline
               />
-              {isDraftSizeUsed && (
-                <Text style={styles.sizeHint}>
-                  {draftSize} 사이즈는 이미 담겨 있어요.
-                </Text>
-              )}
-
-              {/* 주문 목록 */}
-              {orderLines.length > 0 && (
-                <>
-                  <Text style={[styles.sectionTitle, { marginTop: theme.spacing.lg }]}>
-                    주문할 상품
-                  </Text>
-                  {orderLines.map((line) => (
-                    <View key={line.id} style={styles.confirmRow}>
-                      <Text style={styles.confirmText}>
-                        {line.sizeLabel} × {line.quantity}개
-                      </Text>
-                      {orderLines.length > 1 && (
-                        <Pressable
-                          onPress={() => removeOrderLine(line.id)}
-                          accessibilityRole="button"
-                          accessibilityLabel={`${line.sizeLabel} 삭제`}
-                        >
-                          <Text style={styles.removeText}>빼기</Text>
-                        </Pressable>
-                      )}
-                    </View>
-                  ))}
-                </>
-              )}
-
-              {/* 가격 */}
-              <Card style={styles.priceCard}>
-                <Text style={styles.priceTitle}>예상 결제 금액</Text>
-                <Text style={styles.priceValue}>{formatPrice(pricing.total)}</Text>
-                {pricing.backPrintingFee > 0 && (
-                  <Text style={styles.priceOption}>
-                    뒷면 +{formatPrice(pricing.backPrintingFee)}
-                  </Text>
-                )}
-                {pricing.largePrintFee > 0 && (
-                  <Text style={styles.priceOption}>
-                    대형 +{formatPrice(pricing.largePrintFee)}
-                  </Text>
-                )}
-                <Text style={styles.priceNote}>
-                  배송비{' '}
-                  {pricing.shippingFee === 0
-                    ? '무료'
-                    : formatPrice(pricing.shippingFee)}{' '}
-                  · 총 {totalQuantity}개
-                </Text>
-              </Card>
+              <View style={styles.aiActionRow}>
+                <PrimaryButton
+                  label="생성 화면 열기"
+                  onPress={() => {
+                    trackClick('editor_ai_open_generate_click', {
+                      prompt_length: aiPrompt.trim().length,
+                    });
+                    navigation.navigate('/generate');
+                  }}
+                  style={styles.aiActionButton}
+                />
+                <SecondaryButton
+                  label="현재 이미지 적용"
+                  onPress={() => {
+                    setEditorTab(1);
+                    setActiveLayer('image');
+                  }}
+                  disabled={!designImageUri}
+                  style={styles.aiActionButton}
+                />
+              </View>
+              <Text style={styles.aiStatusText}>
+                {designImageUri
+                  ? '생성/업로드된 이미지가 있어요. 적용 버튼으로 이미지 탭에서 바로 조정하세요.'
+                  : '아직 생성된 이미지가 없습니다.'}
+              </Text>
             </View>
           )}
         </ScrollView>
@@ -1179,6 +1005,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     marginBottom: theme.spacing.xs,
   },
+  canvasStateRow: {
+    width: '100%',
+    marginBottom: theme.spacing.xs,
+  },
+  canvasStateText: {
+    fontSize: 12,
+    lineHeight: 18,
+    color: '#776556',
+    fontWeight: '700',
+  },
   canvasToolbar: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -1238,6 +1074,51 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     marginTop: -1,
   },
+  liveAdjustCard: {
+    position: 'absolute',
+    left: 10,
+    right: 10,
+    bottom: 10,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(236, 208, 185, 0.9)',
+    backgroundColor: 'rgba(255, 252, 248, 0.95)',
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    shadowColor: '#5F320E',
+    shadowOpacity: 0.14,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 6,
+  },
+  liveAdjustHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 4,
+  },
+  liveAdjustTitle: {
+    fontSize: 11,
+    lineHeight: 16,
+    color: '#5B4638',
+    fontWeight: '700',
+  },
+  liveAdjustResetText: {
+    fontSize: 11,
+    lineHeight: 16,
+    color: ORANGE_RED,
+    fontWeight: '700',
+  },
+  liveSliderRow: {
+    marginTop: 3,
+  },
+  liveSliderLabel: {
+    fontSize: 10,
+    lineHeight: 14,
+    color: '#7A614E',
+    marginBottom: 2,
+    fontWeight: '700',
+  },
   focusButton: {
     paddingHorizontal: theme.spacing.md,
     paddingVertical: theme.spacing.xs,
@@ -1278,7 +1159,7 @@ const styles = StyleSheet.create({
 
   /* ── Bottom Panel ── */
   panel: {
-    flex: 0.92,
+    flexShrink: 0,
     backgroundColor: NAVY_PANEL,
     borderTopLeftRadius: theme.radius.xl,
     borderTopRightRadius: theme.radius.xl,
@@ -1287,7 +1168,7 @@ const styles = StyleSheet.create({
     marginTop: theme.spacing.sm,
   },
   panelExpanded: {
-    flex: 1.75,
+    flex: 2.7,
   },
   dragHandle: {
     alignItems: 'center',
@@ -1324,7 +1205,8 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   panelContent: {
-    padding: theme.spacing.lg,
+    paddingHorizontal: theme.spacing.md,
+    paddingTop: theme.spacing.md,
     paddingBottom: theme.spacing.xl,
   },
 
@@ -1365,11 +1247,22 @@ const styles = StyleSheet.create({
   sliderRow: {
     marginTop: theme.spacing.sm,
   },
+  sliderHeadRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: theme.spacing.xs,
+  },
   sliderLabel: {
     fontSize: 12,
     lineHeight: 18,
     color: '#9D826E',
-    marginBottom: theme.spacing.sm,
+  },
+  sliderValueText: {
+    fontSize: 12,
+    lineHeight: 18,
+    color: '#5B4638',
+    fontWeight: '700',
   },
   outOfBoundsWarning: {
     backgroundColor: theme.colors.errorSoft,
@@ -1391,6 +1284,35 @@ const styles = StyleSheet.create({
   },
   resetButton: {
     marginTop: 0,
+  },
+
+  aiPanel: {
+    gap: theme.spacing.sm,
+  },
+  aiPromptInput: {
+    minHeight: 68,
+    borderRadius: theme.radius.md,
+    borderWidth: 1,
+    borderColor: 'rgba(240,223,207,0.92)',
+    backgroundColor: '#FFF8F0',
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.sm,
+    fontSize: 13,
+    lineHeight: 19,
+    color: '#2E231B',
+    textAlignVertical: 'top',
+  },
+  aiActionRow: {
+    flexDirection: 'row',
+    gap: theme.spacing.sm,
+  },
+  aiActionButton: {
+    flex: 1,
+  },
+  aiStatusText: {
+    fontSize: 12,
+    lineHeight: 18,
+    color: '#776556',
   },
 
   /* ── Options tab ── */
@@ -1580,6 +1502,10 @@ const styles = StyleSheet.create({
   },
   photoActionBtn: {
     flex: 1,
+    minHeight: 36,
+    paddingVertical: 8,
+    paddingHorizontal: 8,
+    borderRadius: 10,
   },
   photoHint: {
     fontSize: 11,

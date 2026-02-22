@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AIT Flow Compare (Home First)</title>
+  <style>
+    :root {
+      --bg0: #061228;
+      --bg1: #0d2450;
+      --bg2: #1a396b;
+      --panel: rgba(8, 20, 44, 0.78);
+      --line: rgba(183, 214, 255, 0.24);
+      --text: #edf5ff;
+      --muted: #b5cbe9;
+      --brand: #ff5a16;
+      --old: #fbbf24;
+      --now: #4ade80;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      min-height: 100vh;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(1200px 700px at 90% -10%, rgba(70, 143, 238, .34), transparent 45%),
+        radial-gradient(800px 500px at -10% 105%, rgba(255, 90, 22, .2), transparent 45%),
+        linear-gradient(160deg, var(--bg0), var(--bg1) 55%, var(--bg2));
+      padding: 16px;
+    }
+    .wrap { max-width: 1200px; margin: 0 auto; display: grid; gap: 12px; }
+    .card { border: 1px solid var(--line); border-radius: 12px; background: var(--panel); padding: 12px; }
+    h1 { font-size: 20px; font-weight: 800; margin-bottom: 6px; }
+    .muted { color: var(--muted); font-size: 12px; line-height: 1.5; }
+    .badge { display: inline-block; border: 1px solid var(--line); border-radius: 999px; padding: 4px 10px; font-size: 11px; margin-right: 6px; }
+    .old { color: #fff3d1; border-color: rgba(251,191,36,.45); background: rgba(251,191,36,.12); }
+    .now { color: #d7ffe7; border-color: rgba(74,222,128,.45); background: rgba(74,222,128,.12); }
+    .flow { font-size: 13px; color: #d6e8ff; margin-top: 8px; line-height: 1.7; }
+    .stage-nav { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
+    .stage-btn {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: rgba(255,255,255,.04);
+      color: var(--muted);
+      padding: 9px 8px;
+      font-size: 12px;
+      cursor: pointer;
+    }
+    .stage-btn.active { color: #ffd8c7; border-color: rgba(255,90,22,.55); background: rgba(255,90,22,.18); font-weight: 700; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .col { border: 1px solid var(--line); border-radius: 12px; background: rgba(255,255,255,.03); padding: 10px; }
+    .head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+    .head h2 { font-size: 14px; }
+    .chip { font-size: 11px; border: 1px solid var(--line); border-radius: 999px; padding: 4px 8px; }
+    .mock { border: 1px dashed rgba(255,255,255,.3); border-radius: 10px; padding: 8px; margin-bottom: 8px; }
+    .mock .title { font-size: 12px; color: #d3e5ff; margin-bottom: 6px; }
+    .mockimg { height: 170px; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; background: repeating-linear-gradient(45deg, rgba(255,255,255,.03) 0 10px, rgba(255,255,255,.06) 10px 20px); display: grid; place-items: center; }
+    .mockimg img { width: 100%; height: 100%; object-fit: contain; }
+    .list { font-size: 12px; color: var(--muted); line-height: 1.55; }
+    .list b { color: #e9f2ff; }
+    .map { margin-top: 8px; font-size: 11px; color: #9dc0ea; border: 1px solid var(--line); border-radius: 8px; padding: 8px; background: rgba(255,255,255,.03); }
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <section class="card">
+      <h1>HOME 기준 전체 플로우 비교</h1>
+      <p class="muted">요청한 방식대로, "그때 디자인 상태"(2026-02-17 계열 상태)와 현재 브랜치 상태를 화면 흐름으로 비교합니다.</p>
+      <div style="margin-top:8px;">
+        <span class="badge old">HISTORICAL SNAPSHOT</span>
+        <span class="badge now">CURRENT BRANCH</span>
+      </div>
+      <div class="flow">
+        <div><b>Old Flow:</b> Home -> Upload/Generate/Designs 분기 -> Preview -> Order</div>
+        <div><b>Current Flow:</b> Home -> Editor -> (Generate) -> Preview -> Order (+ Editor -> Order 직행)</div>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="stage-nav" id="stageNav">
+        <button class="stage-btn active" data-stage="home">Home</button>
+        <button class="stage-btn" data-stage="editor">Editor</button>
+        <button class="stage-btn" data-stage="generate">Generate</button>
+        <button class="stage-btn" data-stage="preview">Preview</button>
+        <button class="stage-btn" data-stage="order">Order</button>
+      </div>
+    </section>
+
+    <section class="grid" id="compareGrid">
+      <article class="col" id="oldCol"></article>
+      <article class="col" id="nowCol"></article>
+    </section>
+  </main>
+
+  <script>
+    const productImage = '/public/mockups/tshirt_black_front.jpg';
+    const backImage = '/public/mockups/tshirt_black_back.jpg';
+
+    const stages = {
+      home: {
+        old: {
+          title: 'Old / Home',
+          tag: 'worktree index.tsx',
+          mockTitle: '카드형 Hero + 다중 진입 CTA',
+          points: [
+            'Hero Card 내부에 안내 + 신뢰배지',
+            'Upload / Generate / Designs / FAQ 분기 CTA',
+            '사용자가 Home에서 바로 분기 선택',
+          ],
+          map: 'src/.worktrees/.../pages/index.tsx:66,70,74,79',
+          image: productImage,
+        },
+        now: {
+          title: 'Current / Home',
+          tag: 'root index.tsx',
+          mockTitle: '캐러셀 중심 + Editor 집중 진입',
+          points: [
+            'Hero + 카테고리 캐러셀(티셔츠/후드/맨투맨)',
+            '주 CTA "바로 목업하기" -> Editor',
+            'FAQ는 보조 섹션으로 하단 배치',
+          ],
+          map: 'src/pages/index.tsx:128,134,176,184,214',
+          image: productImage,
+        },
+      },
+      editor: {
+        old: {
+          title: 'Old / Editor',
+          tag: 'worktree editor.tsx',
+          mockTitle: '캔버스가 상대적으로 큼',
+          points: [
+            'canvasHeight: 0.8/0.25, 1.25/0.42',
+            'cameraScale: 1 고정(축소뷰 없음)',
+            '탭: 레이어/조정/옵션',
+          ],
+          map: '.worktrees/.../editor.tsx:110-118,126',
+          image: productImage,
+        },
+        now: {
+          title: 'Current / Editor',
+          tag: 'root editor.tsx',
+          mockTitle: '패널 우선, 캔버스 체감 축소 강화',
+          points: [
+            'canvasHeight: 0.72/0.17, 1.4/0.46',
+            'shrinkView cameraScale: 0.74',
+            '탭: 이미지 편집/조정/주문 + 주문 CTA 직행',
+          ],
+          map: 'src/pages/editor.tsx:115-123,131,968-969',
+          image: productImage,
+        },
+      },
+      generate: {
+        old: {
+          title: 'Old / Generate',
+          tag: 'worktree generate.tsx',
+          mockTitle: 'Card + StickyFooter 구조',
+          points: [
+            'PromptCard/InfoBox 중심',
+            '하단 StickyFooter CTA',
+            '텍스트 계층이 상대적으로 단순',
+          ],
+          map: '.worktrees/.../generate.tsx:301,410',
+          image: productImage,
+        },
+        now: {
+          title: 'Current / Generate',
+          tag: 'root generate.tsx',
+          mockTitle: 'PageHeader + 오브 배경 + 단계 세분화',
+          points: [
+            'PageHeader + 배경 오브 레이어',
+            '결과/프롬프트/스타일/비율/로딩 구간 강화',
+            '이미지 만들기 + 굿즈 만들기 CTA 2단',
+          ],
+          map: 'src/pages/generate.tsx:319,393,428,467',
+          image: productImage,
+        },
+      },
+      preview: {
+        old: {
+          title: 'Old / Preview',
+          tag: 'worktree preview.tsx',
+          mockTitle: 'TopBar + InfoBox 기반',
+          points: [
+            'TopBar + InfoBox 문맥 안내',
+            'Front/Back 목업 + 색상 전환',
+            'Order CTA는 checkoutButton 스타일',
+          ],
+          map: '.worktrees/.../preview.tsx:97,101,170-175',
+          image: backImage,
+        },
+        now: {
+          title: 'Current / Preview',
+          tag: 'root preview.tsx',
+          mockTitle: 'PageHeader + 가격 카드 강조',
+          points: [
+            'PageHeader + 오브 배경',
+            '가격 카드/정보 카드의 위계 강화',
+            '바로 주문하기(Primary) + 저장/공유(Secondary)',
+          ],
+          map: 'src/pages/preview.tsx:102,154,175,180',
+          image: backImage,
+        },
+      },
+      order: {
+        old: {
+          title: 'Old / Order',
+          tag: 'worktree order.tsx',
+          mockTitle: 'TopBar + InputGroup/FormBox',
+          points: [
+            '비로그인: InfoBox 중심 안내',
+            '로그인 후: TopBar + InputGroup/TextField',
+            '폼 구조가 컴포넌트 래핑 중심',
+          ],
+          map: '.worktrees/.../order.tsx:377,396,482',
+          image: productImage,
+        },
+        now: {
+          title: 'Current / Order',
+          tag: 'root order.tsx',
+          mockTitle: '로그인 카드 + 요약/폼/FAQ 카드층',
+          points: [
+            '비로그인: loginCard + 토스 로그인 CTA',
+            '로그인 후: summaryCard + formCard + quickFaqCard',
+            '토스페이 결제 CTA를 최종 단일 강조',
+          ],
+          map: 'src/pages/order.tsx:436,470,553,635,658',
+          image: productImage,
+        },
+      },
+    };
+
+    const $ = (q) => document.querySelector(q);
+    const $$ = (q) => [...document.querySelectorAll(q)];
+
+    function renderCard(target, data, side) {
+      target.innerHTML = `
+        <div class="head">
+          <h2>${data.title}</h2>
+          <span class="chip ${side}">${data.tag}</span>
+        </div>
+        <div class="mock">
+          <div class="title">${data.mockTitle}</div>
+          <div class="mockimg"><img src="${data.image}" alt="${data.title}" /></div>
+        </div>
+        <div class="list">
+          <div><b>위계 포인트</b></div>
+          <div>- ${data.points.join('</div><div>- ')}</div>
+        </div>
+        <div class="map">근거 파일: ${data.map}</div>
+      `;
+    }
+
+    function render(stageKey) {
+      const stage = stages[stageKey];
+      renderCard($('#oldCol'), stage.old, 'old');
+      renderCard($('#nowCol'), stage.now, 'now');
+      $$('.stage-btn').forEach((b) => b.classList.toggle('active', b.dataset.stage === stageKey));
+    }
+
+    $('#stageNav').addEventListener('click', (e) => {
+      const btn = e.target.closest('.stage-btn');
+      if (!btn) return;
+      render(btn.dataset.stage);
+    });
+
+    render('home');
+  </script>
+</body>
+</html>

@@ -1,0 +1,551 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AIT User Journey Testbench</title>
+  <style>
+    :root {
+      --bg: #071a35;
+      --panel: #15325d;
+      --panel-2: #0f2a53;
+      --line: rgba(255,255,255,.16);
+      --text: #eef5ff;
+      --muted: #bdd2ef;
+      --muted-2: #8badd4;
+      --primary: #ff5000;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background:
+        radial-gradient(1200px 800px at 95% -5%, rgba(56,120,214,.16), transparent 45%),
+        radial-gradient(900px 600px at -10% 110%, rgba(25,70,146,.14), transparent 40%),
+        var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      padding: 12px;
+    }
+    .app {
+      width: 100%;
+      max-width: 430px;
+      border: 1px solid rgba(255,255,255,.2);
+      border-radius: 24px;
+      overflow: hidden;
+      background: rgba(4, 14, 32, .72);
+      backdrop-filter: blur(10px);
+      box-shadow: 0 28px 70px rgba(0,0,0,.5);
+      min-height: 780px;
+      position: relative;
+    }
+    .screen { display: none; padding: 14px; gap: 10px; }
+    .screen.active { display: grid; }
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 4px;
+    }
+    .title { font-size: 20px; font-weight: 800; }
+    .logo { display: flex; align-items: center; gap: 8px; }
+    .logo-badge {
+      width: 28px;
+      height: 28px;
+      border-radius: 6px;
+      background: linear-gradient(135deg, #1f5cae, #2f87ef);
+      border: 1px solid rgba(255,255,255,.3);
+    }
+    .ghost-btn, .primary-btn, .secondary-btn {
+      border-radius: 10px;
+      border: 1px solid var(--line);
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      padding: 10px 12px;
+    }
+    .ghost-btn { background: rgba(255,255,255,.08); color: #dbeaff; }
+    .primary-btn { background: var(--primary); color: #fff; border-color: transparent; }
+    .secondary-btn { background: rgba(255,255,255,.08); color: var(--text); }
+    .hero, .card {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 12px;
+    }
+    .hero h2 { font-size: 24px; font-weight: 900; margin-bottom: 6px; }
+    .sub { font-size: 12px; line-height: 1.45; color: var(--muted); }
+    .section-title { font-size: 13px; font-weight: 700; margin-bottom: 8px; }
+    .carousel { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+    .product {
+      border: 1px solid var(--line);
+      background: rgba(255,255,255,.04);
+      border-radius: 10px;
+      padding: 8px;
+      cursor: pointer;
+      text-align: center;
+      font-size: 11px;
+      color: var(--muted);
+    }
+    .product.active {
+      border-color: rgba(255,80,0,.6);
+      background: rgba(255,80,0,.16);
+      color: #ffd8c9;
+      font-weight: 700;
+    }
+    .canvas {
+      height: 260px;
+      border: 1px dashed rgba(255,255,255,.28);
+      border-radius: 12px;
+      overflow: hidden;
+      background: repeating-linear-gradient(45deg, rgba(255,255,255,.03) 0 10px, rgba(255,255,255,.06) 10px 20px);
+      position: relative;
+      display: grid;
+      place-items: center;
+    }
+    .canvas.compact { height: 180px; }
+    .canvas img { width: 100%; height: 100%; object-fit: contain; }
+    .overlay-text {
+      position: absolute;
+      left: 50%; top: 46%; transform: translate(-50%, -50%);
+      width: 80%; text-align: center;
+      font-weight: 800; font-size: 16px;
+      text-shadow: 0 2px 6px rgba(0,0,0,.45);
+    }
+    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .tabs { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; }
+    .tab {
+      border: 1px solid var(--line);
+      border-radius: 9px;
+      background: rgba(255,255,255,.03);
+      color: var(--muted-2);
+      font-size: 12px;
+      padding: 8px 6px;
+      text-align: center;
+      cursor: pointer;
+      font-weight: 700;
+    }
+    .tab.active { color: #ffd8c9; border-color: rgba(255,80,0,.6); background: rgba(255,80,0,.16); }
+    .field { display: grid; gap: 4px; margin-bottom: 8px; }
+    .field label { font-size: 11px; color: var(--muted); }
+    .field input, .field textarea, .field select {
+      width: 100%;
+      border: 1px solid rgba(255,255,255,.24);
+      background: var(--panel-2);
+      color: var(--text);
+      border-radius: 10px;
+      padding: 9px 10px;
+      font-size: 13px;
+    }
+    .field textarea { min-height: 70px; resize: vertical; }
+    .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+    .chip {
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: 6px 10px;
+      font-size: 11px;
+      color: var(--muted);
+      background: rgba(255,255,255,.04);
+      cursor: pointer;
+      font-weight: 700;
+    }
+    .chip.active { border-color: rgba(255,80,0,.6); background: rgba(255,80,0,.16); color: #ffd8c9; }
+    .price {
+      font-size: 28px;
+      font-weight: 900;
+      color: var(--primary);
+      line-height: 1.1;
+    }
+    .fixed-actions {
+      position: sticky;
+      bottom: 0;
+      background: rgba(7, 18, 39, .88);
+      border-top: 1px solid var(--line);
+      padding: 10px 14px 14px;
+      margin: 0 -14px -14px;
+      display: grid;
+      gap: 8px;
+    }
+    .mini-note { font-size: 11px; color: var(--muted-2); line-height: 1.45; }
+    .mockup-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .muted-card { background: rgba(255,255,255,.03); border: 1px solid var(--line); border-radius: 10px; padding: 8px; }
+    .route {
+      position: absolute;
+      top: 10px;
+      left: 50%;
+      transform: translateX(-50%);
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: 4px 10px;
+      font-size: 11px;
+      color: #d7e9ff;
+      background: rgba(255,255,255,.04);
+      z-index: 20;
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <div class="route" id="routeLabel">/</div>
+
+    <section class="screen active" data-screen="home">
+      <div class="header">
+        <div class="logo"><div class="logo-badge"></div><div class="title">굿즈 gpt</div></div>
+        <button class="ghost-btn">문의</button>
+      </div>
+
+      <div class="hero">
+        <h2>굿즈 gpt</h2>
+        <p class="sub">이미지를 업로드하거나 AI로 새로 만들어, 티셔츠·후드·맨투맨을 바로 제작합니다.</p>
+      </div>
+
+      <div class="card">
+        <div class="section-title">티셔츠 · 후드 · 맨투맨</div>
+        <div class="carousel" id="homeProducts"></div>
+      </div>
+
+      <div class="card">
+        <div class="canvas compact"><img id="homeImage" alt="home" /></div>
+        <div style="margin-top:8px;" class="sub" id="homeMeta"></div>
+        <button class="primary-btn" id="goEditorBtn" style="margin-top:10px; width:100%;">바로 목업하기</button>
+      </div>
+    </section>
+
+    <section class="screen" data-screen="editor">
+      <div class="header">
+        <div class="title">이미지 편집</div>
+        <button class="ghost-btn" id="backHomeBtn">상품 변경</button>
+      </div>
+
+      <div class="chips" id="placementChips">
+        <button class="chip active" data-placement="front">앞면</button>
+        <button class="chip" data-placement="back">뒷면</button>
+      </div>
+
+      <div class="canvas" id="editorCanvas">
+        <img id="editorImage" alt="editor" />
+        <div class="overlay-text" id="editorText"></div>
+      </div>
+
+      <div class="card">
+        <div class="tabs" id="editorTabs">
+          <button class="tab active" data-tab="image">이미지 편집</button>
+          <button class="tab" data-tab="adjust">조정</button>
+          <button class="tab" data-tab="order">주문</button>
+        </div>
+
+        <div id="editorTabBody" style="margin-top:10px;"></div>
+      </div>
+
+      <div class="fixed-actions">
+        <div class="row">
+          <button class="secondary-btn" id="goPreviewBtn">미리보기</button>
+          <button class="primary-btn" id="goOrderFastBtn">💰 바로 주문</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="screen" data-screen="generate">
+      <div class="header">
+        <div class="title">AI 이미지 생성</div>
+        <button class="ghost-btn" id="backEditorFromGenerate">이전</button>
+      </div>
+
+      <div class="card">
+        <div class="canvas compact">
+          <img id="generateImage" alt="generate" />
+          <div class="overlay-text" id="generateStatusText">생성 전</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="field">
+          <label>프롬프트</label>
+          <textarea id="promptInput">vintage graphic, clean vector style</textarea>
+        </div>
+        <div class="row">
+          <div class="field"><label>스타일</label><select id="styleSelect"><option>Minimal</option><option>LineArt</option><option>Graphic</option></select></div>
+          <div class="field"><label>비율</label><select id="ratioSelect"><option>1:1</option><option>3:4</option><option>4:5</option></select></div>
+        </div>
+        <button class="primary-btn" id="runGenerateBtn" style="width:100%;">이미지 만들기</button>
+      </div>
+
+      <div class="fixed-actions">
+        <button class="primary-btn" id="useGeneratedBtn" style="width:100%;">이 이미지로 굿즈 만들기</button>
+      </div>
+    </section>
+
+    <section class="screen" data-screen="preview">
+      <div class="header">
+        <div class="title">완성 미리보기</div>
+        <button class="ghost-btn" id="backEditorFromPreview">이전</button>
+      </div>
+
+      <div class="mockup-row">
+        <div class="muted-card"><div class="mini-note" style="margin-bottom:6px;">Front</div><div class="canvas compact"><img id="previewFront" alt="front" /><div class="overlay-text" id="previewFrontText"></div></div></div>
+        <div class="muted-card"><div class="mini-note" style="margin-bottom:6px;">Back</div><div class="canvas compact"><img id="previewBack" alt="back" /><div class="overlay-text" id="previewBackText"></div></div></div>
+      </div>
+
+      <div class="card">
+        <div class="section-title">색상 바꿔보기</div>
+        <div class="chips" id="previewColorChips"></div>
+      </div>
+
+      <div class="card">
+        <div class="mini-note">예상 결제 금액</div>
+        <div class="price" id="previewPrice"></div>
+        <div class="mini-note" id="previewPriceMeta"></div>
+      </div>
+
+      <div class="fixed-actions">
+        <button class="primary-btn" id="goOrderFromPreview" style="width:100%;">💰 바로 주문하기</button>
+        <div class="row"><button class="secondary-btn">저장하기</button><button class="secondary-btn">공유하기</button></div>
+      </div>
+    </section>
+
+    <section class="screen" data-screen="order">
+      <div class="header">
+        <div class="title">주문하기</div>
+        <button class="ghost-btn" id="backPreviewFromOrder">이전</button>
+      </div>
+
+      <div class="card" id="loginGate">
+        <div class="section-title">토스 로그인이 필요해요</div>
+        <p class="sub">안전한 결제를 위해 토스 계정 로그인 후 주문을 진행합니다.</p>
+        <button class="primary-btn" id="loginBtn" style="width:100%; margin-top:10px;">🔐 토스 로그인하고 주문하기</button>
+      </div>
+
+      <div id="orderFormArea" style="display:none; gap:10px;">
+        <div class="card">
+          <div class="section-title">주문 요약</div>
+          <div class="sub" id="orderSummary"></div>
+          <div class="price" id="orderPrice" style="margin-top:8px;"></div>
+        </div>
+
+        <div class="card">
+          <div class="section-title">주문하시는 분</div>
+          <div class="field"><label>이름</label><input value="홍길동" /></div>
+          <div class="field"><label>연락처</label><input value="010-1234-5678" /></div>
+          <div class="field"><label>이메일</label><input value="user@example.com" /></div>
+          <div class="section-title" style="margin-top:6px;">배송지</div>
+          <button class="secondary-btn" id="searchAddressBtn" style="width:100%;">주소 찾기</button>
+          <div class="field"><label>기본 주소</label><input id="addr1" placeholder="기본 주소" /></div>
+          <div class="field"><label>상세 주소</label><input placeholder="상세 주소" /></div>
+        </div>
+
+        <div class="card">
+          <div class="section-title">주문 전에 확인해 주세요</div>
+          <p class="mini-note">- 제작/배송은 보통 7-14일 소요</p>
+          <p class="mini-note">- 결제 후 제작 시작 시 변경 제한</p>
+        </div>
+
+        <div class="fixed-actions">
+          <button class="primary-btn" style="width:100%;">토스페이로 결제하기</button>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const catalog = {
+      tshirt: {
+        name: '티셔츠', model: 'Printstar 148', basePrice: 10000,
+        colors: {
+          블랙: { front: '/public/mockups/tshirt_black_front.jpg', back: '/public/mockups/tshirt_black_back.jpg' },
+          화이트: { front: '/public/mockups/tshirt_white_front.jpg', back: '/public/mockups/tshirt_white_back.jpg' },
+        },
+      },
+      hoodie: {
+        name: '후드', model: 'Printstar 188', basePrice: 23500,
+        colors: {
+          블랙: { front: '/public/mockups/hoodie_black_front.jpg', back: '/public/mockups/hoodie_black_front.jpg' },
+          그레이: { front: '/public/mockups/hoodie_grey_front.jpg', back: '/public/mockups/hoodie_grey_front.jpg' },
+        },
+      },
+      sweatshirt: {
+        name: '맨투맨', model: 'Printstar 183', basePrice: 17000,
+        colors: {
+          블랙: { front: '/public/mockups/sweatshirt_black_front.jpg', back: '/public/mockups/sweatshirt_black_front.jpg' },
+          그레이: { front: '/public/mockups/sweatshirt_grey_front.jpg', back: '/public/mockups/sweatshirt_grey_front.jpg' },
+        },
+      },
+    };
+
+    const state = {
+      screen: 'home',
+      product: 'tshirt',
+      color: '블랙',
+      placement: 'front',
+      editorTab: 'image',
+      text: '',
+      generated: false,
+      prompt: 'vintage graphic, clean vector style',
+      qty: 1,
+      loggedIn: false,
+    };
+
+    const $ = (q) => document.querySelector(q);
+    const $$ = (q) => [...document.querySelectorAll(q)];
+
+    function currentProduct() { return catalog[state.product]; }
+    function currentColorSet() { return currentProduct().colors[state.color]; }
+
+    function priceTotal() {
+      const subtotal = currentProduct().basePrice * state.qty;
+      const shipping = subtotal >= 30000 ? 0 : 3000;
+      return { subtotal, shipping, total: subtotal + shipping };
+    }
+
+    function format(n) { return n.toLocaleString('ko-KR') + '원'; }
+
+    function go(screen) {
+      state.screen = screen;
+      $$('.screen').forEach((el) => el.classList.toggle('active', el.dataset.screen === screen));
+      const map = { home: '/', editor: '/editor', generate: '/generate', preview: '/preview', order: '/order' };
+      $('#routeLabel').textContent = map[screen];
+      render();
+    }
+
+    function renderHomeProducts() {
+      const wrap = $('#homeProducts');
+      wrap.innerHTML = '';
+      Object.entries(catalog).forEach(([key, item]) => {
+        const b = document.createElement('button');
+        b.className = 'product' + (key === state.product ? ' active' : '');
+        b.textContent = item.name;
+        b.addEventListener('click', () => {
+          state.product = key;
+          state.color = Object.keys(catalog[key].colors)[0];
+          render();
+        });
+        wrap.appendChild(b);
+      });
+    }
+
+    function renderEditorTabs() {
+      const body = $('#editorTabBody');
+      const price = priceTotal();
+      if (state.editorTab === 'image') {
+        body.innerHTML = `
+          <div class="field"><label>디자인 텍스트</label><input id="textInput" value="${state.text}" placeholder="예: GOODS GPT" /></div>
+          <div class="row"><button class="secondary-btn" id="addPhotoBtn">사진 추가하기</button><button class="secondary-btn" id="goGenerateBtn">AI로 만들기</button></div>
+          <p class="mini-note">이미지 편집 탭은 실제 AIT처럼 생성 화면 진입 버튼을 제공합니다.</p>
+        `;
+        $('#textInput').addEventListener('input', (e) => { state.text = e.target.value; render(); });
+        $('#addPhotoBtn').addEventListener('click', () => { state.generated = false; render(); });
+        $('#goGenerateBtn').addEventListener('click', () => go('generate'));
+      } else if (state.editorTab === 'adjust') {
+        body.innerHTML = `
+          <div class="row"><button class="secondary-btn">전체 축소</button><button class="secondary-btn">일반 보기</button></div>
+          <p class="mini-note">캔버스 높이/확대 감각은 실제 RN과 완전 동일하지 않고 디자인 체감용으로 맞췄습니다.</p>
+        `;
+      } else {
+        const colorBtns = Object.keys(currentProduct().colors).map((c) => `<button class="chip ${c === state.color ? 'active' : ''}" data-color="${c}">${c}</button>`).join('');
+        body.innerHTML = `
+          <div class="section-title">색상</div>
+          <div class="chips" id="orderTabColors">${colorBtns}</div>
+          <div class="card" style="margin-top:8px; background: rgba(255,255,255,.03);">
+            <div class="mini-note">예상 결제 금액</div>
+            <div class="price">${format(price.total)}</div>
+            <div class="mini-note">기본가 ${format(price.subtotal)} + 배송비 ${price.shipping === 0 ? '무료' : format(price.shipping)}</div>
+          </div>
+        `;
+        $('#orderTabColors').addEventListener('click', (e) => {
+          const chip = e.target.closest('.chip');
+          if (!chip) return;
+          state.color = chip.dataset.color;
+          render();
+        });
+      }
+    }
+
+    function renderPreviewColorChips() {
+      const wrap = $('#previewColorChips');
+      wrap.innerHTML = '';
+      Object.keys(currentProduct().colors).forEach((c) => {
+        const b = document.createElement('button');
+        b.className = 'chip' + (c === state.color ? ' active' : '');
+        b.textContent = c;
+        b.addEventListener('click', () => { state.color = c; render(); });
+        wrap.appendChild(b);
+      });
+    }
+
+    function render() {
+      renderHomeProducts();
+
+      const set = currentColorSet();
+      $('#homeImage').src = set.front;
+      $('#homeMeta').textContent = `${currentProduct().name} · ${state.color} · ${currentProduct().model}`;
+
+      $('#editorImage').src = state.placement === 'front' ? set.front : set.back;
+      $('#editorText').textContent = state.text;
+      $$('#placementChips .chip').forEach((c) => c.classList.toggle('active', c.dataset.placement === state.placement));
+      $$('#editorTabs .tab').forEach((t) => t.classList.toggle('active', t.dataset.tab === state.editorTab));
+      renderEditorTabs();
+
+      $('#generateImage').src = state.placement === 'front' ? set.front : set.back;
+      $('#generateStatusText').textContent = state.generated ? '생성 완료' : '생성 전';
+      $('#promptInput').value = state.prompt;
+      $('#useGeneratedBtn').disabled = !state.generated;
+      $('#useGeneratedBtn').style.opacity = state.generated ? '1' : '.55';
+
+      $('#previewFront').src = set.front;
+      $('#previewBack').src = set.back;
+      $('#previewFrontText').textContent = state.text;
+      $('#previewBackText').textContent = state.text;
+      renderPreviewColorChips();
+      const p = priceTotal();
+      $('#previewPrice').textContent = format(p.total);
+      $('#previewPriceMeta').textContent = `기본가 ${format(p.subtotal)} + 배송비 ${p.shipping === 0 ? '무료' : format(p.shipping)}`;
+
+      $('#loginGate').style.display = state.loggedIn ? 'none' : 'block';
+      $('#orderFormArea').style.display = state.loggedIn ? 'grid' : 'none';
+      $('#orderSummary').textContent = `${currentProduct().name} · ${state.color} · ${state.qty}개`;
+      $('#orderPrice').textContent = format(p.total);
+    }
+
+    $('#goEditorBtn').addEventListener('click', () => go('editor'));
+    $('#backHomeBtn').addEventListener('click', () => go('home'));
+    $('#goPreviewBtn').addEventListener('click', () => go('preview'));
+    $('#goOrderFastBtn').addEventListener('click', () => go('order'));
+    $('#backEditorFromGenerate').addEventListener('click', () => go('editor'));
+    $('#backEditorFromPreview').addEventListener('click', () => go('editor'));
+    $('#goOrderFromPreview').addEventListener('click', () => go('order'));
+    $('#backPreviewFromOrder').addEventListener('click', () => go('preview'));
+
+    $('#placementChips').addEventListener('click', (e) => {
+      const chip = e.target.closest('.chip');
+      if (!chip) return;
+      state.placement = chip.dataset.placement;
+      render();
+    });
+    $('#editorTabs').addEventListener('click', (e) => {
+      const tab = e.target.closest('.tab');
+      if (!tab) return;
+      state.editorTab = tab.dataset.tab;
+      render();
+    });
+    $('#runGenerateBtn').addEventListener('click', () => {
+      state.prompt = $('#promptInput').value.trim();
+      state.generated = true;
+      state.text = state.text || 'AI DESIGN';
+      render();
+    });
+    $('#useGeneratedBtn').addEventListener('click', () => {
+      if (!state.generated) return;
+      go('editor');
+    });
+    $('#loginBtn').addEventListener('click', () => {
+      state.loggedIn = true;
+      render();
+    });
+    $('#searchAddressBtn').addEventListener('click', () => {
+      $('#addr1').value = '서울 강남구 테헤란로 123';
+    });
+
+    go('home');
+  </script>
+</body>
+</html>

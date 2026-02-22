@@ -32,14 +32,27 @@ export function ScaleSlider({ min, max, value, onChange }: ScaleSliderProps) {
   const normalized = clamp((value - min) / (max - min), 0, 1);
   const knobLeft = normalized * trackWidth;
 
+  const applyFromLocationX = (locationX: number) => {
+    const width = Math.max(trackWidthRef.current, 1);
+    const ratio = clamp(locationX / width, 0, 1);
+    const currentMin = minRef.current;
+    const currentMax = maxRef.current;
+    onChangeRef.current(currentMin + ratio * (currentMax - currentMin));
+  };
+
   const responder = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => true,
       onMoveShouldSetPanResponder: () => true,
-      onPanResponderGrant: () => {
+      onPanResponderGrant: (evt) => {
         startValue.current = valueRef.current;
+        applyFromLocationX(evt.nativeEvent.locationX);
       },
-      onPanResponderMove: (_evt, gestureState) => {
+      onPanResponderMove: (evt, gestureState) => {
+        if (trackWidthRef.current > 1) {
+          applyFromLocationX(evt.nativeEvent.locationX);
+          return;
+        }
         const currentTrackWidth = trackWidthRef.current;
         const currentMin = minRef.current;
         const currentMax = maxRef.current;
@@ -69,6 +82,7 @@ export function ScaleSlider({ min, max, value, onChange }: ScaleSliderProps) {
 
 const styles = StyleSheet.create({
   slider: {
+    width: '100%',
     height: 28,
     justifyContent: 'center',
   },

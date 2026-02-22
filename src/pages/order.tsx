@@ -179,6 +179,116 @@ function Page() {
     return { width, height };
   }, [selectedPrint.designScale]);
 
+  const toggleEditingOrder = () => {
+    const nextEditing = !editingOrder;
+    trackClick('order_option_edit_toggle_click', {
+      next_editing: nextEditing,
+      has_user_key: Boolean(userKey),
+    });
+    setEditingOrder(nextEditing);
+  };
+
+  const renderOrderSummaryCard = () => (
+    <Card style={styles.summaryCard}>
+      <View style={styles.summaryHeader}>
+        <Text style={styles.summaryTitle}>{selectedProduct.name}</Text>
+        {editingOrder ? (
+          <View style={styles.editingBadge}>
+            <Text style={styles.editingBadgeText}>수정 중</Text>
+          </View>
+        ) : null}
+      </View>
+
+      {editingOrder ? (
+        <View style={styles.editSection}>
+          <Text style={styles.editHint}>
+            버튼으로 색상, 사이즈, 수량을 바로 수정할 수 있어요.
+          </Text>
+          <Text style={styles.editSectionTitle}>색상</Text>
+          <View style={styles.colorOptions}>
+            {selectedProduct.colors.map((color) => (
+              <ColorSwatch
+                key={color}
+                label={color}
+                color={resolveColorValue(color)}
+                selected={selectedColor === color}
+                onPress={() => setSelectedColor(color)}
+              />
+            ))}
+          </View>
+
+          <Text style={styles.editSectionTitle}>사이즈 & 수량</Text>
+          {orderLines.map((line) => (
+            <View key={line.id} style={styles.orderLineRow}>
+              <Text style={styles.orderLineSize}>{line.sizeLabel}</Text>
+              <View style={styles.quantityControl}>
+                <Pressable
+                  onPress={() => {
+                    if (line.quantity > 1) {
+                      setOrderLineQuantity(line.id, line.quantity - 1);
+                    } else if (orderLines.length > 1) {
+                      removeOrderLine(line.id);
+                    }
+                  }}
+                  style={styles.quantityButton}
+                >
+                  <Text style={styles.quantityButtonText}>−</Text>
+                </Pressable>
+                <Text style={styles.quantityValue}>{line.quantity}</Text>
+                <Pressable
+                  onPress={() => setOrderLineQuantity(line.id, line.quantity + 1)}
+                  style={styles.quantityButton}
+                >
+                  <Text style={styles.quantityButtonText}>+</Text>
+                </Pressable>
+              </View>
+            </View>
+          ))}
+
+          <Text style={styles.editSectionTitle}>사이즈 추가</Text>
+          <View style={styles.chipRow}>
+            {selectedProduct.sizes
+              .filter((size) => !orderLines.some((line) => line.sizeLabel === size.label))
+              .map((size) => (
+                <Chip
+                  key={size.label}
+                  label={size.label}
+                  onPress={() => addOrderLine(size.label, 1)}
+                  style={styles.chipSpacing}
+                />
+              ))}
+          </View>
+
+          <PrimaryButton
+            label="옵션 수정 완료"
+            onPress={toggleEditingOrder}
+            style={styles.optionDoneButton}
+          />
+        </View>
+      ) : (
+        <>
+          <Text style={styles.summaryMeta}>
+            {selectedColor} · {sizeSummary || `${totalQuantity}개`}
+            {printBackEnabled ? ' · 뒷면도 프린팅' : ''}
+          </Text>
+          <SecondaryButton
+            label="옵션 수정하기"
+            onPress={toggleEditingOrder}
+            style={styles.optionEditButton}
+          />
+        </>
+      )}
+
+      <Text style={styles.summaryMeta}>
+        예상 결제 {formatPrice(pricing.total)} (배송비{' '}
+        {pricing.shippingFee === 0
+          ? '무료'
+          : formatPrice(pricing.shippingFee)}
+        )
+      </Text>
+    </Card>
+  );
+
   const handleSubmit = async () => {
     trackClick('order_submit_click', {
       product_id: selectedProduct.id,
@@ -350,88 +460,7 @@ function Page() {
           </Pressable>
         </View>
 
-        <Card style={styles.summaryCard}>
-          <View style={styles.summaryHeader}>
-            <Text style={styles.summaryTitle}>{selectedProduct.name}</Text>
-            <Pressable onPress={() => setEditingOrder(!editingOrder)}>
-              <Text style={styles.editButton}>{editingOrder ? '완료' : '수정'}</Text>
-            </Pressable>
-          </View>
-
-          {editingOrder ? (
-            <View style={styles.editSection}>
-              <Text style={styles.editSectionTitle}>색상</Text>
-              <View style={styles.colorOptions}>
-                {selectedProduct.colors.map((color) => (
-                  <ColorSwatch
-                    key={color}
-                    label={color}
-                    color={resolveColorValue(color)}
-                    selected={selectedColor === color}
-                    onPress={() => setSelectedColor(color)}
-                  />
-                ))}
-              </View>
-
-              <Text style={styles.editSectionTitle}>사이즈 & 수량</Text>
-              {orderLines.map((line) => (
-                <View key={line.id} style={styles.orderLineRow}>
-                  <Text style={styles.orderLineSize}>{line.sizeLabel}</Text>
-                  <View style={styles.quantityControl}>
-                    <Pressable
-                      onPress={() => {
-                        if (line.quantity > 1) {
-                          setOrderLineQuantity(line.id, line.quantity - 1);
-                        } else if (orderLines.length > 1) {
-                          removeOrderLine(line.id);
-                        }
-                      }}
-                      style={styles.quantityButton}
-                    >
-                      <Text style={styles.quantityButtonText}>−</Text>
-                    </Pressable>
-                    <Text style={styles.quantityValue}>{line.quantity}</Text>
-                    <Pressable
-                      onPress={() => setOrderLineQuantity(line.id, line.quantity + 1)}
-                      style={styles.quantityButton}
-                    >
-                      <Text style={styles.quantityButtonText}>+</Text>
-                    </Pressable>
-                  </View>
-                </View>
-              ))}
-
-              <Text style={styles.editSectionTitle}>사이즈 추가</Text>
-              <View style={styles.chipRow}>
-                {selectedProduct.sizes
-                  .filter((size) => !orderLines.some((line) => line.sizeLabel === size.label))
-                  .map((size) => (
-                    <Chip
-                      key={size.label}
-                      label={size.label}
-                      onPress={() => addOrderLine(size.label, 1)}
-                      style={styles.chipSpacing}
-                    />
-                  ))}
-              </View>
-            </View>
-          ) : (
-            <>
-              <Text style={styles.summaryMeta}>
-                {selectedColor} · {sizeSummary || `${totalQuantity}개`}
-                {printBackEnabled ? ' · 뒷면도 프린팅' : ''}
-              </Text>
-            </>
-          )}
-
-          <Text style={styles.summaryMeta}>
-            예상 결제 {formatPrice(pricing.total)} (배송비{' '}
-            {pricing.shippingFee === 0
-              ? '무료'
-              : formatPrice(pricing.shippingFee)}
-            )
-          </Text>
-        </Card>
+        {renderOrderSummaryCard()}
 
         <Card style={styles.loginCard}>
           <Text style={styles.loginTitle}>토스 로그인이 필요해요</Text>
@@ -467,88 +496,7 @@ function Page() {
         </Pressable>
       </View>
 
-      <Card style={styles.summaryCard}>
-        <View style={styles.summaryHeader}>
-          <Text style={styles.summaryTitle}>{selectedProduct.name}</Text>
-          <Pressable onPress={() => setEditingOrder(!editingOrder)}>
-            <Text style={styles.editButton}>{editingOrder ? '완료' : '수정'}</Text>
-          </Pressable>
-        </View>
-
-        {editingOrder ? (
-          <View style={styles.editSection}>
-            <Text style={styles.editSectionTitle}>색상</Text>
-            <View style={styles.colorOptions}>
-              {selectedProduct.colors.map((color) => (
-                <ColorSwatch
-                  key={color}
-                  label={color}
-                  color={resolveColorValue(color)}
-                  selected={selectedColor === color}
-                  onPress={() => setSelectedColor(color)}
-                />
-              ))}
-            </View>
-
-            <Text style={styles.editSectionTitle}>사이즈 & 수량</Text>
-            {orderLines.map((line) => (
-              <View key={line.id} style={styles.orderLineRow}>
-                <Text style={styles.orderLineSize}>{line.sizeLabel}</Text>
-                <View style={styles.quantityControl}>
-                  <Pressable
-                    onPress={() => {
-                      if (line.quantity > 1) {
-                        setOrderLineQuantity(line.id, line.quantity - 1);
-                      } else if (orderLines.length > 1) {
-                        removeOrderLine(line.id);
-                      }
-                    }}
-                    style={styles.quantityButton}
-                  >
-                    <Text style={styles.quantityButtonText}>−</Text>
-                  </Pressable>
-                  <Text style={styles.quantityValue}>{line.quantity}</Text>
-                  <Pressable
-                    onPress={() => setOrderLineQuantity(line.id, line.quantity + 1)}
-                    style={styles.quantityButton}
-                  >
-                    <Text style={styles.quantityButtonText}>+</Text>
-                  </Pressable>
-                </View>
-              </View>
-            ))}
-
-            <Text style={styles.editSectionTitle}>사이즈 추가</Text>
-            <View style={styles.chipRow}>
-              {selectedProduct.sizes
-                .filter((size) => !orderLines.some((line) => line.sizeLabel === size.label))
-                .map((size) => (
-                  <Chip
-                    key={size.label}
-                    label={size.label}
-                    onPress={() => addOrderLine(size.label, 1)}
-                    style={styles.chipSpacing}
-                  />
-                ))}
-            </View>
-          </View>
-        ) : (
-          <>
-            <Text style={styles.summaryMeta}>
-              {selectedColor} · {sizeSummary || `${totalQuantity}개`}
-              {printBackEnabled ? ' · 뒷면도 프린팅' : ''}
-            </Text>
-          </>
-        )}
-
-        <Text style={styles.summaryMeta}>
-          예상 결제 {formatPrice(pricing.total)} (배송비{' '}
-          {pricing.shippingFee === 0
-            ? '무료'
-            : formatPrice(pricing.shippingFee)}
-          )
-        </Text>
-      </Card>
+      {renderOrderSummaryCard()}
 
       <Card style={styles.formCard}>
         <Text style={styles.sectionTitle}>주문하시는 분</Text>
@@ -750,6 +698,37 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
     color: '#2E231B',
+  },
+  editingBadge: {
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderWidth: 1,
+    borderColor: 'rgba(255,106,0,0.26)',
+    backgroundColor: 'rgba(255,106,0,0.12)',
+  },
+  editingBadgeText: {
+    fontSize: 11,
+    lineHeight: 16,
+    fontWeight: '700',
+    color: ORANGE_RED,
+  },
+  optionEditButton: {
+    marginTop: theme.spacing.sm,
+    minHeight: 40,
+    borderRadius: 10,
+    paddingVertical: 8,
+  },
+  optionDoneButton: {
+    marginTop: theme.spacing.md,
+    minHeight: 42,
+    borderRadius: 10,
+  },
+  editHint: {
+    fontSize: 12,
+    lineHeight: 18,
+    color: '#776556',
+    marginBottom: theme.spacing.xs,
   },
   editButton: {
     fontSize: 14,

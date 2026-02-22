@@ -3,7 +3,6 @@ import React, { useEffect, useState } from 'react';
 import {
   Dimensions,
   FlatList,
-  Image,
   InteractionManager,
   type NativeScrollEvent,
   type NativeSyntheticEvent,
@@ -26,9 +25,6 @@ import {
   trackScreenView,
 } from '../utils/analytics';
 
-const APP_ICON_URL =
-  'https://static.toss.im/appsintoss/14401/d0c0ede6-31b9-400d-b236-196c02293df1.png';
-// Light theme - Toss native style
 const CATEGORIES = ['티셔츠', '후드', '맨투맨'];
 const MATERIAL_BY_CATEGORY: Record<string, string> = {
   티셔츠: '코튼 100%',
@@ -189,31 +185,21 @@ function Page() {
   return (
     <Screen contentStyle={styles.screenContent}>
       <View style={styles.header}>
-        <View style={styles.headerLeft}>
-          <Image source={{ uri: APP_ICON_URL }} style={styles.headerLogo} />
-          <Text style={styles.headerTitle}>굿즈 gpt</Text>
-        </View>
+        <View />
         <Pressable onPress={goToInquiry} style={styles.inquiryButton}>
           <Text style={styles.inquiryButtonText}>문의</Text>
         </Pressable>
-      </View>
-
-      <View style={styles.brandCard}>
-        <View style={styles.brandHead}>
-          <View style={styles.brandBadge}>
-            <Text style={styles.brandBadgeText}>✦</Text>
-          </View>
-          <Text style={styles.brandTitle}>굿즈 gpt</Text>
-        </View>
-        <Text style={styles.brandCopy}>
-          이미지를 업로드하거나 AI로 새로 만들어, 티셔츠·후드·맨투맨을 바로 제작하고 배송까지 해드립니다.
-        </Text>
       </View>
 
       <View style={styles.homeGuide}>
         <Text style={styles.homeGuideTitle}>무엇을 만들까요?</Text>
         <Text style={styles.homeGuideText}>상품을 선택하고 디자인을 시작하세요</Text>
       </View>
+      <PrimaryButton
+        label="✦ 지금 만들어보기"
+        onPress={goToEditor}
+        style={styles.topCtaButton}
+      />
 
       <View style={styles.homeCard}>
         <View style={styles.carouselShell}>
@@ -253,23 +239,25 @@ function Page() {
                   ]}
                 >
                   <View style={styles.cardImageWrap}>
-                    <MockupCanvas
-                      template={buildTemplate(
-                        product,
-                        product.colors[0] || '블랙',
-                        'front',
-                      )}
-                      width={mockupWidth}
-                      height={mockupHeight}
-                      showDesign
-                      designImageUri={heroDesignImageUri}
-                      imageTransform={{
-                        offsetX: 0,
-                        offsetY: 0,
-                        scale: 0.86,
-                        rotation: 0,
-                      }}
-                    />
+                    <View style={styles.mockupObjectShadow}>
+                      <MockupCanvas
+                        template={buildTemplate(
+                          product,
+                          product.colors[0] || '블랙',
+                          'front',
+                        )}
+                        width={mockupWidth}
+                        height={mockupHeight}
+                        showDesign
+                        designImageUri={heroDesignImageUri}
+                        imageTransform={{
+                          offsetX: 0,
+                          offsetY: 0,
+                          scale: 0.86,
+                          rotation: 0,
+                        }}
+                      />
+                    </View>
                   </View>
                 </Pressable>
               );
@@ -350,11 +338,6 @@ function Page() {
           </View>
         </View>
 
-        <PrimaryButton
-          label="✦ 지금 만들어보기"
-          onPress={goToEditor}
-          style={styles.createButton}
-        />
         <Pressable onPress={goToProducts} style={styles.detailLinkButton}>
           <Text style={styles.detailLinkText}>세부 정보 보기 {'>'}</Text>
         </Pressable>
@@ -433,22 +416,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: theme.spacing.md,
-  },
-  headerLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  headerLogo: {
-    width: 28,
-    height: 28,
-    borderRadius: 6,
-    marginRight: theme.spacing.sm,
-  },
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: '800',
-    color: theme.colors.textPrimary,
+    marginBottom: theme.spacing.sm,
   },
   inquiryButton: {
     paddingHorizontal: theme.spacing.md,
@@ -463,51 +431,8 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: theme.colors.primary,
   },
-  brandCard: {
-    backgroundColor: '#FFF4E7',
-    borderWidth: 1,
-    borderColor: '#F7DFC8',
-    borderRadius: 22,
-    paddingVertical: theme.spacing.md,
-    paddingHorizontal: theme.spacing.md,
-    marginBottom: theme.spacing.md,
-    shadowColor: '#5F320E',
-    shadowOpacity: 0.14,
-    shadowRadius: 16,
-    shadowOffset: { width: 0, height: 10 },
-    elevation: 3,
-  },
-  brandHead: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: theme.spacing.xs,
-  },
-  brandBadge: {
-    width: 26,
-    height: 26,
-    borderRadius: 10,
-    backgroundColor: theme.colors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: theme.spacing.sm,
-  },
-  brandBadgeText: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: '800',
-  },
-  brandTitle: {
-    fontSize: 19,
-    fontWeight: '800',
-    color: '#402E20',
-  },
-  brandCopy: {
-    fontSize: 12,
-    lineHeight: 18,
-    color: '#715D4D',
-  },
   homeGuide: {
-    marginBottom: theme.spacing.sm,
+    marginBottom: theme.spacing.xs,
     paddingHorizontal: 2,
   },
   homeGuideTitle: {
@@ -521,6 +446,16 @@ const styles = StyleSheet.create({
     fontSize: 13,
     lineHeight: 18,
     color: '#776556',
+  },
+  topCtaButton: {
+    borderRadius: 18,
+    minHeight: 50,
+    marginBottom: theme.spacing.md,
+    shadowColor: '#E65F00',
+    shadowOpacity: 0.32,
+    shadowRadius: 14,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 6,
   },
   homeCard: {
     backgroundColor: theme.colors.surface,
@@ -540,7 +475,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     borderWidth: 1,
     borderColor: '#F6E5D3',
-    backgroundColor: '#FFF3E6',
+    backgroundColor: '#FFFFFF',
   },
   carouselContent: {
     paddingVertical: theme.spacing.sm,
@@ -556,8 +491,15 @@ const styles = StyleSheet.create({
     aspectRatio: 4 / 5,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#FFF8EF',
+    backgroundColor: '#FFFFFF',
     borderRadius: 18,
+  },
+  mockupObjectShadow: {
+    shadowColor: '#4D3622',
+    shadowOpacity: 0.24,
+    shadowRadius: 18,
+    shadowOffset: { width: 0, height: 12 },
+    elevation: 8,
   },
   carouselDots: {
     marginTop: theme.spacing.sm,
@@ -670,15 +612,9 @@ const styles = StyleSheet.create({
     color: theme.colors.textPrimary,
     lineHeight: 14,
   },
-  createButton: {
-    marginTop: theme.spacing.md,
-    backgroundColor: theme.colors.primary,
-    borderRadius: 18,
-    minHeight: 50,
-  },
   detailLinkButton: {
     alignItems: 'center',
-    marginTop: theme.spacing.sm,
+    marginTop: theme.spacing.md,
   },
   detailLinkText: {
     fontSize: 13,

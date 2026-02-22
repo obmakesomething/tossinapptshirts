@@ -498,6 +498,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     minHeight: 48,
+    shadowColor: '#E65F00',
+    shadowOpacity: 0.28,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 6,
   },
   primaryButtonPressed: {
     backgroundColor: theme.colors.primaryPressed,
@@ -519,6 +524,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: theme.colors.surfaceSecondary,
     minHeight: 48,
+    shadowColor: '#4D3622',
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 3,
   },
   secondaryButtonPressed: {
     backgroundColor: '#FFEBDD',
@@ -607,10 +617,10 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: theme.colors.border,
     shadowColor: '#5F320E',
-    shadowOpacity: 0.12,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 6 },
-    elevation: 4,
+    shadowOpacity: 0.18,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 10 },
+    elevation: 7,
   },
 
   /* StickyFooter */

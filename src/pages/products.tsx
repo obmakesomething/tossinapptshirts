@@ -14,9 +14,7 @@ import { resolveColorValue } from '../data/colorMap';
 import { trackClick, trackScreenView } from '../utils/analytics';
 
 const ORANGE_RED = '#FF6A00';
-const NAVY_DEEP = '#FFF8F1';
 const NAVY_MID = '#FFF2E5';
-const NAVY_PANEL = '#FFFFFF';
 
 export const Route = createRoute('/products', {
   component: Page,
@@ -87,8 +85,6 @@ function Page() {
 
   return (
     <Screen contentStyle={styles.screenContent}>
-      <View style={styles.bgOrbTop} />
-      <View style={styles.bgOrbBottom} />
       <PageHeader title="상품 선택" onBack={() => navigation.goBack()} />
 
       <Text style={styles.subtitle}>어떤 제품으로 만들어 볼까요?</Text>
@@ -157,25 +153,7 @@ function Page() {
 
 const styles = StyleSheet.create({
   screenContent: {
-    backgroundColor: NAVY_DEEP,
-  },
-  bgOrbTop: {
-    position: 'absolute',
-    top: -100,
-    right: -80,
-    width: 230,
-    height: 230,
-    borderRadius: 115,
-    backgroundColor: 'rgba(255,196,146,0.35)',
-  },
-  bgOrbBottom: {
-    position: 'absolute',
-    bottom: 40,
-    left: -80,
-    width: 210,
-    height: 210,
-    borderRadius: 105,
-    backgroundColor: 'rgba(255,221,186,0.42)',
+    backgroundColor: '#FFFFFF',
   },
   headerRow: {
     flexDirection: 'row',
@@ -221,9 +199,14 @@ const styles = StyleSheet.create({
   card: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: NAVY_PANEL,
+    backgroundColor: '#FFFFFF',
     borderColor: 'rgba(240,223,207,0.92)',
     borderWidth: 1,
+    shadowColor: '#4D3622',
+    shadowOpacity: 0.16,
+    shadowRadius: 14,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 6,
   },
   cardSelected: {
     borderColor: ORANGE_RED,
@@ -237,6 +220,12 @@ const styles = StyleSheet.create({
     height: 72,
     borderRadius: theme.radius.md,
     marginRight: theme.spacing.md,
+    backgroundColor: '#FFFFFF',
+    shadowColor: '#4D3622',
+    shadowOpacity: 0.24,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 8,
   },
   colorSection: {
     padding: theme.spacing.md,

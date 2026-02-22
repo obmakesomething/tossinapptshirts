@@ -5,6 +5,7 @@ import { Route as _EditorRoute } from '../pages/editor';
 import { Route as _FaqRoute } from '../pages/faq';
 import { Route as _GenerateRoute } from '../pages/generate';
 import { Route as _IndexRoute } from '../pages/';
+import { Route as _OpenRoute } from '../pages/open';
 import { Route as _OrderRoute } from '../pages/order';
 import { Route as _PreviewRoute } from '../pages/preview';
 import { Route as _PrivacyRoute } from '../pages/privacy';
@@ -19,6 +20,7 @@ declare module '@granite-js/react-native' {
     '/faq': (typeof _FaqRoute)['_inputType'];
     '/generate': (typeof _GenerateRoute)['_inputType'];
     '/': (typeof _IndexRoute)['_inputType'];
+    '/open': (typeof _OpenRoute)['_inputType'];
     '/order': (typeof _OrderRoute)['_inputType'];
     '/preview': (typeof _PreviewRoute)['_inputType'];
     '/privacy': (typeof _PrivacyRoute)['_inputType'];
@@ -33,6 +35,7 @@ declare module '@granite-js/react-native' {
     '/faq': (typeof _FaqRoute)['_outputType'];
     '/generate': (typeof _GenerateRoute)['_outputType'];
     '/': (typeof _IndexRoute)['_outputType'];
+    '/open': (typeof _OpenRoute)['_outputType'];
     '/order': (typeof _OrderRoute)['_outputType'];
     '/preview': (typeof _PreviewRoute)['_outputType'];
     '/privacy': (typeof _PrivacyRoute)['_outputType'];

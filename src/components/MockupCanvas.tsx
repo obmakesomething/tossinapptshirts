@@ -75,7 +75,7 @@ export function MockupCanvas({
       <Image
         source={template.image}
         style={mockupImageStyle}
-        resizeMode="cover"
+        resizeMode="contain"
         onError={(e) =>
           console.error(
             '[MockupCanvas] Image load error:',
@@ -182,6 +182,11 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.surface,
     borderWidth: 1,
     borderColor: theme.colors.border,
+    shadowColor: '#4D3622',
+    shadowOpacity: 0.16,
+    shadowRadius: 14,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 6,
   },
   image: {
     ...StyleSheet.absoluteFillObject,

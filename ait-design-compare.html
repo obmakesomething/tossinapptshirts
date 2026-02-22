@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AIT Design Compare</title>
+  <style>
+    :root {
+      --bg0: #061228;
+      --bg1: #0d2450;
+      --bg2: #1a396b;
+      --panel: rgba(8, 20, 44, 0.78);
+      --line: rgba(183, 214, 255, 0.24);
+      --text: #edf5ff;
+      --muted: #b5cbe9;
+      --brand: #ff5a16;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      min-height: 100vh;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(1200px 700px at 90% -10%, rgba(70, 143, 238, .34), transparent 45%),
+        radial-gradient(800px 500px at -10% 105%, rgba(255, 90, 22, .2), transparent 45%),
+        linear-gradient(160deg, var(--bg0), var(--bg1) 55%, var(--bg2));
+      padding: 16px;
+    }
+    .wrap { max-width: 1200px; margin: 0 auto; display: grid; gap: 12px; }
+    .card { border: 1px solid var(--line); border-radius: 12px; background: var(--panel); padding: 12px; }
+    h1 { font-size: 20px; font-weight: 800; margin-bottom: 6px; }
+    .muted { color: var(--muted); font-size: 12px; line-height: 1.5; }
+    .stage-nav { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
+    .stage-btn {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: rgba(255,255,255,.04);
+      color: var(--muted);
+      padding: 9px 8px;
+      font-size: 12px;
+      cursor: pointer;
+    }
+    .stage-btn.active { color: #ffd8c7; border-color: rgba(255,90,22,.55); background: rgba(255,90,22,.18); font-weight: 700; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .col { border: 1px solid var(--line); border-radius: 12px; background: rgba(255,255,255,.03); padding: 10px; }
+    .head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+    .head h2 { font-size: 14px; }
+    .chip { font-size: 11px; border: 1px solid var(--line); border-radius: 999px; padding: 4px 8px; }
+    .old { color: #fff3d1; border-color: rgba(251,191,36,.45); background: rgba(251,191,36,.12); }
+    .now { color: #d7ffe7; border-color: rgba(74,222,128,.45); background: rgba(74,222,128,.12); }
+    .phone {
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      overflow: hidden;
+      margin-bottom: 8px;
+      background: #0f2a53;
+    }
+    .phone-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px 10px;
+      border-bottom: 1px solid var(--line);
+      font-size: 12px;
+      color: #d5e6ff;
+      font-weight: 700;
+    }
+    .phone-body { padding: 10px; display: grid; gap: 8px; }
+    .blk { border: 1px solid var(--line); border-radius: 8px; padding: 8px; background: rgba(255,255,255,.04); }
+    .blk b { font-size: 11px; color: #e7f2ff; display: block; margin-bottom: 4px; }
+    .blk p { font-size: 11px; color: var(--muted); line-height: 1.45; }
+    .preview {
+      height: 130px;
+      border: 1px dashed rgba(255,255,255,.35);
+      border-radius: 8px;
+      overflow: hidden;
+      background: repeating-linear-gradient(45deg, rgba(255,255,255,.03) 0 10px, rgba(255,255,255,.06) 10px 20px);
+      display: grid;
+      place-items: center;
+    }
+    .preview img { width: 100%; height: 100%; object-fit: contain; }
+    .list { font-size: 12px; color: var(--muted); line-height: 1.55; }
+    .list b { color: #eaf3ff; }
+    .map { margin-top: 8px; font-size: 11px; color: #9dc0ea; border: 1px solid var(--line); border-radius: 8px; padding: 8px; background: rgba(255,255,255,.03); }
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <section class="card">
+      <h1>디자인 비교 (Old vs Current)</h1>
+      <p class="muted">플로우 설명 제외. 화면별 색/타이포/컴포넌트 위계/CTA 배치만 비교합니다. Home부터 확인하세요.</p>
+    </section>
+
+    <section class="card">
+      <div class="stage-nav" id="stageNav">
+        <button class="stage-btn active" data-stage="home">Home</button>
+        <button class="stage-btn" data-stage="editor">Editor</button>
+        <button class="stage-btn" data-stage="generate">Generate</button>
+        <button class="stage-btn" data-stage="preview">Preview</button>
+        <button class="stage-btn" data-stage="order">Order</button>
+      </div>
+    </section>
+
+    <section class="grid">
+      <article class="col" id="oldCol"></article>
+      <article class="col" id="nowCol"></article>
+    </section>
+  </main>
+
+  <script>
+    const tshirtFront = '/public/mockups/tshirt_black_front.jpg';
+    const tshirtBack = '/public/mockups/tshirt_black_back.jpg';
+
+    const stages = {
+      home: {
+        old: {
+          title: 'Old Home',
+          tag: 'worktree',
+          header: '굿즈 GPT + 문의',
+          blocks: [
+            ['Hero Card', '카드 안에 소개문 + 배지 + 안내박스'],
+            ['CTA Group', 'Upload/Generate/Designs가 동급 버튼'],
+            ['Hierarchy', '분기형 구조, 첫 액션 선택이 분산'],
+          ],
+          diff: ['강조 포인트가 여러 개라 첫 시선 분산', 'TopBar/InfoBox 계열 컴포넌트 의존'],
+          map: '.worktrees/.../src/pages/index.tsx:66-79,101-116',
+          image: tshirtFront,
+        },
+        now: {
+          title: 'Current Home',
+          tag: 'root',
+          header: '굿즈 gpt + 문의',
+          blocks: [
+            ['Hero + Carousel', '히어로 텍스트 후 캐러셀 카드 집중'],
+            ['Primary CTA', '바로 목업하기가 명확한 1순위'],
+            ['Hierarchy', '상단 안내 -> 상품 선택 -> CTA 순서 고정'],
+          ],
+          diff: ['색/타이포 위계가 더 강함', '카드/버튼 톤이 네이비+오렌지로 통일'],
+          map: 'src/pages/index.tsx:196-216,316-373',
+          image: tshirtFront,
+        },
+      },
+      editor: {
+        old: {
+          title: 'Old Editor',
+          tag: 'worktree',
+          header: 'TopBar + 탭(레이어/조정/옵션)',
+          blocks: [
+            ['Canvas Proportion', '캔버스가 크게 보이는 비율(0.8/0.25)'],
+            ['Panel Weight', 'panel flex 1 / expanded 2.5'],
+            ['Visual Feel', '편집면보다 캔버스 비중이 큼'],
+          ],
+          diff: ['축소 보기 스케일 없음', '패널 확장 체감이 상대적으로 약함'],
+          map: '.worktrees/.../src/pages/editor.tsx:110-113,1013-1023',
+          image: tshirtFront,
+        },
+        now: {
+          title: 'Current Editor',
+          tag: 'root',
+          header: 'PageHeader + 탭(이미지 편집/조정/주문)',
+          blocks: [
+            ['Canvas Proportion', '확장 시 캔버스 강축소(0.72/0.17)'],
+            ['Panel Weight', 'panel flex 1.05 / expanded 3.8'],
+            ['Visual Feel', '컨트롤 패널 우선, 편집 정보 밀도 증가'],
+          ],
+          diff: ['전체 축소/일반 보기 라벨로 상태 인지 강화', '바로 주문 CTA 가시성 강화'],
+          map: 'src/pages/editor.tsx:115-123,453,1251-1261,968-969',
+          image: tshirtFront,
+        },
+      },
+      generate: {
+        old: {
+          title: 'Old Generate',
+          tag: 'worktree',
+          header: 'TopBar + PromptCard',
+          blocks: [
+            ['Input Layout', 'InputGroup/TextField 기반 입력 카드'],
+            ['CTA Layout', '하단 StickyFooter 고정 CTA'],
+            ['Hierarchy', '생성영역과 안내가 같은 카드 레벨'],
+          ],
+          diff: ['컴포넌트 체계는 명확하지만 강약 대비는 중간'],
+          map: '.worktrees/.../src/pages/generate.tsx:301-320,410-420',
+          image: tshirtFront,
+        },
+        now: {
+          title: 'Current Generate',
+          tag: 'root',
+          header: 'PageHeader + Orb Background',
+          blocks: [
+            ['Input Layout', '프롬프트/예시/스타일/비율 섹션 분화'],
+            ['CTA Layout', '이미지 만들기 + 굿즈 만들기 이중 CTA'],
+            ['Hierarchy', '결과 카드와 작업 단계 상태 강조'],
+          ],
+          diff: ['브랜드 톤 통일은 좋지만 CTA 2개가 경쟁 가능'],
+          map: 'src/pages/generate.tsx:319-333,393-433,467-472',
+          image: tshirtFront,
+        },
+      },
+      preview: {
+        old: {
+          title: 'Old Preview',
+          tag: 'worktree',
+          header: 'TopBar + InfoBox',
+          blocks: [
+            ['Mockup Row', 'Front/Back 카드 중심'],
+            ['Price Layer', '가격 카드 + 안내 카드'],
+            ['CTA Hierarchy', '바로 주문 + 저장/공유'],
+          ],
+          diff: ['구성은 유사하나 헤더 컴포넌트 톤이 다름'],
+          map: '.worktrees/.../src/pages/preview.tsx:97-101,150-175',
+          image: tshirtBack,
+        },
+        now: {
+          title: 'Current Preview',
+          tag: 'root',
+          header: 'PageHeader + Orb Background',
+          blocks: [
+            ['Mockup Row', 'Front/Back 카드 + 컬러 스와치'],
+            ['Price Layer', '가격 강조가 오렌지로 더 강함'],
+            ['CTA Hierarchy', '주문 1순위, 저장/공유 2순위 명확'],
+          ],
+          diff: ['텍스트/카드/버튼 대비가 더 강해짐'],
+          map: 'src/pages/preview.tsx:102-106,154-176,178-184',
+          image: tshirtBack,
+        },
+      },
+      order: {
+        old: {
+          title: 'Old Order',
+          tag: 'worktree',
+          header: 'TopBar + InputGroup form',
+          blocks: [
+            ['Login State', 'InfoBox 중심 로그인 안내'],
+            ['Form Layer', 'InputGroup/TextField 구조'],
+            ['CTA', '토스 로그인/결제 버튼은 동일 계열'],
+          ],
+          diff: ['폼 구조가 컴포넌트 중심으로 균질'],
+          map: '.worktrees/.../src/pages/order.tsx:377,396,482',
+          image: tshirtFront,
+        },
+        now: {
+          title: 'Current Order',
+          tag: 'root',
+          header: '커스텀 헤더 + Card 계층',
+          blocks: [
+            ['Login State', 'loginCard로 분리해 시각 위계 강화'],
+            ['Form Layer', 'summary/form/faq 카드 3층 분리'],
+            ['CTA', '토스페이 결제하기를 최종 강강조'],
+          ],
+          diff: ['결제 직전의 인지 위계가 더 분명'],
+          map: 'src/pages/order.tsx:436-453,470-551,553-670',
+          image: tshirtFront,
+        },
+      },
+    };
+
+    const $ = (q) => document.querySelector(q);
+    const $$ = (q) => [...document.querySelectorAll(q)];
+
+    function renderPhone(data, sideClass) {
+      return `
+        <div class="head">
+          <h2>${data.title}</h2>
+          <span class="chip ${sideClass}">${data.tag}</span>
+        </div>
+        <div class="phone">
+          <div class="phone-head">${data.header}<span>UI</span></div>
+          <div class="phone-body">
+            <div class="preview"><img src="${data.image}" alt="${data.title}" /></div>
+            ${data.blocks.map(([k, v]) => `<div class="blk"><b>${k}</b><p>${v}</p></div>`).join('')}
+          </div>
+        </div>
+        <div class="list"><b>디자인 차이 포인트</b><br>- ${data.diff.join('<br>- ')}</div>
+        <div class="map">근거 파일: ${data.map}</div>
+      `;
+    }
+
+    function render(stage) {
+      const d = stages[stage];
+      $('#oldCol').innerHTML = renderPhone(d.old, 'old');
+      $('#nowCol').innerHTML = renderPhone(d.now, 'now');
+      $$('.stage-btn').forEach((b) => b.classList.toggle('active', b.dataset.stage === stage));
+    }
+
+    $('#stageNav').addEventListener('click', (e) => {
+      const btn = e.target.closest('.stage-btn');
+      if (!btn) return;
+      render(btn.dataset.stage);
+    });
+
+    render('home');
+  </script>
+</body>
+</html>

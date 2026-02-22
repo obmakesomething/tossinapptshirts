@@ -361,7 +361,7 @@ export function DesignStage({
       <Image
         source={template.image}
         style={stageImageStyle}
-        resizeMode="cover"
+        resizeMode="contain"
         onError={(e) =>
           console.error(
             '[DesignStage] Image load error:',
@@ -461,6 +461,10 @@ const styles = StyleSheet.create({
   },
   image: {
     ...StyleSheet.absoluteFillObject,
+    shadowColor: '#4D3622',
+    shadowOpacity: 0.18,
+    shadowRadius: 14,
+    shadowOffset: { width: 0, height: 8 },
   },
   overlayMask: {
     position: 'absolute',
