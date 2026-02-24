@@ -297,21 +297,23 @@ function Page() {
     }
   };
 
-  const handleAddPhoto = async (closeAfterSuccess = false) => {
+  const handleAddPhoto = async () => {
     trackPhotoAddClick(selectedPlacement, currentPhotos.length);
     if (currentPhotos.length >= 3) {
       setPhotoError('최대 3장까지 추가할 수 있어요.');
       return;
     }
-    if (closeAfterSuccess) {
-      // Give immediate UI feedback when pressed from start modal.
-      setShowStartModal(false);
-      setStartModalDismissed(true);
-    }
     const dataUrl = await pickPhoto();
     if (dataUrl) {
       addPhoto(dataUrl);
     }
+  };
+
+  const handleAddPhotoFromStartModal = async () => {
+    // Close first for snappy feedback in the first-time flow only.
+    setShowStartModal(false);
+    setStartModalDismissed(true);
+    await handleAddPhoto();
   };
 
   const handleReplacePhoto = async () => {
@@ -508,7 +510,9 @@ function Page() {
               styles.canvasAddButton,
               (loadingPhoto || currentPhotos.length >= 3) && styles.canvasAddButtonDisabled,
             ]}
-            onPress={() => handleAddPhoto(false)}
+            onPress={() => {
+              void handleAddPhoto();
+            }}
             disabled={loadingPhoto || currentPhotos.length >= 3}
           >
             <Text style={styles.canvasAddButtonPlus}>＋</Text>
@@ -599,7 +603,9 @@ function Page() {
                       />
                       <SecondaryButton
                         label="사진 추가"
-                        onPress={handleAddPhoto}
+                        onPress={() => {
+                          void handleAddPhoto();
+                        }}
                         disabled={loadingPhoto || currentPhotos.length >= 3}
                         style={styles.photoActionBtn}
                       />
@@ -643,7 +649,9 @@ function Page() {
                     </Text>
                     <SecondaryButton
                       label="사진 추가하기"
-                      onPress={() => handleAddPhoto(false)}
+                      onPress={() => {
+                        void handleAddPhoto();
+                      }}
                       disabled={loadingPhoto}
                     />
                     {loadingPhoto && (
@@ -1023,7 +1031,7 @@ function Page() {
               label="사진 추가하기"
               onPress={() => {
                 trackClick('editor_start_modal_upload_click');
-                void handleAddPhoto(true);
+                void handleAddPhotoFromStartModal();
               }}
               style={styles.startModalPrimary}
             />
