@@ -3,7 +3,7 @@ import React from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Screen, theme } from '../components/ui';
 
-const NAVY_DEEP = '#FFF8F1';
+const NAVY_DEEP = '#F3F4F8';
 const NAVY_PANEL = '#FFFFFF';
 
 export const Route = createRoute('/privacy', {
@@ -175,7 +175,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 20,
     fontWeight: '800',
-    color: '#2E231B',
+    color: '#1A1F2E',
   },
   headerBack: {
     borderRadius: 999,
@@ -187,7 +187,7 @@ const styles = StyleSheet.create({
   },
   headerBackText: {
     fontSize: 12,
-    color: '#776556',
+    color: '#5E667A',
     fontWeight: '700',
   },
   content: {
@@ -202,36 +202,36 @@ const styles = StyleSheet.create({
   intro: {
     fontSize: 13,
     lineHeight: 22,
-    color: '#776556',
+    color: '#5E667A',
     marginBottom: theme.spacing.lg,
     padding: theme.spacing.md,
     backgroundColor: 'rgba(255,244,232,0.92)',
     borderRadius: theme.radius.sm,
     borderLeftWidth: 4,
-    borderLeftColor: '#FF6A00',
+    borderLeftColor: '#3182F6',
   },
   sectionTitle: {
     fontSize: 16,
     lineHeight: 24,
     fontWeight: '700',
-    color: '#2E231B',
+    color: '#1A1F2E',
     marginTop: theme.spacing.lg,
     marginBottom: theme.spacing.sm,
   },
   paragraph: {
     fontSize: 13,
     lineHeight: 22,
-    color: '#776556',
+    color: '#5E667A',
     marginBottom: theme.spacing.md,
   },
   bold: {
     fontWeight: '600',
-    color: '#2E231B',
+    color: '#1A1F2E',
   },
   footer: {
     fontSize: 12,
     lineHeight: 18,
-    color: '#9D826E',
+    color: '#8A93A8',
     marginTop: theme.spacing.xl,
     textAlign: 'center',
   },

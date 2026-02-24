@@ -13,9 +13,9 @@ import { useCatalog } from '../context/catalog';
 import { resolveColorValue } from '../data/colorMap';
 import { trackClick, trackScreenView } from '../utils/analytics';
 
-const ORANGE_RED = '#FF6A00';
-const NAVY_DEEP = '#FFF8F1';
-const NAVY_MID = '#FFF2E5';
+const ORANGE_RED = '#3182F6';
+const NAVY_DEEP = '#F3F4F8';
+const NAVY_MID = '#EEF3FF';
 const NAVY_PANEL = '#FFFFFF';
 
 export const Route = createRoute('/products', {
@@ -186,7 +186,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 20,
     fontWeight: '800',
-    color: '#2E231B',
+    color: '#1A1F2E',
   },
   headerBack: {
     borderRadius: 999,
@@ -198,12 +198,12 @@ const styles = StyleSheet.create({
   },
   headerBackText: {
     fontSize: 12,
-    color: '#776556',
+    color: '#5E667A',
     fontWeight: '700',
   },
   subtitle: {
     ...theme.typography.body,
-    color: '#776556',
+    color: '#5E667A',
     marginBottom: theme.spacing.lg,
   },
   list: {},
@@ -212,7 +212,7 @@ const styles = StyleSheet.create({
   },
   categoryTitle: {
     ...theme.typography.subheading,
-    color: '#2E231B',
+    color: '#1A1F2E',
     marginBottom: theme.spacing.sm,
   },
   cardPressable: {
@@ -249,7 +249,7 @@ const styles = StyleSheet.create({
   colorTitle: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#2E231B',
+    color: '#1A1F2E',
     lineHeight: 20,
     marginBottom: theme.spacing.sm,
   },
@@ -267,11 +267,11 @@ const styles = StyleSheet.create({
   },
   cardTitle: {
     ...theme.typography.subheading,
-    color: '#2E231B',
+    color: '#1A1F2E',
     marginBottom: theme.spacing.xs,
   },
   cardMeta: {
     ...theme.typography.caption,
-    color: '#776556',
+    color: '#5E667A',
   },
 });

@@ -27,9 +27,9 @@ import {
   trackScreenView,
 } from '../utils/analytics';
 
-const ORANGE_RED = '#FF6A00';
-const NAVY_DEEP = '#FFF8F1';
-const NAVY_MID = '#FFF2E5';
+const ORANGE_RED = '#3182F6';
+const NAVY_DEEP = '#F3F4F8';
+const NAVY_MID = '#EEF3FF';
 const NAVY_PANEL = '#FFFFFF';
 
 export const Route = createRoute('/order', {
@@ -714,7 +714,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 20,
     fontWeight: '800',
-    color: '#2E231B',
+    color: '#1A1F2E',
   },
   headerBack: {
     borderRadius: 999,
@@ -726,7 +726,7 @@ const styles = StyleSheet.create({
   },
   headerBackText: {
     fontSize: 12,
-    color: '#776556',
+    color: '#5E667A',
     fontWeight: '700',
   },
   summaryCard: {
@@ -734,7 +734,7 @@ const styles = StyleSheet.create({
     backgroundColor: NAVY_PANEL,
     borderColor: 'rgba(240,223,207,0.92)',
     borderWidth: 1,
-    shadowColor: '#5F320E',
+    shadowColor: '#1F3D7A',
     shadowOpacity: 0.24,
     shadowRadius: 14,
     shadowOffset: { width: 0, height: 8 },
@@ -749,7 +749,7 @@ const styles = StyleSheet.create({
   summaryTitle: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#2E231B',
+    color: '#1A1F2E',
   },
   editButton: {
     fontSize: 14,
@@ -758,7 +758,7 @@ const styles = StyleSheet.create({
   },
   summaryMeta: {
     fontSize: 12,
-    color: '#776556',
+    color: '#5E667A',
   },
   editSection: {
     marginTop: theme.spacing.md,
@@ -769,7 +769,7 @@ const styles = StyleSheet.create({
   editSectionTitle: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#2E231B',
+    color: '#1A1F2E',
     marginTop: theme.spacing.md,
     marginBottom: theme.spacing.sm,
   },
@@ -792,7 +792,7 @@ const styles = StyleSheet.create({
   orderLineSize: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#2E231B',
+    color: '#1A1F2E',
   },
   quantityControl: {
     flexDirection: 'row',
@@ -817,7 +817,7 @@ const styles = StyleSheet.create({
   quantityValue: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#2E231B',
+    color: '#1A1F2E',
     minWidth: 32,
     textAlign: 'center',
   },
@@ -844,7 +844,7 @@ const styles = StyleSheet.create({
   quickFaqTitle: {
     fontSize: 14,
     fontWeight: '700',
-    color: '#2E231B',
+    color: '#1A1F2E',
     marginBottom: theme.spacing.sm,
   },
   quickFaqRow: {
@@ -866,19 +866,19 @@ const styles = StyleSheet.create({
   quickFaqQuestion: {
     fontSize: 12,
     lineHeight: 18,
-    color: '#776556',
+    color: '#5E667A',
     fontWeight: '600',
   },
   quickFaqAnswer: {
     fontSize: 12,
     lineHeight: 18,
-    color: '#776556',
+    color: '#5E667A',
     marginTop: 2,
   },
   sectionTitle: {
     fontSize: 14,
     fontWeight: '700',
-    color: '#2E231B',
+    color: '#1A1F2E',
     marginBottom: theme.spacing.sm,
     marginTop: theme.spacing.sm,
   },
@@ -889,7 +889,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: theme.spacing.md,
     paddingVertical: theme.spacing.sm,
     fontSize: 13,
-    color: '#2E231B',
+    color: '#1A1F2E',
     backgroundColor: NAVY_MID,
     marginBottom: theme.spacing.sm,
   },
@@ -923,7 +923,7 @@ const styles = StyleSheet.create({
   },
   noticeText: {
     fontSize: 12,
-    color: '#776556',
+    color: '#5E667A',
     marginBottom: theme.spacing.sm,
   },
   addressSearchButton: {
@@ -940,13 +940,13 @@ const styles = StyleSheet.create({
   loginTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#2E231B',
+    color: '#1A1F2E',
     marginBottom: theme.spacing.sm,
     textAlign: 'center',
   },
   loginDesc: {
     fontSize: 14,
-    color: '#776556',
+    color: '#5E667A',
     lineHeight: 20,
     textAlign: 'center',
   },

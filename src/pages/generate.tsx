@@ -33,9 +33,9 @@ import {
   trackScreenView,
 } from '../utils/analytics';
 
-const ORANGE_RED = '#FF6A00';
-const NAVY_DEEP = '#FFF8F1';
-const NAVY_MID = '#FFF2E5';
+const ORANGE_RED = '#3182F6';
+const NAVY_DEEP = '#F3F4F8';
+const NAVY_MID = '#EEF3FF';
 const NAVY_PANEL = '#FFFFFF';
 
 export const Route = createRoute('/generate', {
@@ -516,7 +516,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 20,
     fontWeight: '800',
-    color: '#2E231B',
+    color: '#1A1F2E',
   },
   headerBack: {
     borderRadius: 999,
@@ -528,12 +528,12 @@ const styles = StyleSheet.create({
   },
   headerBackText: {
     fontSize: 12,
-    color: '#776556',
+    color: '#5E667A',
     fontWeight: '700',
   },
   title: {
     ...theme.typography.heading,
-    color: '#2E231B',
+    color: '#1A1F2E',
     marginBottom: theme.spacing.sm,
   },
   input: {
@@ -544,12 +544,12 @@ const styles = StyleSheet.create({
     padding: theme.spacing.md,
     backgroundColor: NAVY_MID,
     fontSize: 14,
-    color: '#2E231B',
+    color: '#1A1F2E',
   },
   helperText: {
     fontSize: 12,
     lineHeight: 18,
-    color: '#9D826E',
+    color: '#8A93A8',
     marginTop: theme.spacing.sm,
     marginBottom: theme.spacing.lg,
   },
@@ -574,7 +574,7 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     ...theme.typography.subheading,
-    color: '#2E231B',
+    color: '#1A1F2E',
     marginBottom: theme.spacing.sm,
   },
   chipRow: {
@@ -616,7 +616,7 @@ const styles = StyleSheet.create({
   resultPlaceholder: {
     fontSize: 12,
     lineHeight: 18,
-    color: '#9D826E',
+    color: '#8A93A8',
     textAlign: 'center',
     paddingHorizontal: theme.spacing.md,
   },
@@ -664,14 +664,14 @@ const styles = StyleSheet.create({
   loadingText: {
     fontSize: 14,
     lineHeight: 20,
-    color: '#2E231B',
+    color: '#1A1F2E',
     marginLeft: theme.spacing.sm,
     fontWeight: '600',
   },
   etaText: {
     fontSize: 12,
     lineHeight: 18,
-    color: '#776556',
+    color: '#5E667A',
     marginTop: theme.spacing.xs,
     marginLeft: 28,
   },

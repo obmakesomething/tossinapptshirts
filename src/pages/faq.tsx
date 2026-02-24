@@ -10,8 +10,8 @@ import {
 import { Card, PageHeader, Screen, theme } from '../components/ui';
 import { faqCategories, faqItems } from '../data/faq';
 
-const ORANGE_RED = '#FF6A00';
-const NAVY_DEEP = '#FFF8F1';
+const ORANGE_RED = '#3182F6';
+const NAVY_DEEP = '#F3F4F8';
 const NAVY_PANEL = '#FFFFFF';
 
 export const Route = createRoute('/faq', {
@@ -178,7 +178,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 20,
     fontWeight: '800',
-    color: '#2E231B',
+    color: '#1A1F2E',
   },
   headerBack: {
     borderRadius: 999,
@@ -190,12 +190,12 @@ const styles = StyleSheet.create({
   },
   headerBackText: {
     fontSize: 12,
-    color: '#776556',
+    color: '#5E667A',
     fontWeight: '700',
   },
   subtitle: {
     ...theme.typography.body,
-    color: '#776556',
+    color: '#5E667A',
     marginBottom: theme.spacing.md,
   },
   categoryScroll: {
@@ -222,11 +222,11 @@ const styles = StyleSheet.create({
   categoryText: {
     fontSize: 13,
     lineHeight: 18,
-    color: '#776556',
+    color: '#5E667A',
     fontWeight: '500',
   },
   categoryTextActive: {
-    color: '#FF6A00',
+    color: '#3182F6',
   },
   scrollContent: {
     paddingBottom: theme.spacing.xl,
@@ -249,11 +249,11 @@ const styles = StyleSheet.create({
     fontSize: 16,
     lineHeight: 24,
     fontWeight: '700',
-    color: '#2E231B',
+    color: '#1A1F2E',
   },
   categoryCount: {
     fontSize: 12,
-    color: '#776556',
+    color: '#5E667A',
     backgroundColor: 'rgba(255,244,232,0.92)',
     paddingHorizontal: theme.spacing.sm,
     paddingVertical: 2,
@@ -279,13 +279,13 @@ const styles = StyleSheet.create({
     flex: 1,
     ...theme.typography.body,
     fontWeight: '600',
-    color: '#2E231B',
+    color: '#1A1F2E',
   },
   expandIcon: {
     fontSize: 20,
     lineHeight: 22,
     fontWeight: '300',
-    color: '#9D826E',
+    color: '#8A93A8',
     marginLeft: theme.spacing.sm,
   },
   answerRow: {
@@ -299,13 +299,13 @@ const styles = StyleSheet.create({
   aLabel: {
     ...theme.typography.body,
     fontWeight: '700',
-    color: '#776556',
+    color: '#5E667A',
     marginRight: theme.spacing.sm,
   },
   answerText: {
     flex: 1,
     ...theme.typography.body,
-    color: '#776556',
+    color: '#5E667A',
   },
   bottomPadding: {
     height: 40,

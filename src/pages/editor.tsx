@@ -41,8 +41,8 @@ import {
   trackScreenView,
 } from '../utils/analytics';
 
-const ORANGE_RED = '#FF6A00';
-const NAVY_MID = '#FFF2E5';
+const ORANGE_RED = '#3182F6';
+const NAVY_MID = '#EEF3FF';
 const NAVY_PANEL = '#FFFFFF';
 
 export const Route = createRoute('/editor', {
@@ -1067,7 +1067,7 @@ const styles = StyleSheet.create({
     height: 34,
     borderRadius: 11,
     borderWidth: 1,
-    borderColor: '#ECDCCA',
+    borderColor: '#DCE5F2',
     backgroundColor: '#FFF9F2',
     alignItems: 'center',
     justifyContent: 'center',
@@ -1114,7 +1114,7 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 14,
     fontWeight: '600',
-    color: '#2E231B',
+    color: '#1A1F2E',
   },
   compactChange: {
     paddingHorizontal: theme.spacing.md,
@@ -1136,12 +1136,12 @@ const styles = StyleSheet.create({
     marginRight: theme.spacing.xs,
     backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: '#ECDCCA',
+    borderColor: '#DCE5F2',
   },
   compactPreviewText: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#776556',
+    color: '#5E667A',
   },
 
   /* ── Placement Segment ── */
@@ -1166,10 +1166,10 @@ const styles = StyleSheet.create({
   segmentButtonText: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#776556',
+    color: '#5E667A',
   },
   segmentButtonTextActive: {
-    color: '#2E231B',
+    color: '#1A1F2E',
   },
 
   /* ── Canvas ── */
@@ -1202,7 +1202,7 @@ const styles = StyleSheet.create({
   activeLayerBadgeText: {
     fontSize: 11,
     lineHeight: 16,
-    color: '#776556',
+    color: '#5E667A',
     fontWeight: '700',
   },
   canvasFrame: {
@@ -1253,10 +1253,10 @@ const styles = StyleSheet.create({
   focusButtonText: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#776556',
+    color: '#5E667A',
   },
   focusButtonTextActive: {
-    color: '#2E231B',
+    color: '#1A1F2E',
   },
 
   /* ── Canvas Info ── */
@@ -1269,7 +1269,7 @@ const styles = StyleSheet.create({
   },
   canvasInfoText: {
     fontSize: 11,
-    color: '#9D826E',
+    color: '#8A93A8',
   },
   canvasInfoWarn: {
     fontSize: 11,
@@ -1305,7 +1305,7 @@ const styles = StyleSheet.create({
   dragHint: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#776556',
+    color: '#5E667A',
   },
   outOfBoundsInfo: {
     backgroundColor: theme.colors.surface,
@@ -1345,13 +1345,13 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     ...theme.typography.subheading,
-    color: '#2E231B',
+    color: '#1A1F2E',
     marginBottom: theme.spacing.sm,
   },
   sectionHint: {
     fontSize: 13,
     lineHeight: 20,
-    color: '#776556',
+    color: '#5E667A',
     marginBottom: theme.spacing.md,
   },
 
@@ -1359,7 +1359,7 @@ const styles = StyleSheet.create({
   transformHint: {
     fontSize: 13,
     lineHeight: 20,
-    color: '#776556',
+    color: '#5E667A',
     marginBottom: theme.spacing.sm,
   },
   sliderRow: {
@@ -1368,7 +1368,7 @@ const styles = StyleSheet.create({
   sliderLabel: {
     fontSize: 12,
     lineHeight: 18,
-    color: '#9D826E',
+    color: '#8A93A8',
     marginBottom: theme.spacing.sm,
   },
   outOfBoundsWarning: {
@@ -1405,7 +1405,7 @@ const styles = StyleSheet.create({
   },
   sizeHint: {
     ...theme.typography.caption,
-    color: '#9D826E',
+    color: '#8A93A8',
     marginTop: theme.spacing.xs,
   },
   quantityRow: {
@@ -1416,7 +1416,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     lineHeight: 22,
     fontWeight: '700',
-    color: '#2E231B',
+    color: '#1A1F2E',
     marginHorizontal: theme.spacing.lg,
   },
   addLineButton: {
@@ -1433,7 +1433,7 @@ const styles = StyleSheet.create({
   confirmText: {
     fontSize: 14,
     lineHeight: 20,
-    color: '#2E231B',
+    color: '#1A1F2E',
     fontWeight: '600',
   },
   removeText: {
@@ -1449,7 +1449,7 @@ const styles = StyleSheet.create({
   },
   priceTitle: {
     ...theme.typography.subheading,
-    color: '#2E231B',
+    color: '#1A1F2E',
     marginBottom: theme.spacing.xs,
   },
   priceValue: {
@@ -1462,12 +1462,12 @@ const styles = StyleSheet.create({
   priceOption: {
     fontSize: 12,
     lineHeight: 18,
-    color: '#776556',
+    color: '#5E667A',
   },
   priceNote: {
     fontSize: 12,
     lineHeight: 18,
-    color: '#776556',
+    color: '#5E667A',
     marginTop: theme.spacing.xs,
   },
 
@@ -1479,7 +1479,7 @@ const styles = StyleSheet.create({
   fontLabel: {
     fontSize: 12,
     lineHeight: 18,
-    color: '#9D826E',
+    color: '#8A93A8',
     marginBottom: theme.spacing.sm,
   },
   fontButtons: {
@@ -1501,10 +1501,10 @@ const styles = StyleSheet.create({
   fontButtonText: {
     fontSize: 12,
     lineHeight: 18,
-    color: '#776556',
+    color: '#5E667A',
   },
   fontButtonTextSelected: {
-    color: '#FF6A00',
+    color: '#3182F6',
   },
 
   /* ── Photo Management ── */
@@ -1584,13 +1584,13 @@ const styles = StyleSheet.create({
   photoHint: {
     fontSize: 11,
     lineHeight: 16,
-    color: '#9D826E',
+    color: '#8A93A8',
     marginTop: theme.spacing.xs,
   },
   photoSectionHint: {
     fontSize: 11,
     lineHeight: 18,
-    color: '#9D826E',
+    color: '#8A93A8',
     marginBottom: theme.spacing.xs,
   },
   photoColorRow: {
@@ -1607,7 +1607,7 @@ const styles = StyleSheet.create({
   photoLoadingText: {
     fontSize: 12,
     lineHeight: 18,
-    color: '#776556',
+    color: '#5E667A',
     marginLeft: theme.spacing.sm,
   },
 
@@ -1667,7 +1667,7 @@ const styles = StyleSheet.create({
   },
   startModalCloseText: {
     fontSize: 12,
-    color: '#776556',
+    color: '#5E667A',
     fontWeight: '600',
   },
 });

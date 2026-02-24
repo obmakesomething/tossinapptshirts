@@ -30,9 +30,9 @@ import {
   trackScreenView,
 } from '../utils/analytics';
 
-const ORANGE_RED = '#FF6A00';
-const NAVY_DEEP = '#FFF8F1';
-const NAVY_MID = '#FFF2E5';
+const ORANGE_RED = '#3182F6';
+const NAVY_DEEP = '#F3F4F8';
+const NAVY_MID = '#EEF3FF';
 const NAVY_PANEL = '#FFFFFF';
 
 export const Route = createRoute('/upload', {
@@ -515,7 +515,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 20,
     fontWeight: '800',
-    color: '#2E231B',
+    color: '#1A1F2E',
   },
   headerBack: {
     borderRadius: 999,
@@ -527,23 +527,23 @@ const styles = StyleSheet.create({
   },
   headerBackText: {
     fontSize: 12,
-    color: '#776556',
+    color: '#5E667A',
     fontWeight: '700',
   },
   title: {
     ...theme.typography.heading,
-    color: '#2E231B',
+    color: '#1A1F2E',
     marginBottom: theme.spacing.xs,
   },
   subtitle: {
     ...theme.typography.body,
-    color: '#776556',
+    color: '#5E667A',
     marginBottom: theme.spacing.xs,
   },
   cropGuide: {
     fontSize: 12,
     lineHeight: 18,
-    color: '#776556',
+    color: '#5E667A',
     backgroundColor: 'rgba(255,244,232,0.92)',
     borderWidth: 1,
     borderColor: 'rgba(240,223,207,0.92)',
@@ -557,7 +557,7 @@ const styles = StyleSheet.create({
     backgroundColor: NAVY_PANEL,
     borderColor: 'rgba(240,223,207,0.92)',
     borderWidth: 1,
-    shadowColor: '#5F320E',
+    shadowColor: '#1F3D7A',
     shadowOpacity: 0.28,
     shadowRadius: 16,
     shadowOffset: { width: 0, height: 10 },
@@ -593,7 +593,7 @@ const styles = StyleSheet.create({
   previewText: {
     fontSize: 12,
     lineHeight: 18,
-    color: '#776556',
+    color: '#5E667A',
   },
   loadingRow: {
     flexDirection: 'row',
@@ -603,7 +603,7 @@ const styles = StyleSheet.create({
   loadingText: {
     fontSize: 12,
     lineHeight: 18,
-    color: '#776556',
+    color: '#5E667A',
     marginLeft: theme.spacing.sm,
   },
   errorText: {
@@ -696,7 +696,7 @@ const styles = StyleSheet.create({
   },
   modalCancelButton: {
     marginTop: theme.spacing.sm,
-    backgroundColor: '#FFF2E5',
+    backgroundColor: '#EEF3FF',
   },
   actionRow: {
     marginTop: theme.spacing.md,
@@ -712,7 +712,7 @@ const styles = StyleSheet.create({
   },
   quickFaqTitle: {
     ...theme.typography.subheading,
-    color: '#2E231B',
+    color: '#1A1F2E',
     marginBottom: theme.spacing.sm,
   },
   quickFaqRow: {
@@ -734,13 +734,13 @@ const styles = StyleSheet.create({
   quickFaqQuestion: {
     fontSize: 12,
     lineHeight: 18,
-    color: '#2E231B',
+    color: '#1A1F2E',
     fontWeight: '600',
   },
   quickFaqAnswer: {
     fontSize: 12,
     lineHeight: 18,
-    color: '#776556',
+    color: '#5E667A',
     marginTop: 2,
   },
   nextButton: {

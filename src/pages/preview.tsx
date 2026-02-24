@@ -18,8 +18,8 @@ import { buildTemplate } from '../data/mockupTemplates';
 import { calcPricing } from '../data/pricing';
 import { formatPrice } from '../utils/format';
 
-const ORANGE_RED = '#FF6A00';
-const NAVY_DEEP = '#FFF8F1';
+const ORANGE_RED = '#3182F6';
+const NAVY_DEEP = '#F3F4F8';
 const NAVY_PANEL = '#FFFFFF';
 
 export const Route = createRoute('/preview', {
@@ -220,7 +220,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 20,
     fontWeight: '800',
-    color: '#2E231B',
+    color: '#1A1F2E',
   },
   headerBack: {
     borderRadius: 999,
@@ -232,16 +232,16 @@ const styles = StyleSheet.create({
   },
   headerBackText: {
     fontSize: 12,
-    color: '#776556',
+    color: '#5E667A',
     fontWeight: '700',
   },
   title: {
     ...theme.typography.heading,
-    color: '#2E231B',
+    color: '#1A1F2E',
   },
   subtitle: {
     ...theme.typography.body,
-    color: '#776556',
+    color: '#5E667A',
     marginTop: theme.spacing.xs,
     marginBottom: theme.spacing.md,
   },
@@ -257,7 +257,7 @@ const styles = StyleSheet.create({
   },
   mockupLabel: {
     fontSize: 13,
-    color: '#776556',
+    color: '#5E667A',
     lineHeight: 20,
     marginTop: theme.spacing.sm,
   },
@@ -266,7 +266,7 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     ...theme.typography.subheading,
-    color: '#2E231B',
+    color: '#1A1F2E',
     marginBottom: theme.spacing.sm,
   },
   swatchRow: {
@@ -284,7 +284,7 @@ const styles = StyleSheet.create({
   priceLabel: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#776556',
+    color: '#5E667A',
     marginBottom: theme.spacing.xs,
   },
   priceAmount: {
@@ -298,7 +298,7 @@ const styles = StyleSheet.create({
   },
   priceDetailText: {
     fontSize: 13,
-    color: '#776556',
+    color: '#5E667A',
   },
   infoCard: {
     marginTop: theme.spacing.md,
@@ -309,13 +309,13 @@ const styles = StyleSheet.create({
   infoTitle: {
     fontSize: 15,
     fontWeight: '700',
-    color: '#2E231B',
+    color: '#1A1F2E',
     lineHeight: 22,
     marginBottom: theme.spacing.xs,
   },
   infoDesc: {
     fontSize: 13,
-    color: '#776556',
+    color: '#5E667A',
     lineHeight: 20,
   },
   primaryActionRow: {

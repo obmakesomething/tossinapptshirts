@@ -16,8 +16,8 @@ import { type SavedDesign, useCatalog } from '../context/catalog';
 import { catalogProducts } from '../data/catalog';
 import { buildTemplate } from '../data/mockupTemplates';
 
-const ORANGE_RED = '#FF6A00';
-const NAVY_DEEP = '#FFF8F1';
+const ORANGE_RED = '#3182F6';
+const NAVY_DEEP = '#F3F4F8';
 const NAVY_PANEL = '#FFFFFF';
 
 export const Route = createRoute('/designs', {
@@ -172,16 +172,16 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 20,
     fontWeight: '800',
-    color: '#2E231B',
+    color: '#1A1F2E',
   },
   headerBackText: {
     fontSize: 12,
-    color: '#776556',
+    color: '#5E667A',
     fontWeight: '700',
   },
   title: {
     ...theme.typography.body,
-    color: '#776556',
+    color: '#5E667A',
     marginBottom: theme.spacing.lg,
   },
   list: {
@@ -201,13 +201,13 @@ const styles = StyleSheet.create({
   cardTitle: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#2E231B',
+    color: '#1A1F2E',
     lineHeight: 22,
     marginBottom: theme.spacing.xs,
   },
   cardMeta: {
     fontSize: 12,
-    color: '#776556',
+    color: '#5E667A',
     lineHeight: 18,
     marginBottom: theme.spacing.sm,
   },
@@ -228,12 +228,12 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     ...theme.typography.heading,
-    color: '#2E231B',
+    color: '#1A1F2E',
     marginBottom: theme.spacing.xs,
   },
   emptySubtext: {
     ...theme.typography.body,
-    color: '#776556',
+    color: '#5E667A',
   },
   newButton: {
     backgroundColor: ORANGE_RED,

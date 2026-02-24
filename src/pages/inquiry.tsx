@@ -11,10 +11,10 @@ import {
 import { Card, PrimaryButton, Screen, theme } from '../components/ui';
 import { API_BASE_URL } from '../config';
 
-const ORANGE_RED = '#FF6A00';
-const NAVY_DEEP = '#FFF8F1';
+const ORANGE_RED = '#3182F6';
+const NAVY_DEEP = '#F3F4F8';
 const NAVY_PANEL = '#FFFFFF';
-const NAVY_MID = '#FFF2E5';
+const NAVY_MID = '#EEF3FF';
 
 export const Route = createRoute('/inquiry' as never, {
   component: Page,
@@ -152,7 +152,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 20,
     fontWeight: '800',
-    color: '#2E231B',
+    color: '#1A1F2E',
   },
   headerBack: {
     borderRadius: 999,
@@ -164,13 +164,13 @@ const styles = StyleSheet.create({
   },
   headerBackText: {
     fontSize: 12,
-    color: '#776556',
+    color: '#5E667A',
     fontWeight: '700',
   },
   subtitle: {
     fontSize: 13,
     lineHeight: 20,
-    color: '#776556',
+    color: '#5E667A',
     marginBottom: theme.spacing.lg,
   },
   formCard: {
@@ -183,7 +183,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 20,
     fontWeight: '600',
-    color: '#2E231B',
+    color: '#1A1F2E',
     marginBottom: theme.spacing.xs,
   },
   input: {
@@ -194,7 +194,7 @@ const styles = StyleSheet.create({
     paddingVertical: theme.spacing.sm,
     fontSize: 14,
     lineHeight: 20,
-    color: '#2E231B',
+    color: '#1A1F2E',
     backgroundColor: NAVY_MID,
   },
   textArea: {
@@ -204,7 +204,7 @@ const styles = StyleSheet.create({
   hint: {
     fontSize: 12,
     lineHeight: 18,
-    color: '#9D826E',
+    color: '#8A93A8',
     marginTop: theme.spacing.md,
   },
   errorText: {
@@ -225,7 +225,7 @@ const styles = StyleSheet.create({
   loadingText: {
     fontSize: 12,
     lineHeight: 18,
-    color: '#776556',
+    color: '#5E667A',
     marginLeft: theme.spacing.sm,
   },
 });
