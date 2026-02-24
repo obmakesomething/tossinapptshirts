@@ -19,6 +19,126 @@ const getExtensionFromType = (contentType) => {
 };
 
 const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
+const toFiniteNumber = (value, fallback = 0) => {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : fallback;
+};
+const toPositiveNumber = (value, fallback = 1) => {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+};
+const formatSvgNumber = (value) => Number(toFiniteNumber(value, 0).toFixed(2));
+
+function normalizeLayerTransform(transform, { defaultScale = 1 } = {}) {
+  const scale = toPositiveNumber(transform?.scale, defaultScale);
+  const offsetX = clamp(toFiniteNumber(transform?.offsetX, 0), -1, 1);
+  const offsetY = clamp(toFiniteNumber(transform?.offsetY, 0), -1, 1);
+  const rotation = toFiniteNumber(transform?.rotation, 0);
+  return {
+    scale,
+    offsetX,
+    offsetY,
+    rotation,
+  };
+}
+
+function computeLayerPlacement({ canvasWidth, canvasHeight, transform }) {
+  const width = Math.max(1, Math.round(toPositiveNumber(canvasWidth, 1)));
+  const height = Math.max(1, Math.round(toPositiveNumber(canvasHeight, 1)));
+  const normalized = normalizeLayerTransform(transform, { defaultScale: 1 });
+  const layerWidth = Math.max(1, Math.round(width * normalized.scale));
+  const layerHeight = Math.max(1, Math.round(height * normalized.scale));
+  const centerX = width / 2 + normalized.offsetX * width;
+  const centerY = height / 2 + normalized.offsetY * height;
+
+  return {
+    ...normalized,
+    width: layerWidth,
+    height: layerHeight,
+    centerX,
+    centerY,
+    left: Math.round(centerX - layerWidth / 2),
+    top: Math.round(centerY - layerHeight / 2),
+  };
+}
+
+function buildTextLayerSvg({ width, height, textLayer, textTransform }) {
+  if (!textLayer?.text) return '';
+
+  const safeWidth = Math.max(1, Math.round(toPositiveNumber(width, 1)));
+  const safeHeight = Math.max(1, Math.round(toPositiveNumber(height, 1)));
+  const transform = normalizeLayerTransform(textTransform, { defaultScale: 1 });
+  const centerX = safeWidth / 2 + transform.offsetX * safeWidth;
+  const centerY = safeHeight / 2 + transform.offsetY * safeHeight;
+
+  const baseFontSize = toPositiveNumber(textLayer.fontSize, 24);
+  const fontSize = Math.max(1, Math.round(baseFontSize * (safeWidth / 400)));
+  const fontWeight = textLayer.fontWeight || 'bold';
+  const color = textLayer.color || '#000000';
+
+  const cx = formatSvgNumber(centerX);
+  const cy = formatSvgNumber(centerY);
+  const rotation = formatSvgNumber(transform.rotation);
+  const scale = formatSvgNumber(transform.scale);
+
+  return `<svg width="${safeWidth}" height="${safeHeight}" xmlns="http://www.w3.org/2000/svg">
+    <g transform="translate(${cx} ${cy}) rotate(${rotation}) scale(${scale}) translate(${-cx} ${-cy})">
+      <text x="${cx}" y="${cy}" text-anchor="middle" dominant-baseline="middle"
+        font-size="${fontSize}" font-weight="${fontWeight}" fill="${escapeXml(color)}"
+        font-family="sans-serif">${escapeXml(textLayer.text)}</text>
+    </g>
+  </svg>`;
+}
+
+async function composeImageLayer({
+  sourcePath,
+  outputPath,
+  targetWidth,
+  targetHeight,
+  imageTransform,
+}) {
+  const canvasWidth = Math.max(1, Math.round(toPositiveNumber(targetWidth, 1)));
+  const canvasHeight = Math.max(1, Math.round(toPositiveNumber(targetHeight, 1)));
+  const placement = computeLayerPlacement({
+    canvasWidth,
+    canvasHeight,
+    transform: imageTransform,
+  });
+
+  const resizedBuffer = await sharp(sourcePath)
+    .resize({
+      width: placement.width,
+      height: placement.height,
+      fit: 'contain',
+      background: { r: 0, g: 0, b: 0, alpha: 0 },
+    })
+    .png()
+    .toBuffer();
+
+  const rotated = await sharp(resizedBuffer)
+    .rotate(placement.rotation, { background: { r: 0, g: 0, b: 0, alpha: 0 } })
+    .png()
+    .toBuffer({ resolveWithObject: true });
+
+  const rotatedWidth = rotated.info.width || placement.width;
+  const rotatedHeight = rotated.info.height || placement.height;
+  const left = Math.round(placement.centerX - rotatedWidth / 2);
+  const top = Math.round(placement.centerY - rotatedHeight / 2);
+
+  await sharp({
+    create: {
+      width: canvasWidth,
+      height: canvasHeight,
+      channels: 4,
+      background: { r: 0, g: 0, b: 0, alpha: 0 },
+    },
+  })
+    .composite([{ input: rotated.data, top, left }])
+    .png()
+    .toFile(outputPath);
+
+  return outputPath;
+}
 
 async function submitImagenUpscale({
   masterPath,
@@ -197,27 +317,33 @@ function escapeXml(str) {
     .replace(/'/g, '&apos;');
 }
 
-async function compositeTextLayer(imagePath, textLayer, outputPath) {
-  if (!textLayer || !textLayer.text) return imagePath;
+async function compositeTextLayer({
+  imagePath,
+  textLayer,
+  textTransform,
+  outputPath,
+}) {
+  if (!textLayer?.text) return imagePath;
 
   const metadata = await sharp(imagePath).metadata();
-  const w = metadata.width;
-  const h = metadata.height;
+  const w = Math.max(1, metadata.width || 1);
+  const h = Math.max(1, metadata.height || 1);
 
-  // Scale font size proportionally to image width
-  const baseFontSize = textLayer.fontSize || 24;
-  const fontSize = Math.round(baseFontSize * (w / 400));
-  const fontWeight = textLayer.fontWeight || 'bold';
-  const color = textLayer.color || '#000000';
-
-  // Position text at bottom portion of the design area (85% from top)
-  const textY = Math.round(h * 0.85);
-
-  const svg = `<svg width="${w}" height="${h}" xmlns="http://www.w3.org/2000/svg">
+  const hasTransform = Boolean(textTransform && typeof textTransform === 'object');
+  const svg = hasTransform
+    ? buildTextLayerSvg({ width: w, height: h, textLayer, textTransform })
+    : (() => {
+        const baseFontSize = toPositiveNumber(textLayer.fontSize, 24);
+        const fontSize = Math.round(baseFontSize * (w / 400));
+        const fontWeight = textLayer.fontWeight || 'bold';
+        const color = textLayer.color || '#000000';
+        const textY = Math.round(h * 0.85);
+        return `<svg width="${w}" height="${h}" xmlns="http://www.w3.org/2000/svg">
     <text x="50%" y="${textY}" text-anchor="middle"
       font-size="${fontSize}" font-weight="${fontWeight}" fill="${escapeXml(color)}"
       font-family="sans-serif">${escapeXml(textLayer.text)}</text>
   </svg>`;
+      })();
 
   await sharp(imagePath)
     .composite([{ input: Buffer.from(svg), top: 0, left: 0 }])
@@ -238,6 +364,8 @@ async function runPrintPipeline(input) {
     output_dir,
     allow_warn_to_pass,
     text_layer,
+    text_transform,
+    image_transform,
   } = input;
 
   const baseOutput = {
@@ -319,15 +447,23 @@ async function runPrintPipeline(input) {
     // Save upscaled result
     await fsp.writeFile(upscaledRawPath, upscaleResult.buffer);
 
-    // Convert to PNG (already PNG from Imagen, but ensure format)
-    await sharp(upscaledRawPath)
-      .png()
-      .toFile(printReadyPath);
+    await composeImageLayer({
+      sourcePath: upscaledRawPath,
+      outputPath: printReadyPath,
+      targetWidth,
+      targetHeight,
+      imageTransform: image_transform,
+    });
 
     // Composite text layer onto upscaled image (if provided)
     if (text_layer && text_layer.text) {
       const compositedPath = path.join(workDir, 'composited.png');
-      await compositeTextLayer(printReadyPath, text_layer, compositedPath);
+      await compositeTextLayer({
+        imagePath: printReadyPath,
+        textLayer: text_layer,
+        textTransform: text_transform,
+        outputPath: compositedPath,
+      });
       // Replace print_ready with composited version
       await fsp.copyFile(compositedPath, printReadyPath);
       await fsp.unlink(compositedPath);
@@ -381,4 +517,8 @@ async function runPrintPipeline(input) {
 
 module.exports = {
   runPrintPipeline,
+  normalizeLayerTransform,
+  computeLayerPlacement,
+  buildTextLayerSvg,
+  composeImageLayer,
 };

@@ -47,6 +47,7 @@ function Page() {
     selectedPrint,
     designImageUri,
     imageTransform,
+    textTransform,
     textLayer,
     setSelectedColor,
     addOrderLine,
@@ -259,6 +260,7 @@ function Page() {
           targetHeightPx: targetSize.height,
           textLayer: textLayer.enabled ? textLayer : null,
           imageTransform,
+          textTransform,
         },
       };
 

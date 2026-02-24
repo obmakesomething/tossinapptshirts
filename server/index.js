@@ -1299,6 +1299,9 @@ app.post('/v1/print-files/process', strictLimiter, async (req, res) => {
       gcp_location: payload.gcp_location || process.env.GCP_LOCATION,
       output_dir: payload.output_dir || ORDER_OUTPUT_DIR,
       allow_warn_to_pass: false,
+      text_layer: payload.text_layer || null,
+      image_transform: payload.image_transform || null,
+      text_transform: payload.text_transform || null,
     });
     const persisted = await persistPipelineArtifacts({ orderId, pipelineResult: result });
     workDirToCleanup = derivePipelineWorkDir(result);
@@ -1412,6 +1415,7 @@ app.post('/v1/orders/submit', strictLimiter, async (req, res) => {
             allow_warn_to_pass: true, // Allow warnings to pass, only fail on errors
             text_layer: order.pipeline?.textLayer || order.items?.[0]?.text || null,
             image_transform: order.pipeline?.imageTransform || null,
+            text_transform: order.pipeline?.textTransform || null,
           });
           pipelineResult = await persistPipelineArtifacts({ orderId, pipelineResult });
 
@@ -2636,6 +2640,9 @@ app.post('/v1/payment/execute', strictLimiter, async (req, res) => {
                   gcp_location: process.env.GCP_LOCATION,
                   output_dir: ORDER_OUTPUT_DIR,
                   allow_warn_to_pass: true,
+                  text_layer: orderData.pipeline?.textLayer || orderData.items?.[0]?.text || null,
+                  image_transform: orderData.pipeline?.imageTransform || null,
+                  text_transform: orderData.pipeline?.textTransform || null,
                 });
                 pipelineResult = await persistPipelineArtifacts({ orderId, pipelineResult });
 
