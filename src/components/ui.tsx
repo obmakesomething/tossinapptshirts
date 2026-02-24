@@ -15,31 +15,31 @@ import {
 
 export const theme = {
   colors: {
-    // ── Light Warm Base (AIT preview parity) ──
-    background: '#FFF8F1',
+    // ── Fluent-like base ──
+    background: '#F3F4F8',
     surface: '#FFFFFF',
-    surfaceSecondary: '#FFF2E5',
+    surfaceSecondary: '#EEF3FF',
     // ── Accent ──
-    primary: '#FF6A00',
-    primarySoft: '#FFE5CF',
-    primaryPressed: '#E65F00',
+    primary: '#3182F6',
+    primarySoft: '#E8F2FF',
+    primaryPressed: '#2B72DE',
     // ── Text ──
-    textPrimary: '#2E231B',
-    textSecondary: '#776556',
-    textTertiary: '#9D826E',
+    textPrimary: '#1A1F2E',
+    textSecondary: '#5E667A',
+    textTertiary: '#8A93A8',
     // ── Borders ──
-    border: '#F0DFCF',
-    muted: '#9F8571',
+    border: '#DCE5F2',
+    muted: '#A0A9BE',
     // ── Semantic ──
-    success: '#0EA76F',
-    successSoft: '#E7F7F0',
-    successBorder: '#9EDFC8',
+    success: '#00C471',
+    successSoft: '#E9F9F2',
+    successBorder: '#AEE6CF',
     warning: '#F59E0B',
-    error: '#E6492D',
-    errorSoft: '#FDEAE5',
-    errorBorder: '#F5B8A8',
-    errorPressed: '#FADFD7',
-    info: '#2778D8',
+    error: '#E03E3E',
+    errorSoft: '#FDEDEE',
+    errorBorder: '#F6C2C2',
+    errorPressed: '#FADFE0',
+    info: '#3182F6',
     infoSoft: '#EAF2FF',
     infoBorder: '#BED3F1',
   },
@@ -53,9 +53,9 @@ export const theme = {
   },
   radius: {
     sm: 6,
-    md: 12,
-    lg: 16,
-    xl: 20,
+    md: 14,
+    lg: 18,
+    xl: 24,
   },
   typography: {
     display: { fontSize: 28, lineHeight: 36, fontWeight: '900' as const },
@@ -498,6 +498,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     minHeight: 48,
+    shadowColor: '#2B72DE',
+    shadowOpacity: 0.24,
+    shadowRadius: 14,
+    shadowOffset: { width: 0, height: 7 },
+    elevation: 6,
   },
   primaryButtonPressed: {
     backgroundColor: theme.colors.primaryPressed,
@@ -519,9 +524,14 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: theme.colors.surfaceSecondary,
     minHeight: 48,
+    shadowColor: '#3E4B63',
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 3,
   },
   secondaryButtonPressed: {
-    backgroundColor: '#FFEBDD',
+    backgroundColor: '#DEE9FF',
   },
   secondaryButtonText: {
     color: theme.colors.textSecondary,
@@ -606,11 +616,11 @@ const styles = StyleSheet.create({
     padding: theme.spacing.lg,
     borderWidth: 1,
     borderColor: theme.colors.border,
-    shadowColor: '#5F320E',
-    shadowOpacity: 0.12,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 6 },
-    elevation: 4,
+    shadowColor: '#1F3D7A',
+    shadowOpacity: 0.08,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 9 },
+    elevation: 5,
   },
 
   /* StickyFooter */
@@ -667,7 +677,7 @@ const styles = StyleSheet.create({
   /* BottomSheet */
   sheetOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(46,35,27,0.34)',
+    backgroundColor: 'rgba(19, 28, 45, 0.34)',
   },
   sheetContainer: {
     position: 'absolute',
@@ -690,7 +700,7 @@ const styles = StyleSheet.create({
     width: 36,
     height: 4,
     borderRadius: 2,
-    backgroundColor: '#D9BFA9',
+    backgroundColor: '#C8D4E8',
   },
   sheetTitleRow: {
     flexDirection: 'row',
@@ -746,7 +756,7 @@ const styles = StyleSheet.create({
   /* FullScreenLoader */
   fullScreenLoader: {
     flex: 1,
-    backgroundColor: 'rgba(46,35,27,0.58)',
+    backgroundColor: 'rgba(19, 28, 45, 0.56)',
     justifyContent: 'center',
     alignItems: 'center',
   },
