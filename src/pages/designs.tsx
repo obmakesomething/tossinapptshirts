@@ -192,7 +192,7 @@ const styles = StyleSheet.create({
     padding: theme.spacing.md,
     marginBottom: theme.spacing.md,
     backgroundColor: NAVY_PANEL,
-    borderColor: 'rgba(240,223,207,0.92)',
+    borderColor: 'rgba(220,229,242,0.92)',
     borderWidth: 1,
   },
   cardBody: {
@@ -223,7 +223,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: theme.spacing.xl,
     backgroundColor: NAVY_PANEL,
-    borderColor: 'rgba(240,223,207,0.92)',
+    borderColor: 'rgba(220,229,242,0.92)',
     borderWidth: 1,
   },
   emptyText: {

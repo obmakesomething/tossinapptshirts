@@ -719,8 +719,8 @@ const styles = StyleSheet.create({
   headerBack: {
     borderRadius: 999,
     borderWidth: 1,
-    borderColor: 'rgba(240,223,207,0.92)',
-    backgroundColor: 'rgba(255,244,232,0.92)',
+    borderColor: 'rgba(220,229,242,0.92)',
+    backgroundColor: 'rgba(238,243,255,0.92)',
     paddingVertical: 6,
     paddingHorizontal: 12,
   },
@@ -732,7 +732,7 @@ const styles = StyleSheet.create({
   summaryCard: {
     marginBottom: theme.spacing.lg,
     backgroundColor: NAVY_PANEL,
-    borderColor: 'rgba(240,223,207,0.92)',
+    borderColor: 'rgba(220,229,242,0.92)',
     borderWidth: 1,
     shadowColor: '#1F3D7A',
     shadowOpacity: 0.24,
@@ -764,7 +764,7 @@ const styles = StyleSheet.create({
     marginTop: theme.spacing.md,
     paddingTop: theme.spacing.md,
     borderTopWidth: 1,
-    borderTopColor: 'rgba(240,223,207,0.92)',
+    borderTopColor: 'rgba(220,229,242,0.92)',
   },
   editSectionTitle: {
     fontSize: 13,
@@ -787,7 +787,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: theme.spacing.sm,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(240,223,207,0.92)',
+    borderBottomColor: 'rgba(220,229,242,0.92)',
   },
   orderLineSize: {
     fontSize: 14,
@@ -803,9 +803,9 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: 'rgba(255,80,0,0.16)',
+    backgroundColor: 'rgba(49,130,246,0.14)',
     borderWidth: 1,
-    borderColor: 'rgba(255,80,0,0.26)',
+    borderColor: 'rgba(49,130,246,0.26)',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -832,13 +832,13 @@ const styles = StyleSheet.create({
   formCard: {
     marginBottom: theme.spacing.lg,
     backgroundColor: NAVY_PANEL,
-    borderColor: 'rgba(240,223,207,0.92)',
+    borderColor: 'rgba(220,229,242,0.92)',
     borderWidth: 1,
   },
   quickFaqCard: {
     marginBottom: theme.spacing.md,
     backgroundColor: NAVY_PANEL,
-    borderColor: 'rgba(240,223,207,0.92)',
+    borderColor: 'rgba(220,229,242,0.92)',
     borderWidth: 1,
   },
   quickFaqTitle: {
@@ -884,7 +884,7 @@ const styles = StyleSheet.create({
   },
   input: {
     borderWidth: 1,
-    borderColor: 'rgba(240,223,207,0.92)',
+    borderColor: 'rgba(220,229,242,0.92)',
     borderRadius: theme.radius.md,
     paddingHorizontal: theme.spacing.md,
     paddingVertical: theme.spacing.sm,
@@ -932,7 +932,7 @@ const styles = StyleSheet.create({
   loginCard: {
     marginBottom: theme.spacing.lg,
     backgroundColor: NAVY_PANEL,
-    borderColor: 'rgba(240,223,207,0.92)',
+    borderColor: 'rgba(220,229,242,0.92)',
     borderWidth: 1,
     alignItems: 'center',
     padding: theme.spacing.lg,

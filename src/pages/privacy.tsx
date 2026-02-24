@@ -180,8 +180,8 @@ const styles = StyleSheet.create({
   headerBack: {
     borderRadius: 999,
     borderWidth: 1,
-    borderColor: 'rgba(240,223,207,0.92)',
-    backgroundColor: 'rgba(255,244,232,0.92)',
+    borderColor: 'rgba(220,229,242,0.92)',
+    backgroundColor: 'rgba(238,243,255,0.92)',
     paddingVertical: 6,
     paddingHorizontal: 12,
   },
@@ -197,7 +197,7 @@ const styles = StyleSheet.create({
     paddingVertical: theme.spacing.lg,
     paddingBottom: theme.spacing.xl,
     borderWidth: 1,
-    borderColor: 'rgba(240,223,207,0.92)',
+    borderColor: 'rgba(220,229,242,0.92)',
   },
   intro: {
     fontSize: 13,
@@ -205,7 +205,7 @@ const styles = StyleSheet.create({
     color: '#5E667A',
     marginBottom: theme.spacing.lg,
     padding: theme.spacing.md,
-    backgroundColor: 'rgba(255,244,232,0.92)',
+    backgroundColor: 'rgba(238,243,255,0.92)',
     borderRadius: theme.radius.sm,
     borderLeftWidth: 4,
     borderLeftColor: '#3182F6',

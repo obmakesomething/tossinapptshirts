@@ -225,8 +225,8 @@ const styles = StyleSheet.create({
   headerBack: {
     borderRadius: 999,
     borderWidth: 1,
-    borderColor: 'rgba(240,223,207,0.92)',
-    backgroundColor: 'rgba(255,244,232,0.92)',
+    borderColor: 'rgba(220,229,242,0.92)',
+    backgroundColor: 'rgba(238,243,255,0.92)',
     paddingVertical: 6,
     paddingHorizontal: 12,
   },
@@ -249,7 +249,7 @@ const styles = StyleSheet.create({
     width: 220,
     alignItems: 'center',
     backgroundColor: NAVY_PANEL,
-    borderColor: 'rgba(240,223,207,0.92)',
+    borderColor: 'rgba(220,229,242,0.92)',
     borderWidth: 1,
   },
   mockupSpacing: {
@@ -276,7 +276,7 @@ const styles = StyleSheet.create({
   priceCard: {
     marginTop: theme.spacing.lg,
     backgroundColor: NAVY_PANEL,
-    borderColor: 'rgba(240,223,207,0.92)',
+    borderColor: 'rgba(220,229,242,0.92)',
     borderWidth: 1,
     alignItems: 'center',
     padding: theme.spacing.lg,
@@ -303,7 +303,7 @@ const styles = StyleSheet.create({
   infoCard: {
     marginTop: theme.spacing.md,
     backgroundColor: NAVY_PANEL,
-    borderColor: 'rgba(240,223,207,0.92)',
+    borderColor: 'rgba(220,229,242,0.92)',
     borderWidth: 1,
   },
   infoTitle: {

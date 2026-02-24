@@ -520,8 +520,8 @@ const styles = StyleSheet.create({
   headerBack: {
     borderRadius: 999,
     borderWidth: 1,
-    borderColor: 'rgba(240,223,207,0.92)',
-    backgroundColor: 'rgba(255,244,232,0.92)',
+    borderColor: 'rgba(220,229,242,0.92)',
+    backgroundColor: 'rgba(238,243,255,0.92)',
     paddingVertical: 6,
     paddingHorizontal: 12,
   },
@@ -544,9 +544,9 @@ const styles = StyleSheet.create({
     fontSize: 12,
     lineHeight: 18,
     color: '#5E667A',
-    backgroundColor: 'rgba(255,244,232,0.92)',
+    backgroundColor: 'rgba(238,243,255,0.92)',
     borderWidth: 1,
-    borderColor: 'rgba(240,223,207,0.92)',
+    borderColor: 'rgba(220,229,242,0.92)',
     padding: theme.spacing.sm,
     borderRadius: theme.radius.sm,
     marginBottom: theme.spacing.lg,
@@ -555,7 +555,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: theme.spacing.lg,
     backgroundColor: NAVY_PANEL,
-    borderColor: 'rgba(240,223,207,0.92)',
+    borderColor: 'rgba(220,229,242,0.92)',
     borderWidth: 1,
     shadowColor: '#1F3D7A',
     shadowOpacity: 0.28,
@@ -569,7 +569,7 @@ const styles = StyleSheet.create({
     borderRadius: theme.radius.md,
     backgroundColor: NAVY_MID,
     borderWidth: 1,
-    borderColor: 'rgba(240,223,207,0.92)',
+    borderColor: 'rgba(220,229,242,0.92)',
     marginBottom: theme.spacing.md,
     alignItems: 'center',
     justifyContent: 'center',
@@ -627,7 +627,7 @@ const styles = StyleSheet.create({
   styleButton: {
     marginTop: theme.spacing.sm,
     width: '100%',
-    backgroundColor: 'rgba(240,223,207,0.92)',
+    backgroundColor: 'rgba(220,229,242,0.92)',
   },
   undoRow: {
     width: '100%',
@@ -637,8 +637,8 @@ const styles = StyleSheet.create({
   undoButton: {
     borderRadius: 999,
     borderWidth: 1,
-    borderColor: 'rgba(240,223,207,0.92)',
-    backgroundColor: 'rgba(255,244,232,0.92)',
+    borderColor: 'rgba(220,229,242,0.92)',
+    backgroundColor: 'rgba(238,243,255,0.92)',
     paddingHorizontal: 12,
     paddingVertical: 8,
   },
@@ -655,7 +655,7 @@ const styles = StyleSheet.create({
     color: ORANGE_RED,
   },
   disabledToolButton: {
-    backgroundColor: 'rgba(255,244,232,0.92)',
+    backgroundColor: 'rgba(238,243,255,0.92)',
   },
   modalOverlay: {
     flex: 1,
@@ -707,7 +707,7 @@ const styles = StyleSheet.create({
     marginTop: theme.spacing.md,
     marginBottom: theme.spacing.md,
     backgroundColor: NAVY_PANEL,
-    borderColor: 'rgba(240,223,207,0.92)',
+    borderColor: 'rgba(220,229,242,0.92)',
     borderWidth: 1,
   },
   quickFaqTitle: {

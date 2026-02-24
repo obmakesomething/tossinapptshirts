@@ -183,8 +183,8 @@ const styles = StyleSheet.create({
   headerBack: {
     borderRadius: 999,
     borderWidth: 1,
-    borderColor: 'rgba(240,223,207,0.92)',
-    backgroundColor: 'rgba(255,244,232,0.92)',
+    borderColor: 'rgba(220,229,242,0.92)',
+    backgroundColor: 'rgba(238,243,255,0.92)',
     paddingVertical: 6,
     paddingHorizontal: 12,
   },
@@ -212,11 +212,11 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     backgroundColor: NAVY_PANEL,
     borderWidth: 1,
-    borderColor: 'rgba(240,223,207,0.92)',
+    borderColor: 'rgba(220,229,242,0.92)',
     marginRight: theme.spacing.sm,
   },
   categoryChipActive: {
-    backgroundColor: 'rgba(255,80,0,0.2)',
+    backgroundColor: 'rgba(49,130,246,0.16)',
     borderColor: ORANGE_RED,
   },
   categoryText: {
@@ -238,7 +238,7 @@ const styles = StyleSheet.create({
     marginBottom: theme.spacing.sm,
     paddingBottom: theme.spacing.sm,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(240,223,207,0.92)',
+    borderBottomColor: 'rgba(220,229,242,0.92)',
   },
   categoryHeaderIcon: {
     fontSize: 20,
@@ -254,7 +254,7 @@ const styles = StyleSheet.create({
   categoryCount: {
     fontSize: 12,
     color: '#5E667A',
-    backgroundColor: 'rgba(255,244,232,0.92)',
+    backgroundColor: 'rgba(238,243,255,0.92)',
     paddingHorizontal: theme.spacing.sm,
     paddingVertical: 2,
     borderRadius: 10,
@@ -262,7 +262,7 @@ const styles = StyleSheet.create({
   faqCard: {
     marginBottom: theme.spacing.sm,
     backgroundColor: NAVY_PANEL,
-    borderColor: 'rgba(240,223,207,0.92)',
+    borderColor: 'rgba(220,229,242,0.92)',
     borderWidth: 1,
   },
   questionRow: {
@@ -294,7 +294,7 @@ const styles = StyleSheet.create({
     marginTop: theme.spacing.md,
     paddingTop: theme.spacing.md,
     borderTopWidth: 1,
-    borderTopColor: 'rgba(240,223,207,0.92)',
+    borderTopColor: 'rgba(220,229,242,0.92)',
   },
   aLabel: {
     ...theme.typography.body,
