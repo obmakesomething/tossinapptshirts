@@ -12,13 +12,16 @@ import {
   View,
 } from 'react-native';
 import { MockupCanvas } from '../components/MockupCanvas';
-import { InquiryModal } from '../components/InquiryModal';
 import { Card, PrimaryButton, Screen, theme } from '../components/ui';
 import { useCatalog } from '../context/catalog';
 import { faqCategories, faqItems } from '../data/faq';
 import { buildTemplate } from '../data/mockupTemplates';
 import { API_BASE_URL } from '../config';
 import { resolveColorValue } from '../data/colorMap';
+import {
+  resolveCategoryPreviewColor,
+  syncCategoryColorMap,
+} from './indexColorSelection';
 import {
   trackClick,
   trackImpression,
@@ -33,6 +36,11 @@ const MATERIAL_BY_CATEGORY: Record<string, string> = {
 };
 
 const heroDesignImageUri = `${API_BASE_URL}/mockups/hero_design.png`;
+const HERO_STATS = [
+  { value: '2,400+', label: '월 주문' },
+  { value: '4.9★', label: '만족도' },
+  { value: '3~5일', label: '배송' },
+];
 
 export const Route = createRoute('/', {
   component: Page,
@@ -45,12 +53,15 @@ function Page() {
   const {
     products,
     selectedProduct,
+    selectedColor,
     setSelectedProductId,
+    setSelectedColor,
   } = useCatalog();
   const [selectedCategory, setSelectedCategory] =
     React.useState<string>('티셔츠');
-  const [inquiryModalVisible, setInquiryModalVisible] =
-    React.useState<boolean>(false);
+  const [selectedColorByCategory, setSelectedColorByCategory] = React.useState<
+    Record<string, string>
+  >({});
   const [interactionComplete, setInteractionComplete] = useState(false);
   const [expandedFaqMap, setExpandedFaqMap] = useState<Record<string, boolean>>(
     {},
@@ -84,12 +95,36 @@ function Page() {
   const selectedCategoryProduct =
     productByCategory[selectedCategory] ?? selectedProduct;
   const activeCategoryIndex = categories.indexOf(selectedCategory);
+  const selectedCategoryColor = resolveCategoryPreviewColor(
+    selectedCategoryProduct,
+    selectedColorByCategory,
+  );
+
+  useEffect(() => {
+    setSelectedColorByCategory((prev) => syncCategoryColorMap(products, prev));
+  }, [products]);
+
+  useEffect(() => {
+    if (!selectedProduct.category || !selectedColor) return;
+    setSelectedColorByCategory((prev) => {
+      const current = prev[selectedProduct.category];
+      if (current === selectedColor) return prev;
+      return { ...prev, [selectedProduct.category]: selectedColor };
+    });
+  }, [selectedProduct.category, selectedColor]);
 
   const selectCategory = (category: string) => {
     setSelectedCategory(category);
     const product = productByCategory[category];
     if (product) {
       setSelectedProductId(product.id);
+      const nextColor = resolveCategoryPreviewColor(
+        product,
+        selectedColorByCategory,
+      );
+      if (nextColor) {
+        setSelectedColor(nextColor);
+      }
     }
   };
 
@@ -119,6 +154,13 @@ function Page() {
   }, [activeCategoryIndex, carouselInterval]);
 
   const goToEditor = () => {
+    const editorColor = resolveCategoryPreviewColor(
+      selectedCategoryProduct,
+      selectedColorByCategory,
+    );
+    if (editorColor && editorColor !== selectedColor) {
+      setSelectedColor(editorColor);
+    }
     trackClick('home_primary_cta_click', {
       source: 'home_card',
       category: selectedCategory,
@@ -155,10 +197,6 @@ function Page() {
     [],
   );
 
-  const goToInquiry = () => {
-    trackClick('home_inquiry_click');
-    setInquiryModalVisible(true);
-  };
   const goToProducts = () => {
     trackClick('home_product_detail_click', {
       category: selectedCategory,
@@ -184,22 +222,37 @@ function Page() {
 
   return (
     <Screen contentStyle={styles.screenContent}>
-      <View style={styles.header}>
-        <View />
-        <Pressable onPress={goToInquiry} style={styles.inquiryButton}>
-          <Text style={styles.inquiryButtonText}>문의</Text>
-        </Pressable>
+      <View style={styles.heroSection}>
+        <View style={styles.heroBadgeRow}>
+          <View style={styles.heroBadgePrimary}>
+            <Text style={styles.heroBadgePrimaryText}>AI 디자인 굿즈 제작</Text>
+          </View>
+          <View style={styles.heroBadgeSecondary}>
+            <Text style={styles.heroBadgeSecondaryText}>토스 독점</Text>
+          </View>
+        </View>
+        <Text style={styles.heroTitle}>
+          나만의{'\n'}커스텀 의류를{'\n'}지금 만들어요
+        </Text>
+        <Text style={styles.heroSubtitle}>
+          티셔츠 · 후드 · 맨투맨
+          {'\n'}
+          AI 디자인부터 결제까지 한 번에
+        </Text>
+        <PrimaryButton
+          label="✦ 지금 만들어보기"
+          onPress={goToEditor}
+          style={styles.heroCtaButton}
+        />
+        <View style={styles.heroStatRow}>
+          {HERO_STATS.map((stat) => (
+            <View key={stat.label} style={styles.heroStatCard}>
+              <Text style={styles.heroStatValue}>{stat.value}</Text>
+              <Text style={styles.heroStatLabel}>{stat.label}</Text>
+            </View>
+          ))}
+        </View>
       </View>
-
-      <View style={styles.homeGuide}>
-        <Text style={styles.homeGuideTitle}>무엇을 만들까요?</Text>
-        <Text style={styles.homeGuideText}>상품을 선택하고 디자인을 시작하세요</Text>
-      </View>
-      <PrimaryButton
-        label="✦ 지금 만들어보기"
-        onPress={goToEditor}
-        style={styles.topCtaButton}
-      />
 
       <View style={styles.homeCard}>
         <View style={styles.carouselShell}>
@@ -225,6 +278,10 @@ function Page() {
               const active = selectedCategory === category;
               const mockupWidth = Math.max(180, carouselCardWidth - 44);
               const mockupHeight = Math.round(mockupWidth * 1.22);
+              const previewColor = resolveCategoryPreviewColor(
+                product,
+                selectedColorByCategory,
+              );
               return (
                 <Pressable
                   key={category}
@@ -243,7 +300,7 @@ function Page() {
                       <MockupCanvas
                         template={buildTemplate(
                           product,
-                          product.colors[0] || '블랙',
+                          previewColor || '블랙',
                           'front',
                         )}
                         width={mockupWidth}
@@ -304,15 +361,34 @@ function Page() {
             <Text style={styles.metaLabel}>색상</Text>
             <View style={styles.colorDotRow}>
               {selectedCategoryProduct.colors.map((color) => (
-                <View
+                <Pressable
                   key={color}
-                  style={[
-                    styles.colorDot,
-                    { backgroundColor: resolveColorValue(color) },
-                    resolveColorValue(color) === '#FFFFFF' &&
-                    styles.colorDotWhite,
-                  ]}
-                />
+                  onPress={() => {
+                    trackClick('home_color_dot_click', {
+                      category: selectedCategory,
+                      product_id: selectedCategoryProduct.id,
+                      color,
+                    });
+                    setSelectedColorByCategory((prev) => ({
+                      ...prev,
+                      [selectedCategory]: color,
+                    }));
+                    setSelectedColor(color);
+                  }}
+                  style={styles.colorDotButton}
+                  accessibilityRole="button"
+                  accessibilityLabel={`${color} 색상`}
+                >
+                  <View
+                    style={[
+                      styles.colorDot,
+                      { backgroundColor: resolveColorValue(color) },
+                      resolveColorValue(color) === '#FFFFFF' &&
+                      styles.colorDotWhite,
+                      selectedCategoryColor === color && styles.colorDotSelected,
+                    ]}
+                  />
+                </Pressable>
               ))}
             </View>
           </View>
@@ -398,11 +474,6 @@ function Page() {
           })}
         </View>
       )}
-
-      <InquiryModal
-        visible={inquiryModalVisible}
-        onClose={() => setInquiryModalVisible(false)}
-      />
     </Screen>
   );
 }
@@ -412,70 +483,114 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.background,
     paddingBottom: 42,
   },
-  header: {
+  heroSection: {
+    borderRadius: 26,
+    marginBottom: theme.spacing.md,
+    padding: theme.spacing.lg,
+    backgroundColor: '#141A2B',
+    shadowColor: '#0A1020',
+    shadowOpacity: 0.28,
+    shadowRadius: 18,
+    shadowOffset: { width: 0, height: 10 },
+    elevation: 6,
+    borderWidth: 1,
+    borderColor: '#26314D',
+  },
+  heroBadgeRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: theme.spacing.sm,
-  },
-  inquiryButton: {
-    paddingHorizontal: theme.spacing.md,
-    paddingVertical: theme.spacing.sm,
-    borderRadius: 999,
-    backgroundColor: 'transparent',
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-  },
-  inquiryButtonText: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: theme.colors.primary,
-  },
-  homeGuide: {
-    marginBottom: theme.spacing.xs,
-    paddingHorizontal: 2,
-  },
-  homeGuideTitle: {
-    fontSize: 20,
-    lineHeight: 24,
-    fontWeight: '800',
-    color: '#32251B',
-    marginBottom: 2,
-  },
-  homeGuideText: {
-    fontSize: 13,
-    lineHeight: 18,
-    color: '#776556',
-  },
-  topCtaButton: {
-    borderRadius: 18,
-    minHeight: 50,
     marginBottom: theme.spacing.md,
-    shadowColor: '#E65F00',
-    shadowOpacity: 0.32,
-    shadowRadius: 14,
-    shadowOffset: { width: 0, height: 8 },
-    elevation: 6,
+    gap: 8,
+  },
+  heroBadgePrimary: {
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.2)',
+    backgroundColor: 'rgba(255,255,255,0.11)',
+  },
+  heroBadgePrimaryText: {
+    fontSize: 11,
+    color: '#F1F5FF',
+    fontWeight: '700',
+  },
+  heroBadgeSecondary: {
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderWidth: 1,
+    borderColor: 'rgba(126, 114, 255, 0.42)',
+    backgroundColor: 'rgba(107, 72, 255, 0.22)',
+  },
+  heroBadgeSecondaryText: {
+    fontSize: 11,
+    color: '#D6CCFF',
+    fontWeight: '700',
+  },
+  heroTitle: {
+    fontSize: 31,
+    lineHeight: 37,
+    fontWeight: '900',
+    color: '#FFFFFF',
+    letterSpacing: -0.8,
+    marginBottom: 10,
+  },
+  heroSubtitle: {
+    fontSize: 14,
+    lineHeight: 21,
+    color: '#B8C4DE',
+    marginBottom: 14,
+  },
+  heroCtaButton: {
+    borderRadius: 16,
+    minHeight: 52,
+    marginBottom: theme.spacing.md,
+  },
+  heroStatRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  heroStatCard: {
+    flex: 1,
+    borderRadius: 12,
+    paddingVertical: 9,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.14)',
+    backgroundColor: 'rgba(255,255,255,0.08)',
+  },
+  heroStatValue: {
+    fontSize: 13,
+    lineHeight: 16,
+    fontWeight: '800',
+    color: '#FFFFFF',
+  },
+  heroStatLabel: {
+    fontSize: 11,
+    lineHeight: 14,
+    color: '#B6C3DF',
+    marginTop: 2,
   },
   homeCard: {
     backgroundColor: theme.colors.surface,
     borderWidth: 1,
-    borderColor: '#F1E0CE',
+    borderColor: '#DCE5F2',
     borderRadius: 26,
     padding: theme.spacing.md,
     marginBottom: theme.spacing.md,
-    shadowColor: '#5F320E',
-    shadowOpacity: 0.14,
+    shadowColor: '#1B3B76',
+    shadowOpacity: 0.11,
     shadowRadius: 16,
-    shadowOffset: { width: 0, height: 10 },
+    shadowOffset: { width: 0, height: 8 },
     elevation: 3,
   },
   carouselShell: {
     borderRadius: 20,
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: '#F6E5D3',
-    backgroundColor: '#FFFFFF',
+    borderColor: '#E1E8F6',
+    backgroundColor: '#F7FAFF',
   },
   carouselContent: {
     paddingVertical: theme.spacing.sm,
@@ -491,15 +606,15 @@ const styles = StyleSheet.create({
     aspectRatio: 4 / 5,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#F6F8FD',
     borderRadius: 18,
   },
   mockupObjectShadow: {
-    shadowColor: '#4D3622',
-    shadowOpacity: 0.24,
-    shadowRadius: 18,
-    shadowOffset: { width: 0, height: 12 },
-    elevation: 8,
+    shadowColor: '#1F2D47',
+    shadowOpacity: 0.19,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 11 },
+    elevation: 7,
   },
   carouselDots: {
     marginTop: theme.spacing.sm,
@@ -531,7 +646,7 @@ const styles = StyleSheet.create({
     fontSize: 22,
     lineHeight: 28,
     fontWeight: '800',
-    color: '#2F241B',
+    color: '#1A1F2E',
     letterSpacing: -0.4,
   },
   productPrice: {
@@ -544,7 +659,7 @@ const styles = StyleSheet.create({
     marginTop: 2,
     fontSize: 12,
     lineHeight: 18,
-    color: '#765F4E',
+    color: '#6E7992',
   },
   metaRow: {
     flexDirection: 'row',
@@ -577,12 +692,23 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
   },
+  colorDotButton: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   colorDot: {
     width: 18,
     height: 18,
     borderRadius: 9,
     borderWidth: 1,
     borderColor: theme.colors.border,
+  },
+  colorDotSelected: {
+    borderWidth: 2.4,
+    borderColor: theme.colors.primary,
   },
   colorDotWhite: {
     borderColor: theme.colors.textTertiary,
@@ -619,7 +745,7 @@ const styles = StyleSheet.create({
   detailLinkText: {
     fontSize: 13,
     lineHeight: 18,
-    color: '#CC590A',
+    color: theme.colors.primary,
     fontWeight: '700',
   },
   sectionTitle: {
@@ -681,7 +807,7 @@ const styles = StyleSheet.create({
   faqCard: {
     marginBottom: theme.spacing.sm,
     backgroundColor: theme.colors.surface,
-    shadowColor: '#000',
+    shadowColor: '#1A2A46',
     shadowOpacity: 0.05,
     shadowRadius: 4,
     shadowOffset: { width: 0, height: 1 },
@@ -718,7 +844,7 @@ const styles = StyleSheet.create({
     marginTop: theme.spacing.md,
     paddingTop: theme.spacing.md,
     borderTopWidth: 1,
-    borderTopColor: '#eeeeee',
+    borderTopColor: theme.colors.border,
   },
   faqA: {
     fontSize: 14,
