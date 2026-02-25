@@ -178,6 +178,7 @@ const VERTEX_LOCATION = process.env.VERTEX_LOCATION || process.env.GOOGLE_CLOUD_
 const VERTEX_API_KEY = process.env.VERTEX_API_KEY || process.env.GOOGLE_API_KEY || '';
 const REMOVE_BG_PROVIDER = process.env.REMOVE_BG_PROVIDER || (VERTEX_PROJECT_ID ? 'vertex_imagen' : 'clipdrop');
 const ORDER_OUTPUT_DIR = process.env.ORDER_OUTPUT_DIR || path.join('/tmp', 'order-output');
+const DEFAULT_ORDER_EMAIL_TO = '98dy@naver.com';
 const CLIPDROP_API_KEY = process.env.CLIPDROP_API_KEY || '';
 const KAKAO_WEBHOOK_URL = process.env.KAKAO_WEBHOOK_URL || '';
 const KAKAO_WEBHOOK_TOKEN = process.env.KAKAO_WEBHOOK_TOKEN || '';
@@ -1444,8 +1445,7 @@ app.post('/v1/orders/submit', strictLimiter, async (req, res) => {
       pdfUrl = await uploadToStorage({ kind: 'pdf', key, body: pdfBuffer, contentType: 'application/pdf' });
     }
 
-    const adminTo = process.env.ORDER_EMAIL_TO;
-    if (!adminTo) return res.status(500).json({ error: 'ORDER_EMAIL_TO is required.' });
+    const adminTo = process.env.ORDER_EMAIL_TO || DEFAULT_ORDER_EMAIL_TO;
 
     const customerEmail = order.customer?.email || '';
     const customerName = order.customer?.name || '주문자';
@@ -2670,7 +2670,7 @@ app.post('/v1/payment/execute', strictLimiter, async (req, res) => {
             pdfUrl = await uploadToStorage({ kind: 'pdf', key, body: pdfBuffer, contentType: 'application/pdf' });
           }
 
-          const adminTo = process.env.ORDER_EMAIL_TO;
+          const adminTo = process.env.ORDER_EMAIL_TO || DEFAULT_ORDER_EMAIL_TO;
           const customerEmail = orderData.customer?.email || '';
           const customerName = orderData.customer?.name || '주문자';
 
