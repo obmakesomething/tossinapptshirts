@@ -6,6 +6,7 @@ const path = require('path');
 const sharp = require('sharp');
 
 const {
+  applyMasterAlphaMask,
   buildTextLayerSvg,
   composeImageLayer,
   computeLayerPlacement,
@@ -113,5 +114,63 @@ describe('composeImageLayer', () => {
 
     expect(at(60, 50)).toEqual([255, 0, 0, 255]);
     expect(at(10, 50)[3]).toBe(0);
+  });
+});
+
+describe('applyMasterAlphaMask', () => {
+  let tmpDir;
+
+  beforeEach(async () => {
+    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'print-pipeline-alpha-'));
+  });
+
+  afterEach(async () => {
+    if (tmpDir) {
+      await fs.rm(tmpDir, { recursive: true, force: true });
+    }
+  });
+
+  test('restores transparent background from master image alpha', async () => {
+    const masterPath = path.join(tmpDir, 'master.png');
+    const generatedPath = path.join(tmpDir, 'generated.png');
+    const outputPath = path.join(tmpDir, 'output.png');
+
+    const masterSvg = `<svg width="100" height="100" xmlns="http://www.w3.org/2000/svg">
+      <rect x="0" y="0" width="100" height="100" fill="none" />
+      <circle cx="50" cy="50" r="30" fill="#ff0000" />
+    </svg>`;
+
+    await sharp(Buffer.from(masterSvg)).png().toFile(masterPath);
+
+    await sharp({
+      create: {
+        width: 200,
+        height: 200,
+        channels: 3,
+        background: { r: 255, g: 255, b: 255 },
+      },
+    })
+      .png()
+      .toFile(generatedPath);
+
+    await applyMasterAlphaMask({
+      generatedPath,
+      masterPath,
+      outputPath,
+    });
+
+    const { data, info } = await sharp(outputPath)
+      .raw()
+      .toBuffer({ resolveWithObject: true });
+
+    expect(info.channels).toBe(4);
+
+    const alphaAt = (x, y) => {
+      const i = (y * info.width + x) * info.channels;
+      return data[i + 3];
+    };
+
+    expect(alphaAt(5, 5)).toBe(0);
+    expect(alphaAt(100, 100)).toBeGreaterThan(200);
   });
 });

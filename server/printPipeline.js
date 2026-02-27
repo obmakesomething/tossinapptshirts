@@ -140,6 +140,71 @@ async function composeImageLayer({
   return outputPath;
 }
 
+async function applyMasterAlphaMask({
+  generatedPath,
+  masterPath,
+  outputPath,
+}) {
+  const masterStats = await sharp(masterPath).ensureAlpha().stats();
+  const alphaStats = masterStats?.channels?.[3];
+  const hasTransparentMaster = Boolean(alphaStats && alphaStats.min < 255);
+
+  if (!hasTransparentMaster) {
+    if (outputPath !== generatedPath) {
+      await fsp.copyFile(generatedPath, outputPath);
+    }
+    return {
+      applied: false,
+      hasTransparentMaster: false,
+      outputPath: outputPath || generatedPath,
+    };
+  }
+
+  const generatedMeta = await sharp(generatedPath).metadata();
+  const width = Math.max(1, generatedMeta.width || 1);
+  const height = Math.max(1, generatedMeta.height || 1);
+
+  const alphaMaskRaw = await sharp(masterPath)
+    .ensureAlpha()
+    .extractChannel('alpha')
+    .resize({
+      width,
+      height,
+      fit: 'fill',
+      kernel: sharp.kernel.lanczos3,
+    })
+    .raw()
+    .toBuffer();
+
+  const { data: rgbData, info: rgbInfo } = await sharp(generatedPath)
+    .removeAlpha()
+    .raw()
+    .toBuffer({ resolveWithObject: true });
+
+  const pixelCount = rgbInfo.width * rgbInfo.height;
+  const rgbaData = Buffer.alloc(pixelCount * 4);
+  for (let i = 0; i < pixelCount; i += 1) {
+    const rgbBase = i * rgbInfo.channels;
+    const rgbaBase = i * 4;
+    rgbaData[rgbaBase] = rgbData[rgbBase];
+    rgbaData[rgbaBase + 1] = rgbData[rgbBase + 1];
+    rgbaData[rgbaBase + 2] = rgbData[rgbBase + 2];
+    rgbaData[rgbaBase + 3] = alphaMaskRaw[i];
+  }
+
+  await sharp(rgbaData, {
+    raw: { width: rgbInfo.width, height: rgbInfo.height, channels: 4 },
+  })
+    .png()
+    .toFile(outputPath);
+
+  return {
+    applied: true,
+    hasTransparentMaster: true,
+    outputPath,
+  };
+}
+
 async function submitImagenUpscale({
   masterPath,
   targetWidth,
@@ -432,6 +497,7 @@ async function runPrintPipeline(input) {
     await ensureDir(workDir);
 
     const upscaledRawPath = path.join(workDir, 'upscaled_raw.png');
+    const upscaledAlphaPath = path.join(workDir, 'upscaled_alpha.png');
     const printReadyPath = path.join(workDir, 'print_ready.png');
     const qcPath = path.join(workDir, 'qc_report.json');
 
@@ -447,8 +513,14 @@ async function runPrintPipeline(input) {
     // Save upscaled result
     await fsp.writeFile(upscaledRawPath, upscaleResult.buffer);
 
+    await applyMasterAlphaMask({
+      generatedPath: upscaledRawPath,
+      masterPath: master_png_path,
+      outputPath: upscaledAlphaPath,
+    });
+
     await composeImageLayer({
-      sourcePath: upscaledRawPath,
+      sourcePath: upscaledAlphaPath,
       outputPath: printReadyPath,
       targetWidth,
       targetHeight,
@@ -521,4 +593,5 @@ module.exports = {
   computeLayerPlacement,
   buildTextLayerSvg,
   composeImageLayer,
+  applyMasterAlphaMask,
 };
