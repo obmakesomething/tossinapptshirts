@@ -173,4 +173,46 @@ describe('applyMasterAlphaMask', () => {
     expect(alphaAt(5, 5)).toBe(0);
     expect(alphaAt(100, 100)).toBeGreaterThan(200);
   });
+
+  test('decontaminates white matte on semi-transparent edge pixels', async () => {
+    const masterPath = path.join(tmpDir, 'master-edge.png');
+    const generatedPath = path.join(tmpDir, 'generated-edge.png');
+    const outputPath = path.join(tmpDir, 'output-edge.png');
+
+    const masterRgba = Buffer.from([
+      0, 0, 255, 255,
+      0, 0, 255, 128,
+    ]);
+    await sharp(masterRgba, { raw: { width: 2, height: 1, channels: 4 } })
+      .png()
+      .toFile(masterPath);
+
+    const generatedRgb = Buffer.from([
+      0, 0, 255,
+      127, 127, 255,
+    ]);
+    await sharp(generatedRgb, { raw: { width: 2, height: 1, channels: 3 } })
+      .png()
+      .toFile(generatedPath);
+
+    await applyMasterAlphaMask({
+      generatedPath,
+      masterPath,
+      outputPath,
+    });
+
+    const { data, info } = await sharp(outputPath)
+      .raw()
+      .toBuffer({ resolveWithObject: true });
+
+    const secondPixelBase = 1 * info.channels;
+    const edgeR = data[secondPixelBase];
+    const edgeG = data[secondPixelBase + 1];
+    const edgeA = data[secondPixelBase + 3];
+
+    expect(edgeA).toBeGreaterThan(120);
+    expect(edgeA).toBeLessThan(136);
+    expect(edgeR).toBeLessThan(40);
+    expect(edgeG).toBeLessThan(40);
+  });
 });

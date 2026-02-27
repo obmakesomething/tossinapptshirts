@@ -186,10 +186,30 @@ async function applyMasterAlphaMask({
   for (let i = 0; i < pixelCount; i += 1) {
     const rgbBase = i * rgbInfo.channels;
     const rgbaBase = i * 4;
-    rgbaData[rgbaBase] = rgbData[rgbBase];
-    rgbaData[rgbaBase + 1] = rgbData[rgbBase + 1];
-    rgbaData[rgbaBase + 2] = rgbData[rgbBase + 2];
-    rgbaData[rgbaBase + 3] = alphaMaskRaw[i];
+    const alpha = alphaMaskRaw[i];
+    rgbaData[rgbaBase + 3] = alpha;
+
+    if (alpha === 0) {
+      rgbaData[rgbaBase] = 0;
+      rgbaData[rgbaBase + 1] = 0;
+      rgbaData[rgbaBase + 2] = 0;
+      continue;
+    }
+
+    if (alpha >= 255) {
+      rgbaData[rgbaBase] = rgbData[rgbBase];
+      rgbaData[rgbaBase + 1] = rgbData[rgbBase + 1];
+      rgbaData[rgbaBase + 2] = rgbData[rgbBase + 2];
+      continue;
+    }
+
+    // Upscaler output can be premultiplied against white matte.
+    // Recover foreground color for semi-transparent edge pixels.
+    for (let channel = 0; channel < 3; channel += 1) {
+      const c = rgbData[rgbBase + channel];
+      const dematted = Math.round(((c + alpha - 255) * 255) / alpha);
+      rgbaData[rgbaBase + channel] = clamp(dematted, 0, 255);
+    }
   }
 
   await sharp(rgbaData, {
