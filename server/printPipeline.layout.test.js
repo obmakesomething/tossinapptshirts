@@ -174,7 +174,7 @@ describe('applyMasterAlphaMask', () => {
     expect(alphaAt(100, 100)).toBeGreaterThan(200);
   });
 
-  test('decontaminates white matte on semi-transparent edge pixels', async () => {
+  test('binarizes semi-transparent edge alpha to avoid fringe band', async () => {
     const masterPath = path.join(tmpDir, 'master-edge.png');
     const generatedPath = path.join(tmpDir, 'generated-edge.png');
     const outputPath = path.join(tmpDir, 'output-edge.png');
@@ -210,9 +210,8 @@ describe('applyMasterAlphaMask', () => {
     const edgeG = data[secondPixelBase + 1];
     const edgeA = data[secondPixelBase + 3];
 
-    expect(edgeA).toBeGreaterThan(120);
-    expect(edgeA).toBeLessThan(136);
-    expect(edgeR).toBeLessThan(40);
-    expect(edgeG).toBeLessThan(40);
+    expect(edgeA).toBe(0);
+    expect(edgeR).toBe(0);
+    expect(edgeG).toBe(0);
   });
 });
