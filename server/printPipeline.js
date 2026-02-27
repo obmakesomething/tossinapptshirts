@@ -215,6 +215,40 @@ async function applyMasterAlphaMask({
   };
 }
 
+async function binarizeAlphaChannel({
+  inputPath,
+  outputPath,
+  threshold = 250,
+}) {
+  const { data, info } = await sharp(inputPath)
+    .ensureAlpha()
+    .raw()
+    .toBuffer({ resolveWithObject: true });
+
+  const channels = info.channels;
+  const width = info.width;
+  const height = info.height;
+
+  for (let i = 0; i < width * height; i += 1) {
+    const base = i * channels;
+    const alpha = data[base + 3] >= threshold ? 255 : 0;
+    data[base + 3] = alpha;
+    if (alpha === 0) {
+      data[base] = 0;
+      data[base + 1] = 0;
+      data[base + 2] = 0;
+    }
+  }
+
+  await sharp(data, {
+    raw: { width, height, channels: 4 },
+  })
+    .png()
+    .toFile(outputPath);
+
+  return outputPath;
+}
+
 async function submitImagenUpscale({
   masterPath,
   targetWidth,
@@ -551,6 +585,15 @@ async function runPrintPipeline(input) {
       await fsp.unlink(compositedPath);
     }
 
+    const alphaCleanPath = path.join(workDir, 'alpha_clean.png');
+    await binarizeAlphaChannel({
+      inputPath: printReadyPath,
+      outputPath: alphaCleanPath,
+      threshold: 250,
+    });
+    await fsp.copyFile(alphaCleanPath, printReadyPath);
+    await fsp.unlink(alphaCleanPath);
+
     // Run quality checks
     const { data, info } = await loadPixels(printReadyPath);
     const qc = runQc({ data, info, targetWidth, targetHeight });
@@ -604,4 +647,5 @@ module.exports = {
   buildTextLayerSvg,
   composeImageLayer,
   applyMasterAlphaMask,
+  binarizeAlphaChannel,
 };

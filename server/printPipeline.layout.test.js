@@ -7,6 +7,7 @@ const sharp = require('sharp');
 
 const {
   applyMasterAlphaMask,
+  binarizeAlphaChannel,
   buildTextLayerSvg,
   composeImageLayer,
   computeLayerPlacement,
@@ -213,5 +214,50 @@ describe('applyMasterAlphaMask', () => {
     expect(edgeA).toBe(0);
     expect(edgeR).toBe(0);
     expect(edgeG).toBe(0);
+  });
+});
+
+describe('binarizeAlphaChannel', () => {
+  let tmpDir;
+
+  beforeEach(async () => {
+    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'print-pipeline-binarize-'));
+  });
+
+  afterEach(async () => {
+    if (tmpDir) {
+      await fs.rm(tmpDir, { recursive: true, force: true });
+    }
+  });
+
+  test('removes semi-transparent alpha band for qc pass criteria', async () => {
+    const inputPath = path.join(tmpDir, 'input.png');
+    const outputPath = path.join(tmpDir, 'output.png');
+
+    const rgba = Buffer.from([
+      10, 10, 10, 0,
+      10, 10, 10, 128,
+      10, 10, 10, 255,
+    ]);
+    await sharp(rgba, { raw: { width: 3, height: 1, channels: 4 } })
+      .png()
+      .toFile(inputPath);
+
+    await binarizeAlphaChannel({
+      inputPath,
+      outputPath,
+      threshold: 250,
+    });
+
+    const { data, info } = await sharp(outputPath)
+      .raw()
+      .toBuffer({ resolveWithObject: true });
+
+    const alphaValues = [];
+    for (let i = 0; i < info.width; i += 1) {
+      alphaValues.push(data[i * info.channels + 3]);
+    }
+
+    expect(alphaValues).toEqual([0, 0, 255]);
   });
 });
