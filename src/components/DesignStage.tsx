@@ -238,7 +238,7 @@ export function DesignStage({
   };
 
   // Out-of-bounds detection (simplified, ignoring rotation)
-  const { isOutOfBounds, overflowPercent } = useMemo(() => {
+  const { isOutOfBounds } = useMemo(() => {
     const checkBounds = (transform: LayerTransform, isText: boolean) => {
       if (isText && !textLayer.enabled) return { out: false, overflow: 0 };
       if (!isText && !imageUri) return { out: false, overflow: 0 };

@@ -1,4 +1,4 @@
-import React, { useMemo, useRef, useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { PanResponder, StyleSheet, View } from 'react-native';
 import { theme } from './ui';
 
