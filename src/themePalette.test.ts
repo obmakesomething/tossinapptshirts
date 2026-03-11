@@ -4,6 +4,7 @@ import { describe, expect, it } from '@jest/globals';
 import { theme } from './components/ui';
 
 const scopedFiles = [
+  'granite.config.ts',
   'src/components/ui.tsx',
   'src/pages/upload.tsx',
   'src/pages/editor.tsx',
@@ -23,6 +24,16 @@ describe('warm theme palette', () => {
     expect(theme.colors.textPrimary).toBe('#2E231B');
     expect(theme.colors.textSecondary).toBe('#776556');
     expect(theme.colors.border).toBe('#F0DFCF');
+  });
+
+  it('uses the warm brand color in Apps in Toss config', () => {
+    const config = fs.readFileSync(
+      path.join(process.cwd(), 'granite.config.ts'),
+      'utf8',
+    );
+
+    expect(config).toContain("primaryColor: '#FF6A00'");
+    expect(config).not.toContain("primaryColor: '#3182F6'");
   });
 
   it('removes the legacy navy palette from the restored screens', () => {
