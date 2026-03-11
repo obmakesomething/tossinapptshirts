@@ -238,7 +238,7 @@ export function DesignStage({
   };
 
   // Out-of-bounds detection (simplified, ignoring rotation)
-  const { isOutOfBounds, overflowPercent } = useMemo(() => {
+  const { isOutOfBounds } = useMemo(() => {
     const checkBounds = (transform: LayerTransform, isText: boolean) => {
       if (isText && !textLayer.enabled) return { out: false, overflow: 0 };
       if (!isText && !imageUri) return { out: false, overflow: 0 };
@@ -266,7 +266,7 @@ export function DesignStage({
     const out = imgResult.out || txtResult.out;
     const maxOverflow = Math.max(imgResult.overflow, txtResult.overflow);
     onOutOfBounds?.(out, maxOverflow);
-    return { isOutOfBounds: out, overflowPercent: maxOverflow };
+    return { isOutOfBounds: out };
   }, [imageTransform, textTransform, imageUri, textLayer.enabled, area.left, area.top, area.width, area.height]);
 
   const GUIDE_SIZE = 12;

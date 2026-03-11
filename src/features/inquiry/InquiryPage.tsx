@@ -1,4 +1,3 @@
-import { createRoute } from '@granite-js/react-native';
 import React, { useState } from 'react';
 import {
   ActivityIndicator,
@@ -7,20 +6,21 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { Card, PrimaryButton, Screen, TopBar, theme } from '../components/ui';
-import { API_BASE_URL } from '../config';
+import { Card, PrimaryButton, Screen, TopBar, theme } from '../../components/ui';
+import { API_BASE_URL } from '../../config';
 
-export const Route = createRoute('/inquiry', {
-  component: Page,
-});
+type InquiryPageProps = {
+  onClose?: () => void;
+  onSubmitted?: () => void;
+};
 
-function Page() {
-  const navigation = Route.useNavigation();
+export function InquiryPage({ onClose, onSubmitted }: InquiryPageProps) {
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [userName, setUserName] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
+  const [submitted, setSubmitted] = useState(false);
 
   const handleSubmit = async () => {
     if (!title.trim() || !content.trim()) {
@@ -50,8 +50,8 @@ function Page() {
         throw new Error('문의를 등록하지 못했어요. 다시 시도해 주세요.');
       }
 
-      // Success - navigate back
-      navigation.goBack();
+      setSubmitted(true);
+      onSubmitted?.();
     } catch (err) {
       setError(err instanceof Error ? err.message : '문의를 등록하지 못했어요. 다시 시도해 주세요.');
     } finally {
@@ -61,7 +61,7 @@ function Page() {
 
   return (
     <Screen>
-      <TopBar title="1대1 문의" />
+      <TopBar title="1대1 문의" rightLabel={onClose ? '닫기' : undefined} onRightPress={onClose} />
 
       <Text style={styles.subtitle}>
         궁금한 점을 남겨주시면 빠르게 답변드릴게요.
@@ -110,6 +110,7 @@ function Page() {
       </Card>
 
       {error ? <Text style={styles.errorText}>{error}</Text> : null}
+      {submitted ? <Text style={styles.successText}>문의가 등록됐어요. 확인 후 답변드릴게요.</Text> : null}
 
       <PrimaryButton
         label={submitting ? '등록하고 있어요...' : '문의 등록하기'}
@@ -169,6 +170,12 @@ const styles = StyleSheet.create({
     fontSize: 12,
     lineHeight: 18,
     color: theme.colors.error,
+    marginBottom: theme.spacing.sm,
+  },
+  successText: {
+    fontSize: 12,
+    lineHeight: 18,
+    color: theme.colors.success,
     marginBottom: theme.spacing.sm,
   },
   loadingRow: {

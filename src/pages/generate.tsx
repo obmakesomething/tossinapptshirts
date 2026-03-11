@@ -62,6 +62,11 @@ const stageLabels: Record<string, string> = {
   render_output: '결과 렌더링',
 };
 
+type ImageMutationResponse = {
+  dataUrl?: string;
+  error?: string;
+};
+
 function Page() {
   const navigation = Route.useNavigation();
   const { setDesignImageUri, setDesignPrompt } = useCatalog();
@@ -274,8 +279,8 @@ function Page() {
       if (!response.ok) {
         throw new Error('배경을 제거하지 못했어요. 다시 시도해 주세요.');
       }
-      const data = await response.json();
-      if (!data.dataUrl) {
+      const data = await response.json() as ImageMutationResponse;
+      if (typeof data.dataUrl !== 'string' || !data.dataUrl) {
         throw new Error('배경 제거 결과를 확인하지 못했어요. 다시 시도해 주세요.');
       }
       trackEvent('generate_remove_background_success');
