@@ -16,9 +16,9 @@ import { type SavedDesign, useCatalog } from '../context/catalog';
 import { catalogProducts } from '../data/catalog';
 import { buildTemplate } from '../data/mockupTemplates';
 
-const ORANGE_RED = '#FF5000';
-const NAVY_DEEP = '#071a35';
-const NAVY_PANEL = '#15325d';
+const ORANGE_RED = '#FF6A00';
+const NAVY_DEEP = '#FFF8F1';
+const NAVY_PANEL = '#FFFFFF';
 
 export const Route = createRoute('/designs', {
   component: Page,
@@ -172,16 +172,16 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 20,
     fontWeight: '800',
-    color: '#eef5ff',
+    color: '#2E231B',
   },
   headerBackText: {
     fontSize: 12,
-    color: '#dbeaff',
+    color: '#776556',
     fontWeight: '700',
   },
   title: {
     ...theme.typography.body,
-    color: '#c2d6f3',
+    color: '#776556',
     marginBottom: theme.spacing.lg,
   },
   list: {
@@ -192,7 +192,7 @@ const styles = StyleSheet.create({
     padding: theme.spacing.md,
     marginBottom: theme.spacing.md,
     backgroundColor: NAVY_PANEL,
-    borderColor: 'rgba(255,255,255,0.14)',
+    borderColor: 'rgba(240,223,207,0.92)',
     borderWidth: 1,
   },
   cardBody: {
@@ -201,13 +201,13 @@ const styles = StyleSheet.create({
   cardTitle: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#eff6ff',
+    color: '#2E231B',
     lineHeight: 22,
     marginBottom: theme.spacing.xs,
   },
   cardMeta: {
     fontSize: 12,
-    color: '#bcd2ef',
+    color: '#776556',
     lineHeight: 18,
     marginBottom: theme.spacing.sm,
   },
@@ -223,17 +223,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: theme.spacing.xl,
     backgroundColor: NAVY_PANEL,
-    borderColor: 'rgba(255,255,255,0.14)',
+    borderColor: 'rgba(240,223,207,0.92)',
     borderWidth: 1,
   },
   emptyText: {
     ...theme.typography.heading,
-    color: '#eef5ff',
+    color: '#2E231B',
     marginBottom: theme.spacing.xs,
   },
   emptySubtext: {
     ...theme.typography.body,
-    color: '#c1d5f3',
+    color: '#776556',
   },
   newButton: {
     backgroundColor: ORANGE_RED,

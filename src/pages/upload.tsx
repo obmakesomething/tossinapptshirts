@@ -30,10 +30,10 @@ import {
   trackScreenView,
 } from '../utils/analytics';
 
-const ORANGE_RED = '#FF5000';
-const NAVY_DEEP = '#071a35';
-const NAVY_MID = '#0f2a53';
-const NAVY_PANEL = '#15325d';
+const ORANGE_RED = '#FF6A00';
+const NAVY_DEEP = '#FFF8F1';
+const NAVY_MID = '#FFF2E5';
+const NAVY_PANEL = '#FFFFFF';
 
 type ImageMutationResponse = {
   dataUrl?: string;
@@ -500,7 +500,7 @@ const styles = StyleSheet.create({
     width: 240,
     height: 240,
     borderRadius: 120,
-    backgroundColor: 'rgba(56, 120, 214, 0.16)',
+    backgroundColor: 'rgba(255,186,132,0.32)',
   },
   bgOrbBottom: {
     position: 'absolute',
@@ -509,7 +509,7 @@ const styles = StyleSheet.create({
     width: 220,
     height: 220,
     borderRadius: 110,
-    backgroundColor: 'rgba(30, 74, 149, 0.13)',
+    backgroundColor: 'rgba(255,221,186,0.42)',
   },
   headerRow: {
     flexDirection: 'row',
@@ -520,38 +520,38 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 20,
     fontWeight: '800',
-    color: '#eef5ff',
+    color: '#2E231B',
   },
   headerBack: {
     borderRadius: 999,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.24)',
-    backgroundColor: 'rgba(255,255,255,0.08)',
+    borderColor: 'rgba(240,223,207,0.92)',
+    backgroundColor: 'rgba(255,244,232,0.92)',
     paddingVertical: 6,
     paddingHorizontal: 12,
   },
   headerBackText: {
     fontSize: 12,
-    color: '#dbe9fe',
+    color: '#776556',
     fontWeight: '700',
   },
   title: {
     ...theme.typography.heading,
-    color: '#f5f9ff',
+    color: '#2E231B',
     marginBottom: theme.spacing.xs,
   },
   subtitle: {
     ...theme.typography.body,
-    color: '#c4d7f5',
+    color: '#776556',
     marginBottom: theme.spacing.xs,
   },
   cropGuide: {
     fontSize: 12,
     lineHeight: 18,
-    color: '#d4e5ff',
-    backgroundColor: 'rgba(255,255,255,0.08)',
+    color: '#776556',
+    backgroundColor: 'rgba(255,244,232,0.92)',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.14)',
+    borderColor: 'rgba(240,223,207,0.92)',
     padding: theme.spacing.sm,
     borderRadius: theme.radius.sm,
     marginBottom: theme.spacing.lg,
@@ -560,9 +560,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: theme.spacing.lg,
     backgroundColor: NAVY_PANEL,
-    borderColor: 'rgba(255,255,255,0.12)',
+    borderColor: 'rgba(240,223,207,0.92)',
     borderWidth: 1,
-    shadowColor: '#010a1a',
+    shadowColor: '#5F320E',
     shadowOpacity: 0.28,
     shadowRadius: 16,
     shadowOffset: { width: 0, height: 10 },
@@ -574,7 +574,7 @@ const styles = StyleSheet.create({
     borderRadius: theme.radius.md,
     backgroundColor: NAVY_MID,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.16)',
+    borderColor: 'rgba(240,223,207,0.92)',
     marginBottom: theme.spacing.md,
     alignItems: 'center',
     justifyContent: 'center',
@@ -598,7 +598,7 @@ const styles = StyleSheet.create({
   previewText: {
     fontSize: 12,
     lineHeight: 18,
-    color: '#c7d9f6',
+    color: '#776556',
   },
   loadingRow: {
     flexDirection: 'row',
@@ -608,7 +608,7 @@ const styles = StyleSheet.create({
   loadingText: {
     fontSize: 12,
     lineHeight: 18,
-    color: '#c3d6f5',
+    color: '#776556',
     marginLeft: theme.spacing.sm,
   },
   errorText: {
@@ -632,7 +632,7 @@ const styles = StyleSheet.create({
   styleButton: {
     marginTop: theme.spacing.sm,
     width: '100%',
-    backgroundColor: 'rgba(255,255,255,0.16)',
+    backgroundColor: 'rgba(240,223,207,0.92)',
   },
   undoRow: {
     width: '100%',
@@ -642,8 +642,8 @@ const styles = StyleSheet.create({
   undoButton: {
     borderRadius: 999,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.18)',
-    backgroundColor: 'rgba(255,255,255,0.06)',
+    borderColor: 'rgba(240,223,207,0.92)',
+    backgroundColor: 'rgba(255,244,232,0.92)',
     paddingHorizontal: 12,
     paddingVertical: 8,
   },
@@ -660,7 +660,7 @@ const styles = StyleSheet.create({
     color: ORANGE_RED,
   },
   disabledToolButton: {
-    backgroundColor: 'rgba(255,255,255,0.10)',
+    backgroundColor: 'rgba(255,244,232,0.92)',
   },
   modalOverlay: {
     flex: 1,
@@ -670,7 +670,7 @@ const styles = StyleSheet.create({
     padding: theme.spacing.lg,
   },
   modalContent: {
-    backgroundColor: '#fcfdff',
+    backgroundColor: '#FFFFFF',
     borderRadius: theme.radius.lg,
     padding: theme.spacing.xl,
     width: '100%',
@@ -701,7 +701,7 @@ const styles = StyleSheet.create({
   },
   modalCancelButton: {
     marginTop: theme.spacing.sm,
-    backgroundColor: 'rgba(15,42,83,0.92)',
+    backgroundColor: '#FFF2E5',
   },
   actionRow: {
     marginTop: theme.spacing.md,
@@ -712,12 +712,12 @@ const styles = StyleSheet.create({
     marginTop: theme.spacing.md,
     marginBottom: theme.spacing.md,
     backgroundColor: NAVY_PANEL,
-    borderColor: 'rgba(255,255,255,0.12)',
+    borderColor: 'rgba(240,223,207,0.92)',
     borderWidth: 1,
   },
   quickFaqTitle: {
     ...theme.typography.subheading,
-    color: '#eef6ff',
+    color: '#2E231B',
     marginBottom: theme.spacing.sm,
   },
   quickFaqRow: {
@@ -739,13 +739,13 @@ const styles = StyleSheet.create({
   quickFaqQuestion: {
     fontSize: 12,
     lineHeight: 18,
-    color: '#dceafe',
+    color: '#2E231B',
     fontWeight: '600',
   },
   quickFaqAnswer: {
     fontSize: 12,
     lineHeight: 18,
-    color: '#bcd1ef',
+    color: '#776556',
     marginTop: 2,
   },
   nextButton: {

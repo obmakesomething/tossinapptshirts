@@ -13,10 +13,10 @@ import { useCatalog } from '../context/catalog';
 import { resolveColorValue } from '../data/colorMap';
 import { trackClick, trackScreenView } from '../utils/analytics';
 
-const ORANGE_RED = '#FF5000';
-const NAVY_DEEP = '#071a35';
-const NAVY_MID = '#0f2a53';
-const NAVY_PANEL = '#15325d';
+const ORANGE_RED = '#FF6A00';
+const NAVY_DEEP = '#FFF8F1';
+const NAVY_MID = '#FFF2E5';
+const NAVY_PANEL = '#FFFFFF';
 
 export const Route = createRoute('/products', {
   component: Page,
@@ -106,7 +106,7 @@ function Page() {
                       <Image
                         source={product.mainImage}
                         style={styles.thumbnail}
-                        resizeMode="cover"
+                        resizeMode="contain"
                       />
                       <View style={styles.cardBody}>
                         <Text style={styles.cardTitle}>{product.name}</Text>
@@ -166,7 +166,7 @@ const styles = StyleSheet.create({
     width: 230,
     height: 230,
     borderRadius: 115,
-    backgroundColor: 'rgba(56, 122, 214, 0.14)',
+    backgroundColor: 'rgba(255,196,146,0.35)',
   },
   bgOrbBottom: {
     position: 'absolute',
@@ -175,7 +175,7 @@ const styles = StyleSheet.create({
     width: 210,
     height: 210,
     borderRadius: 105,
-    backgroundColor: 'rgba(23, 71, 146, 0.12)',
+    backgroundColor: 'rgba(255,221,186,0.42)',
   },
   headerRow: {
     flexDirection: 'row',
@@ -186,24 +186,24 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 20,
     fontWeight: '800',
-    color: '#eef5ff',
+    color: '#2E231B',
   },
   headerBack: {
     borderRadius: 999,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.24)',
-    backgroundColor: 'rgba(255,255,255,0.08)',
+    borderColor: 'rgba(240,223,207,0.92)',
+    backgroundColor: 'rgba(255,244,232,0.92)',
     paddingVertical: 6,
     paddingHorizontal: 12,
   },
   headerBackText: {
     fontSize: 12,
-    color: '#dbeaff',
+    color: '#776556',
     fontWeight: '700',
   },
   subtitle: {
     ...theme.typography.body,
-    color: '#bdd2ef',
+    color: '#776556',
     marginBottom: theme.spacing.lg,
   },
   list: {},
@@ -212,7 +212,7 @@ const styles = StyleSheet.create({
   },
   categoryTitle: {
     ...theme.typography.subheading,
-    color: '#eff6ff',
+    color: '#2E231B',
     marginBottom: theme.spacing.sm,
   },
   cardPressable: {
@@ -222,7 +222,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: NAVY_PANEL,
-    borderColor: 'rgba(255,255,255,0.14)',
+    borderColor: 'rgba(240,223,207,0.92)',
     borderWidth: 1,
   },
   cardSelected: {
@@ -244,12 +244,12 @@ const styles = StyleSheet.create({
     borderRadius: theme.radius.md,
     marginTop: theme.spacing.sm,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.14)',
+    borderColor: 'rgba(240,223,207,0.92)',
   },
   colorTitle: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#eef5ff',
+    color: '#2E231B',
     lineHeight: 20,
     marginBottom: theme.spacing.sm,
   },
@@ -267,11 +267,11 @@ const styles = StyleSheet.create({
   },
   cardTitle: {
     ...theme.typography.subheading,
-    color: '#eef5ff',
+    color: '#2E231B',
     marginBottom: theme.spacing.xs,
   },
   cardMeta: {
     ...theme.typography.caption,
-    color: '#b8ceee',
+    color: '#776556',
   },
 });
