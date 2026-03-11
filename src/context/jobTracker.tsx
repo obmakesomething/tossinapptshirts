@@ -50,23 +50,6 @@ export interface JobParams {
     aspectRatio?: string;
 }
 
-interface GenerationJobApiResponse {
-    status?: JobStatus;
-    stage?: JobStage;
-    eta_ms?: number | null;
-    latency_ms?: number | null;
-    result?: JobResult | null;
-    fail_reason?: string | null;
-    created_at?: string;
-    error?: string;
-}
-
-interface GenerationJobStartResponse {
-    job_id?: string;
-    created_at?: string;
-    error?: string;
-}
-
 interface JobTrackerContextValue {
     activeJob: GenerationJob | null;
     isPolling: boolean;
@@ -97,7 +80,7 @@ export function JobTrackerProvider({ children }: { children: React.ReactNode }) 
                         // Fetch current status
                         const response = await fetch(`${API_BASE_URL}/api/generations/${parsed.jobId}`);
                         if (response.ok) {
-                            const data = await response.json() as GenerationJobApiResponse;
+                            const data = await response.json();
                             const job = mapApiToJob(parsed.jobId, data);
                             setActiveJob(job);
 
@@ -125,13 +108,13 @@ export function JobTrackerProvider({ children }: { children: React.ReactNode }) 
         };
     }, []);
 
-    const mapApiToJob = (jobId: string, data: GenerationJobApiResponse): GenerationJob => ({
+    const mapApiToJob = (jobId: string, data: Record<string, unknown>): GenerationJob => ({
         jobId,
-        status: data.status ?? 'idle',
-        stage: data.stage ?? null,
+        status: (data.status as JobStatus) || 'idle',
+        stage: (data.stage as JobStage) || null,
         etaMs: typeof data.eta_ms === 'number' ? data.eta_ms : null,
         latencyMs: typeof data.latency_ms === 'number' ? data.latency_ms : null,
-        result: data.result ?? null,
+        result: data.result as JobResult | null,
         failReason: typeof data.fail_reason === 'string' ? data.fail_reason : null,
         createdAt: typeof data.created_at === 'string' ? data.created_at : new Date().toISOString(),
     });
@@ -151,7 +134,7 @@ export function JobTrackerProvider({ children }: { children: React.ReactNode }) 
                     return;
                 }
 
-                const data = await response.json() as GenerationJobApiResponse;
+                const data = await response.json();
                 const job = mapApiToJob(jobId, data);
                 setActiveJob(job);
 
@@ -195,17 +178,12 @@ export function JobTrackerProvider({ children }: { children: React.ReactNode }) 
             });
 
             if (!response.ok) {
-                const errorData = await response.json().catch(() => ({})) as GenerationJobStartResponse;
-                throw new Error(
-                    typeof errorData.error === 'string' ? errorData.error : 'Failed to start job',
-                );
+                const error = await response.json();
+                throw new Error(error.error || 'Failed to start job');
             }
 
-            const data = await response.json() as GenerationJobStartResponse;
-            const jobId = typeof data.job_id === 'string' ? data.job_id : '';
-            if (!jobId) {
-                throw new Error('Failed to start job');
-            }
+            const data = await response.json();
+            const jobId = data.job_id;
 
             // Persist job ID
             await Storage.setItem(ACTIVE_JOB_KEY, JSON.stringify({ jobId, params }));
@@ -219,7 +197,7 @@ export function JobTrackerProvider({ children }: { children: React.ReactNode }) 
                 latencyMs: null,
                 result: null,
                 failReason: null,
-                createdAt: typeof data.created_at === 'string' ? data.created_at : new Date().toISOString(),
+                createdAt: data.created_at || new Date().toISOString(),
             });
 
             // Start polling

@@ -20,20 +20,6 @@ import { calcPricing } from '../data/pricing';
 import { formatPrice } from '../utils/format';
 import { trackOrderCreated, trackPaymentSuccess, trackPaymentFailed } from '../utils/analytics';
 
-type LoginResponse = {
-  userKey?: string;
-  error?: string;
-};
-
-type PaymentCreateResponse = {
-  payToken?: string;
-  error?: string;
-};
-
-type PaymentErrorResponse = {
-  error?: string;
-};
-
 export const Route = createRoute('/order', {
   component: Page,
 });
@@ -95,15 +81,12 @@ function Page() {
       });
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({})) as LoginResponse;
+        const errorData = await response.json().catch(() => ({}));
         throw new Error(errorData.error || '로그인에 실패했어요.');
       }
 
-      const data = await response.json() as LoginResponse;
-      if (typeof data.userKey !== 'string' || !data.userKey) {
-        throw new Error('로그인 정보를 확인하지 못했어요.');
-      }
-      console.log('[Order] Login successful, userKey:', data.userKey.substring(0, 10) + '...');
+      const data = await response.json();
+      console.log('[Order] Login successful, userKey:', data.userKey?.substring(0, 10) + '...');
 
       setUserKey(data.userKey);
     } catch (e) {
@@ -246,21 +229,17 @@ function Page() {
       });
 
       if (!createResponse.ok) {
-        const errorData = await createResponse.json().catch(() => ({})) as PaymentErrorResponse;
+        const errorData = await createResponse.json().catch(() => ({}));
         throw new Error(errorData.error || '결제 준비를 못했어요. 잠시 후 다시 시도해 주세요.');
       }
 
-      const createData = await createResponse.json() as PaymentCreateResponse;
-      const payToken = createData.payToken;
-      if (typeof payToken !== 'string' || !payToken) {
-        throw new Error('결제 토큰을 확인하지 못했어요. 잠시 후 다시 시도해 주세요.');
-      }
+      const { payToken } = await createResponse.json();
 
       // Track order created
       trackOrderCreated(orderId, pricing.total, 'KRW');
 
       // Step 2: Open TossPay checkout for user authentication
-      const { success, reason } = await TossPay.checkoutPayment({ params: { payToken } });
+      const { success, reason } = await TossPay.checkoutPayment({ payToken });
 
       if (!success) {
         trackPaymentFailed(orderId, pricing.total, reason || '결제 인증 취소', 'KRW');
@@ -282,7 +261,7 @@ function Page() {
       });
 
       if (!executeResponse.ok) {
-        const errorData = await executeResponse.json().catch(() => ({})) as PaymentErrorResponse;
+        const errorData = await executeResponse.json().catch(() => ({}));
         trackPaymentFailed(orderId, pricing.total, errorData.error || '결제 실행 실패', 'KRW');
         throw new Error(errorData.error || '결제를 완료하지 못했어요. 잠시 후 다시 시도해 주세요.');
       }

@@ -243,7 +243,6 @@ type ColorSwatchProps = {
   color: string;
   selected?: boolean;
   onPress?: () => void;
-  style?: StyleProp<ViewStyle>;
 };
 
 export function ColorSwatch({
@@ -251,12 +250,11 @@ export function ColorSwatch({
   color,
   selected,
   onPress,
-  style,
 }: ColorSwatchProps) {
   return (
     <Pressable
       onPress={onPress}
-      style={[styles.swatchWrapper, style]}
+      style={styles.swatchWrapper}
       accessibilityRole="button"
       accessibilityLabel={`${label} 색상`}
     >

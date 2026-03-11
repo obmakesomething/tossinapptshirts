@@ -12,20 +12,6 @@ export const trackEvent = (eventName: string, properties?: Record<string, any>) 
   }
 };
 
-export const trackClick = (
-  eventName: string,
-  properties?: Record<string, any>,
-) => {
-  trackEvent(eventName, properties);
-};
-
-export const trackImpression = (
-  eventName: string,
-  properties?: Record<string, any>,
-) => {
-  trackEvent(eventName, properties);
-};
-
 // Order events
 export const trackOrderCreated = (orderId: string, amount: number, currency: string = 'KRW') => {
   trackEvent('order_created', {

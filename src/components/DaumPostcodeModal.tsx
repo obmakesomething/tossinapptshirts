@@ -4,7 +4,7 @@ import { Button, List, ListRow, SearchField, Txt } from '@toss/tds-react-native'
 import { theme } from './ui';
 import { API_BASE_URL } from '../config';
 
-export interface AddressData {
+interface AddressData {
     zonecode: string; // 우편번호
     address: string; // 기본주소
     addressEnglish: string; // 영문주소
@@ -44,11 +44,6 @@ interface KakaoAddressItem {
     } | null;
 }
 
-interface AddressSearchResponse {
-    addresses?: KakaoAddressItem[];
-    error?: string;
-}
-
 interface DaumPostcodeModalProps {
     visible: boolean;
     onClose: () => void;
@@ -74,10 +69,10 @@ export function DaumPostcodeModal({ visible, onClose, onSelect }: DaumPostcodeMo
         try {
             const response = await fetch(`${API_BASE_URL}/v1/address/search?query=${encodeURIComponent(query)}`);
             if (!response.ok) {
-                const data = await response.json().catch(() => ({})) as AddressSearchResponse;
+                const data = await response.json().catch(() => ({}));
                 throw new Error(data.error || '주소를 찾지 못했어요. 다시 검색해 주세요.');
             }
-            const data = await response.json() as AddressSearchResponse;
+            const data = await response.json();
             setResults(Array.isArray(data.addresses) ? data.addresses : []);
         } catch (err) {
             setError(err instanceof Error ? err.message : '주소를 찾지 못했어요. 다시 검색해 주세요.');
@@ -222,3 +217,5 @@ const styles = StyleSheet.create({
         paddingVertical: theme.spacing.sm,
     },
 });
+
+export type { AddressData };

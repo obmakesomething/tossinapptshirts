@@ -35,11 +35,6 @@ const NAVY_DEEP = '#071a35';
 const NAVY_MID = '#0f2a53';
 const NAVY_PANEL = '#15325d';
 
-type ImageMutationResponse = {
-  dataUrl?: string;
-  error?: string;
-};
-
 export const Route = createRoute('/upload', {
   component: Page,
 });
@@ -126,8 +121,8 @@ function Page() {
       if (!response.ok) {
         throw new Error('업로드하지 못했어요. 다시 시도해 주세요.');
       }
-      const data = await response.json() as ImageMutationResponse;
-      if (typeof data.dataUrl !== 'string' || !data.dataUrl) {
+      const data = await response.json();
+      if (!data.dataUrl) {
         throw new Error('업로드 결과를 확인하지 못했어요. 다시 시도해 주세요.');
       }
       trackImageUploaded('file_picker');
@@ -214,8 +209,8 @@ function Page() {
       if (!response.ok) {
         throw new Error('배경을 제거하지 못했어요. 다시 시도해 주세요.');
       }
-      const data = await response.json() as ImageMutationResponse;
-      if (typeof data.dataUrl !== 'string' || !data.dataUrl) {
+      const data = await response.json();
+      if (!data.dataUrl) {
         throw new Error('배경 제거 결과를 확인하지 못했어요. 다시 시도해 주세요.');
       }
       trackImageUploaded('background_removed');
@@ -284,10 +279,10 @@ function Page() {
         throw new Error('스타일을 변환하지 못했어요. 다시 시도해 주세요.');
       }
 
-      const data = await response.json() as ImageMutationResponse;
+      const data = await response.json();
       console.log('[StyleTransfer] Response keys:', Object.keys(data));
 
-      if (typeof data.dataUrl !== 'string' || !data.dataUrl) {
+      if (!data.dataUrl) {
         console.error('[StyleTransfer] Missing dataUrl in response:', data);
         throw new Error('스타일 변환 결과를 확인하지 못했어요. 다시 시도해 주세요.');
       }
