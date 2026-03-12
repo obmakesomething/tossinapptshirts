@@ -1,4 +1,4 @@
-import { share, getTossShareLink } from '@apps-in-toss/framework';
+import { getTossShareLink, share } from '@apps-in-toss/framework';
 import { createRoute } from '@granite-js/react-native';
 import React, { useState } from 'react';
 import { Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
@@ -8,8 +8,8 @@ import {
   ColorSwatch,
   PageHeader,
   PrimaryButton,
-  SecondaryButton,
   Screen,
+  SecondaryButton,
   theme,
 } from '../components/ui';
 import { useCatalog } from '../context/catalog';
@@ -18,9 +18,7 @@ import { buildTemplate } from '../data/mockupTemplates';
 import { calcPricing } from '../data/pricing';
 import { formatPrice } from '../utils/format';
 
-const ORANGE_RED = '#FF5000';
-const NAVY_DEEP = '#071a35';
-const NAVY_PANEL = '#15325d';
+const ORANGE_RED = '#FF6A00';
 
 export const Route = createRoute('/preview', {
   component: Page,
@@ -81,8 +79,9 @@ function Page() {
 
   const handleShare = async () => {
     try {
-      const ogImageUrl = frontDesignImageUri || undefined;
-      const shareLink = await getTossShareLink('intoss://merchandisegpt/preview', ogImageUrl);
+      const shareLink = await getTossShareLink(
+        'intoss://merchandisegpt/preview',
+      );
       await share({
         message: `${selectedProduct.name} 디자인을 확인해보세요! 🎨\n${shareLink}`,
       });
@@ -172,12 +171,20 @@ function Page() {
       </Card>
 
       <View style={styles.primaryActionRow}>
-        <PrimaryButton label="💰 바로 주문하기" onPress={goOrder} style={styles.orderNowButton} />
+        <PrimaryButton
+          label="💰 바로 주문하기"
+          onPress={goOrder}
+          style={styles.orderNowButton}
+        />
       </View>
 
       <View style={styles.actionRow}>
         <View style={styles.flex1}>
-          <SecondaryButton label={saving ? '저장하고 있어요...' : '저장하기'} onPress={handleSave} disabled={saving} />
+          <SecondaryButton
+            label={saving ? '저장하고 있어요...' : '저장하기'}
+            onPress={handleSave}
+            disabled={saving}
+          />
         </View>
         <View style={styles.flex1}>
           <SecondaryButton label="공유하기" onPress={handleShare} />
@@ -189,7 +196,7 @@ function Page() {
 
 const styles = StyleSheet.create({
   screenContent: {
-    backgroundColor: NAVY_DEEP,
+    backgroundColor: theme.colors.background,
     paddingBottom: theme.spacing.xl,
   },
   bgOrbTop: {
@@ -199,7 +206,7 @@ const styles = StyleSheet.create({
     width: 230,
     height: 230,
     borderRadius: 115,
-    backgroundColor: 'rgba(56, 120, 214, 0.14)',
+    backgroundColor: 'rgba(255, 170, 120, 0.20)',
   },
   bgOrbBottom: {
     position: 'absolute',
@@ -208,7 +215,7 @@ const styles = StyleSheet.create({
     width: 210,
     height: 210,
     borderRadius: 105,
-    backgroundColor: 'rgba(25, 70, 146, 0.12)',
+    backgroundColor: 'rgba(255, 111, 43, 0.12)',
   },
   headerRow: {
     flexDirection: 'row',
@@ -236,19 +243,19 @@ const styles = StyleSheet.create({
   },
   title: {
     ...theme.typography.heading,
-    color: '#f0f6ff',
+    color: theme.colors.textPrimary,
   },
   subtitle: {
     ...theme.typography.body,
-    color: '#bdd2ef',
+    color: theme.colors.textSecondary,
     marginTop: theme.spacing.xs,
     marginBottom: theme.spacing.md,
   },
   mockupCard: {
     width: 220,
     alignItems: 'center',
-    backgroundColor: NAVY_PANEL,
-    borderColor: 'rgba(255,255,255,0.14)',
+    backgroundColor: theme.colors.surface,
+    borderColor: theme.colors.border,
     borderWidth: 1,
   },
   mockupSpacing: {
@@ -256,7 +263,7 @@ const styles = StyleSheet.create({
   },
   mockupLabel: {
     fontSize: 13,
-    color: '#b8ceee',
+    color: theme.colors.textSecondary,
     lineHeight: 20,
     marginTop: theme.spacing.sm,
   },
@@ -265,7 +272,7 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     ...theme.typography.subheading,
-    color: '#eff6ff',
+    color: theme.colors.textPrimary,
     marginBottom: theme.spacing.sm,
   },
   swatchRow: {
@@ -274,8 +281,8 @@ const styles = StyleSheet.create({
   },
   priceCard: {
     marginTop: theme.spacing.lg,
-    backgroundColor: NAVY_PANEL,
-    borderColor: 'rgba(255,255,255,0.14)',
+    backgroundColor: theme.colors.surface,
+    borderColor: theme.colors.border,
     borderWidth: 1,
     alignItems: 'center',
     padding: theme.spacing.lg,
@@ -283,7 +290,7 @@ const styles = StyleSheet.create({
   priceLabel: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#bdd2ef',
+    color: theme.colors.textSecondary,
     marginBottom: theme.spacing.xs,
   },
   priceAmount: {
@@ -297,24 +304,24 @@ const styles = StyleSheet.create({
   },
   priceDetailText: {
     fontSize: 13,
-    color: '#bdd2ef',
+    color: theme.colors.textSecondary,
   },
   infoCard: {
     marginTop: theme.spacing.md,
-    backgroundColor: NAVY_PANEL,
-    borderColor: 'rgba(255,255,255,0.14)',
+    backgroundColor: theme.colors.surface,
+    borderColor: theme.colors.border,
     borderWidth: 1,
   },
   infoTitle: {
     fontSize: 15,
     fontWeight: '700',
-    color: '#eff6ff',
+    color: theme.colors.textPrimary,
     lineHeight: 22,
     marginBottom: theme.spacing.xs,
   },
   infoDesc: {
     fontSize: 13,
-    color: '#c2d6f3',
+    color: theme.colors.textSecondary,
     lineHeight: 20,
   },
   primaryActionRow: {

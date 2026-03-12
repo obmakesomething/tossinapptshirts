@@ -21,6 +21,7 @@ import {
   Chip,
   CollapsibleSection,
   ColorSwatch,
+  FullScreenLoader,
   PrimaryButton,
   SecondaryButton,
   TabBar,
@@ -41,9 +42,7 @@ import {
   trackScreenView,
 } from '../utils/analytics';
 
-const ORANGE_RED = '#FF5000';
-const NAVY_MID = '#0f2a53';
-const NAVY_PANEL = '#15325d';
+const ORANGE_RED = '#FF6A00';
 
 export const Route = createRoute('/editor', {
   component: Page,
@@ -388,7 +387,8 @@ function Page() {
   };
 
   return (
-    <SafeAreaView style={styles.safe}>
+    <>
+      <SafeAreaView style={styles.safe}>
       {/* ── 컴팩트 상단 ── */}
       <View style={styles.compactHeader}>
         <View style={styles.editorTopRow}>
@@ -1041,8 +1041,13 @@ function Page() {
             </Pressable>
           </Pressable>
         </Pressable>
-      </Modal>
-    </SafeAreaView>
+        </Modal>
+      </SafeAreaView>
+      <FullScreenLoader
+        visible={loadingPhoto}
+        message="사진을 불러오고 있어요..."
+      />
+    </>
   );
 }
 
@@ -1100,15 +1105,15 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 14,
     fontWeight: '600',
-    color: '#e8f2ff',
+    color: theme.colors.textPrimary,
   },
   compactChange: {
     paddingHorizontal: theme.spacing.md,
     paddingVertical: theme.spacing.xs,
     borderRadius: 999,
-    backgroundColor: 'rgba(255,255,255,0.10)',
+    backgroundColor: theme.colors.surfaceSecondary,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.16)',
+    borderColor: theme.colors.border,
   },
   compactChangeText: {
     fontSize: 12,
@@ -1119,10 +1124,10 @@ const styles = StyleSheet.create({
   /* ── Placement Segment ── */
   placementSegment: {
     flexDirection: 'row',
-    backgroundColor: NAVY_MID,
+    backgroundColor: theme.colors.surfaceSecondary,
     borderRadius: 999,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.18)',
+    borderColor: theme.colors.border,
     padding: 2,
     marginBottom: theme.spacing.sm,
   },
@@ -1133,15 +1138,15 @@ const styles = StyleSheet.create({
     borderRadius: 999,
   },
   segmentButtonActive: {
-    backgroundColor: 'rgba(255,255,255,0.14)',
+    backgroundColor: theme.colors.primarySoft,
   },
   segmentButtonText: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#9ebbe3',
+    color: theme.colors.textSecondary,
   },
   segmentButtonTextActive: {
-    color: '#f5f9ff',
+    color: theme.colors.primary,
   },
 
   /* ── Canvas ── */
@@ -1165,15 +1170,15 @@ const styles = StyleSheet.create({
   activeLayerBadge: {
     borderRadius: 999,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.2)',
-    backgroundColor: 'rgba(255,255,255,0.08)',
+    borderColor: theme.colors.border,
+    backgroundColor: theme.colors.surfaceSecondary,
     paddingVertical: 4,
     paddingHorizontal: 10,
   },
   activeLayerBadgeText: {
     fontSize: 11,
     lineHeight: 16,
-    color: '#d8e9ff',
+    color: theme.colors.textSecondary,
     fontWeight: '700',
   },
   canvasFrame: {
@@ -1183,8 +1188,8 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     borderRadius: 18,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.14)',
-    backgroundColor: NAVY_MID,
+    borderColor: theme.colors.border,
+    backgroundColor: theme.colors.surface,
   },
   canvasAddButton: {
     position: 'absolute',
@@ -1193,9 +1198,9 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: 'rgba(255,255,255,0.08)',
+    backgroundColor: theme.colors.surfaceSecondary,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.16)',
+    borderColor: theme.colors.border,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -1214,20 +1219,20 @@ const styles = StyleSheet.create({
     paddingVertical: theme.spacing.xs,
     borderRadius: 999,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.2)',
-    backgroundColor: 'rgba(255,255,255,0.08)',
+    borderColor: theme.colors.border,
+    backgroundColor: theme.colors.surfaceSecondary,
   },
   focusButtonActive: {
-    borderColor: 'rgba(255,255,255,0.38)',
-    backgroundColor: 'rgba(255,255,255,0.2)',
+    borderColor: ORANGE_RED,
+    backgroundColor: theme.colors.primarySoft,
   },
   focusButtonText: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#b8cfef',
+    color: theme.colors.textSecondary,
   },
   focusButtonTextActive: {
-    color: '#f1f7ff',
+    color: theme.colors.primary,
   },
 
   /* ── Canvas Info ── */
@@ -1240,21 +1245,21 @@ const styles = StyleSheet.create({
   },
   canvasInfoText: {
     fontSize: 11,
-    color: '#a2bde3',
+    color: theme.colors.textSecondary,
   },
   canvasInfoWarn: {
     fontSize: 11,
-    color: '#ffc06e',
+    color: ORANGE_RED,
   },
 
   /* ── Bottom Panel ── */
   panel: {
     flex: 1.25,
-    backgroundColor: NAVY_PANEL,
+    backgroundColor: theme.colors.surface,
     borderTopLeftRadius: theme.radius.xl,
     borderTopRightRadius: theme.radius.xl,
     borderTopWidth: 1,
-    borderTopColor: 'rgba(255,255,255,0.15)',
+    borderTopColor: theme.colors.border,
     marginTop: theme.spacing.sm,
   },
   panelExpanded: {
@@ -1270,13 +1275,13 @@ const styles = StyleSheet.create({
     width: 40,
     height: 4,
     borderRadius: 2,
-    backgroundColor: 'rgba(255,255,255,0.3)',
+    backgroundColor: '#D9BFA9',
     marginBottom: theme.spacing.xs,
   },
   dragHint: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#c9ddfb',
+    color: theme.colors.textSecondary,
   },
   outOfBoundsInfo: {
     backgroundColor: theme.colors.surface,
@@ -1301,11 +1306,11 @@ const styles = StyleSheet.create({
 
   /* ── CTA ── */
   ctaBar: {
-    backgroundColor: NAVY_PANEL,
+    backgroundColor: theme.colors.surface,
     paddingHorizontal: theme.spacing.lg,
     paddingVertical: theme.spacing.md,
     borderTopWidth: 1,
-    borderTopColor: 'rgba(255,255,255,0.15)',
+    borderTopColor: theme.colors.border,
   },
   ctaButtonRow: {
     flexDirection: 'row',
@@ -1332,17 +1337,17 @@ const styles = StyleSheet.create({
     marginBottom: theme.spacing.md,
     paddingBottom: theme.spacing.md,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255,255,255,0.14)',
+    borderBottomColor: theme.colors.border,
   },
   sectionTitle: {
     ...theme.typography.subheading,
-    color: '#f0f6ff',
+    color: theme.colors.textPrimary,
     marginBottom: theme.spacing.sm,
   },
   sectionHint: {
     fontSize: 13,
     lineHeight: 20,
-    color: '#b7ccea',
+    color: theme.colors.textSecondary,
     marginBottom: theme.spacing.md,
   },
 
@@ -1350,7 +1355,7 @@ const styles = StyleSheet.create({
   transformHint: {
     fontSize: 13,
     lineHeight: 20,
-    color: '#bfd2ee',
+    color: theme.colors.textSecondary,
     marginBottom: theme.spacing.sm,
   },
   sliderRow: {
@@ -1359,7 +1364,7 @@ const styles = StyleSheet.create({
   sliderLabel: {
     fontSize: 12,
     lineHeight: 18,
-    color: '#a8c2e6',
+    color: theme.colors.textSecondary,
     marginBottom: theme.spacing.sm,
   },
   outOfBoundsWarning: {
@@ -1396,7 +1401,7 @@ const styles = StyleSheet.create({
   },
   sizeHint: {
     ...theme.typography.caption,
-    color: '#a8c2e6',
+    color: theme.colors.textSecondary,
     marginTop: theme.spacing.xs,
   },
   quantityRow: {
@@ -1407,7 +1412,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     lineHeight: 22,
     fontWeight: '700',
-    color: '#eef5ff',
+    color: theme.colors.textPrimary,
     marginHorizontal: theme.spacing.lg,
   },
   addLineButton: {
@@ -1419,12 +1424,12 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingVertical: theme.spacing.sm,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255,255,255,0.12)',
+    borderBottomColor: theme.colors.border,
   },
   confirmText: {
     fontSize: 14,
     lineHeight: 20,
-    color: '#eef5ff',
+    color: theme.colors.textPrimary,
     fontWeight: '600',
   },
   removeText: {
@@ -1435,12 +1440,12 @@ const styles = StyleSheet.create({
   },
   priceCard: {
     marginTop: theme.spacing.lg,
-    backgroundColor: 'rgba(255,255,255,0.08)',
-    borderColor: 'rgba(255,255,255,0.18)',
+    backgroundColor: theme.colors.surfaceSecondary,
+    borderColor: theme.colors.border,
   },
   priceTitle: {
     ...theme.typography.subheading,
-    color: '#f2f8ff',
+    color: theme.colors.textPrimary,
     marginBottom: theme.spacing.xs,
   },
   priceValue: {
@@ -1453,12 +1458,12 @@ const styles = StyleSheet.create({
   priceOption: {
     fontSize: 12,
     lineHeight: 18,
-    color: '#bdd2ef',
+    color: theme.colors.textSecondary,
   },
   priceNote: {
     fontSize: 12,
     lineHeight: 18,
-    color: '#bdd2ef',
+    color: theme.colors.textSecondary,
     marginTop: theme.spacing.xs,
   },
 
@@ -1470,7 +1475,7 @@ const styles = StyleSheet.create({
   fontLabel: {
     fontSize: 12,
     lineHeight: 18,
-    color: '#a8c2e6',
+    color: theme.colors.textSecondary,
     marginBottom: theme.spacing.sm,
   },
   fontButtons: {
@@ -1481,21 +1486,21 @@ const styles = StyleSheet.create({
     paddingVertical: theme.spacing.sm,
     borderRadius: 999,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.20)',
+    borderColor: theme.colors.border,
     marginRight: theme.spacing.sm,
-    backgroundColor: 'rgba(255,255,255,0.08)',
+    backgroundColor: theme.colors.surfaceSecondary,
   },
   fontButtonSelected: {
     borderColor: ORANGE_RED,
-    backgroundColor: 'rgba(255,80,0,0.14)',
+    backgroundColor: theme.colors.primarySoft,
   },
   fontButtonText: {
     fontSize: 12,
     lineHeight: 18,
-    color: '#d3e4fb',
+    color: theme.colors.textSecondary,
   },
   fontButtonTextSelected: {
-    color: '#ffd8c9',
+    color: theme.colors.primary,
   },
 
   /* ── Photo Management ── */
@@ -1503,7 +1508,7 @@ const styles = StyleSheet.create({
     marginBottom: theme.spacing.md,
     paddingBottom: theme.spacing.md,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255,255,255,0.12)',
+    borderBottomColor: theme.colors.border,
   },
   photoError: {
     fontSize: 12,
@@ -1574,13 +1579,13 @@ const styles = StyleSheet.create({
   photoHint: {
     fontSize: 11,
     lineHeight: 16,
-    color: '#a8c2e6',
+    color: theme.colors.textSecondary,
     marginTop: theme.spacing.xs,
   },
   photoSectionHint: {
     fontSize: 11,
     lineHeight: 18,
-    color: '#a8c2e6',
+    color: theme.colors.textSecondary,
     marginBottom: theme.spacing.xs,
   },
   photoColorRow: {
@@ -1597,7 +1602,7 @@ const styles = StyleSheet.create({
   photoLoadingText: {
     fontSize: 12,
     lineHeight: 18,
-    color: '#bed3ef',
+    color: theme.colors.textSecondary,
     marginLeft: theme.spacing.sm,
   },
 
@@ -1641,7 +1646,7 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.error,
   },
   startModalContent: {
-    backgroundColor: '#fcfdff',
+    backgroundColor: theme.colors.surface,
     borderRadius: theme.radius.lg,
     padding: theme.spacing.xl,
     width: '100%',
@@ -1657,7 +1662,7 @@ const styles = StyleSheet.create({
   },
   startModalCloseText: {
     fontSize: 12,
-    color: '#637186',
+    color: theme.colors.textSecondary,
     fontWeight: '600',
   },
 });

@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import type React from 'react';
+import { useState } from 'react';
 import {
   ActivityIndicator,
   Dimensions,
@@ -15,33 +16,33 @@ import {
 
 export const theme = {
   colors: {
-    // ── Dark Navy Base ──
-    background: '#071a35',
-    surface: '#15325d',
-    surfaceSecondary: '#0f2a53',
+    // ── Light Warm Base (AIT preview parity) ──
+    background: '#FFF8F1',
+    surface: '#FFFFFF',
+    surfaceSecondary: '#FFF2E5',
     // ── Accent ──
-    primary: '#FF5000',
-    primarySoft: 'rgba(255,80,0,0.14)',
-    primaryPressed: '#E04500',
-    // ── Text (light-on-dark) ──
-    textPrimary: '#eef5ff',
-    textSecondary: '#bdd2ef',
-    textTertiary: '#8badd4',
+    primary: '#FF6A00',
+    primarySoft: '#FFE5CF',
+    primaryPressed: '#E65F00',
+    // ── Text ──
+    textPrimary: '#2E231B',
+    textSecondary: '#776556',
+    textTertiary: '#9D826E',
     // ── Borders ──
-    border: 'rgba(255,255,255,0.16)',
-    muted: '#7a9bc4',
+    border: '#F0DFCF',
+    muted: '#9F8571',
     // ── Semantic ──
-    success: '#4ADE80',
-    successSoft: 'rgba(74,222,128,0.12)',
-    successBorder: 'rgba(74,222,128,0.30)',
-    warning: '#FBBF24',
-    error: '#F87171',
-    errorSoft: 'rgba(248,113,113,0.12)',
-    errorBorder: 'rgba(248,113,113,0.30)',
-    errorPressed: 'rgba(248,113,113,0.22)',
-    info: '#60A5FA',
-    infoSoft: 'rgba(96,165,250,0.12)',
-    infoBorder: 'rgba(96,165,250,0.30)',
+    success: '#0EA76F',
+    successSoft: '#E7F7F0',
+    successBorder: '#9EDFC8',
+    warning: '#F59E0B',
+    error: '#E6492D',
+    errorSoft: '#FDEAE5',
+    errorBorder: '#F5B8A8',
+    errorPressed: '#FADFD7',
+    info: '#2778D8',
+    infoSoft: '#EAF2FF',
+    infoBorder: '#BED3F1',
   },
   spacing: {
     xs: 4,
@@ -116,11 +117,7 @@ type TopBarProps = {
   onRightPress?: () => void;
 };
 
-export function TopBar({
-  title,
-  rightLabel,
-  onRightPress,
-}: TopBarProps) {
+export function TopBar({ title, rightLabel, onRightPress }: TopBarProps) {
   return (
     <View style={styles.topBar}>
       <View style={styles.topBarButton} />
@@ -243,6 +240,7 @@ type ColorSwatchProps = {
   color: string;
   selected?: boolean;
   onPress?: () => void;
+  style?: StyleProp<ViewStyle>;
 };
 
 export function ColorSwatch({
@@ -250,11 +248,12 @@ export function ColorSwatch({
   color,
   selected,
   onPress,
+  style,
 }: ColorSwatchProps) {
   return (
     <Pressable
       onPress={onPress}
-      style={styles.swatchWrapper}
+      style={[styles.swatchWrapper, style]}
       accessibilityRole="button"
       accessibilityLabel={`${label} 색상`}
     >
@@ -286,7 +285,10 @@ type StickyFooterProps = {
   fadeEnabled?: boolean;
 };
 
-export function StickyFooter({ children, fadeEnabled = true }: StickyFooterProps) {
+export function StickyFooter({
+  children,
+  fadeEnabled = true,
+}: StickyFooterProps) {
   return (
     <View style={styles.stickyFooter}>
       {fadeEnabled && <View style={styles.stickyFooterFade} />}
@@ -349,7 +351,12 @@ type BottomSheetProps = {
 
 const SCREEN_HEIGHT = Dimensions.get('window').height;
 
-export function BottomSheet({ visible, onClose, title, children }: BottomSheetProps) {
+export function BottomSheet({
+  visible,
+  onClose,
+  title,
+  children,
+}: BottomSheetProps) {
   return (
     <Modal
       visible={visible}
@@ -367,7 +374,11 @@ export function BottomSheet({ visible, onClose, title, children }: BottomSheetPr
         {title && (
           <View style={styles.sheetTitleRow}>
             <Text style={styles.sheetTitle}>{title}</Text>
-            <Pressable onPress={onClose} accessibilityRole="button" accessibilityLabel="닫기">
+            <Pressable
+              onPress={onClose}
+              accessibilityRole="button"
+              accessibilityLabel="닫기"
+            >
               <Text style={styles.sheetClose}>✕</Text>
             </Pressable>
           </View>
@@ -403,7 +414,9 @@ export function TabBar({ tabs, activeIndex, onChangeIndex }: TabBarProps) {
           onPress={() => onChangeIndex(i)}
           style={[styles.tabItem, i === activeIndex && styles.tabItemActive]}
         >
-          <Text style={[styles.tabText, i === activeIndex && styles.tabTextActive]}>
+          <Text
+            style={[styles.tabText, i === activeIndex && styles.tabTextActive]}
+          >
             {tab}
           </Text>
         </Pressable>
@@ -417,7 +430,10 @@ type FullScreenLoaderProps = {
   message?: string;
 };
 
-export function FullScreenLoader({ visible, message = '로딩 중...' }: FullScreenLoaderProps) {
+export function FullScreenLoader({
+  visible,
+  message = '로딩 중...',
+}: FullScreenLoaderProps) {
   if (!visible) return null;
 
   return (
@@ -448,7 +464,12 @@ const infoBoxColors = {
 export function InfoBox({ children, type = 'info' }: InfoBoxProps) {
   const c = infoBoxColors[type];
   return (
-    <View style={[styles.infoBox, { backgroundColor: c.bg, borderLeftColor: c.border }]}>
+    <View
+      style={[
+        styles.infoBox,
+        { backgroundColor: c.bg, borderLeftColor: c.border },
+      ]}
+    >
       {typeof children === 'string' ? (
         <Text style={styles.infoBoxText}>{children}</Text>
       ) : (
@@ -498,6 +519,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     minHeight: 48,
+    shadowColor: '#E65F00',
+    shadowOpacity: 0.28,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 6,
   },
   primaryButtonPressed: {
     backgroundColor: theme.colors.primaryPressed,
@@ -508,23 +534,28 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
 
-  /* ── Secondary Button (glassmorphic dark) ── */
+  /* ── Secondary Button ── */
   secondaryButton: {
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.20)',
+    borderColor: theme.colors.border,
     paddingVertical: 14,
     paddingHorizontal: theme.spacing.lg,
     borderRadius: theme.radius.md,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(255,255,255,0.08)',
+    backgroundColor: theme.colors.surfaceSecondary,
     minHeight: 48,
+    shadowColor: '#4D3622',
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 3,
   },
   secondaryButtonPressed: {
-    backgroundColor: 'rgba(255,255,255,0.16)',
+    backgroundColor: '#FFEBDD',
   },
   secondaryButtonText: {
-    color: '#dbeaff',
+    color: theme.colors.textSecondary,
     fontSize: 16,
     fontWeight: '600',
   },
@@ -561,8 +592,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   chipDefault: {
-    borderColor: 'rgba(255,255,255,0.18)',
-    backgroundColor: 'rgba(255,255,255,0.06)',
+    borderColor: theme.colors.border,
+    backgroundColor: theme.colors.surfaceSecondary,
   },
   chipSelected: {
     borderColor: theme.colors.primary,
@@ -570,11 +601,11 @@ const styles = StyleSheet.create({
   },
   chipText: {
     fontSize: 14,
-    color: '#bdd2ef',
+    color: theme.colors.textSecondary,
     fontWeight: '600',
   },
   chipTextSelected: {
-    color: '#ffd8c9',
+    color: theme.colors.primary,
   },
 
   /* ── ColorSwatch ── */
@@ -587,7 +618,7 @@ const styles = StyleSheet.create({
     height: 36,
     borderRadius: 18,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.24)',
+    borderColor: theme.colors.border,
     marginBottom: 6,
   },
   swatchSelected: {
@@ -596,21 +627,21 @@ const styles = StyleSheet.create({
   },
   swatchLabel: {
     fontSize: 12,
-    color: '#b8ceee',
+    color: theme.colors.textSecondary,
   },
 
   /* ── Card ── */
   card: {
-    backgroundColor: '#15325d',
+    backgroundColor: theme.colors.surface,
     borderRadius: theme.radius.md,
     padding: theme.spacing.lg,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.12)',
-    shadowColor: '#010a1a',
-    shadowOpacity: 0.22,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 6 },
-    elevation: 4,
+    borderColor: theme.colors.border,
+    shadowColor: '#5F320E',
+    shadowOpacity: 0.18,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 10 },
+    elevation: 7,
   },
 
   /* StickyFooter */
@@ -636,7 +667,7 @@ const styles = StyleSheet.create({
   /* DisabledHint */
   disabledHint: {
     fontSize: 13,
-    color: '#8badd4',
+    color: theme.colors.textTertiary,
     textAlign: 'center',
     marginTop: theme.spacing.sm,
   },
@@ -654,11 +685,11 @@ const styles = StyleSheet.create({
   collapsibleTitle: {
     fontSize: 15,
     fontWeight: '600',
-    color: '#c4d8f4',
+    color: theme.colors.textPrimary,
   },
   collapsibleArrow: {
     fontSize: 12,
-    color: '#8badd4',
+    color: theme.colors.textTertiary,
   },
   collapsibleBody: {
     paddingTop: theme.spacing.sm,
@@ -667,7 +698,7 @@ const styles = StyleSheet.create({
   /* BottomSheet */
   sheetOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.55)',
+    backgroundColor: 'rgba(46,35,27,0.34)',
   },
   sheetContainer: {
     position: 'absolute',
@@ -675,11 +706,11 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     maxHeight: SCREEN_HEIGHT * 0.7,
-    backgroundColor: '#15325d',
+    backgroundColor: theme.colors.surface,
     borderTopLeftRadius: theme.radius.xl,
     borderTopRightRadius: theme.radius.xl,
     borderTopWidth: 1,
-    borderTopColor: 'rgba(255,255,255,0.15)',
+    borderTopColor: theme.colors.border,
   },
   sheetHandleRow: {
     alignItems: 'center',
@@ -690,7 +721,7 @@ const styles = StyleSheet.create({
     width: 36,
     height: 4,
     borderRadius: 2,
-    backgroundColor: 'rgba(255,255,255,0.30)',
+    backgroundColor: '#D9BFA9',
   },
   sheetTitleRow: {
     flexDirection: 'row',
@@ -699,16 +730,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: theme.spacing.xl,
     paddingVertical: theme.spacing.md,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255,255,255,0.12)',
+    borderBottomColor: theme.colors.border,
   },
   sheetTitle: {
     fontSize: 17,
     fontWeight: '700',
-    color: '#eef5ff',
+    color: theme.colors.textPrimary,
   },
   sheetClose: {
     fontSize: 18,
-    color: '#8badd4',
+    color: theme.colors.textSecondary,
     padding: theme.spacing.xs,
   },
   sheetScroll: {
@@ -723,7 +754,7 @@ const styles = StyleSheet.create({
   tabBar: {
     flexDirection: 'row',
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255,255,255,0.12)',
+    borderBottomColor: theme.colors.border,
   },
   tabItem: {
     flex: 1,
@@ -737,33 +768,33 @@ const styles = StyleSheet.create({
   tabText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#8badd4',
+    color: theme.colors.textTertiary,
   },
   tabTextActive: {
-    color: '#ffd8c9',
+    color: theme.colors.primary,
   },
 
   /* FullScreenLoader */
   fullScreenLoader: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.75)',
+    backgroundColor: 'rgba(46,35,27,0.58)',
     justifyContent: 'center',
     alignItems: 'center',
   },
   loaderContent: {
-    backgroundColor: '#15325d',
+    backgroundColor: theme.colors.surface,
     borderRadius: theme.radius.lg,
     padding: theme.spacing.xxl,
     alignItems: 'center',
     minWidth: 200,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.14)',
+    borderColor: theme.colors.border,
   },
   loaderMessage: {
     marginTop: theme.spacing.lg,
     fontSize: 16,
     fontWeight: '600',
-    color: '#eef5ff',
+    color: theme.colors.textPrimary,
     textAlign: 'center',
   },
 
@@ -776,7 +807,7 @@ const styles = StyleSheet.create({
   },
   infoBoxText: {
     fontSize: 14,
-    color: '#c9ddf6',
+    color: theme.colors.textSecondary,
     lineHeight: 20,
   },
 
@@ -794,14 +825,14 @@ const styles = StyleSheet.create({
   pageHeaderBack: {
     borderRadius: 999,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.24)',
-    backgroundColor: 'rgba(255,255,255,0.08)',
+    borderColor: theme.colors.border,
+    backgroundColor: theme.colors.surfaceSecondary,
     paddingVertical: 6,
     paddingHorizontal: 12,
   },
   pageHeaderBackText: {
     fontSize: 12,
-    color: '#dbeaff',
+    color: theme.colors.textSecondary,
     fontWeight: '700',
   },
 });

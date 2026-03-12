@@ -17,6 +17,8 @@ const axios = require('axios');
 const { runPrintPipeline } = require('./printPipeline');
 const generationsRouter = require('./generations');
 const { getPool, initializeDatabase, closePool } = require('./db');
+const { generateMaskWithRembg, hasMaskProviderEnv } = require('./lib/rembgMask');
+const { applyMaskToAlphaPng } = require('./lib/maskPipeline');
 
 const app = express();
 
@@ -169,7 +171,7 @@ const IMAGEN_EDIT_MODEL = process.env.IMAGEN_EDIT_MODEL || 'imagen-3.0-capabilit
 const VERTEX_PROJECT_ID = process.env.VERTEX_PROJECT_ID || process.env.GOOGLE_CLOUD_PROJECT || '';
 const VERTEX_LOCATION = process.env.VERTEX_LOCATION || process.env.GOOGLE_CLOUD_LOCATION || 'us-central1';
 const VERTEX_API_KEY = process.env.VERTEX_API_KEY || process.env.GOOGLE_API_KEY || '';
-const REMOVE_BG_PROVIDER = process.env.REMOVE_BG_PROVIDER || (VERTEX_PROJECT_ID ? 'vertex_imagen' : 'clipdrop');
+const REMOVE_BG_PROVIDER = 'rembg_mask';
 const ORDER_OUTPUT_DIR = process.env.ORDER_OUTPUT_DIR || path.join('/tmp', 'order-output');
 const CLIPDROP_API_KEY = process.env.CLIPDROP_API_KEY || '';
 const KAKAO_WEBHOOK_URL = process.env.KAKAO_WEBHOOK_URL || '';
@@ -897,6 +899,7 @@ app.get('/health', async (_req, res) => {
       openai: Boolean(process.env.OPENAI_API_KEY),
       smtp: Boolean(process.env.SMTP_USER && process.env.SMTP_PASS),
       clipdrop: Boolean(CLIPDROP_API_KEY),
+      rembgMask: hasMaskProviderEnv(process.env),
       db: databaseConfigured ? databaseHealthy : true,
       databaseConfigured,
       vertex: Boolean(VERTEX_PROJECT_ID && VERTEX_LOCATION && (VERTEX_API_KEY || process.env.GOOGLE_SERVICE_ACCOUNT_JSON || process.env.GOOGLE_SERVICE_ACCOUNT_JSON_BASE64)),
@@ -1046,14 +1049,13 @@ app.post('/v1/images/generate', strictLimiter, async (req, res) => {
 });
 
 app.post('/v1/images/remove-background', strictLimiter, async (req, res) => {
-  let clipdropTempDir = '';
   try {
-    const { imageUrl, dataUrl, filename, returnBase64 } = req.body || {};
+    const startedAt = Date.now();
+    const { imageUrl, dataUrl, filename, returnBase64, model } = req.body || {};
     if (!imageUrl && !dataUrl) {
       return res.status(400).json({ error: 'imageUrl or dataUrl is required.' });
     }
     const baseName = filename || `remove-bg-${Date.now()}`;
-    const safeBaseName = String(baseName).replace(/[^a-zA-Z0-9-_]/g, '_');
     logEvent('info', 'remove_background_request', {
       requestId: req.requestId,
       sourceType: imageUrl ? 'url' : 'dataUrl',
@@ -1061,6 +1063,7 @@ app.post('/v1/images/remove-background', strictLimiter, async (req, res) => {
       filename: filename || '',
       returnBase64: !!returnBase64,
       provider: REMOVE_BG_PROVIDER,
+      maskModelHint: model || '',
     });
 
     let inputBuffer;
@@ -1075,26 +1078,19 @@ app.post('/v1/images/remove-background', strictLimiter, async (req, res) => {
       if (!inputBuffer) return res.status(400).json({ error: 'Failed to download imageUrl.' });
     }
 
-    let outputBuffer;
-    if (REMOVE_BG_PROVIDER === 'clipdrop') {
-      if (!CLIPDROP_API_KEY) {
-        return res.status(500).json({ error: 'CLIPDROP_API_KEY is required when REMOVE_BG_PROVIDER=clipdrop.' });
-      }
-      clipdropTempDir = await fsp.mkdtemp(path.join('/tmp', 'clipdrop-'));
-      const inputPath = path.join(clipdropTempDir, `${safeBaseName}.png`);
-      await fsp.writeFile(inputPath, inputBuffer);
-      const outputPath = path.join(clipdropTempDir, `${safeBaseName}-nobg.png`);
-      await removeBackgroundClipdrop({ sourcePath: inputPath, apiKey: CLIPDROP_API_KEY, outputPath });
-      outputBuffer = await fsp.readFile(outputPath);
-    } else if (REMOVE_BG_PROVIDER === 'vertex_imagen') {
-      outputBuffer = await removeBackgroundVertexImagen({
-        inputBuffer,
-        inputMimeType,
-        requestId: req.requestId,
-      });
-    } else {
-      return res.status(400).json({ error: `Unsupported REMOVE_BG_PROVIDER: ${REMOVE_BG_PROVIDER}` });
-    }
+    const maskStartedAt = Date.now();
+    const maskResult = await generateMaskWithRembg({
+      imageBytes: inputBuffer,
+      mimeType: inputMimeType,
+      model,
+      env: process.env,
+      traceId: req.requestId,
+    });
+    const maskElapsedMs = Date.now() - maskStartedAt;
+    const outputBuffer = await applyMaskToAlphaPng({
+      inputBuffer,
+      maskPngBuffer: maskResult.pngBytes,
+    });
 
     const key = `${IMAGE_PREFIX}/${Date.now()}-${Math.random()
       .toString(36)
@@ -1105,6 +1101,14 @@ app.post('/v1/images/remove-background', strictLimiter, async (req, res) => {
       url,
       bytes: outputBuffer.length,
       provider: REMOVE_BG_PROVIDER,
+      inputBytes: inputBuffer.length,
+      maskBytes: maskResult.pngBytes.length,
+      outputBytes: outputBuffer.length,
+      model: maskResult.model,
+      triedModels: maskResult.triedModels,
+      maskProvider: maskResult.provider,
+      maskElapsedMs,
+      elapsedMs: Date.now() - startedAt,
     });
 
     const result = { url, requestId: req.requestId };
@@ -1115,13 +1119,12 @@ app.post('/v1/images/remove-background', strictLimiter, async (req, res) => {
   } catch (error) {
     logEvent('error', 'remove_background_failed', {
       requestId: req.requestId,
+      provider: REMOVE_BG_PROVIDER,
       ...formatError(error),
     });
-    res.status(500).json({ error: error.message || 'Remove background failed.', requestId: req.requestId });
-  } finally {
-    if (clipdropTempDir && isPathInTmp(clipdropTempDir)) {
-      await safeRemoveDir(clipdropTempDir);
-    }
+    res
+      .status(Number(error?.status) || 500)
+      .json({ error: error.message || 'Remove background failed.', requestId: req.requestId });
   }
 });
 
@@ -2916,6 +2919,8 @@ async function startServer() {
       vertexEnabled: Boolean(VERTEX_PROJECT_ID),
       vertexLocation: VERTEX_LOCATION,
       clipdropEnabled: Boolean(CLIPDROP_API_KEY),
+      rembgMaskEnabled: hasMaskProviderEnv(process.env),
+      rembgMaskBaseUrl: process.env.REMBG_MASK_BASE_URL || '',
       databaseEnabled: Boolean(process.env.DATABASE_URL),
       kakaoApiEnabled: Boolean(process.env.KAKAO_REST_API_KEY),
       orderOutputDir: ORDER_OUTPUT_DIR,

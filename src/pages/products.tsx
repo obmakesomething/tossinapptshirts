@@ -13,10 +13,7 @@ import { useCatalog } from '../context/catalog';
 import { resolveColorValue } from '../data/colorMap';
 import { trackClick, trackScreenView } from '../utils/analytics';
 
-const ORANGE_RED = '#FF5000';
-const NAVY_DEEP = '#071a35';
-const NAVY_MID = '#0f2a53';
-const NAVY_PANEL = '#15325d';
+const ORANGE_RED = '#FF6A00';
 
 export const Route = createRoute('/products', {
   component: Page,
@@ -157,7 +154,7 @@ function Page() {
 
 const styles = StyleSheet.create({
   screenContent: {
-    backgroundColor: NAVY_DEEP,
+    backgroundColor: theme.colors.background,
   },
   bgOrbTop: {
     position: 'absolute',
@@ -166,7 +163,7 @@ const styles = StyleSheet.create({
     width: 230,
     height: 230,
     borderRadius: 115,
-    backgroundColor: 'rgba(56, 122, 214, 0.14)',
+    backgroundColor: 'rgba(255, 170, 120, 0.20)',
   },
   bgOrbBottom: {
     position: 'absolute',
@@ -175,7 +172,7 @@ const styles = StyleSheet.create({
     width: 210,
     height: 210,
     borderRadius: 105,
-    backgroundColor: 'rgba(23, 71, 146, 0.12)',
+    backgroundColor: 'rgba(255, 111, 43, 0.12)',
   },
   headerRow: {
     flexDirection: 'row',
@@ -203,7 +200,7 @@ const styles = StyleSheet.create({
   },
   subtitle: {
     ...theme.typography.body,
-    color: '#bdd2ef',
+    color: theme.colors.textSecondary,
     marginBottom: theme.spacing.lg,
   },
   list: {},
@@ -212,7 +209,7 @@ const styles = StyleSheet.create({
   },
   categoryTitle: {
     ...theme.typography.subheading,
-    color: '#eff6ff',
+    color: theme.colors.textPrimary,
     marginBottom: theme.spacing.sm,
   },
   cardPressable: {
@@ -221,13 +218,13 @@ const styles = StyleSheet.create({
   card: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: NAVY_PANEL,
-    borderColor: 'rgba(255,255,255,0.14)',
+    backgroundColor: theme.colors.surface,
+    borderColor: theme.colors.border,
     borderWidth: 1,
   },
   cardSelected: {
     borderColor: ORANGE_RED,
-    backgroundColor: NAVY_MID,
+    backgroundColor: theme.colors.primarySoft,
   },
   cardExpanded: {
     borderColor: ORANGE_RED,
@@ -240,16 +237,16 @@ const styles = StyleSheet.create({
   },
   colorSection: {
     padding: theme.spacing.md,
-    backgroundColor: NAVY_MID,
+    backgroundColor: theme.colors.surfaceSecondary,
     borderRadius: theme.radius.md,
     marginTop: theme.spacing.sm,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.14)',
+    borderColor: theme.colors.border,
   },
   colorTitle: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#eef5ff',
+    color: theme.colors.textPrimary,
     lineHeight: 20,
     marginBottom: theme.spacing.sm,
   },
@@ -267,11 +264,11 @@ const styles = StyleSheet.create({
   },
   cardTitle: {
     ...theme.typography.subheading,
-    color: '#eef5ff',
+    color: theme.colors.textPrimary,
     marginBottom: theme.spacing.xs,
   },
   cardMeta: {
     ...theme.typography.caption,
-    color: '#b8ceee',
+    color: theme.colors.textSecondary,
   },
 });

@@ -7,7 +7,14 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { Card, PrimaryButton, Screen, TopBar, theme } from '../components/ui';
+import {
+  Card,
+  FullScreenLoader,
+  PrimaryButton,
+  Screen,
+  TopBar,
+  theme,
+} from '../components/ui';
 import { API_BASE_URL } from '../config';
 
 export const Route = createRoute('/inquiry', {
@@ -60,8 +67,9 @@ function Page() {
   };
 
   return (
-    <Screen>
-      <TopBar title="1대1 문의" />
+    <>
+      <Screen>
+        <TopBar title="1대1 문의" />
 
       <Text style={styles.subtitle}>
         궁금한 점을 남겨주시면 빠르게 답변드릴게요.
@@ -117,13 +125,15 @@ function Page() {
         disabled={submitting}
       />
 
-      {submitting && (
-        <View style={styles.loadingRow}>
-          <ActivityIndicator color={theme.colors.primary} />
-          <Text style={styles.loadingText}>문의를 등록하고 있어요...</Text>
-        </View>
-      )}
-    </Screen>
+        {submitting && (
+          <View style={styles.loadingRow}>
+            <ActivityIndicator color={theme.colors.primary} />
+            <Text style={styles.loadingText}>문의를 등록하고 있어요...</Text>
+          </View>
+        )}
+      </Screen>
+      <FullScreenLoader visible={submitting} message="문의를 등록하고 있어요..." />
+    </>
   );
 }
 

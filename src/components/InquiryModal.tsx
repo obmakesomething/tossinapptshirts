@@ -9,8 +9,14 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { Card, PrimaryButton, SecondaryButton, theme } from './ui';
 import { API_BASE_URL } from '../config';
+import {
+  Card,
+  FullScreenLoader,
+  PrimaryButton,
+  SecondaryButton,
+  theme,
+} from './ui';
 
 type InquiryModalProps = {
   visible: boolean;
@@ -81,107 +87,118 @@ export function InquiryModal({ visible, onClose }: InquiryModalProps) {
   };
 
   return (
-    <Modal
-      visible={visible}
-      animationType="slide"
-      presentationStyle="pageSheet"
-      onRequestClose={handleClose}
-    >
-      <View style={styles.container}>
-        <View style={styles.header}>
-          <Text style={styles.headerTitle}>1대1 문의</Text>
-          <Pressable onPress={handleClose} disabled={submitting}>
-            <Text style={styles.closeButton}>✕</Text>
-          </Pressable>
+    <>
+      <Modal
+        visible={visible}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={handleClose}
+      >
+        <View style={styles.container}>
+          <View style={styles.header}>
+            <Text style={styles.headerTitle}>1대1 문의</Text>
+            <Pressable onPress={handleClose} disabled={submitting}>
+              <Text style={styles.closeButton}>✕</Text>
+            </Pressable>
+          </View>
+
+          <ScrollView
+            style={styles.content}
+            showsVerticalScrollIndicator={false}
+          >
+            <Text style={styles.subtitle}>
+              궁금한 내용을 남겨 주시면 빠르게 답변해 드릴게요.
+            </Text>
+
+            {success ? (
+              <Card style={styles.successCard}>
+                <Text style={styles.successText}>
+                  ✓ 문의가 접수됐어요!{'\n'}
+                  답변은 영업일 기준 1~2일 내로 보내드릴게요.
+                </Text>
+              </Card>
+            ) : (
+              <Card style={styles.formCard}>
+                <Text style={styles.label}>이름 (선택)</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="이름을 입력해 주세요 (비공개)"
+                  value={userName}
+                  onChangeText={setUserName}
+                  placeholderTextColor={theme.colors.textTertiary}
+                  editable={!submitting}
+                />
+
+                <Text style={[styles.label, { marginTop: theme.spacing.lg }]}>
+                  제목 *
+                </Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="문의 제목을 입력해 주세요"
+                  value={title}
+                  onChangeText={setTitle}
+                  placeholderTextColor={theme.colors.textTertiary}
+                  maxLength={200}
+                  editable={!submitting}
+                />
+
+                <Text style={[styles.label, { marginTop: theme.spacing.lg }]}>
+                  내용 *
+                </Text>
+                <TextInput
+                  style={[styles.input, styles.textArea]}
+                  placeholder="문의 내용을 자세히 적어 주세요"
+                  value={content}
+                  onChangeText={setContent}
+                  placeholderTextColor={theme.colors.textTertiary}
+                  multiline
+                  numberOfLines={8}
+                  textAlignVertical="top"
+                  editable={!submitting}
+                />
+
+                <Text style={styles.hint}>
+                  • 답변은 영업일 기준 1~2일 내로 등록돼요.{'\n'}• 주문 관련
+                  문의라면 주문번호를 함께 적어 주세요.
+                </Text>
+              </Card>
+            )}
+
+            {error ? <Text style={styles.errorText}>{error}</Text> : null}
+
+            {!success && (
+              <View style={styles.buttonRow}>
+                <SecondaryButton
+                  label="취소"
+                  onPress={handleClose}
+                  disabled={submitting}
+                  style={styles.button}
+                />
+                <PrimaryButton
+                  label={submitting ? '보내는 중...' : '문의 보내기'}
+                  onPress={handleSubmit}
+                  disabled={submitting}
+                  style={styles.button}
+                />
+              </View>
+            )}
+
+            {submitting && (
+              <View style={styles.loadingRow}>
+                <ActivityIndicator color={theme.colors.primary} />
+                <Text style={styles.loadingText}>
+                  문의를 등록하고 있어요...
+                </Text>
+              </View>
+            )}
+          </ScrollView>
         </View>
-
-        <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-          <Text style={styles.subtitle}>
-            궁금한 내용을 남겨 주시면 빠르게 답변해 드릴게요.
-          </Text>
-
-          {success ? (
-            <Card style={styles.successCard}>
-              <Text style={styles.successText}>
-                ✓ 문의가 접수됐어요!{'\n'}
-                답변은 영업일 기준 1~2일 내로 보내드릴게요.
-              </Text>
-            </Card>
-          ) : (
-            <Card style={styles.formCard}>
-              <Text style={styles.label}>이름 (선택)</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="이름을 입력해 주세요 (비공개)"
-                value={userName}
-                onChangeText={setUserName}
-                placeholderTextColor={theme.colors.textTertiary}
-                editable={!submitting}
-              />
-
-              <Text style={[styles.label, { marginTop: theme.spacing.lg }]}>
-                제목 *
-              </Text>
-              <TextInput
-                style={styles.input}
-                placeholder="문의 제목을 입력해 주세요"
-                value={title}
-                onChangeText={setTitle}
-                placeholderTextColor={theme.colors.textTertiary}
-                maxLength={200}
-                editable={!submitting}
-              />
-
-              <Text style={[styles.label, { marginTop: theme.spacing.lg }]}>
-                내용 *
-              </Text>
-              <TextInput
-                style={[styles.input, styles.textArea]}
-                placeholder="문의 내용을 자세히 적어 주세요"
-                value={content}
-                onChangeText={setContent}
-                placeholderTextColor={theme.colors.textTertiary}
-                multiline
-                numberOfLines={8}
-                textAlignVertical="top"
-                editable={!submitting}
-              />
-
-              <Text style={styles.hint}>
-                • 답변은 영업일 기준 1~2일 내로 등록돼요.{'\n'}• 주문 관련
-                문의라면 주문번호를 함께 적어 주세요.
-              </Text>
-            </Card>
-          )}
-
-          {error ? <Text style={styles.errorText}>{error}</Text> : null}
-
-          {!success && (
-            <View style={styles.buttonRow}>
-              <SecondaryButton
-                label="취소"
-                onPress={handleClose}
-                disabled={submitting}
-                style={styles.button}
-              />
-              <PrimaryButton
-                label={submitting ? '보내는 중...' : '문의 보내기'}
-                onPress={handleSubmit}
-                disabled={submitting}
-                style={styles.button}
-              />
-            </View>
-          )}
-
-          {submitting && (
-            <View style={styles.loadingRow}>
-              <ActivityIndicator color={theme.colors.primary} />
-              <Text style={styles.loadingText}>문의를 등록하고 있어요...</Text>
-            </View>
-          )}
-        </ScrollView>
-      </View>
-    </Modal>
+      </Modal>
+      <FullScreenLoader
+        visible={visible && submitting}
+        message="문의를 등록하고 있어요..."
+      />
+    </>
   );
 }
 

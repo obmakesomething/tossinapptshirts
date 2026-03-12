@@ -1,4 +1,4 @@
-import React, { useMemo, useRef } from 'react';
+import React, { useCallback, useMemo, useRef } from 'react';
 import { Image, PanResponder, StyleSheet, Text, View } from 'react-native';
 import type { LayerTransform, TextLayer } from '../context/catalog';
 import type { MockupTemplate } from '../data/mockupTemplates';
@@ -22,8 +22,6 @@ type DesignStageProps = {
   onOutOfBounds?: (isOut: boolean, overflowPercent?: number) => void;
   cameraScale?: number;
 };
-
-
 
 const clamp = (value: number, min: number, max: number) =>
   Math.min(Math.max(value, min), max);
@@ -164,12 +162,14 @@ export function DesignStage({
         } else {
           const cs = cameraScaleRef.current;
           const nextOffsetX = clamp(
-            startRef.current.offsetX + gestureState.dx / (currentArea.width * cs),
+            startRef.current.offsetX +
+              gestureState.dx / (currentArea.width * cs),
             -MAX_OFFSET,
             MAX_OFFSET,
           );
           const nextOffsetY = clamp(
-            startRef.current.offsetY + gestureState.dy / (currentArea.height * cs),
+            startRef.current.offsetY +
+              gestureState.dy / (currentArea.height * cs),
             -MAX_OFFSET,
             MAX_OFFSET,
           );
@@ -196,49 +196,61 @@ export function DesignStage({
     }),
   );
 
-  const buildLayerStyle = (transform: LayerTransform) => {
-    const widthPx = area.width * transform.scale;
-    const heightPx = area.height * transform.scale;
-    const left =
-      area.left + area.width / 2 + transform.offsetX * area.width - widthPx / 2;
-    const top =
-      area.top +
-      area.height / 2 +
-      transform.offsetY * area.height -
-      heightPx / 2;
-    return {
-      left,
-      top,
-      width: widthPx,
-      height: heightPx,
-      transform: [{ rotate: `${transform.rotation}deg` }],
-    };
-  };
+  const buildLayerStyle = useCallback(
+    (transform: LayerTransform) => {
+      const widthPx = area.width * transform.scale;
+      const heightPx = area.height * transform.scale;
+      const left =
+        area.left +
+        area.width / 2 +
+        transform.offsetX * area.width -
+        widthPx / 2;
+      const top =
+        area.top +
+        area.height / 2 +
+        transform.offsetY * area.height -
+        heightPx / 2;
+      return {
+        left,
+        top,
+        width: widthPx,
+        height: heightPx,
+        transform: [{ rotate: `${transform.rotation}deg` }],
+      };
+    },
+    [area.height, area.left, area.top, area.width],
+  );
 
-  const buildTextStyle = (transform: LayerTransform) => {
-    const widthPx = area.width;
-    const heightPx = area.height;
-    const left =
-      area.left + area.width / 2 + transform.offsetX * area.width - widthPx / 2;
-    const top =
-      area.top +
-      area.height / 2 +
-      transform.offsetY * area.height -
-      heightPx / 2;
-    return {
-      left,
-      top,
-      width: widthPx,
-      height: heightPx,
-      transform: [
-        { scale: transform.scale },
-        { rotate: `${transform.rotation}deg` },
-      ],
-    };
-  };
+  const buildTextStyle = useCallback(
+    (transform: LayerTransform) => {
+      const widthPx = area.width;
+      const heightPx = area.height;
+      const left =
+        area.left +
+        area.width / 2 +
+        transform.offsetX * area.width -
+        widthPx / 2;
+      const top =
+        area.top +
+        area.height / 2 +
+        transform.offsetY * area.height -
+        heightPx / 2;
+      return {
+        left,
+        top,
+        width: widthPx,
+        height: heightPx,
+        transform: [
+          { scale: transform.scale },
+          { rotate: `${transform.rotation}deg` },
+        ],
+      };
+    },
+    [area.height, area.left, area.top, area.width],
+  );
 
   // Out-of-bounds detection (simplified, ignoring rotation)
-  const { isOutOfBounds, overflowPercent } = useMemo(() => {
+  const { isOutOfBounds } = useMemo(() => {
     const checkBounds = (transform: LayerTransform, isText: boolean) => {
       if (isText && !textLayer.enabled) return { out: false, overflow: 0 };
       if (!isText && !imageUri) return { out: false, overflow: 0 };
@@ -251,12 +263,18 @@ export function DesignStage({
       // Calculate overflow amounts
       const leftOverflow = Math.max(0, area.left - l);
       const topOverflow = Math.max(0, area.top - t);
-      const rightOverflow = Math.max(0, (l + w) - (area.left + area.width));
-      const bottomOverflow = Math.max(0, (t + h) - (area.top + area.height));
+      const rightOverflow = Math.max(0, l + w - (area.left + area.width));
+      const bottomOverflow = Math.max(0, t + h - (area.top + area.height));
 
-      const maxOverflow = Math.max(leftOverflow, topOverflow, rightOverflow, bottomOverflow);
+      const maxOverflow = Math.max(
+        leftOverflow,
+        topOverflow,
+        rightOverflow,
+        bottomOverflow,
+      );
       const refDimension = Math.max(area.width, area.height);
-      const overflowPct = refDimension > 0 ? Math.round((maxOverflow / refDimension) * 100) : 0;
+      const overflowPct =
+        refDimension > 0 ? Math.round((maxOverflow / refDimension) * 100) : 0;
 
       const out = maxOverflow > 2; // 2px tolerance
       return { out, overflow: overflowPct };
@@ -267,7 +285,19 @@ export function DesignStage({
     const maxOverflow = Math.max(imgResult.overflow, txtResult.overflow);
     onOutOfBounds?.(out, maxOverflow);
     return { isOutOfBounds: out, overflowPercent: maxOverflow };
-  }, [imageTransform, textTransform, imageUri, textLayer.enabled, area.left, area.top, area.width, area.height]);
+  }, [
+    area.height,
+    area.left,
+    area.top,
+    area.width,
+    buildLayerStyle,
+    buildTextStyle,
+    imageTransform,
+    imageUri,
+    onOutOfBounds,
+    textLayer.enabled,
+    textTransform,
+  ]);
 
   const GUIDE_SIZE = 12;
   const GUIDE_WIDTH = 2;
@@ -301,10 +331,54 @@ export function DesignStage({
       {/* Overlay mask: darken outside print area */}
       {_showPrintArea && (
         <>
-          <View style={[styles.overlayMask, { top: 0, left: 0, right: 0, height: area.top, backgroundColor: overlayColor }]} />
-          <View style={[styles.overlayMask, { top: area.top + area.height, left: 0, right: 0, bottom: 0, backgroundColor: overlayColor }]} />
-          <View style={[styles.overlayMask, { top: area.top, left: 0, width: area.left, height: area.height, backgroundColor: overlayColor }]} />
-          <View style={[styles.overlayMask, { top: area.top, left: area.left + area.width, right: 0, height: area.height, backgroundColor: overlayColor }]} />
+          <View
+            style={[
+              styles.overlayMask,
+              {
+                top: 0,
+                left: 0,
+                right: 0,
+                height: area.top,
+                backgroundColor: overlayColor,
+              },
+            ]}
+          />
+          <View
+            style={[
+              styles.overlayMask,
+              {
+                top: area.top + area.height,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                backgroundColor: overlayColor,
+              },
+            ]}
+          />
+          <View
+            style={[
+              styles.overlayMask,
+              {
+                top: area.top,
+                left: 0,
+                width: area.left,
+                height: area.height,
+                backgroundColor: overlayColor,
+              },
+            ]}
+          />
+          <View
+            style={[
+              styles.overlayMask,
+              {
+                top: area.top,
+                left: area.left + area.width,
+                right: 0,
+                height: area.height,
+                backgroundColor: overlayColor,
+              },
+            ]}
+          />
         </>
       )}
 
@@ -323,7 +397,9 @@ export function DesignStage({
           ]}
         >
           {/* 프린트 영역 label */}
-          <Text style={[styles.printAreaLabel, { color: borderColor }]}>프린트 영역</Text>
+          <Text style={[styles.printAreaLabel, { color: borderColor }]}>
+            프린트 영역
+          </Text>
         </View>
       )}
 
@@ -331,13 +407,65 @@ export function DesignStage({
       {effectiveShowGuides && (
         <>
           {/* Top-left */}
-          <View style={[styles.cornerGuide, { top: area.top - 1, left: area.left - 1, borderTopWidth: GUIDE_WIDTH, borderLeftWidth: GUIDE_WIDTH, borderColor, width: GUIDE_SIZE, height: GUIDE_SIZE }]} />
+          <View
+            style={[
+              styles.cornerGuide,
+              {
+                top: area.top - 1,
+                left: area.left - 1,
+                borderTopWidth: GUIDE_WIDTH,
+                borderLeftWidth: GUIDE_WIDTH,
+                borderColor,
+                width: GUIDE_SIZE,
+                height: GUIDE_SIZE,
+              },
+            ]}
+          />
           {/* Top-right */}
-          <View style={[styles.cornerGuide, { top: area.top - 1, left: area.left + area.width - GUIDE_SIZE + 1, borderTopWidth: GUIDE_WIDTH, borderRightWidth: GUIDE_WIDTH, borderColor, width: GUIDE_SIZE, height: GUIDE_SIZE }]} />
+          <View
+            style={[
+              styles.cornerGuide,
+              {
+                top: area.top - 1,
+                left: area.left + area.width - GUIDE_SIZE + 1,
+                borderTopWidth: GUIDE_WIDTH,
+                borderRightWidth: GUIDE_WIDTH,
+                borderColor,
+                width: GUIDE_SIZE,
+                height: GUIDE_SIZE,
+              },
+            ]}
+          />
           {/* Bottom-left */}
-          <View style={[styles.cornerGuide, { top: area.top + area.height - GUIDE_SIZE + 1, left: area.left - 1, borderBottomWidth: GUIDE_WIDTH, borderLeftWidth: GUIDE_WIDTH, borderColor, width: GUIDE_SIZE, height: GUIDE_SIZE }]} />
+          <View
+            style={[
+              styles.cornerGuide,
+              {
+                top: area.top + area.height - GUIDE_SIZE + 1,
+                left: area.left - 1,
+                borderBottomWidth: GUIDE_WIDTH,
+                borderLeftWidth: GUIDE_WIDTH,
+                borderColor,
+                width: GUIDE_SIZE,
+                height: GUIDE_SIZE,
+              },
+            ]}
+          />
           {/* Bottom-right */}
-          <View style={[styles.cornerGuide, { top: area.top + area.height - GUIDE_SIZE + 1, left: area.left + area.width - GUIDE_SIZE + 1, borderBottomWidth: GUIDE_WIDTH, borderRightWidth: GUIDE_WIDTH, borderColor, width: GUIDE_SIZE, height: GUIDE_SIZE }]} />
+          <View
+            style={[
+              styles.cornerGuide,
+              {
+                top: area.top + area.height - GUIDE_SIZE + 1,
+                left: area.left + area.width - GUIDE_SIZE + 1,
+                borderBottomWidth: GUIDE_WIDTH,
+                borderRightWidth: GUIDE_WIDTH,
+                borderColor,
+                width: GUIDE_SIZE,
+                height: GUIDE_SIZE,
+              },
+            ]}
+          />
         </>
       )}
       {imageUri ? (

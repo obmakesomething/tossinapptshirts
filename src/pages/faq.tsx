@@ -10,9 +10,7 @@ import {
 import { Card, PageHeader, Screen, theme } from '../components/ui';
 import { faqCategories, faqItems } from '../data/faq';
 
-const ORANGE_RED = '#FF5000';
-const NAVY_DEEP = '#071a35';
-const NAVY_PANEL = '#15325d';
+const ORANGE_RED = '#FF6A00';
 
 export const Route = createRoute('/faq', {
   component: Page,
@@ -167,7 +165,7 @@ function Page() {
 
 const styles = StyleSheet.create({
   screenContent: {
-    backgroundColor: NAVY_DEEP,
+    backgroundColor: theme.colors.background,
   },
   headerRow: {
     flexDirection: 'row',
@@ -195,7 +193,7 @@ const styles = StyleSheet.create({
   },
   subtitle: {
     ...theme.typography.body,
-    color: '#bfd3ef',
+    color: theme.colors.textSecondary,
     marginBottom: theme.spacing.md,
   },
   categoryScroll: {
@@ -210,23 +208,23 @@ const styles = StyleSheet.create({
     paddingHorizontal: theme.spacing.md,
     paddingVertical: theme.spacing.sm,
     borderRadius: 20,
-    backgroundColor: NAVY_PANEL,
+    backgroundColor: theme.colors.surface,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.16)',
+    borderColor: theme.colors.border,
     marginRight: theme.spacing.sm,
   },
   categoryChipActive: {
-    backgroundColor: 'rgba(255,80,0,0.2)',
+    backgroundColor: theme.colors.primarySoft,
     borderColor: ORANGE_RED,
   },
   categoryText: {
     fontSize: 13,
     lineHeight: 18,
-    color: '#bfd3ef',
+    color: theme.colors.textSecondary,
     fontWeight: '500',
   },
   categoryTextActive: {
-    color: '#ffe3d5',
+    color: theme.colors.primary,
   },
   scrollContent: {
     paddingBottom: theme.spacing.xl,
@@ -238,7 +236,7 @@ const styles = StyleSheet.create({
     marginBottom: theme.spacing.sm,
     paddingBottom: theme.spacing.sm,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255,255,255,0.15)',
+    borderBottomColor: theme.colors.border,
   },
   categoryHeaderIcon: {
     fontSize: 20,
@@ -249,20 +247,20 @@ const styles = StyleSheet.create({
     fontSize: 16,
     lineHeight: 24,
     fontWeight: '700',
-    color: '#eff6ff',
+    color: theme.colors.textPrimary,
   },
   categoryCount: {
     fontSize: 12,
-    color: '#b8cdee',
-    backgroundColor: 'rgba(255,255,255,0.08)',
+    color: theme.colors.textSecondary,
+    backgroundColor: theme.colors.surfaceSecondary,
     paddingHorizontal: theme.spacing.sm,
     paddingVertical: 2,
     borderRadius: 10,
   },
   faqCard: {
     marginBottom: theme.spacing.sm,
-    backgroundColor: NAVY_PANEL,
-    borderColor: 'rgba(255,255,255,0.14)',
+    backgroundColor: theme.colors.surface,
+    borderColor: theme.colors.border,
     borderWidth: 1,
   },
   questionRow: {
@@ -279,13 +277,13 @@ const styles = StyleSheet.create({
     flex: 1,
     ...theme.typography.body,
     fontWeight: '600',
-    color: '#eff6ff',
+    color: theme.colors.textPrimary,
   },
   expandIcon: {
     fontSize: 20,
     lineHeight: 22,
     fontWeight: '300',
-    color: '#a8c2e6',
+    color: theme.colors.textTertiary,
     marginLeft: theme.spacing.sm,
   },
   answerRow: {
@@ -294,18 +292,18 @@ const styles = StyleSheet.create({
     marginTop: theme.spacing.md,
     paddingTop: theme.spacing.md,
     borderTopWidth: 1,
-    borderTopColor: 'rgba(255,255,255,0.14)',
+    borderTopColor: theme.colors.border,
   },
   aLabel: {
     ...theme.typography.body,
     fontWeight: '700',
-    color: '#9fbce5',
+    color: theme.colors.textSecondary,
     marginRight: theme.spacing.sm,
   },
   answerText: {
     flex: 1,
     ...theme.typography.body,
-    color: '#c8dbf6',
+    color: theme.colors.textSecondary,
   },
   bottomPadding: {
     height: 40,

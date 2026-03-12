@@ -1,19 +1,41 @@
+type AnalyticsProperties = Record<string, unknown>;
+
 // Analytics tracking utilities
-export const trackEvent = (eventName: string, properties?: Record<string, any>) => {
+export const trackEvent = (
+  eventName: string,
+  properties?: AnalyticsProperties,
+) => {
   try {
     // Log to console for debugging
     console.log(`[Analytics] ${eventName}`, properties);
 
     // TODO: Add your analytics provider here (e.g., Amplitude, Mixpanel, GA)
     // Example: amplitude.track(eventName, properties);
-
   } catch (error) {
     console.error('[Analytics] Error tracking event:', error);
   }
 };
 
+export const trackClick = (
+  eventName: string,
+  properties?: AnalyticsProperties,
+) => {
+  trackEvent(eventName, properties);
+};
+
+export const trackImpression = (
+  eventName: string,
+  properties?: AnalyticsProperties,
+) => {
+  trackEvent(eventName, properties);
+};
+
 // Order events
-export const trackOrderCreated = (orderId: string, amount: number, currency: string = 'KRW') => {
+export const trackOrderCreated = (
+  orderId: string,
+  amount: number,
+  currency = 'KRW',
+) => {
   trackEvent('order_created', {
     order_id: orderId,
     amount,
@@ -26,7 +48,7 @@ export const trackPaymentSuccess = (
   orderId: string,
   amount: number,
   paymentMethod: string,
-  currency: string = 'KRW'
+  currency = 'KRW',
 ) => {
   trackEvent('payment_success', {
     order_id: orderId,
@@ -41,7 +63,7 @@ export const trackPaymentFailed = (
   orderId: string,
   amount: number,
   reason: string,
-  currency: string = 'KRW'
+  currency = 'KRW',
 ) => {
   trackEvent('payment_failed', {
     order_id: orderId,
@@ -53,7 +75,10 @@ export const trackPaymentFailed = (
 };
 
 // Screen views
-export const trackScreenView = (screenName: string, properties?: Record<string, any>) => {
+export const trackScreenView = (
+  screenName: string,
+  properties?: AnalyticsProperties,
+) => {
   trackEvent('screen_view', {
     screen_name: screenName,
     ...properties,
@@ -62,7 +87,11 @@ export const trackScreenView = (screenName: string, properties?: Record<string, 
 };
 
 // Image generation events
-export const trackImageGenerated = (prompt: string, style: string, aspectRatio: string) => {
+export const trackImageGenerated = (
+  prompt: string,
+  style: string,
+  aspectRatio: string,
+) => {
   trackEvent('image_generated', {
     prompt,
     style,
@@ -94,7 +123,10 @@ export const trackPhotoAddClick = (placement: string, currentCount: number) => {
   });
 };
 
-export const trackPhotoRemoveClick = (placement: string, photoIndex: number) => {
+export const trackPhotoRemoveClick = (
+  placement: string,
+  photoIndex: number,
+) => {
   trackEvent('photo_remove_click', {
     placement,
     photo_index: photoIndex,
@@ -102,7 +134,10 @@ export const trackPhotoRemoveClick = (placement: string, photoIndex: number) => 
   });
 };
 
-export const trackPhotoRemoveConfirm = (placement: string, photoIndex: number) => {
+export const trackPhotoRemoveConfirm = (
+  placement: string,
+  photoIndex: number,
+) => {
   trackEvent('photo_remove_confirm', {
     placement,
     photo_index: photoIndex,
@@ -110,7 +145,10 @@ export const trackPhotoRemoveConfirm = (placement: string, photoIndex: number) =
   });
 };
 
-export const trackPhotoSelectThumbnail = (placement: string, photoIndex: number) => {
+export const trackPhotoSelectThumbnail = (
+  placement: string,
+  photoIndex: number,
+) => {
   trackEvent('photo_select_thumbnail', {
     placement,
     photo_index: photoIndex,

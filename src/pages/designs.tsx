@@ -1,4 +1,4 @@
-import { share, getTossShareLink } from '@apps-in-toss/framework';
+import { getTossShareLink, share } from '@apps-in-toss/framework';
 import { createRoute } from '@granite-js/react-native';
 import React, { useEffect } from 'react';
 import { Alert, StyleSheet, Text, View } from 'react-native';
@@ -16,9 +16,7 @@ import { type SavedDesign, useCatalog } from '../context/catalog';
 import { catalogProducts } from '../data/catalog';
 import { buildTemplate } from '../data/mockupTemplates';
 
-const ORANGE_RED = '#FF5000';
-const NAVY_DEEP = '#071a35';
-const NAVY_PANEL = '#15325d';
+const ORANGE_RED = '#FF6A00';
 
 export const Route = createRoute('/designs', {
   component: Page,
@@ -59,8 +57,9 @@ function Page() {
     const product = catalogProducts.find((p) => p.id === design.productId);
     const productName = product?.name ?? '티셔츠';
     try {
-      const ogImageUrl = design.designImageUri || undefined;
-      const shareLink = await getTossShareLink('intoss://merchandisegpt/designs', ogImageUrl);
+      const shareLink = await getTossShareLink(
+        'intoss://merchandisegpt/designs',
+      );
       await share({
         message: `${design.title} - ${productName} 디자인을 확인해보세요! 🎨\n${shareLink}`,
       });
@@ -70,20 +69,27 @@ function Page() {
   };
 
   const handleDelete = (design: SavedDesign) => {
-    Alert.alert('삭제할까요?', `"${design.title}" 디자인을 삭제하면 복구할 수 없어요.`, [
-      { text: '취소할게요', style: 'cancel' },
-      {
-        text: '삭제하기',
-        style: 'destructive',
-        onPress: async () => {
-          try {
-            await deleteDesign(design.id);
-          } catch {
-            Alert.alert('삭제 실패', '삭제하지 못했어요. 다시 시도해 주세요.');
-          }
+    Alert.alert(
+      '삭제할까요?',
+      `"${design.title}" 디자인을 삭제하면 복구할 수 없어요.`,
+      [
+        { text: '취소할게요', style: 'cancel' },
+        {
+          text: '삭제하기',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await deleteDesign(design.id);
+            } catch {
+              Alert.alert(
+                '삭제 실패',
+                '삭제하지 못했어요. 다시 시도해 주세요.',
+              );
+            }
+          },
         },
-      },
-    ]);
+      ],
+    );
   };
 
   return (
@@ -154,14 +160,18 @@ function Page() {
         )}
       </View>
 
-      <PrimaryButton label="새로 만들기" onPress={goHome} style={styles.newButton} />
+      <PrimaryButton
+        label="새로 만들기"
+        onPress={goHome}
+        style={styles.newButton}
+      />
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
   screenContent: {
-    backgroundColor: NAVY_DEEP,
+    backgroundColor: theme.colors.background,
   },
   headerRow: {
     flexDirection: 'row',
@@ -181,7 +191,7 @@ const styles = StyleSheet.create({
   },
   title: {
     ...theme.typography.body,
-    color: '#c2d6f3',
+    color: theme.colors.textSecondary,
     marginBottom: theme.spacing.lg,
   },
   list: {
@@ -191,8 +201,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     padding: theme.spacing.md,
     marginBottom: theme.spacing.md,
-    backgroundColor: NAVY_PANEL,
-    borderColor: 'rgba(255,255,255,0.14)',
+    backgroundColor: theme.colors.surface,
+    borderColor: theme.colors.border,
     borderWidth: 1,
   },
   cardBody: {
@@ -201,13 +211,13 @@ const styles = StyleSheet.create({
   cardTitle: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#eff6ff',
+    color: theme.colors.textPrimary,
     lineHeight: 22,
     marginBottom: theme.spacing.xs,
   },
   cardMeta: {
     fontSize: 12,
-    color: '#bcd2ef',
+    color: theme.colors.textSecondary,
     lineHeight: 18,
     marginBottom: theme.spacing.sm,
   },
@@ -222,18 +232,18 @@ const styles = StyleSheet.create({
   emptyCard: {
     alignItems: 'center',
     paddingVertical: theme.spacing.xl,
-    backgroundColor: NAVY_PANEL,
-    borderColor: 'rgba(255,255,255,0.14)',
+    backgroundColor: theme.colors.surface,
+    borderColor: theme.colors.border,
     borderWidth: 1,
   },
   emptyText: {
     ...theme.typography.heading,
-    color: '#eef5ff',
+    color: theme.colors.textPrimary,
     marginBottom: theme.spacing.xs,
   },
   emptySubtext: {
     ...theme.typography.body,
-    color: '#c1d5f3',
+    color: theme.colors.textSecondary,
   },
   newButton: {
     backgroundColor: ORANGE_RED,

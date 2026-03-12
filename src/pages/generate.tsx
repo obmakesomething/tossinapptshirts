@@ -24,7 +24,7 @@ import {
 } from '../components/ui';
 import { API_BASE_URL } from '../config';
 import { useCatalog } from '../context/catalog';
-import { useJobTracker, type JobStage } from '../context/jobTracker';
+import { type JobStage, useJobTracker } from '../context/jobTracker';
 import { useToast } from '../context/toastContext';
 import {
   trackClick,
@@ -33,10 +33,7 @@ import {
   trackScreenView,
 } from '../utils/analytics';
 
-const ORANGE_RED = '#FF5000';
-const NAVY_DEEP = '#071a35';
-const NAVY_MID = '#0f2a53';
-const NAVY_PANEL = '#15325d';
+const ORANGE_RED = '#FF6A00';
 
 export const Route = createRoute('/generate', {
   component: Page,
@@ -55,6 +52,11 @@ const promptExamples = [
   'Cute bear mascot, flat illustration',
 ];
 
+type ImageMutationResponse = {
+  dataUrl?: string;
+  error?: string;
+};
+
 // Stage labels for display
 const stageLabels: Record<string, string> = {
   validate_input: '업로드 확인',
@@ -65,7 +67,8 @@ const stageLabels: Record<string, string> = {
 function Page() {
   const navigation = Route.useNavigation();
   const { setDesignImageUri, setDesignPrompt } = useCatalog();
-  const { activeJob, startJob, cancelJob, clearJob, retryJob, isPolling } = useJobTracker();
+  const { activeJob, startJob, cancelJob, clearJob, retryJob, isPolling } =
+    useJobTracker();
   const { showToast } = useToast();
 
   const [prompt, setPrompt] = useState('');
@@ -77,36 +80,38 @@ function Page() {
   const [showExamples, setShowExamples] = useState(true);
   const [error, setError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
-  const [isGenerating, setIsGenerating] = useState(false);
+  const [startingGeneration, setStartingGeneration] = useState(false);
+  const activeJobStatus = activeJob?.status;
+  const activeJobPreviewUrl = activeJob?.result?.preview_url ?? null;
+  const activeJobFailReason = activeJob?.failReason ?? null;
+  const trimmedPrompt = prompt.trim();
 
   // Watch for job completion and update UI
   useEffect(() => {
-    if (activeJob?.status === 'succeeded' && activeJob.result?.preview_url) {
-      setResultUrl(activeJob.result.preview_url);
+    if (activeJobStatus === 'succeeded' && activeJobPreviewUrl) {
+      setResultUrl(activeJobPreviewUrl);
       setBgRemovalUndoUrl(null);
-      setDesignPrompt(prompt.trim() || '');
+      setDesignPrompt(trimmedPrompt || '');
       setError(''); // Clear any previous errors
-      setIsGenerating(false);
-      trackImageGenerated(prompt.trim(), style, ratio);
+      trackImageGenerated(trimmedPrompt, style, ratio);
       showToast({
         type: 'success',
         message: '이미지 생성이 완료됐어요!',
         action: {
           label: '에디터로 이동',
           onPress: () => {
-            setDesignImageUri(activeJob.result?.preview_url || null);
+            setDesignImageUri(activeJobPreviewUrl);
             navigation.navigate('/editor');
           },
         },
       });
       // Clear job in next tick to avoid race conditions
       setTimeout(() => clearJob(), 100);
-    } else if (activeJob?.status === 'failed') {
-      setError(activeJob.failReason || '이미지를 만들지 못했어요.');
-      setIsGenerating(false);
+    } else if (activeJobStatus === 'failed') {
+      setError(activeJobFailReason || '이미지를 만들지 못했어요.');
       showToast({
         type: 'error',
-        message: activeJob.failReason || '이미지 생성에 실패했어요.',
+        message: activeJobFailReason || '이미지 생성에 실패했어요.',
         action: {
           label: '재시도',
           onPress: handleRetry,
@@ -115,9 +120,25 @@ function Page() {
       // Clear job in next tick to avoid race conditions
       setTimeout(() => clearJob(), 100);
     }
-  }, [activeJob?.status]);
+  }, [
+    activeJobFailReason,
+    activeJobPreviewUrl,
+    activeJobStatus,
+    clearJob,
+    navigation,
+    ratio,
+    setDesignImageUri,
+    setDesignPrompt,
+    showToast,
+    style,
+    trimmedPrompt,
+  ]);
 
-  const isLoading = isGenerating || isPolling || (activeJob?.status === 'queued' || activeJob?.status === 'running');
+  const isLoading =
+    isPolling ||
+    activeJob?.status === 'queued' ||
+    activeJob?.status === 'running';
+  const isBlocking = startingGeneration || removingBg;
 
   // Loading message progression
   const loadingMessages = [
@@ -193,7 +214,7 @@ function Page() {
 
   const handleGenerate = async () => {
     // Prevent double clicks
-    if (isGenerating) {
+    if (startingGeneration) {
       return;
     }
 
@@ -208,7 +229,7 @@ function Page() {
     });
 
     // Set generating immediately to prevent double clicks
-    setIsGenerating(true);
+    setStartingGeneration(true);
     setError('');
     setResultUrl(null);
     setBgRemovalUndoUrl(null);
@@ -218,32 +239,38 @@ function Page() {
     if (activeJob?.status === 'succeeded' || activeJob?.status === 'failed') {
       clearJob();
       // Wait a bit to ensure clearJob completes
-      await new Promise(resolve => setTimeout(resolve, 50));
+      await new Promise((resolve) => setTimeout(resolve, 50));
     }
 
     // Start background job
-    const jobId = await startJob({
-      prompt: prompt.trim(),
-      style_preset: stylePresetMap[style] || 'minimal',
-      aspectRatio: ratio,
-    });
+    try {
+      const jobId = await startJob({
+        prompt: prompt.trim(),
+        style_preset: stylePresetMap[style] || 'minimal',
+        aspectRatio: ratio,
+      });
 
-    if (!jobId) {
-      setError('작업을 시작하지 못했어요. 다시 시도해 주세요.');
-      setIsGenerating(false);
+      if (!jobId) {
+        setError('작업을 시작하지 못했어요. 다시 시도해 주세요.');
+      }
+    } finally {
+      setStartingGeneration(false);
     }
   };
 
   const handleRetry = async () => {
-    if (isGenerating) return;
+    if (startingGeneration) return;
 
     trackClick('generate_retry_click');
-    setIsGenerating(true);
+    setStartingGeneration(true);
     setError('');
-    const jobId = await retryJob();
-    if (!jobId) {
-      setError('재시도에 실패했어요.');
-      setIsGenerating(false);
+    try {
+      const jobId = await retryJob();
+      if (!jobId) {
+        setError('재시도에 실패했어요.');
+      }
+    } finally {
+      setStartingGeneration(false);
     }
   };
 
@@ -251,7 +278,7 @@ function Page() {
     trackClick('generate_cancel_click');
     await cancelJob();
     setError('');
-    setIsGenerating(false);
+    setStartingGeneration(false);
   };
 
   const handleRemoveBackground = async () => {
@@ -274,9 +301,11 @@ function Page() {
       if (!response.ok) {
         throw new Error('배경을 제거하지 못했어요. 다시 시도해 주세요.');
       }
-      const data = await response.json();
+      const data = (await response.json()) as ImageMutationResponse;
       if (!data.dataUrl) {
-        throw new Error('배경 제거 결과를 확인하지 못했어요. 다시 시도해 주세요.');
+        throw new Error(
+          '배경 제거 결과를 확인하지 못했어요. 다시 시도해 주세요.',
+        );
       }
       trackEvent('generate_remove_background_success');
       setResultUrl(data.dataUrl);
@@ -286,7 +315,11 @@ function Page() {
       trackEvent('generate_remove_background_failed', {
         reason: err instanceof Error ? err.message : 'unknown',
       });
-      setError(err instanceof Error ? err.message : '배경을 제거하지 못했어요. 다시 시도해 주세요.');
+      setError(
+        err instanceof Error
+          ? err.message
+          : '배경을 제거하지 못했어요. 다시 시도해 주세요.',
+      );
     } finally {
       setRemovingBg(false);
     }
@@ -306,7 +339,11 @@ function Page() {
     if (!activeJob?.stage) return null;
     const stages: JobStage[] = ['validate_input', 'run_model', 'render_output'];
     const currentIndex = stages.indexOf(activeJob.stage);
-    return { current: currentIndex + 1, total: stages.length, label: stageLabels[activeJob.stage] };
+    return {
+      current: currentIndex + 1,
+      total: stages.length,
+      label: stageLabels[activeJob.stage],
+    };
   };
 
   const stageProgress = getStageProgress();
@@ -369,7 +406,7 @@ function Page() {
             }
           }}
           multiline
-          editable={!isLoading}
+          editable={!(isLoading || isBlocking)}
         />
         <Text style={styles.helperText}>
           짧고 명확하게 적어 주세요. 영어로 쓰면 결과가 더 좋아요.
@@ -405,7 +442,9 @@ function Page() {
               ))}
             </View>
             {isLoading && (
-              <Text style={styles.helperHint}>변경 사항은 다음 생성에 적용돼요.</Text>
+              <Text style={styles.helperHint}>
+                변경 사항은 다음 생성에 적용돼요.
+              </Text>
             )}
           </View>
 
@@ -426,12 +465,20 @@ function Page() {
         </CollapsibleSection>
 
         <PrimaryButton
-          label={isLoading ? '생성 취소하기' : resultUrl ? '다시 생성하기' : '이미지 만들기'}
-          onPress={isLoading ? handleCancel : handleGenerate}
+          label={
+            isLoading || startingGeneration
+              ? '생성 취소하기'
+              : resultUrl
+                ? '다시 생성하기'
+                : '이미지 만들기'
+          }
+          onPress={
+            isLoading || startingGeneration ? handleCancel : handleGenerate
+          }
           disabled={false}
           style={styles.generateButton}
         />
-        {resultUrl && !isLoading && (
+        {resultUrl && !(isLoading || startingGeneration) && (
           <Text style={styles.regenerateHint}>
             프롬프트를 수정하거나 그대로 다시 생성해 보세요
           </Text>
@@ -477,8 +524,12 @@ function Page() {
         </View>
       </Screen>
       <FullScreenLoader
-        visible={isLoading}
-        message={loadingMessages[loadingMessageIndex] || loadingMessages[0]}
+        visible={isBlocking}
+        message={
+          removingBg
+            ? '배경을 제거하고 있어요...'
+            : loadingMessages[loadingMessageIndex] || loadingMessages[0]
+        }
       />
     </>
   );
@@ -486,7 +537,7 @@ function Page() {
 
 const styles = StyleSheet.create({
   screenContent: {
-    backgroundColor: NAVY_DEEP,
+    backgroundColor: theme.colors.background,
     paddingBottom: theme.spacing.xl,
   },
   bgOrbTop: {
@@ -496,7 +547,7 @@ const styles = StyleSheet.create({
     width: 230,
     height: 230,
     borderRadius: 115,
-    backgroundColor: 'rgba(56, 120, 214, 0.14)',
+    backgroundColor: 'rgba(255, 170, 120, 0.20)',
   },
   bgOrbBottom: {
     position: 'absolute',
@@ -505,7 +556,7 @@ const styles = StyleSheet.create({
     width: 210,
     height: 210,
     borderRadius: 105,
-    backgroundColor: 'rgba(25, 70, 146, 0.12)',
+    backgroundColor: 'rgba(255, 111, 43, 0.12)',
   },
   headerRow: {
     flexDirection: 'row',
@@ -533,23 +584,23 @@ const styles = StyleSheet.create({
   },
   title: {
     ...theme.typography.heading,
-    color: '#f0f6ff',
+    color: theme.colors.textPrimary,
     marginBottom: theme.spacing.sm,
   },
   input: {
     minHeight: 96,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.20)',
+    borderColor: theme.colors.border,
     borderRadius: theme.radius.md,
     padding: theme.spacing.md,
-    backgroundColor: NAVY_MID,
+    backgroundColor: theme.colors.surface,
     fontSize: 14,
-    color: '#f4f8ff',
+    color: theme.colors.textPrimary,
   },
   helperText: {
     fontSize: 12,
     lineHeight: 18,
-    color: '#a8c2e6',
+    color: theme.colors.textSecondary,
     marginTop: theme.spacing.sm,
     marginBottom: theme.spacing.lg,
   },
@@ -574,7 +625,7 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     ...theme.typography.subheading,
-    color: '#eff6ff',
+    color: theme.colors.textPrimary,
     marginBottom: theme.spacing.sm,
   },
   chipRow: {
@@ -596,8 +647,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     position: 'relative',
     overflow: 'hidden',
-    backgroundColor: NAVY_PANEL,
-    borderColor: 'rgba(255,255,255,0.14)',
+    backgroundColor: theme.colors.surface,
+    borderColor: theme.colors.border,
     borderWidth: 1,
   },
   checkerboardBg: {
@@ -606,7 +657,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: NAVY_MID,
+    backgroundColor: theme.colors.surfaceSecondary,
   },
   resultImage: {
     width: '100%',
@@ -616,7 +667,7 @@ const styles = StyleSheet.create({
   resultPlaceholder: {
     fontSize: 12,
     lineHeight: 18,
-    color: '#a8c2e6',
+    color: theme.colors.textSecondary,
     textAlign: 'center',
     paddingHorizontal: theme.spacing.md,
   },
@@ -631,8 +682,8 @@ const styles = StyleSheet.create({
   undoButton: {
     borderRadius: 999,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.18)',
-    backgroundColor: 'rgba(255,255,255,0.06)',
+    borderColor: theme.colors.border,
+    backgroundColor: theme.colors.surfaceSecondary,
     paddingHorizontal: 12,
     paddingVertical: 8,
   },
@@ -652,9 +703,9 @@ const styles = StyleSheet.create({
     marginTop: theme.spacing.md,
     paddingVertical: theme.spacing.md,
     paddingHorizontal: theme.spacing.md,
-    backgroundColor: NAVY_PANEL,
+    backgroundColor: theme.colors.surface,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.14)',
+    borderColor: theme.colors.border,
     borderRadius: theme.radius.md,
   },
   loadingRow: {
@@ -664,14 +715,14 @@ const styles = StyleSheet.create({
   loadingText: {
     fontSize: 14,
     lineHeight: 20,
-    color: '#eff6ff',
+    color: theme.colors.textPrimary,
     marginLeft: theme.spacing.sm,
     fontWeight: '600',
   },
   etaText: {
     fontSize: 12,
     lineHeight: 18,
-    color: '#b8ceee',
+    color: theme.colors.textSecondary,
     marginTop: theme.spacing.xs,
     marginLeft: 28,
   },
@@ -685,13 +736,13 @@ const styles = StyleSheet.create({
   errorText: {
     fontSize: 12,
     lineHeight: 18,
-    color: '#ffb8b8',
+    color: theme.colors.error,
     marginTop: theme.spacing.sm,
   },
   successText: {
     fontSize: 12,
     lineHeight: 18,
-    color: '#8ee0b2',
+    color: theme.colors.success,
     marginTop: theme.spacing.sm,
     fontWeight: '600',
   },

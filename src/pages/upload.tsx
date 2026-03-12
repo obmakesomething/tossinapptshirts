@@ -14,6 +14,7 @@ import {
   Card,
   Chip,
   DisabledHint,
+  FullScreenLoader,
   PageHeader,
   PrimaryButton,
   Screen,
@@ -30,10 +31,12 @@ import {
   trackScreenView,
 } from '../utils/analytics';
 
-const ORANGE_RED = '#FF5000';
-const NAVY_DEEP = '#071a35';
-const NAVY_MID = '#0f2a53';
-const NAVY_PANEL = '#15325d';
+const ORANGE_RED = '#FF6A00';
+
+type ImageMutationResponse = {
+  dataUrl?: string;
+  error?: string;
+};
 
 export const Route = createRoute('/upload', {
   component: Page,
@@ -56,17 +59,22 @@ function Page() {
 
   const uploadFaqs = useMemo(
     () =>
-      [
-        'quality-1',
-        'quality-2',
-        'delivery-1',
-      ]
+      ['quality-1', 'quality-2', 'delivery-1']
         .map((id) => faqItems.find((item) => item.id === id))
         .filter((item): item is NonNullable<typeof item> => !!item),
     [],
   );
 
   const previewUri = designImageUri ?? lastDataUrl;
+  const blockingMessage = loadingAlbum
+    ? '앨범을 불러오고 있어요...'
+    : uploading
+      ? '이미지를 업로드하고 있어요...'
+      : bgRemovalStatus === 'loading'
+        ? '배경을 제거하고 있어요...'
+        : stylingImage
+          ? '스타일을 바꾸고 있어요...'
+          : '처리 중이에요...';
 
   React.useEffect(() => {
     trackScreenView('upload');
@@ -121,14 +129,18 @@ function Page() {
       if (!response.ok) {
         throw new Error('업로드하지 못했어요. 다시 시도해 주세요.');
       }
-      const data = await response.json();
+      const data = (await response.json()) as ImageMutationResponse;
       if (!data.dataUrl) {
         throw new Error('업로드 결과를 확인하지 못했어요. 다시 시도해 주세요.');
       }
       trackImageUploaded('file_picker');
       setDesignImageUri(data.dataUrl);
     } catch (err) {
-      setError(err instanceof Error ? err.message : '업로드하지 못했어요. 다시 시도해 주세요.');
+      setError(
+        err instanceof Error
+          ? err.message
+          : '업로드하지 못했어요. 다시 시도해 주세요.',
+      );
     } finally {
       setUploading(false);
     }
@@ -144,7 +156,9 @@ function Page() {
         const next = await fetchAlbumPhotos.openPermissionDialog();
         if (next !== 'allowed') {
           trackEvent('upload_album_permission_denied', { source: 'album' });
-          setError('사진 앨범에 접근하려면 권한이 필요해요. 설정에서 허용해 주세요.');
+          setError(
+            '사진 앨범에 접근하려면 권한이 필요해요. 설정에서 허용해 주세요.',
+          );
           return;
         }
       }
@@ -172,7 +186,9 @@ function Page() {
       await uploadDataUrl(dataUrl, `album-${photo.id || 'unknown'}`);
     } catch (err) {
       setError(
-        err instanceof Error ? err.message : '앨범을 불러오지 못했어요. 잠시 후 다시 시도해 주세요.',
+        err instanceof Error
+          ? err.message
+          : '앨범을 불러오지 못했어요. 잠시 후 다시 시도해 주세요.',
       );
     } finally {
       setLoadingAlbum(false);
@@ -199,19 +215,21 @@ function Page() {
             lastDataUrl
               ? { dataUrl: lastDataUrl, filename: 'upload', returnBase64: true }
               : {
-                dataUrl: designImageUri,
-                filename: 'upload',
-                returnBase64: true,
-              },
+                  dataUrl: designImageUri,
+                  filename: 'upload',
+                  returnBase64: true,
+                },
           ),
         },
       );
       if (!response.ok) {
         throw new Error('배경을 제거하지 못했어요. 다시 시도해 주세요.');
       }
-      const data = await response.json();
+      const data = (await response.json()) as ImageMutationResponse;
       if (!data.dataUrl) {
-        throw new Error('배경 제거 결과를 확인하지 못했어요. 다시 시도해 주세요.');
+        throw new Error(
+          '배경 제거 결과를 확인하지 못했어요. 다시 시도해 주세요.',
+        );
       }
       trackImageUploaded('background_removed');
       trackEvent('upload_remove_background_success');
@@ -228,7 +246,11 @@ function Page() {
       trackEvent('upload_remove_background_failed', {
         reason: err instanceof Error ? err.message : 'unknown',
       });
-      setError(err instanceof Error ? err.message : '배경을 제거하지 못했어요. 다시 시도해 주세요.');
+      setError(
+        err instanceof Error
+          ? err.message
+          : '배경을 제거하지 못했어요. 다시 시도해 주세요.',
+      );
       setTimeout(() => setBgRemovalStatus('idle'), 3000);
     }
   };
@@ -259,7 +281,10 @@ function Page() {
 
     try {
       const imageToTransfer = designImageUri || lastDataUrl;
-      console.log('[StyleTransfer] Image data length:', imageToTransfer?.length || 0);
+      console.log(
+        '[StyleTransfer] Image data length:',
+        imageToTransfer?.length || 0,
+      );
 
       const response = await fetch(`${API_BASE_URL}/v1/images/style-transfer`, {
         method: 'POST',
@@ -279,15 +304,20 @@ function Page() {
         throw new Error('스타일을 변환하지 못했어요. 다시 시도해 주세요.');
       }
 
-      const data = await response.json();
+      const data = (await response.json()) as ImageMutationResponse;
       console.log('[StyleTransfer] Response keys:', Object.keys(data));
 
       if (!data.dataUrl) {
         console.error('[StyleTransfer] Missing dataUrl in response:', data);
-        throw new Error('스타일 변환 결과를 확인하지 못했어요. 다시 시도해 주세요.');
+        throw new Error(
+          '스타일 변환 결과를 확인하지 못했어요. 다시 시도해 주세요.',
+        );
       }
 
-      console.log('[StyleTransfer] Success! Data URL length:', data.dataUrl.length);
+      console.log(
+        '[StyleTransfer] Success! Data URL length:',
+        data.dataUrl.length,
+      );
       trackImageUploaded('style_transfer');
       trackEvent('upload_style_transfer_success', { style });
       setDesignImageUri(data.dataUrl);
@@ -302,190 +332,215 @@ function Page() {
         reason: err instanceof Error ? err.message : 'unknown',
       });
       setError(
-        err instanceof Error ? err.message : '스타일을 변환하지 못했어요. 다시 시도해 주세요.',
+        err instanceof Error
+          ? err.message
+          : '스타일을 변환하지 못했어요. 다시 시도해 주세요.',
       );
     } finally {
       setStylingImage(false);
     }
   };
 
-
   return (
-    <Screen contentStyle={styles.screenContent}>
-      <View style={styles.bgOrbTop} />
-      <View style={styles.bgOrbBottom} />
-      <PageHeader title="사진 편집 시작" onBack={() => navigation.goBack()} />
+    <>
+      <Screen contentStyle={styles.screenContent}>
+        <View style={styles.bgOrbTop} />
+        <View style={styles.bgOrbBottom} />
+        <PageHeader title="사진 편집 시작" onBack={() => navigation.goBack()} />
 
-      <Text style={styles.title}>먼저 사진을 올려주세요</Text>
-      <Text style={styles.subtitle}>
-        + 버튼으로 사진을 불러오고 배경 제거/스타일 변경까지 한 번에 진행할 수 있어요.
-      </Text>
-      <Text style={styles.cropGuide}>
-        💡 팁: 중앙 피사체가 크게 보이는 사진일수록 인쇄 결과가 더 또렷해요.
-      </Text>
+        <Text style={styles.title}>먼저 사진을 올려주세요</Text>
+        <Text style={styles.subtitle}>
+          + 버튼으로 사진을 불러오고 배경 제거/스타일 변경까지 한 번에 진행할 수
+          있어요.
+        </Text>
+        <Text style={styles.cropGuide}>
+          💡 팁: 중앙 피사체가 크게 보이는 사진일수록 인쇄 결과가 더 또렷해요.
+        </Text>
 
-      <Card style={styles.uploadCard}>
-        <Pressable style={styles.uploadPreview} onPress={handlePick}>
-          {previewUri ? (
-            <Image source={{ uri: previewUri }} style={styles.previewImage} />
-          ) : (
-            <View style={styles.previewPlaceholder}>
-              <Text style={styles.plusText}>+</Text>
-              <Text style={styles.previewText}>앨범에서 사진 선택</Text>
+        <Card style={styles.uploadCard}>
+          <Pressable style={styles.uploadPreview} onPress={handlePick}>
+            {previewUri ? (
+              <Image source={{ uri: previewUri }} style={styles.previewImage} />
+            ) : (
+              <View style={styles.previewPlaceholder}>
+                <Text style={styles.plusText}>+</Text>
+                <Text style={styles.previewText}>앨범에서 사진 선택</Text>
+              </View>
+            )}
+          </Pressable>
+          {loadingAlbum ? (
+            <View style={styles.loadingRow}>
+              <ActivityIndicator color={theme.colors.primary} />
+              <Text style={styles.loadingText}>앨범을 불러오고 있어요...</Text>
             </View>
-          )}
-        </Pressable>
-        {loadingAlbum ? (
-          <View style={styles.loadingRow}>
-            <ActivityIndicator color={theme.colors.primary} />
-            <Text style={styles.loadingText}>앨범을 불러오고 있어요...</Text>
-          </View>
-        ) : null}
-        {uploading ? (
-          <View style={styles.loadingRow}>
-            <ActivityIndicator color={theme.colors.primary} />
-            <Text style={styles.loadingText}>이미지를 업로드하고 있어요...</Text>
-          </View>
-        ) : null}
-        <SecondaryButton
-          label={getBgRemovalButtonText()}
-          onPress={handleRemoveBackground}
-          disabled={!previewUri || bgRemovalStatus === 'loading' || stylingImage}
-          style={[
-            styles.bgRemoveButton,
-            previewUri ? getBgRemovalButtonStyle() : styles.disabledToolButton,
-          ]}
-        />
-        {bgRemovalUndoUri ? (
-          <View style={styles.undoRow}>
-            <Pressable
-              onPress={handleUndoBackground}
-              disabled={bgRemovalStatus === 'loading' || uploading || stylingImage}
-              style={({ pressed }) => [
-                styles.undoButton,
-                pressed && styles.undoButtonPressed,
-                (bgRemovalStatus === 'loading' || uploading || stylingImage) &&
-                styles.undoButtonDisabled,
-              ]}
-            >
-              <Text style={styles.undoButtonText}>되돌리기</Text>
-            </Pressable>
-          </View>
-        ) : null}
-        <SecondaryButton
-          label={stylingImage ? '스타일을 바꾸고 있어요...' : 'AI 스타일 바꾸기'}
-          onPress={() => {
-            trackClick('upload_style_modal_open_click');
-            setShowStyleOptions(true);
-          }}
-          disabled={!previewUri || stylingImage}
-          style={[
-            styles.styleButton,
-            !previewUri ? styles.disabledToolButton : undefined,
-          ]}
-        />
-        <DisabledHint
-          text="사진 업로드 후 사용할 수 있어요"
-          visible={!previewUri}
-        />
-      </Card>
-      {error ? <Text style={styles.errorText}>{error}</Text> : null}
-      {successMessage ? (
-        <Text style={styles.successText}>{successMessage}</Text>
-      ) : null}
-
-      <Card style={styles.quickFaqCard}>
-        <Text style={styles.quickFaqTitle}>업로드 전에 많이 묻는 질문</Text>
-        {uploadFaqs.map((item) => (
-          <View key={item.id} style={styles.quickFaqRow}>
-            <Text style={styles.quickFaqQ}>Q.</Text>
-            <View style={styles.quickFaqBody}>
-              <Text style={styles.quickFaqQuestion}>{item.question}</Text>
-              <Text style={styles.quickFaqAnswer}>{item.answer}</Text>
+          ) : null}
+          {uploading ? (
+            <View style={styles.loadingRow}>
+              <ActivityIndicator color={theme.colors.primary} />
+              <Text style={styles.loadingText}>
+                이미지를 업로드하고 있어요...
+              </Text>
             </View>
-          </View>
-        ))}
-      </Card>
+          ) : null}
+          <SecondaryButton
+            label={getBgRemovalButtonText()}
+            onPress={handleRemoveBackground}
+            disabled={
+              !previewUri || bgRemovalStatus === 'loading' || stylingImage
+            }
+            style={[
+              styles.bgRemoveButton,
+              previewUri
+                ? getBgRemovalButtonStyle()
+                : styles.disabledToolButton,
+            ]}
+          />
+          {bgRemovalUndoUri ? (
+            <View style={styles.undoRow}>
+              <Pressable
+                onPress={handleUndoBackground}
+                disabled={
+                  bgRemovalStatus === 'loading' || uploading || stylingImage
+                }
+                style={({ pressed }) => [
+                  styles.undoButton,
+                  pressed && styles.undoButtonPressed,
+                  (bgRemovalStatus === 'loading' ||
+                    uploading ||
+                    stylingImage) &&
+                    styles.undoButtonDisabled,
+                ]}
+              >
+                <Text style={styles.undoButtonText}>되돌리기</Text>
+              </Pressable>
+            </View>
+          ) : null}
+          <SecondaryButton
+            label={
+              stylingImage ? '스타일을 바꾸고 있어요...' : 'AI 스타일 바꾸기'
+            }
+            onPress={() => {
+              trackClick('upload_style_modal_open_click');
+              setShowStyleOptions(true);
+            }}
+            disabled={!previewUri || stylingImage}
+            style={[
+              styles.styleButton,
+              !previewUri ? styles.disabledToolButton : undefined,
+            ]}
+          />
+          <DisabledHint
+            text="사진 업로드 후 사용할 수 있어요"
+            visible={!previewUri}
+          />
+        </Card>
+        {error ? <Text style={styles.errorText}>{error}</Text> : null}
+        {successMessage ? (
+          <Text style={styles.successText}>{successMessage}</Text>
+        ) : null}
 
-      {/* Style Options Modal */}
-      <Modal
-        visible={showStyleOptions}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setShowStyleOptions(false)}
-      >
-        <Pressable
-          style={styles.modalOverlay}
-          onPress={() => setShowStyleOptions(false)}
+        <Card style={styles.quickFaqCard}>
+          <Text style={styles.quickFaqTitle}>업로드 전에 많이 묻는 질문</Text>
+          {uploadFaqs.map((item) => (
+            <View key={item.id} style={styles.quickFaqRow}>
+              <Text style={styles.quickFaqQ}>Q.</Text>
+              <View style={styles.quickFaqBody}>
+                <Text style={styles.quickFaqQuestion}>{item.question}</Text>
+                <Text style={styles.quickFaqAnswer}>{item.answer}</Text>
+              </View>
+            </View>
+          ))}
+        </Card>
+
+        {/* Style Options Modal */}
+        <Modal
+          visible={showStyleOptions}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setShowStyleOptions(false)}
         >
           <Pressable
-            style={styles.modalContent}
-            onPress={(e) => e.stopPropagation()}
+            style={styles.modalOverlay}
+            onPress={() => setShowStyleOptions(false)}
           >
-            <Text style={styles.modalTitle}>어떤 스타일로 바꿔볼까요?</Text>
-            <Text style={styles.modalSubtitle}>
-              원본 이미지의 형태는 유지하면서 스타일만 바꿔요
-            </Text>
-            <View style={styles.styleGrid}>
-              <Chip
-                label="수채화"
-                onPress={() => handleStyleTransfer('watercolor')}
-                style={styles.styleChip}
+            <Pressable
+              style={styles.modalContent}
+              onPress={(e) => e.stopPropagation()}
+            >
+              <Text style={styles.modalTitle}>어떤 스타일로 바꿔볼까요?</Text>
+              <Text style={styles.modalSubtitle}>
+                원본 이미지의 형태는 유지하면서 스타일만 바꿔요
+              </Text>
+              <View style={styles.styleGrid}>
+                <Chip
+                  label="수채화"
+                  onPress={() => handleStyleTransfer('watercolor')}
+                  style={styles.styleChip}
+                />
+                <Chip
+                  label="스케치"
+                  onPress={() => handleStyleTransfer('sketch')}
+                  style={styles.styleChip}
+                />
+                <Chip
+                  label="카툰"
+                  onPress={() => handleStyleTransfer('cartoon')}
+                  style={styles.styleChip}
+                />
+                <Chip
+                  label="픽셀아트"
+                  onPress={() => handleStyleTransfer('pixel')}
+                  style={styles.styleChip}
+                />
+                <Chip
+                  label="유화"
+                  onPress={() => handleStyleTransfer('oil')}
+                  style={styles.styleChip}
+                />
+                <Chip
+                  label="미니멀"
+                  onPress={() => handleStyleTransfer('minimal')}
+                  style={styles.styleChip}
+                />
+              </View>
+              <PrimaryButton
+                label="다음에 할게요"
+                onPress={() => setShowStyleOptions(false)}
+                style={styles.modalCancelButton}
               />
-              <Chip
-                label="스케치"
-                onPress={() => handleStyleTransfer('sketch')}
-                style={styles.styleChip}
-              />
-              <Chip
-                label="카툰"
-                onPress={() => handleStyleTransfer('cartoon')}
-                style={styles.styleChip}
-              />
-              <Chip
-                label="픽셀아트"
-                onPress={() => handleStyleTransfer('pixel')}
-                style={styles.styleChip}
-              />
-              <Chip
-                label="유화"
-                onPress={() => handleStyleTransfer('oil')}
-                style={styles.styleChip}
-              />
-              <Chip
-                label="미니멀"
-                onPress={() => handleStyleTransfer('minimal')}
-                style={styles.styleChip}
-              />
-            </View>
-            <PrimaryButton
-              label="다음에 할게요"
-              onPress={() => setShowStyleOptions(false)}
-              style={styles.modalCancelButton}
-            />
+            </Pressable>
           </Pressable>
-        </Pressable>
-      </Modal>
+        </Modal>
 
-      <View style={styles.actionRow}>
-        <PrimaryButton
-          label="디자인 편집하러 가기"
-          onPress={goNext}
-          disabled={!designImageUri}
-          style={styles.nextButton}
-        />
-        <DisabledHint
-          text="사진을 선택하면 다음 단계로 갈 수 있어요"
-          visible={!designImageUri}
-        />
-      </View>
-    </Screen>
+        <View style={styles.actionRow}>
+          <PrimaryButton
+            label="디자인 편집하러 가기"
+            onPress={goNext}
+            disabled={!designImageUri}
+            style={styles.nextButton}
+          />
+          <DisabledHint
+            text="사진을 선택하면 다음 단계로 갈 수 있어요"
+            visible={!designImageUri}
+          />
+        </View>
+      </Screen>
+      <FullScreenLoader
+        visible={
+          loadingAlbum ||
+          uploading ||
+          bgRemovalStatus === 'loading' ||
+          stylingImage
+        }
+        message={blockingMessage}
+      />
+    </>
   );
 }
 
 const styles = StyleSheet.create({
   screenContent: {
-    backgroundColor: NAVY_DEEP,
+    backgroundColor: theme.colors.background,
     paddingBottom: theme.spacing.xl,
   },
   bgOrbTop: {
@@ -495,7 +550,7 @@ const styles = StyleSheet.create({
     width: 240,
     height: 240,
     borderRadius: 120,
-    backgroundColor: 'rgba(56, 120, 214, 0.16)',
+    backgroundColor: 'rgba(255, 170, 120, 0.20)',
   },
   bgOrbBottom: {
     position: 'absolute',
@@ -504,7 +559,7 @@ const styles = StyleSheet.create({
     width: 220,
     height: 220,
     borderRadius: 110,
-    backgroundColor: 'rgba(30, 74, 149, 0.13)',
+    backgroundColor: 'rgba(255, 111, 43, 0.12)',
   },
   headerRow: {
     flexDirection: 'row',
@@ -532,21 +587,21 @@ const styles = StyleSheet.create({
   },
   title: {
     ...theme.typography.heading,
-    color: '#f5f9ff',
+    color: theme.colors.textPrimary,
     marginBottom: theme.spacing.xs,
   },
   subtitle: {
     ...theme.typography.body,
-    color: '#c4d7f5',
+    color: theme.colors.textSecondary,
     marginBottom: theme.spacing.xs,
   },
   cropGuide: {
     fontSize: 12,
     lineHeight: 18,
-    color: '#d4e5ff',
-    backgroundColor: 'rgba(255,255,255,0.08)',
+    color: theme.colors.textSecondary,
+    backgroundColor: theme.colors.surfaceSecondary,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.14)',
+    borderColor: theme.colors.border,
     padding: theme.spacing.sm,
     borderRadius: theme.radius.sm,
     marginBottom: theme.spacing.lg,
@@ -554,22 +609,17 @@ const styles = StyleSheet.create({
   uploadCard: {
     alignItems: 'center',
     marginBottom: theme.spacing.lg,
-    backgroundColor: NAVY_PANEL,
-    borderColor: 'rgba(255,255,255,0.12)',
+    backgroundColor: theme.colors.surface,
+    borderColor: theme.colors.border,
     borderWidth: 1,
-    shadowColor: '#010a1a',
-    shadowOpacity: 0.28,
-    shadowRadius: 16,
-    shadowOffset: { width: 0, height: 10 },
-    elevation: 7,
   },
   uploadPreview: {
     width: '100%',
     height: 280,
     borderRadius: theme.radius.md,
-    backgroundColor: NAVY_MID,
+    backgroundColor: theme.colors.surfaceSecondary,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.16)',
+    borderColor: theme.colors.border,
     marginBottom: theme.spacing.md,
     alignItems: 'center',
     justifyContent: 'center',
@@ -593,7 +643,7 @@ const styles = StyleSheet.create({
   previewText: {
     fontSize: 12,
     lineHeight: 18,
-    color: '#c7d9f6',
+    color: theme.colors.textSecondary,
   },
   loadingRow: {
     flexDirection: 'row',
@@ -603,19 +653,19 @@ const styles = StyleSheet.create({
   loadingText: {
     fontSize: 12,
     lineHeight: 18,
-    color: '#c3d6f5',
+    color: theme.colors.textSecondary,
     marginLeft: theme.spacing.sm,
   },
   errorText: {
     fontSize: 12,
     lineHeight: 18,
-    color: '#ffb8b8',
+    color: theme.colors.error,
     marginBottom: theme.spacing.sm,
   },
   successText: {
     fontSize: 12,
     lineHeight: 18,
-    color: '#8ee0b2',
+    color: theme.colors.success,
     marginBottom: theme.spacing.sm,
     fontWeight: '600',
   },
@@ -627,7 +677,7 @@ const styles = StyleSheet.create({
   styleButton: {
     marginTop: theme.spacing.sm,
     width: '100%',
-    backgroundColor: 'rgba(255,255,255,0.16)',
+    backgroundColor: theme.colors.surfaceSecondary,
   },
   undoRow: {
     width: '100%',
@@ -637,8 +687,8 @@ const styles = StyleSheet.create({
   undoButton: {
     borderRadius: 999,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.18)',
-    backgroundColor: 'rgba(255,255,255,0.06)',
+    borderColor: theme.colors.border,
+    backgroundColor: theme.colors.surfaceSecondary,
     paddingHorizontal: 12,
     paddingVertical: 8,
   },
@@ -655,7 +705,7 @@ const styles = StyleSheet.create({
     color: ORANGE_RED,
   },
   disabledToolButton: {
-    backgroundColor: 'rgba(255,255,255,0.10)',
+    backgroundColor: '#F4DFCB',
   },
   modalOverlay: {
     flex: 1,
@@ -696,7 +746,7 @@ const styles = StyleSheet.create({
   },
   modalCancelButton: {
     marginTop: theme.spacing.sm,
-    backgroundColor: 'rgba(15,42,83,0.92)',
+    backgroundColor: ORANGE_RED,
   },
   actionRow: {
     marginTop: theme.spacing.md,
@@ -706,13 +756,13 @@ const styles = StyleSheet.create({
   quickFaqCard: {
     marginTop: theme.spacing.md,
     marginBottom: theme.spacing.md,
-    backgroundColor: NAVY_PANEL,
-    borderColor: 'rgba(255,255,255,0.12)',
+    backgroundColor: theme.colors.surface,
+    borderColor: theme.colors.border,
     borderWidth: 1,
   },
   quickFaqTitle: {
     ...theme.typography.subheading,
-    color: '#eef6ff',
+    color: theme.colors.textPrimary,
     marginBottom: theme.spacing.sm,
   },
   quickFaqRow: {
@@ -734,13 +784,13 @@ const styles = StyleSheet.create({
   quickFaqQuestion: {
     fontSize: 12,
     lineHeight: 18,
-    color: '#dceafe',
+    color: theme.colors.textPrimary,
     fontWeight: '600',
   },
   quickFaqAnswer: {
     fontSize: 12,
     lineHeight: 18,
-    color: '#bcd1ef',
+    color: theme.colors.textSecondary,
     marginTop: 2,
   },
   nextButton: {
