@@ -25,3 +25,11 @@ order-output/
 
 # mTLS Certificates (Sensitive)
 mTLS인증서관련/
+.gitnexus/
+repo/
+.venv*/
+__pycache__/
+*.pyc
+.tmp_sim_success.png
+test-design*.png
+test-order-korean.pdf

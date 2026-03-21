@@ -13,6 +13,17 @@ npm install
 npm run build
 ```
 
+## iOS Simulator (Apps-in-Toss Sandbox)
+- Runbook: `docs/IOS_SIMULATOR_SANDBOX_RUNBOOK.md`
+- Doctor only:
+```bash
+SANDBOX_BUNDLE_ID="<official_bundle_id>" npm run ios:ait:doctor
+```
+- Full launch helper:
+```bash
+SANDBOX_BUNDLE_ID="<official_bundle_id>" npm run ios:ait:run
+```
+
 ## Production Deployment
 
 ### GCP Cloud Run (Primary)

@@ -436,7 +436,7 @@ function Page() {
             카테고리별 핵심 질문만 먼저 보여드려요. 더 자세한 내용은 전체 보기에서 확인할 수 있어요.
           </Text>
           {groupedFaqs.map(({ category, items }) => {
-            const previewItems = items.slice(0, 2);
+            const previewItems = items.slice(0, 1);
             return (
               <View key={category.id} style={styles.faqCategoryBlock}>
                 <View style={styles.faqCategoryHeader}>
@@ -487,14 +487,14 @@ const styles = StyleSheet.create({
     borderRadius: 26,
     marginBottom: theme.spacing.md,
     padding: theme.spacing.lg,
-    backgroundColor: '#141A2B',
-    shadowColor: '#0A1020',
-    shadowOpacity: 0.28,
+    backgroundColor: '#FFF6ED',
+    shadowColor: '#5F320E',
+    shadowOpacity: 0.14,
     shadowRadius: 18,
     shadowOffset: { width: 0, height: 10 },
     elevation: 6,
     borderWidth: 1,
-    borderColor: '#26314D',
+    borderColor: '#F7DFC7',
   },
   heroBadgeRow: {
     flexDirection: 'row',
@@ -507,12 +507,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 5,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.2)',
-    backgroundColor: 'rgba(255,255,255,0.11)',
+    borderColor: 'rgba(255, 106, 0, 0.25)',
+    backgroundColor: 'rgba(255, 106, 0, 0.10)',
   },
   heroBadgePrimaryText: {
     fontSize: 11,
-    color: '#F1F5FF',
+    color: '#402E20',
     fontWeight: '700',
   },
   heroBadgeSecondary: {
@@ -520,26 +520,26 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 5,
     borderWidth: 1,
-    borderColor: 'rgba(126, 114, 255, 0.42)',
-    backgroundColor: 'rgba(107, 72, 255, 0.22)',
+    borderColor: 'rgba(49, 130, 246, 0.30)',
+    backgroundColor: 'rgba(49, 130, 246, 0.10)',
   },
   heroBadgeSecondaryText: {
     fontSize: 11,
-    color: '#D6CCFF',
+    color: '#2778D8',
     fontWeight: '700',
   },
   heroTitle: {
     fontSize: 31,
     lineHeight: 37,
     fontWeight: '900',
-    color: '#FFFFFF',
+    color: '#32251B',
     letterSpacing: -0.8,
     marginBottom: 10,
   },
   heroSubtitle: {
     fontSize: 14,
     lineHeight: 21,
-    color: '#B8C4DE',
+    color: '#776556',
     marginBottom: 14,
   },
   heroCtaButton: {
@@ -557,30 +557,30 @@ const styles = StyleSheet.create({
     paddingVertical: 9,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.14)',
-    backgroundColor: 'rgba(255,255,255,0.08)',
+    borderColor: '#F0DFCF',
+    backgroundColor: 'rgba(255, 255, 255, 0.70)',
   },
   heroStatValue: {
     fontSize: 13,
     lineHeight: 16,
     fontWeight: '800',
-    color: '#FFFFFF',
+    color: '#402E20',
   },
   heroStatLabel: {
     fontSize: 11,
     lineHeight: 14,
-    color: '#B6C3DF',
+    color: '#715D4D',
     marginTop: 2,
   },
   homeCard: {
     backgroundColor: theme.colors.surface,
     borderWidth: 1,
-    borderColor: '#DCE5F2',
+    borderColor: '#F1E0CE',
     borderRadius: 26,
     padding: theme.spacing.md,
     marginBottom: theme.spacing.md,
-    shadowColor: '#1B3B76',
-    shadowOpacity: 0.11,
+    shadowColor: '#5F320E',
+    shadowOpacity: 0.14,
     shadowRadius: 16,
     shadowOffset: { width: 0, height: 8 },
     elevation: 3,
@@ -589,8 +589,8 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: '#E1E8F6',
-    backgroundColor: '#F7FAFF',
+    borderColor: '#F6E5D3',
+    backgroundColor: '#FFF8F1',
   },
   carouselContent: {
     paddingVertical: theme.spacing.sm,
@@ -606,11 +606,11 @@ const styles = StyleSheet.create({
     aspectRatio: 4 / 5,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#F6F8FD',
+    backgroundColor: '#FFF8EF',
     borderRadius: 18,
   },
   mockupObjectShadow: {
-    shadowColor: '#1F2D47',
+    shadowColor: '#5F320E',
     shadowOpacity: 0.19,
     shadowRadius: 16,
     shadowOffset: { width: 0, height: 11 },
@@ -627,13 +627,13 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
   },
   carouselDot: {
-    width: 7,
-    height: 7,
+    width: 8,
+    height: 8,
     borderRadius: 99,
-    backgroundColor: theme.colors.border,
+    backgroundColor: '#DAC8BB',
   },
   carouselDotActive: {
-    width: 20,
+    width: 24,
     backgroundColor: theme.colors.primary,
   },
   productMetaHead: {
@@ -646,7 +646,7 @@ const styles = StyleSheet.create({
     fontSize: 22,
     lineHeight: 28,
     fontWeight: '800',
-    color: '#1A1F2E',
+    color: '#2F241B',
     letterSpacing: -0.4,
   },
   productPrice: {
@@ -659,7 +659,7 @@ const styles = StyleSheet.create({
     marginTop: 2,
     fontSize: 12,
     lineHeight: 18,
-    color: '#6E7992',
+    color: '#765F4E',
   },
   metaRow: {
     flexDirection: 'row',
@@ -807,7 +807,7 @@ const styles = StyleSheet.create({
   faqCard: {
     marginBottom: theme.spacing.sm,
     backgroundColor: theme.colors.surface,
-    shadowColor: '#1A2A46',
+    shadowColor: '#5F320E',
     shadowOpacity: 0.05,
     shadowRadius: 4,
     shadowOffset: { width: 0, height: 1 },

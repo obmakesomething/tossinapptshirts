@@ -29,12 +29,11 @@
 
 ```typescript
 export const MOCKUP_CONFIG = {
-  // S3 configuration (from Railway env vars)
-  s3BaseUrl: process.env.S3_PUBLIC_BASE_URL || 'https://storage.railway.app',
-  s3Bucket: process.env.S3_BUCKET || 'customizable-box-u-iz3yrp',
+  // GCS configuration
+  gcsBaseUrl: process.env.GCS_UPLOAD_BUCKET || '',
 
-  // Fallback to server static files
-  serverBaseUrl: 'https://tossinapptshirts-production.up.railway.app/mockups',
+  // Server static files (Cloud Run)
+  serverBaseUrl: 'https://merchandisegpt-api-peaq3gmvyq-du.a.run.app/mockups',
 
   // Use S3 if available, fallback to server
   get baseUrl() {
@@ -86,14 +85,14 @@ export const products: CatalogProduct[] = [
 
 ### 4. 현재 URL 구조
 
-**프로덕션 (Railway Server)**:
+**프로덕션 (GCP Cloud Run)**:
 ```
-https://tossinapptshirts-production.up.railway.app/mockups/tshirt_white_front.jpg
+https://merchandisegpt-api-peaq3gmvyq-du.a.run.app/mockups/tshirt_white_front.jpg
 ```
 
-**S3 (향후 마이그레이션)**:
+**GCS (Cloud Storage)**:
 ```
-https://storage.railway.app/customizable-box-u-iz3yrp/mockups/tshirt_white_front.jpg
+https://storage.googleapis.com/<GCS_BUCKET>/mockups/tshirt_white_front.jpg
 ```
 
 ---
@@ -192,21 +191,15 @@ API_BASE_URL=http://localhost:3000
 MOCKUP_BASE_URL=http://localhost:3000/mockups
 ```
 
-### 2. 프로덕션 환경 (Railway)
+### 2. 프로덕션 환경 (GCP Cloud Run)
 
 ```bash
-# Railway 환경변수
-API_BASE_URL=https://tossinapptshirts-production.up.railway.app
+# GCP 환경변수
+API_BASE_URL=https://merchandisegpt-api-peaq3gmvyq-du.a.run.app
 
-# S3 Configuration
-AWS_ACCESS_KEY_ID=AKIA...
-AWS_SECRET_ACCESS_KEY=...
-AWS_S3_BUCKET=customizable-box-u-iz3yrp
-AWS_REGION=ap-northeast-2
-
-# Optional: S3 public URL for mockups
-S3_PUBLIC_BASE_URL=https://storage.railway.app
-S3_BUCKET=customizable-box-u-iz3yrp
+# GCS Configuration
+GCS_UPLOAD_BUCKET=<your-gcs-bucket>
+SIGNED_URL_TTL_SECONDS=604800
 ```
 
 ### 3. 서버 정적 파일 제공
@@ -266,7 +259,7 @@ export const MOCKUP_CONFIG = {
 
 ```bash
 # URL 접근 테스트
-curl -I https://storage.railway.app/customizable-box-u-iz3yrp/mockups/tshirt_white_front.jpg
+curl -I https://merchandisegpt-api-peaq3gmvyq-du.a.run.app/mockups/tshirt_white_front.jpg
 
 # 앱에서 이미지 로드 확인
 # Console에서 [DEBUG] Mockup URI 로그 확인
@@ -432,7 +425,7 @@ export async function compressImage(uri: string, quality: number = 0.8) {
 - [AWS S3 Documentation](https://docs.aws.amazon.com/s3/)
 - [Sharp Image Processing](https://sharp.pixelplumbing.com/)
 - [React Native Image Component](https://reactnative.dev/docs/image)
-- [Railway Static Files](https://docs.railway.app/deploy/exposing-your-app)
+- [GCP Cloud Run Docs](https://cloud.google.com/run/docs)
 
 ---
 

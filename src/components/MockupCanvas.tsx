@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Image, StyleSheet, Text, View, type ViewStyle, type ImageSourcePropType } from 'react-native';
 import type { LayerTransform, TextLayer } from '../context/catalog';
 import type { MockupTemplate } from '../data/mockupTemplates';
+import { getGarmentStageBackground } from '../utils/garmentContrast';
 import { getHemTrimInsetRatio } from '../utils/hemTrim';
 import { theme } from './ui';
 
@@ -68,10 +69,20 @@ export function MockupCanvas({
 
   const [imageLoaded, setImageLoaded] = useState(false);
   const hemTrimRatio = getHemTrimInsetRatio(sizeLabel);
+  const stageBackgroundColor = getGarmentStageBackground(
+    template.color,
+    theme.colors.surface,
+  );
   const mockupImageStyle = [styles.image, { bottom: height * hemTrimRatio }];
 
   return (
-    <View style={[styles.container, { width, height }, style]}>
+    <View
+      style={[
+        styles.container,
+        { width, height, backgroundColor: stageBackgroundColor },
+        style,
+      ]}
+    >
       <Image
         source={template.image}
         style={mockupImageStyle}
@@ -182,14 +193,18 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.surface,
     borderWidth: 1,
     borderColor: theme.colors.border,
-    shadowColor: '#4D3622',
-    shadowOpacity: 0.16,
+    shadowColor: '#5F320E',
+    shadowOpacity: 0.14,
     shadowRadius: 14,
     shadowOffset: { width: 0, height: 8 },
     elevation: 6,
   },
   image: {
     ...StyleSheet.absoluteFillObject,
+    shadowColor: '#5F320E',
+    shadowOpacity: 0.20,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 10 },
   },
   printArea: {
     position: 'absolute',

@@ -1,5 +1,5 @@
 import React from 'react';
-import { render } from '@testing-library/react-native';
+import { fireEvent, render } from '@testing-library/react-native';
 import { DesignStage } from './DesignStage';
 import type { MockupTemplate } from '../data/mockupTemplates';
 
@@ -53,5 +53,81 @@ describe('DesignStage', () => {
     );
 
     expect(JSON.stringify(view.toJSON())).not.toContain('rgba(0,0,0,0.15)');
+  });
+
+  it('opens size/angle popup on long press of adjust button', () => {
+    const view = render(
+      <DesignStage
+        template={baseTemplate}
+        width={240}
+        height={320}
+        showPrintArea
+        showGuides={false}
+        imageUri="mock://photo.png"
+        imageTransform={baseTransform}
+        textLayer={baseTextLayer}
+        textTransform={baseTransform}
+        activeLayer="image"
+        onImageTransformChange={() => {}}
+        onTextTransformChange={() => {}}
+      />,
+    );
+
+    const trigger = view.getByTestId('image-adjust-trigger');
+    expect(view.queryByTestId('image-adjust-popup')).toBeNull();
+    fireEvent(trigger, 'longPress');
+    expect(view.queryByTestId('image-adjust-popup')).not.toBeNull();
+  });
+
+  it('applies rotation nudge from popup', () => {
+    const onImageTransformChange = jest.fn();
+    const view = render(
+      <DesignStage
+        template={baseTemplate}
+        width={240}
+        height={320}
+        showPrintArea
+        showGuides={false}
+        imageUri="mock://photo.png"
+        imageTransform={baseTransform}
+        textLayer={baseTextLayer}
+        textTransform={baseTransform}
+        activeLayer="image"
+        onImageTransformChange={onImageTransformChange}
+        onTextTransformChange={() => {}}
+      />,
+    );
+
+    fireEvent(view.getByTestId('image-adjust-trigger'), 'longPress');
+    fireEvent.press(view.getByTestId('rotate-nudge-right'));
+
+    expect(onImageTransformChange).toHaveBeenCalledWith(
+      expect.objectContaining({ rotation: 0.5 }),
+    );
+  });
+
+  it('switches popup tab to scale controls', () => {
+    const view = render(
+      <DesignStage
+        template={baseTemplate}
+        width={240}
+        height={320}
+        showPrintArea
+        showGuides={false}
+        imageUri="mock://photo.png"
+        imageTransform={baseTransform}
+        textLayer={baseTextLayer}
+        textTransform={baseTransform}
+        activeLayer="image"
+        onImageTransformChange={() => {}}
+        onTextTransformChange={() => {}}
+      />,
+    );
+
+    fireEvent(view.getByTestId('image-adjust-trigger'), 'longPress');
+    fireEvent.press(view.getByTestId('adjust-tab-scale'));
+
+    expect(view.getByText('크기 조절')).toBeTruthy();
+    expect(view.getByText('배율 1.00')).toBeTruthy();
   });
 });

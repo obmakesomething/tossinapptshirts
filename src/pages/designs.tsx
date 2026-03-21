@@ -16,8 +16,8 @@ import { type SavedDesign, useCatalog } from '../context/catalog';
 import { catalogProducts } from '../data/catalog';
 import { buildTemplate } from '../data/mockupTemplates';
 
-const ORANGE_RED = '#FF6A00';
-const NAVY_DEEP = '#FFF8F1';
+const ORANGE_RED = '#3182F6';
+const WARM_DEEP = '#FFFAF5';
 const NAVY_PANEL = '#FFFFFF';
 
 export const Route = createRoute('/designs', {
@@ -59,8 +59,7 @@ function Page() {
     const product = catalogProducts.find((p) => p.id === design.productId);
     const productName = product?.name ?? '티셔츠';
     try {
-      const ogImageUrl = design.designImageUri || undefined;
-      const shareLink = await getTossShareLink('intoss://merchandisegpt/designs', ogImageUrl);
+      const shareLink = await getTossShareLink('intoss://merchandisegpt/designs');
       await share({
         message: `${design.title} - ${productName} 디자인을 확인해보세요! 🎨\n${shareLink}`,
       });
@@ -161,7 +160,7 @@ function Page() {
 
 const styles = StyleSheet.create({
   screenContent: {
-    backgroundColor: NAVY_DEEP,
+    backgroundColor: WARM_DEEP,
   },
   headerRow: {
     flexDirection: 'row',
@@ -176,12 +175,12 @@ const styles = StyleSheet.create({
   },
   headerBackText: {
     fontSize: 12,
-    color: '#776556',
+    color: '#7C6959',
     fontWeight: '700',
   },
   title: {
     ...theme.typography.body,
-    color: '#776556',
+    color: '#7C6959',
     marginBottom: theme.spacing.lg,
   },
   list: {
@@ -207,7 +206,7 @@ const styles = StyleSheet.create({
   },
   cardMeta: {
     fontSize: 12,
-    color: '#776556',
+    color: '#7C6959',
     lineHeight: 18,
     marginBottom: theme.spacing.sm,
   },
@@ -233,7 +232,7 @@ const styles = StyleSheet.create({
   },
   emptySubtext: {
     ...theme.typography.body,
-    color: '#776556',
+    color: '#7C6959',
   },
   newButton: {
     backgroundColor: ORANGE_RED,

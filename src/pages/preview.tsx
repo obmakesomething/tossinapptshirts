@@ -18,8 +18,8 @@ import { buildTemplate } from '../data/mockupTemplates';
 import { calcPricing } from '../data/pricing';
 import { formatPrice } from '../utils/format';
 
-const ORANGE_RED = '#FF6A00';
-const NAVY_DEEP = '#FFF8F1';
+const ORANGE_RED = '#3182F6';
+const WARM_DEEP = '#FFFAF5';
 const NAVY_PANEL = '#FFFFFF';
 
 export const Route = createRoute('/preview', {
@@ -81,8 +81,7 @@ function Page() {
 
   const handleShare = async () => {
     try {
-      const ogImageUrl = frontDesignImageUri || undefined;
-      const shareLink = await getTossShareLink('intoss://merchandisegpt/preview', ogImageUrl);
+      const shareLink = await getTossShareLink('intoss://merchandisegpt/preview');
       await share({
         message: `${selectedProduct.name} 디자인을 확인해보세요! 🎨\n${shareLink}`,
       });
@@ -190,7 +189,7 @@ function Page() {
 
 const styles = StyleSheet.create({
   screenContent: {
-    backgroundColor: NAVY_DEEP,
+    backgroundColor: WARM_DEEP,
     paddingBottom: theme.spacing.xl,
   },
   bgOrbTop: {
@@ -232,7 +231,7 @@ const styles = StyleSheet.create({
   },
   headerBackText: {
     fontSize: 12,
-    color: '#776556',
+    color: '#7C6959',
     fontWeight: '700',
   },
   title: {
@@ -241,7 +240,7 @@ const styles = StyleSheet.create({
   },
   subtitle: {
     ...theme.typography.body,
-    color: '#776556',
+    color: '#7C6959',
     marginTop: theme.spacing.xs,
     marginBottom: theme.spacing.md,
   },
@@ -257,7 +256,7 @@ const styles = StyleSheet.create({
   },
   mockupLabel: {
     fontSize: 13,
-    color: '#776556',
+    color: '#7C6959',
     lineHeight: 20,
     marginTop: theme.spacing.sm,
   },
@@ -284,7 +283,7 @@ const styles = StyleSheet.create({
   priceLabel: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#776556',
+    color: '#7C6959',
     marginBottom: theme.spacing.xs,
   },
   priceAmount: {
@@ -298,7 +297,7 @@ const styles = StyleSheet.create({
   },
   priceDetailText: {
     fontSize: 13,
-    color: '#776556',
+    color: '#7C6959',
   },
   infoCard: {
     marginTop: theme.spacing.md,
@@ -315,7 +314,7 @@ const styles = StyleSheet.create({
   },
   infoDesc: {
     fontSize: 13,
-    color: '#776556',
+    color: '#7C6959',
     lineHeight: 20,
   },
   primaryActionRow: {

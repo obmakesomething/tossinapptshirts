@@ -36,7 +36,7 @@
   "router": "@granite-js/react-native 0.1.33",
   "backend": "Express 5.2.1 (Node.js)",
   "database": "PostgreSQL (pg ^8.16.3)",
-  "deployment": "Railway",
+  "deployment": "GCP Cloud Run",
   "ai": "OpenAI API ^4.104.0"
 }
 ```
@@ -490,12 +490,12 @@ npm run build
    git push origin feat/20260113-2124
    ```
 
-3. **Railway 자동 배포**
-   - Push 시 자동으로 Railway에 배포
-   - 배포 로그: [Railway Dashboard](https://railway.app)
+3. **GCP Cloud Run 배포**
+   - Cloud Build를 통한 자동 배포
+   - 배포 로그: GCP Console
 
 4. **배포 확인**
-   - Health check: `https://your-app.railway.app/health`
+   - Health check: `https://merchandisegpt-api-peaq3gmvyq-du.a.run.app/health`
    - 테스트: Toss 앱에서 미니앱 실행
 
 ---
@@ -577,17 +577,17 @@ MOCKUP_BASE_URL=http://localhost:3000/mockups
 NODE_ENV=development
 ```
 
-#### **프로덕션 (Railway)**
+#### **프로덕션 (GCP Cloud Run)**
 ```env
-API_BASE_URL=https://your-app.railway.app
-MOCKUP_BASE_URL=https://your-app.railway.app/mockups
+API_BASE_URL=https://merchandisegpt-api-peaq3gmvyq-du.a.run.app
+MOCKUP_BASE_URL=https://merchandisegpt-api-peaq3gmvyq-du.a.run.app/mockups
 NODE_ENV=production
 ```
 
 ### 📊 모니터링
-- **서버 로그**: Railway Dashboard
+- **서버 로그**: GCP Cloud Logging
 - **에러 추적**: Console logs (Sentry 등 도입 권장)
-- **성능**: Railway Metrics
+- **성능**: GCP Cloud Run Metrics
 
 ### 🔐 보안 체크리스트
 - [ ] `.env` 파일이 `.gitignore`에 포함되어 있는지

@@ -15,23 +15,23 @@ import {
 
 export const theme = {
   colors: {
-    // ── Fluent-like base ──
-    background: '#F3F4F8',
+    // ── Warm-tone base (aligned with current-ait-preview.html) ──
+    background: '#FFFAF5',
     surface: '#FFFFFF',
-    surfaceSecondary: '#EEF3FF',
+    surfaceSecondary: '#FFF4E8',
     // ── Accent ──
     primary: '#3182F6',
     primarySoft: '#E8F2FF',
     primaryPressed: '#2B72DE',
-    // ── Text ──
-    textPrimary: '#1A1F2E',
-    textSecondary: '#5E667A',
-    textTertiary: '#8A93A8',
-    // ── Borders ──
-    border: '#DCE5F2',
-    muted: '#A0A9BE',
+    // ── Text (warm) ──
+    textPrimary: '#2E231B',
+    textSecondary: '#7C6959',
+    textTertiary: '#A0907E',
+    // ── Borders (warm) ──
+    border: '#F0DFCF',
+    muted: '#A0907E',
     // ── Semantic ──
-    success: '#00C471',
+    success: '#0EA76F',
     successSoft: '#E9F9F2',
     successBorder: '#AEE6CF',
     warning: '#F59E0B',
@@ -498,8 +498,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     minHeight: 48,
-    shadowColor: '#2B72DE',
-    shadowOpacity: 0.24,
+    shadowColor: '#5F320E',
+    shadowOpacity: 0.18,
     shadowRadius: 14,
     shadowOffset: { width: 0, height: 7 },
     elevation: 6,
@@ -524,14 +524,14 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: theme.colors.surfaceSecondary,
     minHeight: 48,
-    shadowColor: '#3E4B63',
+    shadowColor: '#5F320E',
     shadowOpacity: 0.06,
     shadowRadius: 8,
     shadowOffset: { width: 0, height: 4 },
     elevation: 3,
   },
   secondaryButtonPressed: {
-    backgroundColor: '#DEE9FF',
+    backgroundColor: '#FFE8D0',
   },
   secondaryButtonText: {
     color: theme.colors.textSecondary,
@@ -616,8 +616,8 @@ const styles = StyleSheet.create({
     padding: theme.spacing.lg,
     borderWidth: 1,
     borderColor: theme.colors.border,
-    shadowColor: '#1F3D7A',
-    shadowOpacity: 0.08,
+    shadowColor: '#5F320E',
+    shadowOpacity: 0.10,
     shadowRadius: 16,
     shadowOffset: { width: 0, height: 9 },
     elevation: 5,
@@ -677,7 +677,7 @@ const styles = StyleSheet.create({
   /* BottomSheet */
   sheetOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(19, 28, 45, 0.34)',
+    backgroundColor: 'rgba(46, 35, 27, 0.34)',
   },
   sheetContainer: {
     position: 'absolute',
@@ -700,7 +700,7 @@ const styles = StyleSheet.create({
     width: 36,
     height: 4,
     borderRadius: 2,
-    backgroundColor: '#C8D4E8',
+    backgroundColor: '#DAC8BB',
   },
   sheetTitleRow: {
     flexDirection: 'row',
@@ -756,7 +756,7 @@ const styles = StyleSheet.create({
   /* FullScreenLoader */
   fullScreenLoader: {
     flex: 1,
-    backgroundColor: 'rgba(19, 28, 45, 0.56)',
+    backgroundColor: 'rgba(46, 35, 27, 0.56)',
     justifyContent: 'center',
     alignItems: 'center',
   },

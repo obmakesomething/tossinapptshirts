@@ -10,6 +10,12 @@ const express = require('express');
 const crypto = require('crypto');
 const OpenAI = require('openai');
 const { getPool } = require('./db');
+const { buildPromptDraft } = require('./promptDraftBuilder');
+const {
+  mapGenerationRequestToDraftInput,
+  buildGenerationModelPrompt,
+  buildBlockedGenerationError,
+} = require('./generationPolicyBridge');
 
 const router = express.Router();
 
@@ -188,6 +194,17 @@ router.post('/', async (req, res) => {
       return res.status(400).json({ error: 'prompt is required.' });
     }
 
+    const draftInput = mapGenerationRequestToDraftInput({
+      ...req.body,
+      prompt,
+      style_preset: style_preset || 'minimal',
+      aspectRatio,
+    });
+    const policyDraft = buildPromptDraft(draftInput);
+    if (policyDraft.decision === 'BLOCK') {
+      return res.status(400).json(buildBlockedGenerationError(policyDraft));
+    }
+
     const jobId = `job_${Date.now()}_${crypto.randomBytes(4).toString('hex')}`;
     const createdAt = nowIso();
 
@@ -210,6 +227,7 @@ router.post('/', async (req, res) => {
         toggles: toggles || {},
         text: text || null,
         aspectRatio,
+        policy_draft: policyDraft,
       },
       expires_at: toExpiresAtIso(),
     };
@@ -327,14 +345,11 @@ async function processJob(jobId) {
     updateJobStage(job, JobStage.RUN_MODEL, JobStatus.RUNNING);
     await upsertJob(job);
 
-    const stylePromptMap = {
-      minimal: 'minimal',
-      lineart: 'line art',
-      graphic: 'graphic',
-    };
-    const styleText =
-      stylePromptMap[job.params.style_preset] || job.params.style_preset;
-    const enhancedPrompt = `${job.params.prompt} (${styleText}), on a plain white background, t-shirt print design`;
+    const policyPrompt = job.params?.policy_draft?.imagen_prompt || job.params.prompt;
+    const enhancedPrompt = buildGenerationModelPrompt({
+      policyPrompt,
+      stylePreset: job.params.style_preset,
+    });
 
     const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
     if (!OPENAI_API_KEY) {
@@ -419,4 +434,3 @@ const cleanupInterval = setInterval(() => {
 cleanupInterval.unref();
 
 module.exports = router;
-

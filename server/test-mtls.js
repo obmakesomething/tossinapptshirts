@@ -36,7 +36,7 @@ async function testMTLS() {
         console.log('1. mTLS 인증서 파일을 base64로 인코딩:');
         console.log('   cat "mTLS인증서관련/merchadisegpt2_private.key" | base64 | tr -d \'\\n\'');
         console.log('   cat "mTLS인증서관련/merchadisegpt2_public.crt" | base64 | tr -d \'\\n\'');
-        console.log('\n2. Railway 환경변수에 추가:');
+        console.log('\n2. GCP Secret Manager 또는 환경변수에 추가:');
         console.log('   MTLS_KEY_BASE64=<private key base64>');
         console.log('   MTLS_CERT_BASE64=<certificate base64>');
         return;

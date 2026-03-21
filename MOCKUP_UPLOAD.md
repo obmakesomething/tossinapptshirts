@@ -10,7 +10,7 @@ Upload mockup images to S3 and reference them via URL.
 
 ### 1. Upload images to S3
 
-Use the AWS CLI or Railway S3 dashboard:
+Use the GCS CLI or GCP Console:
 
 ```bash
 # Using AWS CLI
@@ -28,10 +28,10 @@ node scripts/upload-mockups.js
 ### 2. Verify URLs
 
 Check that images are accessible:
-- https://storage.railway.app/merch-tshirts-assets/mockups/tshirt_black_front.jpg
-- https://storage.railway.app/merch-tshirts-assets/mockups/tshirt_black_back.jpg
-- https://storage.railway.app/merch-tshirts-assets/mockups/tshirt_white_front.jpg
-- https://storage.railway.app/merch-tshirts-assets/mockups/tshirt_white_back.jpg
+- https://merchandisegpt-api-peaq3gmvyq-du.a.run.app/mockups/tshirt_black_front.jpg
+- https://merchandisegpt-api-peaq3gmvyq-du.a.run.app/mockups/tshirt_black_back.jpg
+- https://merchandisegpt-api-peaq3gmvyq-du.a.run.app/mockups/tshirt_white_front.jpg
+- https://merchandisegpt-api-peaq3gmvyq-du.a.run.app/mockups/tshirt_white_back.jpg
 
 ### 3. Deploy
 

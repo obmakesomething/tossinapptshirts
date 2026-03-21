@@ -3,7 +3,7 @@ import React from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Screen, theme } from '../components/ui';
 
-const NAVY_DEEP = '#FFF8F1';
+const WARM_DEEP = '#FFFAF5';
 const NAVY_PANEL = '#FFFFFF';
 
 export const Route = createRoute('/terms', {
@@ -144,7 +144,7 @@ function Page() {
 
 const styles = StyleSheet.create({
   screenContent: {
-    backgroundColor: NAVY_DEEP,
+    backgroundColor: WARM_DEEP,
   },
   headerRow: {
     flexDirection: 'row',
@@ -167,7 +167,7 @@ const styles = StyleSheet.create({
   },
   headerBackText: {
     fontSize: 12,
-    color: '#776556',
+    color: '#7C6959',
     fontWeight: '700',
   },
   content: {
@@ -190,13 +190,13 @@ const styles = StyleSheet.create({
   paragraph: {
     fontSize: 13,
     lineHeight: 22,
-    color: '#776556',
+    color: '#7C6959',
     marginBottom: theme.spacing.md,
   },
   footer: {
     fontSize: 12,
     lineHeight: 18,
-    color: '#9D826E',
+    color: '#A0907E',
     marginTop: theme.spacing.xl,
     textAlign: 'center',
   },

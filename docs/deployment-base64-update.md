@@ -8,7 +8,7 @@
 
 ## 🎯 목적
 
-토스 미니앱에서 외부 도메인(Railway S3) 이미지 로드 제한을 우회하기 위해 모든 이미지 API에서 base64 데이터 반환을 지원하도록 수정.
+토스 미니앱에서 외부 도메인 이미지 로드 제한을 우회하기 위해 모든 이미지 API에서 base64 데이터 반환을 지원하도록 수정.
 
 ---
 
@@ -117,11 +117,11 @@ git push origin feat/mockup-lite
 **Branch**: `feat/mockup-lite`
 **Repository**: https://github.com/obmakesomething/tossinapptshirts
 
-### Railway 배포
+### GCP Cloud Run 배포
 
-**방법**: GitHub 자동 배포 (Railway ↔ GitHub 연동)
+**방법**: Cloud Build 자동 배포
 **서버 상태**: ✅ Running
-**Health check**: https://tossinapptshirts-production.up.railway.app/health
+**Health check**: https://merchandisegpt-api-peaq3gmvyq-du.a.run.app/health
 ```json
 { "ok": true }
 ```
@@ -134,15 +134,15 @@ git push origin feat/mockup-lite
 
 ```bash
 # Health check
-curl https://tossinapptshirts-production.up.railway.app/health
+curl https://merchandisegpt-api-peaq3gmvyq-du.a.run.app/health
 
 # 이미지 업로드 (base64 반환)
-curl -X POST https://tossinapptshirts-production.up.railway.app/v1/images/upload \
+curl -X POST https://merchandisegpt-api-peaq3gmvyq-du.a.run.app/v1/images/upload \
   -H "Content-Type: application/json" \
   -d '{"filename":"test.png","dataUrl":"data:image/png;base64,...","returnBase64":true}'
 
 # AI 이미지 생성 (base64 반환)
-curl -X POST https://tossinapptshirts-production.up.railway.app/v1/images/generate \
+curl -X POST https://merchandisegpt-api-peaq3gmvyq-du.a.run.app/v1/images/generate \
   -H "Content-Type: application/json" \
   -d '{"prompt":"minimal mountain","numberOfImages":1,"aspectRatio":"1:1","returnBase64":true}'
 ```
@@ -266,7 +266,7 @@ git push -f origin feat/mockup-lite
 ### 2. 서버 응답 느림
 - base64 인코딩 시간 확인
 - 이미지 크기 확인 (1024x1024 초과 여부)
-- Railway 서버 메모리 사용량 확인
+- Cloud Run 서버 메모리 사용량 확인
 
 ### 3. 주문 처리 실패
 - dataUrl 디코딩 로직 확인 (index.js:575-581)

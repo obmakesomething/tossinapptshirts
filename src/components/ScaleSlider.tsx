@@ -7,24 +7,37 @@ type ScaleSliderProps = {
   max: number;
   value: number;
   onChange: (value: number) => void;
+  onInteractionStart?: () => void;
+  onInteractionEnd?: () => void;
 };
 
 const clamp = (value: number, min: number, max: number) =>
   Math.min(Math.max(value, min), max);
 
-export function ScaleSlider({ min, max, value, onChange }: ScaleSliderProps) {
+export function ScaleSlider({
+  min,
+  max,
+  value,
+  onChange,
+  onInteractionStart,
+  onInteractionEnd,
+}: ScaleSliderProps) {
   const [trackWidth, setTrackWidth] = useState(1);
   const startValue = useRef(value);
 
   // Store latest values in refs for PanResponder closure
   const valueRef = useRef(value);
   const onChangeRef = useRef(onChange);
+  const onInteractionStartRef = useRef(onInteractionStart);
+  const onInteractionEndRef = useRef(onInteractionEnd);
   const trackWidthRef = useRef(trackWidth);
   const minRef = useRef(min);
   const maxRef = useRef(max);
 
   valueRef.current = value;
   onChangeRef.current = onChange;
+  onInteractionStartRef.current = onInteractionStart;
+  onInteractionEndRef.current = onInteractionEnd;
   trackWidthRef.current = trackWidth;
   minRef.current = min;
   maxRef.current = max;
@@ -46,6 +59,7 @@ export function ScaleSlider({ min, max, value, onChange }: ScaleSliderProps) {
       onMoveShouldSetPanResponder: () => true,
       onPanResponderGrant: (evt) => {
         startValue.current = valueRef.current;
+        onInteractionStartRef.current?.();
         applyFromLocationX(evt.nativeEvent.locationX);
       },
       onPanResponderMove: (evt, gestureState) => {
@@ -63,6 +77,12 @@ export function ScaleSlider({ min, max, value, onChange }: ScaleSliderProps) {
           currentMax,
         );
         onChangeRef.current(next);
+      },
+      onPanResponderRelease: () => {
+        onInteractionEndRef.current?.();
+      },
+      onPanResponderTerminate: () => {
+        onInteractionEndRef.current?.();
       },
     }),
   );

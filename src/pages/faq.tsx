@@ -10,8 +10,8 @@ import {
 import { Card, PageHeader, Screen, theme } from '../components/ui';
 import { faqCategories, faqItems } from '../data/faq';
 
-const ORANGE_RED = '#FF6A00';
-const NAVY_DEEP = '#FFF8F1';
+const ORANGE_RED = '#3182F6';
+const WARM_DEEP = '#FFFAF5';
 const NAVY_PANEL = '#FFFFFF';
 
 export const Route = createRoute('/faq', {
@@ -132,29 +132,33 @@ function Page() {
               <Text style={styles.categoryCount}>{group.items.length}개</Text>
             </View>
 
-            {/* FAQ Items */}
-            {group.items.map((item) => {
-              const isExpanded = expandedId === item.id;
-              return (
-                <Card key={item.id} style={styles.faqCard}>
-                  <Pressable onPress={() => toggleExpand(item.id)}>
-                    <View style={styles.questionRow}>
-                      <Text style={styles.qLabel}>Q</Text>
-                      <Text style={styles.questionText}>{item.question}</Text>
-                      <Text style={styles.expandIcon}>
-                        {isExpanded ? '−' : '+'}
-                      </Text>
-                    </View>
-                    {isExpanded && (
-                      <View style={styles.answerRow}>
-                        <Text style={styles.aLabel}>A</Text>
-                        <Text style={styles.answerText}>{item.answer}</Text>
+            {/* FAQ Items grouped in one card */}
+            <Card style={styles.faqCard}>
+              {group.items.map((item, idx) => {
+                const isExpanded = expandedId === item.id;
+                const isLast = idx === group.items.length - 1;
+                return (
+                  <View key={item.id}>
+                    <Pressable onPress={() => toggleExpand(item.id)} style={styles.faqItem}>
+                      <View style={styles.questionRow}>
+                        <Text style={styles.qLabel}>Q</Text>
+                        <Text style={styles.questionText}>{item.question}</Text>
+                        <Text style={styles.expandIcon}>
+                          {isExpanded ? '−' : '+'}
+                        </Text>
                       </View>
-                    )}
-                  </Pressable>
-                </Card>
-              );
-            })}
+                      {isExpanded && (
+                        <View style={styles.answerRow}>
+                          <Text style={styles.aLabel}>A</Text>
+                          <Text style={styles.answerText}>{item.answer}</Text>
+                        </View>
+                      )}
+                    </Pressable>
+                    {!isLast && <View style={styles.faqDivider} />}
+                  </View>
+                );
+              })}
+            </Card>
           </View>
         ))}
 
@@ -167,7 +171,7 @@ function Page() {
 
 const styles = StyleSheet.create({
   screenContent: {
-    backgroundColor: NAVY_DEEP,
+    backgroundColor: WARM_DEEP,
   },
   headerRow: {
     flexDirection: 'row',
@@ -190,12 +194,12 @@ const styles = StyleSheet.create({
   },
   headerBackText: {
     fontSize: 12,
-    color: '#776556',
+    color: '#7C6959',
     fontWeight: '700',
   },
   subtitle: {
     ...theme.typography.body,
-    color: '#776556',
+    color: '#7C6959',
     marginBottom: theme.spacing.md,
   },
   categoryScroll: {
@@ -222,11 +226,11 @@ const styles = StyleSheet.create({
   categoryText: {
     fontSize: 13,
     lineHeight: 18,
-    color: '#776556',
+    color: '#7C6959',
     fontWeight: '500',
   },
   categoryTextActive: {
-    color: '#FF6A00',
+    color: '#3182F6',
   },
   scrollContent: {
     paddingBottom: theme.spacing.xl,
@@ -253,17 +257,24 @@ const styles = StyleSheet.create({
   },
   categoryCount: {
     fontSize: 12,
-    color: '#776556',
+    color: '#7C6959',
     backgroundColor: 'rgba(255,244,232,0.92)',
     paddingHorizontal: theme.spacing.sm,
     paddingVertical: 2,
     borderRadius: 10,
   },
   faqCard: {
-    marginBottom: theme.spacing.sm,
+    marginBottom: theme.spacing.md,
     backgroundColor: NAVY_PANEL,
     borderColor: 'rgba(240,223,207,0.92)',
     borderWidth: 1,
+  },
+  faqItem: {
+    paddingVertical: theme.spacing.sm,
+  },
+  faqDivider: {
+    height: 1,
+    backgroundColor: 'rgba(240,223,207,0.92)',
   },
   questionRow: {
     flexDirection: 'row',
@@ -285,7 +296,7 @@ const styles = StyleSheet.create({
     fontSize: 20,
     lineHeight: 22,
     fontWeight: '300',
-    color: '#9D826E',
+    color: '#A0907E',
     marginLeft: theme.spacing.sm,
   },
   answerRow: {
@@ -299,13 +310,13 @@ const styles = StyleSheet.create({
   aLabel: {
     ...theme.typography.body,
     fontWeight: '700',
-    color: '#776556',
+    color: '#7C6959',
     marginRight: theme.spacing.sm,
   },
   answerText: {
     flex: 1,
     ...theme.typography.body,
-    color: '#776556',
+    color: '#7C6959',
   },
   bottomPadding: {
     height: 40,

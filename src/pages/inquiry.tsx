@@ -11,10 +11,10 @@ import {
 import { Card, PrimaryButton, Screen, theme } from '../components/ui';
 import { API_BASE_URL } from '../config';
 
-const ORANGE_RED = '#FF6A00';
-const NAVY_DEEP = '#FFF8F1';
+const ORANGE_RED = '#3182F6';
+const WARM_DEEP = '#FFFAF5';
 const NAVY_PANEL = '#FFFFFF';
-const NAVY_MID = '#FFF2E5';
+const WARM_MID = '#FFF4E8';
 
 export const Route = createRoute('/inquiry' as never, {
   component: Page,
@@ -141,7 +141,7 @@ function Page() {
 
 const styles = StyleSheet.create({
   screenContent: {
-    backgroundColor: NAVY_DEEP,
+    backgroundColor: WARM_DEEP,
   },
   headerRow: {
     flexDirection: 'row',
@@ -164,13 +164,13 @@ const styles = StyleSheet.create({
   },
   headerBackText: {
     fontSize: 12,
-    color: '#776556',
+    color: '#7C6959',
     fontWeight: '700',
   },
   subtitle: {
     fontSize: 13,
     lineHeight: 20,
-    color: '#776556',
+    color: '#7C6959',
     marginBottom: theme.spacing.lg,
   },
   formCard: {
@@ -195,7 +195,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 20,
     color: '#2E231B',
-    backgroundColor: NAVY_MID,
+    backgroundColor: WARM_MID,
   },
   textArea: {
     height: 120,
@@ -204,7 +204,7 @@ const styles = StyleSheet.create({
   hint: {
     fontSize: 12,
     lineHeight: 18,
-    color: '#9D826E',
+    color: '#A0907E',
     marginTop: theme.spacing.md,
   },
   errorText: {
@@ -225,7 +225,7 @@ const styles = StyleSheet.create({
   loadingText: {
     fontSize: 12,
     lineHeight: 18,
-    color: '#776556',
+    color: '#7C6959',
     marginLeft: theme.spacing.sm,
   },
 });

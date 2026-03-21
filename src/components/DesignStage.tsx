@@ -1,8 +1,17 @@
-import React, { useMemo, useRef } from 'react';
-import { Image, PanResponder, StyleSheet, Text, View } from 'react-native';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import {
+  Image,
+  PanResponder,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 import type { LayerTransform, TextLayer } from '../context/catalog';
 import type { MockupTemplate } from '../data/mockupTemplates';
+import { getGarmentStageBackground } from '../utils/garmentContrast';
 import { getHemTrimInsetRatio } from '../utils/hemTrim';
+import { ScaleSlider } from './ScaleSlider';
 import { theme } from './ui';
 
 type DesignStageProps = {
@@ -11,6 +20,8 @@ type DesignStageProps = {
   height?: number;
   showPrintArea?: boolean;
   showGuides?: boolean;
+  showFreeGrid?: boolean;
+  interactionMode?: 'template' | 'free';
   imageUri?: string | null;
   imageTransform: LayerTransform;
   textLayer: TextLayer;
@@ -23,6 +34,8 @@ type DesignStageProps = {
   onOutOfBounds?: (isOut: boolean, overflowPercent?: number) => void;
   cameraScale?: number;
   sizeLabel?: string;
+  imageControlFocused?: boolean;
+  onImageControlFocusChange?: (focused: boolean) => void;
 };
 
 
@@ -42,10 +55,11 @@ const snapRotation = (angle: number) => {
   return angle;
 };
 
-const MIN_SCALE = 0.1;
+const MIN_SCALE = 0.03;
 const MAX_SCALE = 1.5; // Updated for Issue #5
 const MAX_OFFSET = 0.55;
 const HIT_SLOP = 12;
+const ROTATE_RANGE = 180;
 
 export function DesignStage({
   template,
@@ -53,6 +67,8 @@ export function DesignStage({
   height = 275,
   showPrintArea: _showPrintArea = true,
   showGuides = true,
+  showFreeGrid = false,
+  interactionMode = 'template',
   imageUri,
   imageTransform,
   textLayer,
@@ -65,25 +81,63 @@ export function DesignStage({
   onOutOfBounds,
   cameraScale: cameraScaleProp = 1,
   sizeLabel,
+  imageControlFocused: imageControlFocusedProp,
+  onImageControlFocusChange,
 }: DesignStageProps) {
-  const area = {
+  const templateArea = {
     left: width * template.printArea.x,
     top: height * template.printArea.y,
     width: width * template.printArea.width,
     height: height * template.printArea.height,
   };
+  const freeArea = {
+    // Figma-like free canvas: use the whole stage as editable area.
+    left: 0,
+    top: 0,
+    width,
+    height,
+  };
+  const area = interactionMode === 'free' ? freeArea : templateArea;
 
   const effectiveShowGuides = _showPrintArea && showGuides;
   const hemTrimRatio = getHemTrimInsetRatio(sizeLabel);
+  const stageBackgroundColor = getGarmentStageBackground(template.color, 'transparent');
   const stageImageStyle = useMemo(
     () => [styles.image, { bottom: height * hemTrimRatio }],
     [height, hemTrimRatio],
   );
+  const [imageNaturalSize, setImageNaturalSize] = useState<{
+    uri: string;
+    width: number;
+    height: number;
+  } | null>(null);
+  const [localImageControlFocused, setLocalImageControlFocused] = useState(false);
+  const [isAdjustPopupOpen, setIsAdjustPopupOpen] = useState(false);
+  const [adjustTab, setAdjustTab] = useState<'scale' | 'rotate'>('rotate');
+  const isImageControlFocused =
+    imageControlFocusedProp ?? localImageControlFocused;
+  const setImageControlFocused = (focused: boolean) => {
+    if (onImageControlFocusChange) {
+      onImageControlFocusChange(focused);
+      return;
+    }
+    setLocalImageControlFocused(focused);
+  };
 
+  const hasTextLayer = Boolean(textLayer.enabled && textLayer.text.trim().length > 0);
+  const hasImageLayer = Boolean(imageUri);
+  const effectiveActiveLayer: 'image' | 'text' =
+    activeLayer === 'text' && !hasTextLayer && hasImageLayer
+      ? 'image'
+      : activeLayer === 'image' && !hasImageLayer && hasTextLayer
+        ? 'text'
+        : activeLayer;
   const activeTransform =
-    activeLayer === 'text' ? textTransform : imageTransform;
+    effectiveActiveLayer === 'text' ? textTransform : imageTransform;
   const updateTransform =
-    activeLayer === 'text' ? onTextTransformChange : onImageTransformChange;
+    effectiveActiveLayer === 'text'
+      ? onTextTransformChange
+      : onImageTransformChange;
 
   const startRef = useRef({
     offsetX: 0,
@@ -101,8 +155,12 @@ export function DesignStage({
   const activeLayerRef = useRef(activeLayer);
   const imageUriRef = useRef(imageUri);
   const textLayerRef = useRef(textLayer);
+  const imageTransformRef = useRef(imageTransform);
+  const onImageTransformChangeRef = useRef(onImageTransformChange);
+  const isImageControlFocusedRef = useRef(isImageControlFocused);
 
   const cameraScaleRef = useRef(cameraScaleProp);
+  const stageSizeRef = useRef({ width, height });
   const panSessionRef = useRef({
     lastTouchCount: 0,
     dxAnchor: 0,
@@ -112,10 +170,28 @@ export function DesignStage({
   activeTransformRef.current = activeTransform;
   updateTransformRef.current = updateTransform;
   areaRef.current = area;
-  activeLayerRef.current = activeLayer;
+  activeLayerRef.current = effectiveActiveLayer;
   imageUriRef.current = imageUri;
   textLayerRef.current = textLayer;
+  imageTransformRef.current = imageTransform;
+  onImageTransformChangeRef.current = onImageTransformChange;
+  isImageControlFocusedRef.current = isImageControlFocused;
   cameraScaleRef.current = cameraScaleProp;
+  stageSizeRef.current = { width, height };
+
+  const toStageCoords = (x: number, y: number) => {
+    const cs = cameraScaleRef.current;
+    if (cs === 1) {
+      return { x, y };
+    }
+    const { width: stageWidth, height: stageHeight } = stageSizeRef.current;
+    const centerX = stageWidth / 2;
+    const centerY = stageHeight / 2;
+    return {
+      x: centerX + (x - centerX) / cs,
+      y: centerY + (y - centerY) / cs,
+    };
+  };
 
   const isWithinPrintArea = (x: number, y: number) => {
     const currentArea = areaRef.current;
@@ -127,6 +203,9 @@ export function DesignStage({
     );
   };
   const canInteract = () => {
+    if (isImageControlFocusedRef.current) {
+      return false;
+    }
     if (activeLayerRef.current === 'text') {
       const layer = textLayerRef.current;
       return Boolean(layer.enabled && layer.text.trim().length > 0);
@@ -139,7 +218,8 @@ export function DesignStage({
       onStartShouldSetPanResponder: (evt) => {
         if (!canInteract()) return false;
         const { locationX, locationY } = evt.nativeEvent;
-        return isWithinPrintArea(locationX, locationY);
+        const point = toStageCoords(locationX, locationY);
+        return isWithinPrintArea(point.x, point.y);
       },
       onMoveShouldSetPanResponder: (evt, gestureState) => {
         if (!canInteract()) return false;
@@ -148,12 +228,15 @@ export function DesignStage({
           Math.abs(gestureState.dx) > 2 || Math.abs(gestureState.dy) > 2;
         if (touches.length >= 2 && touches[0] && touches[1]) {
           const [a, b] = touches;
-          const midX = (a.locationX + b.locationX) / 2;
-          const midY = (a.locationY + b.locationY) / 2;
-          return isWithinPrintArea(midX, midY);
+          const point = toStageCoords(
+            (a.locationX + b.locationX) / 2,
+            (a.locationY + b.locationY) / 2,
+          );
+          return isWithinPrintArea(point.x, point.y);
         }
         const { locationX, locationY } = evt.nativeEvent;
-        return movedEnough && isWithinPrintArea(locationX, locationY);
+        const point = toStageCoords(locationX, locationY);
+        return movedEnough && isWithinPrintArea(point.x, point.y);
       },
       onPanResponderTerminationRequest: () => false,
       onShouldBlockNativeResponder: () => true,
@@ -275,9 +358,28 @@ export function DesignStage({
     }),
   );
 
-  const buildLayerStyle = (transform: LayerTransform) => {
-    const widthPx = area.width * transform.scale;
-    const heightPx = area.height * transform.scale;
+  const buildImageRect = (transform: LayerTransform) => {
+    const maxWidthPx = area.width * transform.scale;
+    const maxHeightPx = area.height * transform.scale;
+    const fallbackAspect = area.width / area.height;
+    const imageAspect =
+      imageUri &&
+      imageNaturalSize &&
+      imageNaturalSize.uri === imageUri &&
+      imageNaturalSize.width > 0 &&
+      imageNaturalSize.height > 0
+        ? imageNaturalSize.width / imageNaturalSize.height
+        : fallbackAspect;
+    let widthPx = maxWidthPx;
+    let heightPx = maxHeightPx;
+
+    if (maxWidthPx / maxHeightPx > imageAspect) {
+      heightPx = maxHeightPx;
+      widthPx = heightPx * imageAspect;
+    } else {
+      widthPx = maxWidthPx;
+      heightPx = widthPx / imageAspect;
+    }
     const left =
       area.left + area.width / 2 + transform.offsetX * area.width - widthPx / 2;
     const top =
@@ -290,6 +392,13 @@ export function DesignStage({
       top,
       width: widthPx,
       height: heightPx,
+    };
+  };
+
+  const buildImageStyle = (transform: LayerTransform) => {
+    const rect = buildImageRect(transform);
+    return {
+      ...rect,
       transform: [{ rotate: `${transform.rotation}deg` }],
     };
   };
@@ -321,7 +430,7 @@ export function DesignStage({
     const checkBounds = (transform: LayerTransform, isText: boolean) => {
       if (isText && !textLayer.enabled) return { out: false, overflow: 0 };
       if (!isText && !imageUri) return { out: false, overflow: 0 };
-      const s = isText ? buildTextStyle(transform) : buildLayerStyle(transform);
+      const s = isText ? buildTextStyle(transform) : buildImageStyle(transform);
       const w = 'width' in s ? (s.width as number) : 0;
       const h = 'height' in s ? (s.height as number) : 0;
       const l = s.left as number;
@@ -346,128 +455,390 @@ export function DesignStage({
     const maxOverflow = Math.max(imgResult.overflow, txtResult.overflow);
     onOutOfBounds?.(out, maxOverflow);
     return { isOutOfBounds: out, overflowPercent: maxOverflow };
-  }, [imageTransform, textTransform, imageUri, textLayer.enabled, area.left, area.top, area.width, area.height]);
+  }, [imageTransform, textTransform, imageUri, textLayer.enabled, area.left, area.top, area.width, area.height, imageNaturalSize]);
 
   const GUIDE_SIZE = 12;
   const GUIDE_WIDTH = 2;
   const overlayColor = 'rgba(0,0,0,0.15)';
   const borderColor = isOutOfBounds ? theme.colors.error : theme.colors.primary;
+  const selectedImageRect = imageUri ? buildImageRect(imageTransform) : null;
+  const showImageSelectionControls = Boolean(
+    selectedImageRect && effectiveActiveLayer === 'image',
+  );
+  const rotateButtonSize = 30;
+  const rotateButtonTop =
+    selectedImageRect == null
+      ? 8
+      : clamp(
+          selectedImageRect.top - rotateButtonSize / 2,
+          8,
+          height - rotateButtonSize - 8,
+        );
+  const rotateButtonLeft =
+    selectedImageRect == null
+      ? 8
+      : clamp(
+          selectedImageRect.left + selectedImageRect.width - rotateButtonSize / 2,
+          8,
+          width - rotateButtonSize - 8,
+        );
+  const adjustPopupWidth =
+    selectedImageRect == null
+      ? 0
+      : clamp(Math.max(selectedImageRect.width + 24, 212), 212, width - 12);
+  const adjustPopupTop =
+    selectedImageRect == null
+      ? 8
+      : clamp(selectedImageRect.top + selectedImageRect.height + 12, 8, height - 126);
+  const adjustPopupLeft =
+    selectedImageRect == null
+      ? 6
+      : clamp(
+          selectedImageRect.left + selectedImageRect.width / 2 - adjustPopupWidth / 2,
+          6,
+          width - adjustPopupWidth - 6,
+        );
+  const openAdjustPopup = (tab: 'scale' | 'rotate' = 'rotate') => {
+    setAdjustTab(tab);
+    setIsAdjustPopupOpen(true);
+    setImageControlFocused(true);
+  };
+
+  const nudgeRotation = (delta: number) => {
+    const current = imageTransformRef.current;
+    onImageTransformChangeRef.current({
+      ...current,
+      rotation: current.rotation + delta,
+    });
+  };
+
+  useEffect(() => {
+    if (!showImageSelectionControls && isImageControlFocused) {
+      setImageControlFocused(false);
+    }
+    if (!showImageSelectionControls && isAdjustPopupOpen) {
+      setIsAdjustPopupOpen(false);
+    }
+  }, [showImageSelectionControls, isImageControlFocused, isAdjustPopupOpen]);
+
+  useEffect(() => {
+    if (!isImageControlFocused && isAdjustPopupOpen) {
+      setIsAdjustPopupOpen(false);
+    }
+  }, [isImageControlFocused, isAdjustPopupOpen]);
 
   return (
     <View
       style={[styles.container, { width, height }]}
       {...responderRef.current.panHandlers}
     >
-      <Image
-        source={template.image}
-        style={stageImageStyle}
-        resizeMode="contain"
-        onError={(e) =>
-          console.error(
-            '[DesignStage] Image load error:',
-            e.nativeEvent.error,
-            'Source:',
-            template.image,
-          )
-        }
-        onLoad={() =>
-          console.log(
-            '[DesignStage] Image loaded successfully:',
-            template.image,
-          )
-        }
-      />
-      {/* Overlay mask: darken outside print area */}
-      {effectiveShowGuides && (
-        <>
-          <View style={[styles.overlayMask, { top: 0, left: 0, right: 0, height: area.top, backgroundColor: overlayColor }]} />
-          <View style={[styles.overlayMask, { top: area.top + area.height, left: 0, right: 0, bottom: 0, backgroundColor: overlayColor }]} />
-          <View style={[styles.overlayMask, { top: area.top, left: 0, width: area.left, height: area.height, backgroundColor: overlayColor }]} />
-          <View style={[styles.overlayMask, { top: area.top, left: area.left + area.width, right: 0, height: area.height, backgroundColor: overlayColor }]} />
-        </>
-      )}
-
-      {/* Print area border */}
-      {effectiveShowGuides && (
-        <View
-          style={[
-            styles.printArea,
-            {
-              left: area.left,
-              top: area.top,
-              width: area.width,
-              height: area.height,
-              borderColor,
-            },
-          ]}
-        >
-          {/* 프린트 영역 label */}
-          <Text style={[styles.printAreaLabel, { color: borderColor }]}>프린트 영역</Text>
-        </View>
-      )}
-
-      {/* Corner L-guides */}
-      {effectiveShowGuides && (
-        <>
-          {/* Top-left */}
-          <View style={[styles.cornerGuide, { top: area.top - 1, left: area.left - 1, borderTopWidth: GUIDE_WIDTH, borderLeftWidth: GUIDE_WIDTH, borderColor, width: GUIDE_SIZE, height: GUIDE_SIZE }]} />
-          {/* Top-right */}
-          <View style={[styles.cornerGuide, { top: area.top - 1, left: area.left + area.width - GUIDE_SIZE + 1, borderTopWidth: GUIDE_WIDTH, borderRightWidth: GUIDE_WIDTH, borderColor, width: GUIDE_SIZE, height: GUIDE_SIZE }]} />
-          {/* Bottom-left */}
-          <View style={[styles.cornerGuide, { top: area.top + area.height - GUIDE_SIZE + 1, left: area.left - 1, borderBottomWidth: GUIDE_WIDTH, borderLeftWidth: GUIDE_WIDTH, borderColor, width: GUIDE_SIZE, height: GUIDE_SIZE }]} />
-          {/* Bottom-right */}
-          <View style={[styles.cornerGuide, { top: area.top + area.height - GUIDE_SIZE + 1, left: area.left + area.width - GUIDE_SIZE + 1, borderBottomWidth: GUIDE_WIDTH, borderRightWidth: GUIDE_WIDTH, borderColor, width: GUIDE_SIZE, height: GUIDE_SIZE }]} />
-        </>
-      )}
-      {imageUri ? (
+      <View
+        style={[
+          styles.cameraViewport,
+          { backgroundColor: stageBackgroundColor, transform: [{ scale: cameraScaleProp }] },
+        ]}
+      >
         <Image
-          source={{ uri: imageUri }}
+          source={template.image}
+          style={stageImageStyle}
           resizeMode="contain"
-          style={[styles.designImage, buildLayerStyle(imageTransform)]}
+          onError={(e) =>
+            console.error(
+              '[DesignStage] Image load error:',
+              e.nativeEvent.error,
+              'Source:',
+              template.image,
+            )
+          }
+          onLoad={() =>
+            console.log(
+              '[DesignStage] Image loaded successfully:',
+              template.image,
+            )
+          }
         />
-      ) : null}
-      {textLayer.enabled && textLayer.text ? (
-        <View style={[styles.textWrapper, buildTextStyle(textTransform)]}>
-          <Text
+        {/* Overlay mask: darken outside print area */}
+        {effectiveShowGuides && (
+          <>
+            <View style={[styles.overlayMask, { top: 0, left: 0, right: 0, height: area.top, backgroundColor: overlayColor }]} />
+            <View style={[styles.overlayMask, { top: area.top + area.height, left: 0, right: 0, bottom: 0, backgroundColor: overlayColor }]} />
+            <View style={[styles.overlayMask, { top: area.top, left: 0, width: area.left, height: area.height, backgroundColor: overlayColor }]} />
+            <View style={[styles.overlayMask, { top: area.top, left: area.left + area.width, right: 0, height: area.height, backgroundColor: overlayColor }]} />
+          </>
+        )}
+
+        {/* Free-grid guide for wide editing area */}
+        {showFreeGrid && !effectiveShowGuides && (
+          <View
+            pointerEvents="none"
             style={[
-              styles.textLayer,
+              styles.freeGridFrame,
               {
-                fontSize: textLayer.fontSize,
-                color: textLayer.color,
-                fontFamily:
-                  textLayer.fontWeight === 'bold'
-                    ? 'NotoSansKR-Bold'
-                    : 'NotoSansKR-Regular',
+                left: area.left,
+                top: area.top,
+                width: area.width,
+                height: area.height,
               },
             ]}
           >
-            {textLayer.text}
-          </Text>
-        </View>
-      ) : null}
+            <View style={[styles.freeGridLine, styles.freeGridLineH, { top: '25%' }]} />
+            <View style={[styles.freeGridLine, styles.freeGridLineH, { top: '50%' }]} />
+            <View style={[styles.freeGridLine, styles.freeGridLineH, { top: '75%' }]} />
+            <View style={[styles.freeGridLine, styles.freeGridLineV, { left: '25%' }]} />
+            <View style={[styles.freeGridLine, styles.freeGridLineV, { left: '50%' }]} />
+            <View style={[styles.freeGridLine, styles.freeGridLineV, { left: '75%' }]} />
+          </View>
+        )}
+        {/* Print area border */}
+        {effectiveShowGuides && (
+          <View
+            style={[
+              styles.printArea,
+              {
+                left: area.left,
+                top: area.top,
+                width: area.width,
+                height: area.height,
+                borderColor,
+              },
+            ]}
+          >
+            {/* 프린트 영역 label */}
+            <Text style={[styles.printAreaLabel, { color: borderColor }]}>프린트 영역</Text>
+          </View>
+        )}
+
+        {/* Corner L-guides */}
+        {effectiveShowGuides && (
+          <>
+            {/* Top-left */}
+            <View style={[styles.cornerGuide, { top: area.top - 1, left: area.left - 1, borderTopWidth: GUIDE_WIDTH, borderLeftWidth: GUIDE_WIDTH, borderColor, width: GUIDE_SIZE, height: GUIDE_SIZE }]} />
+            {/* Top-right */}
+            <View style={[styles.cornerGuide, { top: area.top - 1, left: area.left + area.width - GUIDE_SIZE + 1, borderTopWidth: GUIDE_WIDTH, borderRightWidth: GUIDE_WIDTH, borderColor, width: GUIDE_SIZE, height: GUIDE_SIZE }]} />
+            {/* Bottom-left */}
+            <View style={[styles.cornerGuide, { top: area.top + area.height - GUIDE_SIZE + 1, left: area.left - 1, borderBottomWidth: GUIDE_WIDTH, borderLeftWidth: GUIDE_WIDTH, borderColor, width: GUIDE_SIZE, height: GUIDE_SIZE }]} />
+            {/* Bottom-right */}
+            <View style={[styles.cornerGuide, { top: area.top + area.height - GUIDE_SIZE + 1, left: area.left + area.width - GUIDE_SIZE + 1, borderBottomWidth: GUIDE_WIDTH, borderRightWidth: GUIDE_WIDTH, borderColor, width: GUIDE_SIZE, height: GUIDE_SIZE }]} />
+          </>
+        )}
+        {imageUri ? (
+          <>
+            <Image
+              source={{ uri: imageUri }}
+              resizeMode="contain"
+              style={[styles.designImage, buildImageStyle(imageTransform)]}
+              onLoad={(evt) => {
+                const loaded = evt.nativeEvent.source;
+                if (imageUri && loaded?.width && loaded?.height) {
+                  setImageNaturalSize({
+                    uri: imageUri,
+                    width: loaded.width,
+                    height: loaded.height,
+                  });
+                }
+              }}
+            />
+            {effectiveActiveLayer === 'image' ? (
+              <View
+                pointerEvents="none"
+                style={[styles.selectionOutline, buildImageStyle(imageTransform)]}
+              />
+            ) : null}
+            {showImageSelectionControls ? (
+              <>
+                <Pressable
+                  testID="image-adjust-trigger"
+                  style={[
+                    styles.imageRotateButton,
+                    {
+                      width: rotateButtonSize,
+                      height: rotateButtonSize,
+                      borderRadius: rotateButtonSize / 2,
+                      top: rotateButtonTop,
+                      left: rotateButtonLeft,
+                    },
+                    isAdjustPopupOpen && styles.imageRotateButtonActive,
+                  ]}
+                  onPress={() => nudgeRotation(15)}
+                  onLongPress={() => openAdjustPopup('rotate')}
+                  delayLongPress={220}
+                >
+                  <Text
+                    style={[
+                      styles.imageRotateButtonText,
+                      isAdjustPopupOpen && styles.imageRotateButtonTextActive,
+                    ]}
+                  >
+                    ↻
+                  </Text>
+                </Pressable>
+                {isAdjustPopupOpen ? (
+                  <View
+                    testID="image-adjust-popup"
+                    style={[
+                      styles.adjustPopup,
+                      {
+                        width: adjustPopupWidth,
+                        top: adjustPopupTop,
+                        left: adjustPopupLeft,
+                      },
+                    ]}
+                  >
+                    <View style={styles.adjustPopupTabRow}>
+                      <Pressable
+                        testID="adjust-tab-scale"
+                        style={[
+                          styles.adjustPopupTab,
+                          adjustTab === 'scale' && styles.adjustPopupTabActive,
+                        ]}
+                        onPress={() => setAdjustTab('scale')}
+                      >
+                        <Text
+                          style={[
+                            styles.adjustPopupTabText,
+                            adjustTab === 'scale' && styles.adjustPopupTabTextActive,
+                          ]}
+                        >
+                          크기 조절
+                        </Text>
+                      </Pressable>
+                      <Pressable
+                        testID="adjust-tab-rotate"
+                        style={[
+                          styles.adjustPopupTab,
+                          adjustTab === 'rotate' && styles.adjustPopupTabActive,
+                        ]}
+                        onPress={() => setAdjustTab('rotate')}
+                      >
+                        <Text
+                          style={[
+                            styles.adjustPopupTabText,
+                            adjustTab === 'rotate' && styles.adjustPopupTabTextActive,
+                          ]}
+                        >
+                          각도 조절
+                        </Text>
+                      </Pressable>
+                    </View>
+                    {adjustTab === 'scale' ? (
+                      <View style={styles.adjustPopupControlRow}>
+                        <Text style={styles.adjustPopupValueText}>
+                          배율 {imageTransform.scale.toFixed(2)}
+                        </Text>
+                        <ScaleSlider
+                          min={MIN_SCALE}
+                          max={MAX_SCALE}
+                          value={imageTransform.scale}
+                          onChange={(scale) =>
+                            onImageTransformChange({ ...imageTransform, scale })
+                          }
+                          onInteractionStart={() => setImageControlFocused(true)}
+                        />
+                      </View>
+                    ) : (
+                      <View style={styles.adjustPopupControlRow}>
+                        <View style={styles.rotateNudgeRow}>
+                          <Pressable
+                            testID="rotate-nudge-left"
+                            style={styles.rotateNudgeButton}
+                            onPress={() => nudgeRotation(-0.5)}
+                          >
+                            <Text style={styles.rotateNudgeButtonText}>−</Text>
+                          </Pressable>
+                          <Pressable
+                            testID="rotate-nudge-right"
+                            style={styles.rotateNudgeButton}
+                            onPress={() => nudgeRotation(0.5)}
+                          >
+                            <Text style={styles.rotateNudgeButtonText}>＋</Text>
+                          </Pressable>
+                          <Text style={styles.adjustPopupValueText}>
+                            {imageTransform.rotation.toFixed(1)}°
+                          </Text>
+                        </View>
+                        <ScaleSlider
+                          min={-ROTATE_RANGE}
+                          max={ROTATE_RANGE}
+                          value={imageTransform.rotation}
+                          onChange={(rotation) =>
+                            onImageTransformChange({ ...imageTransform, rotation })
+                          }
+                          onInteractionStart={() => setImageControlFocused(true)}
+                        />
+                      </View>
+                    )}
+                  </View>
+                ) : null}
+              </>
+            ) : null}
+          </>
+        ) : null}
+        {!isImageControlFocused && textLayer.enabled && textLayer.text ? (
+          <View style={[styles.textWrapper, buildTextStyle(textTransform)]}>
+            <Text
+              style={[
+                styles.textLayer,
+                {
+                  fontSize: textLayer.fontSize,
+                  color: textLayer.color,
+                  fontFamily:
+                    textLayer.fontWeight === 'bold'
+                      ? 'NotoSansKR-Bold'
+                      : 'NotoSansKR-Regular',
+                },
+              ]}
+            >
+              {textLayer.text}
+            </Text>
+          </View>
+        ) : null}
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    borderRadius: 18,
-    overflow: 'hidden',
+    borderRadius: 0,
+    overflow: 'visible',
     backgroundColor: 'transparent',
-    borderWidth: 1,
-    borderColor: theme.colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cameraViewport: {
+    ...StyleSheet.absoluteFillObject,
     alignItems: 'center',
     justifyContent: 'center',
   },
   image: {
     ...StyleSheet.absoluteFillObject,
-    shadowColor: '#4D3622',
-    shadowOpacity: 0.18,
-    shadowRadius: 14,
-    shadowOffset: { width: 0, height: 8 },
+    shadowColor: '#5F320E',
+    shadowOpacity: 0.3,
+    shadowRadius: 18,
+    shadowOffset: { width: 0, height: 12 },
   },
   overlayMask: {
     position: 'absolute',
+  },
+  freeGridFrame: {
+    position: 'absolute',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 106, 0, 0.3)',
+    borderRadius: 8,
+  },
+  freeGridLine: {
+    position: 'absolute',
+    backgroundColor: 'rgba(255, 106, 0, 0.18)',
+  },
+  freeGridLineH: {
+    left: 0,
+    right: 0,
+    height: 1,
+  },
+  freeGridLineV: {
+    top: 0,
+    bottom: 0,
+    width: 1,
   },
   printArea: {
     position: 'absolute',
@@ -491,6 +862,114 @@ const styles = StyleSheet.create({
   designImage: {
     position: 'absolute',
     backgroundColor: 'transparent',
+  },
+  selectionOutline: {
+    position: 'absolute',
+    borderWidth: 2,
+    borderRadius: 8,
+    borderColor: '#3182F6',
+    borderStyle: 'dashed',
+    backgroundColor: 'transparent',
+  },
+  imageRotateButton: {
+    position: 'absolute',
+    borderWidth: 1,
+    borderColor: '#3182F6',
+    backgroundColor: 'rgba(255,255,255,0.96)',
+    shadowColor: '#5F320E',
+    shadowOpacity: 0.16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 4,
+  },
+  imageRotateButtonActive: {
+    backgroundColor: '#3182F6',
+  },
+  imageRotateButtonText: {
+    fontSize: 14,
+    lineHeight: 16,
+    color: '#3182F6',
+    fontWeight: '700',
+  },
+  imageRotateButtonTextActive: {
+    color: '#FFFFFF',
+  },
+  adjustPopup: {
+    position: 'absolute',
+    minHeight: 102,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 106, 0, 0.45)',
+    backgroundColor: 'rgba(255, 255, 255, 0.98)',
+    paddingHorizontal: 8,
+    paddingVertical: 8,
+    shadowColor: '#5F320E',
+    shadowOpacity: 0.12,
+    shadowRadius: 7,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 4,
+  },
+  adjustPopupTabRow: {
+    flexDirection: 'row',
+    marginBottom: 8,
+    gap: 6,
+  },
+  adjustPopupTab: {
+    flex: 1,
+    height: 30,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 106, 0, 0.3)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FFFAF5',
+  },
+  adjustPopupTabActive: {
+    borderColor: '#3182F6',
+    backgroundColor: '#3182F6',
+  },
+  adjustPopupTabText: {
+    fontSize: 11,
+    lineHeight: 14,
+    color: '#3182F6',
+    fontWeight: '700',
+  },
+  adjustPopupTabTextActive: {
+    color: '#FFFFFF',
+  },
+  adjustPopupControlRow: {
+    gap: 8,
+  },
+  rotateNudgeButton: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 106, 0, 0.4)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FFFAF5',
+  },
+  rotateNudgeButtonText: {
+    fontSize: 14,
+    lineHeight: 18,
+    color: '#3182F6',
+    fontWeight: '700',
+  },
+  rotateNudgeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  adjustPopupValueText: {
+    minWidth: 64,
+    textAlign: 'left',
+    fontSize: 11,
+    lineHeight: 15,
+    color: '#5A4637',
+    fontWeight: '700',
   },
   textWrapper: {
     position: 'absolute',

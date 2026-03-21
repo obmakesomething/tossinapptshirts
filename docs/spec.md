@@ -104,11 +104,11 @@
 ## Config (env)
 - See .env.example for required variables (OpenAI + S3 + Clipdrop + Gmail SMTP).
 - `CATALOG_ASSET_BASE_URL` (optional): when running `scripts/build_catalog.py`, overrides catalog image URLs to point to your CDN/S3 base.
-- `src/config.ts`에 Railway API Base URL 설정 필요.
+- `src/config.ts`에 GCP Cloud Run API Base URL 설정.
 
 ## Build & deploy
 - `npm run build`로 `.ait` 파일 생성 후 콘솔 업로드.
-- 서버는 Railway에서 `npm start`로 실행.
+- 서버는 GCP Cloud Run에서 실행 (Cloud Build 자동 배포).
 
 ## mTLS reminder (Toss APIs)
 - Toss 로그인/결제/푸시/프로모션 API를 붙일 경우 mTLS 인증서 설정이 필수.

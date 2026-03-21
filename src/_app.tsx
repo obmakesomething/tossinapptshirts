@@ -1,7 +1,7 @@
 import { AppsInToss } from '@apps-in-toss/framework';
 import type { InitialProps } from '@granite-js/react-native';
+import { TDSProvider } from '@toss/tds-react-native';
 import React, { type PropsWithChildren } from 'react';
-import { TDSMobileAITProvider } from '@toss/tds-mobile-ait';
 import { context } from '../require.context';
 import { CatalogProvider } from './context/catalog';
 import { JobTrackerProvider } from './context/jobTracker';
@@ -10,7 +10,7 @@ import { ToastContainer } from './components/toast';
 
 function AppContainer({ children }: PropsWithChildren<InitialProps>) {
   return (
-    <TDSMobileAITProvider>
+    <TDSProvider>
       <ToastProvider>
         <JobTrackerProvider>
           <CatalogProvider>
@@ -19,7 +19,7 @@ function AppContainer({ children }: PropsWithChildren<InitialProps>) {
           </CatalogProvider>
         </JobTrackerProvider>
       </ToastProvider>
-    </TDSMobileAITProvider>
+    </TDSProvider>
   );
 }
 

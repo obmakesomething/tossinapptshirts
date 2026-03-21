@@ -229,7 +229,7 @@ Kakao 알림 (옵션)
 
 ### 로그 확인
 ```bash
-# Railway 대시보드에서 실시간 로그 확인
+# GCP Cloud Logging에서 실시간 로그 확인
 # 또는 서버 콘솔에서 구조화된 JSON 로그 출력
 ```
 

@@ -13,8 +13,8 @@ import { useCatalog } from '../context/catalog';
 import { resolveColorValue } from '../data/colorMap';
 import { trackClick, trackScreenView } from '../utils/analytics';
 
-const ORANGE_RED = '#FF6A00';
-const NAVY_MID = '#FFF2E5';
+const ACCENT = '#3182F6';
+const WARM_MID = '#FFF4E8';
 
 export const Route = createRoute('/products', {
   component: Page,
@@ -176,12 +176,12 @@ const styles = StyleSheet.create({
   },
   headerBackText: {
     fontSize: 12,
-    color: '#776556',
+    color: '#7C6959',
     fontWeight: '700',
   },
   subtitle: {
     ...theme.typography.body,
-    color: '#776556',
+    color: '#7C6959',
     marginBottom: theme.spacing.lg,
   },
   list: {},
@@ -202,18 +202,18 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderColor: 'rgba(240,223,207,0.92)',
     borderWidth: 1,
-    shadowColor: '#4D3622',
+    shadowColor: '#5F320E',
     shadowOpacity: 0.16,
     shadowRadius: 14,
     shadowOffset: { width: 0, height: 8 },
     elevation: 6,
   },
   cardSelected: {
-    borderColor: ORANGE_RED,
-    backgroundColor: NAVY_MID,
+    borderColor: ACCENT,
+    backgroundColor: WARM_MID,
   },
   cardExpanded: {
-    borderColor: ORANGE_RED,
+    borderColor: ACCENT,
   },
   thumbnail: {
     width: 72,
@@ -221,7 +221,7 @@ const styles = StyleSheet.create({
     borderRadius: theme.radius.md,
     marginRight: theme.spacing.md,
     backgroundColor: '#FFFFFF',
-    shadowColor: '#4D3622',
+    shadowColor: '#5F320E',
     shadowOpacity: 0.24,
     shadowRadius: 12,
     shadowOffset: { width: 0, height: 6 },
@@ -229,7 +229,7 @@ const styles = StyleSheet.create({
   },
   colorSection: {
     padding: theme.spacing.md,
-    backgroundColor: NAVY_MID,
+    backgroundColor: WARM_MID,
     borderRadius: theme.radius.md,
     marginTop: theme.spacing.sm,
     borderWidth: 1,
@@ -249,7 +249,7 @@ const styles = StyleSheet.create({
   },
   confirmButton: {
     marginTop: theme.spacing.xs,
-    backgroundColor: ORANGE_RED,
+    backgroundColor: ACCENT,
   },
   cardBody: {
     flex: 1,
@@ -261,6 +261,6 @@ const styles = StyleSheet.create({
   },
   cardMeta: {
     ...theme.typography.caption,
-    color: '#776556',
+    color: '#7C6959',
   },
 });

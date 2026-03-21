@@ -20,5 +20,12 @@
     "noUnusedLocals": true,
     "noUnusedParameters": true
   },
-  "include": ["**/*.ts", "**/*.tsx"]
+  "include": [
+    "src/**/*.ts",
+    "src/**/*.tsx",
+    "granite.config.ts",
+    "index.ts",
+    "require.context.ts"
+  ],
+  "exclude": ["node_modules", "dist", "prototype"]
 }

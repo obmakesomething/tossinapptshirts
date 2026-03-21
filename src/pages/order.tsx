@@ -19,6 +19,10 @@ import { faqItems } from '../data/faq';
 import { calcPricing } from '../data/pricing';
 import { formatPrice } from '../utils/format';
 import {
+  normalizeAitSessionEnvelope,
+  type AitSessionEnvelope,
+} from '../ait/sessionEnvelope';
+import {
   trackClick,
   trackEvent,
   trackOrderCreated,
@@ -27,14 +31,24 @@ import {
   trackScreenView,
 } from '../utils/analytics';
 
-const ORANGE_RED = '#FF6A00';
-const NAVY_DEEP = '#FFF8F1';
-const NAVY_MID = '#FFF2E5';
+const ORANGE_RED = '#3182F6';
+const WARM_DEEP = '#FFFAF5';
+const WARM_MID = '#FFF4E8';
 const NAVY_PANEL = '#FFFFFF';
 
 export const Route = createRoute('/order', {
   component: Page,
 });
+
+interface PaymentCreateResponse {
+  payToken?: string;
+  error?: string;
+}
+
+interface PaymentErrorResponse {
+  error?: string;
+  reason_code?: string;
+}
 
 function Page() {
   const navigation = Route.useNavigation();
@@ -67,10 +81,11 @@ function Page() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
   const [postcodeModalVisible, setPostcodeModalVisible] = useState(false);
-  const [userKey, setUserKey] = useState<string>('');
+  const [aitSession, setAitSession] = useState<AitSessionEnvelope | null>(null);
   const [loginLoading, setLoginLoading] = useState(false);
   const address2InputRef = useRef<TextInput>(null);
   const [editingOrder, setEditingOrder] = useState(false);
+  const userKey = aitSession?.identity?.userKey ?? '';
 
   useEffect(() => {
     trackScreenView(userKey ? 'order_checkout' : 'order_login', {
@@ -110,14 +125,15 @@ function Page() {
       });
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
+        const errorData = await response.json().catch(() => ({})) as { error?: string };
         throw new Error(errorData.error || '로그인에 실패했어요.');
       }
 
-      const data = await response.json();
-      console.log('[Order] Login successful, userKey:', data.userKey?.substring(0, 10) + '...');
+      const data = await response.json() as Record<string, unknown>;
+      const session = normalizeAitSessionEnvelope(data);
+      console.log('[Order] Login successful, userKey:', session.identity?.userKey?.substring(0, 10) + '...');
 
-      setUserKey(data.userKey);
+      setAitSession(session);
     } catch (e) {
       console.error('[Order] Toss login failed:', e);
       setError(e instanceof Error ? e.message : '로그인에 실패했어요. 다시 시도해 주세요.');
@@ -391,17 +407,20 @@ function Page() {
       });
 
       if (!createResponse.ok) {
-        const errorData = await createResponse.json().catch(() => ({}));
+        const errorData = await createResponse.json().catch(() => ({})) as PaymentErrorResponse;
         throw new Error(errorData.error || '결제 준비를 못했어요. 잠시 후 다시 시도해 주세요.');
       }
 
-      const { payToken } = await createResponse.json();
+      const { payToken } = await createResponse.json() as PaymentCreateResponse;
+      if (!payToken) {
+        throw new Error('결제 준비를 못했어요. 잠시 후 다시 시도해 주세요.');
+      }
 
       // Track order created
       trackOrderCreated(orderId, pricing.total, 'KRW');
 
       // Step 2: Open TossPay checkout for user authentication
-      const { success, reason } = await TossPay.checkoutPayment({ payToken });
+      const { success, reason } = await TossPay.checkoutPayment({ params: { payToken } });
 
       if (!success) {
         trackPaymentFailed(orderId, pricing.total, reason || '결제 인증 취소', 'KRW');
@@ -423,7 +442,7 @@ function Page() {
       });
 
       if (!executeResponse.ok) {
-        const errorData = await executeResponse.json().catch(() => ({}));
+        const errorData = await executeResponse.json().catch(() => ({})) as PaymentErrorResponse;
         trackPaymentFailed(orderId, pricing.total, errorData.error || '결제 실행 실패', 'KRW');
         throw new Error(errorData.error || '결제를 완료하지 못했어요. 잠시 후 다시 시도해 주세요.');
       }
@@ -632,7 +651,7 @@ function Page() {
 
 const styles = StyleSheet.create({
   screenContent: {
-    backgroundColor: NAVY_DEEP,
+    backgroundColor: WARM_DEEP,
     paddingBottom: theme.spacing.xl,
   },
   bgOrbTop: {
@@ -674,7 +693,7 @@ const styles = StyleSheet.create({
   },
   headerBackText: {
     fontSize: 12,
-    color: '#776556',
+    color: '#7C6959',
     fontWeight: '700',
   },
   summaryCard: {
@@ -727,7 +746,7 @@ const styles = StyleSheet.create({
   editHint: {
     fontSize: 12,
     lineHeight: 18,
-    color: '#776556',
+    color: '#7C6959',
     marginBottom: theme.spacing.xs,
   },
   editButton: {
@@ -737,7 +756,7 @@ const styles = StyleSheet.create({
   },
   summaryMeta: {
     fontSize: 12,
-    color: '#776556',
+    color: '#7C6959',
   },
   editSection: {
     marginTop: theme.spacing.md,
@@ -845,13 +864,13 @@ const styles = StyleSheet.create({
   quickFaqQuestion: {
     fontSize: 12,
     lineHeight: 18,
-    color: '#776556',
+    color: '#7C6959',
     fontWeight: '600',
   },
   quickFaqAnswer: {
     fontSize: 12,
     lineHeight: 18,
-    color: '#776556',
+    color: '#7C6959',
     marginTop: 2,
   },
   sectionTitle: {
@@ -869,7 +888,7 @@ const styles = StyleSheet.create({
     paddingVertical: theme.spacing.sm,
     fontSize: 13,
     color: '#2E231B',
-    backgroundColor: NAVY_MID,
+    backgroundColor: WARM_MID,
     marginBottom: theme.spacing.sm,
   },
   memoInput: {
@@ -902,7 +921,7 @@ const styles = StyleSheet.create({
   },
   noticeText: {
     fontSize: 12,
-    color: '#776556',
+    color: '#7C6959',
     marginBottom: theme.spacing.sm,
   },
   addressSearchButton: {
@@ -925,7 +944,7 @@ const styles = StyleSheet.create({
   },
   loginDesc: {
     fontSize: 14,
-    color: '#776556',
+    color: '#7C6959',
     lineHeight: 20,
     textAlign: 'center',
   },

@@ -50,6 +50,11 @@ interface DaumPostcodeModalProps {
     onSelect: (data: AddressData) => void;
 }
 
+interface AddressSearchResponse {
+    error?: string;
+    addresses?: KakaoAddressItem[];
+}
+
 export function DaumPostcodeModal({ visible, onClose, onSelect }: DaumPostcodeModalProps) {
     const [query, setQuery] = useState('');
     const [results, setResults] = useState<KakaoAddressItem[]>([]);
@@ -69,10 +74,10 @@ export function DaumPostcodeModal({ visible, onClose, onSelect }: DaumPostcodeMo
         try {
             const response = await fetch(`${API_BASE_URL}/v1/address/search?query=${encodeURIComponent(query)}`);
             if (!response.ok) {
-                const data = await response.json().catch(() => ({}));
+                const data = await response.json().catch(() => ({})) as AddressSearchResponse;
                 throw new Error(data.error || '주소를 찾지 못했어요. 다시 검색해 주세요.');
             }
-            const data = await response.json();
+            const data = await response.json() as AddressSearchResponse;
             setResults(Array.isArray(data.addresses) ? data.addresses : []);
         } catch (err) {
             setError(err instanceof Error ? err.message : '주소를 찾지 못했어요. 다시 검색해 주세요.');
