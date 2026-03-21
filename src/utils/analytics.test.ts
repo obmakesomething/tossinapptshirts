@@ -20,11 +20,14 @@ describe('analytics naming', () => {
 
     expect(mockedEventLog).toHaveBeenCalledWith(
       expect.objectContaining({
-        log_name: 'home_primary_cta_click_20260220',
+        log_name: 'home_primary_cta_click_20260321',
         log_type: 'click',
         params: expect.objectContaining({
-          product_id_20260220: 'p-001',
-          amount_20260220: 10000,
+          screen_id_20260321: 'home',
+          session_id_20260321: expect.any(String),
+          app_platform_20260321: 'toss_webview',
+          product_id_20260321: 'p-001',
+          amount_20260321: 10000,
         }),
       }),
     );
@@ -35,14 +38,16 @@ describe('analytics naming', () => {
 
     expect(mockedEventLog).toHaveBeenCalledWith(
       expect.objectContaining({
-        log_name: 'home_screen_view_20260220',
+        log_name: 'home_screen_view_20260321',
         log_type: 'screen',
         params: expect.objectContaining({
-          screen_name_20260220: 'home',
-          entry_20260220: 'root',
+          screen_id_20260321: 'home',
+          session_id_20260321: expect.any(String),
+          app_platform_20260321: 'toss_webview',
+          screen_name_20260321: 'home',
+          entry_20260321: 'root',
         }),
       }),
     );
   });
 });
-

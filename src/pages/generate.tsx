@@ -33,9 +33,9 @@ import {
   trackScreenView,
 } from '../utils/analytics';
 
-const ORANGE_RED = '#FF6A00';
-const NAVY_DEEP = '#FFF8F1';
-const NAVY_MID = '#FFF2E5';
+const ORANGE_RED = '#3182F6';
+const WARM_DEEP = '#FFFAF5';
+const WARM_MID = '#FFF4E8';
 const NAVY_PANEL = '#FFFFFF';
 
 export const Route = createRoute('/generate', {
@@ -54,6 +54,10 @@ const promptExamples = [
   'Bold typography: WAVE CLUB',
   'Cute bear mascot, flat illustration',
 ];
+
+interface RemoveBackgroundResponse {
+  dataUrl?: string;
+}
 
 // Stage labels for display
 const stageLabels: Record<string, string> = {
@@ -274,8 +278,8 @@ function Page() {
       if (!response.ok) {
         throw new Error('배경을 제거하지 못했어요. 다시 시도해 주세요.');
       }
-      const data = await response.json();
-      if (!data.dataUrl) {
+      const data = await response.json() as RemoveBackgroundResponse;
+      if (typeof data.dataUrl !== 'string') {
         throw new Error('배경 제거 결과를 확인하지 못했어요. 다시 시도해 주세요.');
       }
       trackEvent('generate_remove_background_success');
@@ -480,13 +484,17 @@ function Page() {
         visible={isLoading}
         message={loadingMessages[loadingMessageIndex] || loadingMessages[0]}
       />
+      <FullScreenLoader
+        visible={removingBg}
+        message="배경을 제거하고 있어요..."
+      />
     </>
   );
 }
 
 const styles = StyleSheet.create({
   screenContent: {
-    backgroundColor: NAVY_DEEP,
+    backgroundColor: WARM_DEEP,
     paddingBottom: theme.spacing.xl,
   },
   bgOrbTop: {
@@ -528,7 +536,7 @@ const styles = StyleSheet.create({
   },
   headerBackText: {
     fontSize: 12,
-    color: '#776556',
+    color: '#7C6959',
     fontWeight: '700',
   },
   title: {
@@ -542,14 +550,14 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(240,223,207,0.92)',
     borderRadius: theme.radius.md,
     padding: theme.spacing.md,
-    backgroundColor: NAVY_MID,
+    backgroundColor: WARM_MID,
     fontSize: 14,
     color: '#2E231B',
   },
   helperText: {
     fontSize: 12,
     lineHeight: 18,
-    color: '#9D826E',
+    color: '#A0907E',
     marginTop: theme.spacing.sm,
     marginBottom: theme.spacing.lg,
   },
@@ -606,7 +614,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: NAVY_MID,
+    backgroundColor: WARM_MID,
   },
   resultImage: {
     width: '100%',
@@ -616,7 +624,7 @@ const styles = StyleSheet.create({
   resultPlaceholder: {
     fontSize: 12,
     lineHeight: 18,
-    color: '#9D826E',
+    color: '#A0907E',
     textAlign: 'center',
     paddingHorizontal: theme.spacing.md,
   },
@@ -671,7 +679,7 @@ const styles = StyleSheet.create({
   etaText: {
     fontSize: 12,
     lineHeight: 18,
-    color: '#776556',
+    color: '#7C6959',
     marginTop: theme.spacing.xs,
     marginLeft: 28,
   },

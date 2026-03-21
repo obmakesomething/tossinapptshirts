@@ -227,6 +227,34 @@ async function compositeTextLayer(imagePath, textLayer, outputPath) {
   return outputPath;
 }
 
+async function removeBackgroundRembg(sourcePath, outputPath) {
+  const { execFile } = require('child_process');
+  return new Promise((resolve, reject) => {
+    execFile('python3', [
+      '-c',
+      `
+import sys
+from rembg import remove
+from PIL import Image
+import io
+
+with open(sys.argv[1], "rb") as f:
+    input_bytes = f.read()
+output_bytes = remove(input_bytes)
+with open(sys.argv[2], "wb") as f:
+    f.write(output_bytes)
+img = Image.open(sys.argv[2])
+print(f"{img.size[0]}x{img.size[1]} mode={img.mode}")
+`,
+      sourcePath,
+      outputPath,
+    ], { timeout: 120000 }, (error, stdout, stderr) => {
+      if (error) return reject(new Error(`rembg_failed: ${error.message}`));
+      resolve(outputPath);
+    });
+  });
+}
+
 async function runPrintPipeline(input) {
   const {
     master_png_path,
@@ -238,6 +266,7 @@ async function runPrintPipeline(input) {
     output_dir,
     allow_warn_to_pass,
     text_layer,
+    remove_background,
   } = input;
 
   const baseOutput = {
@@ -319,10 +348,17 @@ async function runPrintPipeline(input) {
     // Save upscaled result
     await fsp.writeFile(upscaledRawPath, upscaleResult.buffer);
 
-    // Convert to PNG (already PNG from Imagen, but ensure format)
-    await sharp(upscaledRawPath)
-      .png()
-      .toFile(printReadyPath);
+    // Remove background on upscaled image for precise cutout at high resolution
+    const shouldRemoveBg = remove_background !== false;
+
+    if (shouldRemoveBg) {
+      const bgRemovedPath = path.join(workDir, 'bg_removed.png');
+      await removeBackgroundRembg(upscaledRawPath, bgRemovedPath);
+      await sharp(bgRemovedPath).png().toFile(printReadyPath);
+    } else {
+      // Convert to PNG (already PNG from Imagen, but ensure format)
+      await sharp(upscaledRawPath).png().toFile(printReadyPath);
+    }
 
     // Composite text layer onto upscaled image (if provided)
     if (text_layer && text_layer.text) {

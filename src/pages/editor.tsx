@@ -35,10 +35,14 @@ import {
   trackScreenView,
 } from '../utils/analytics';
 
-const ORANGE_RED = '#FF6A00';
-const NAVY_MID = '#FFF2E5';
-const NAVY_PANEL = '#FFFFFF';
-const EDITOR_HEADER_RESERVED = 250;
+const ACCENT = '#3182F6';
+const WARM_MID = '#FFF4E8';
+const PANEL_BG = '#FFFFFF';
+const EDITOR_HEADER_RESERVED = 100;
+const DEFAULT_STAGE_ZOOM = 1;
+const CANVAS_AREA_HORIZONTAL_PADDING = 16 * 2;
+const CANVAS_FRAME_HORIZONTAL_PADDING = 8 * 2;
+const CANVAS_FRAME_VERTICAL_PADDING = 12 * 2;
 
 export const Route = createRoute('/editor', {
   component: Page,
@@ -91,22 +95,30 @@ function Page() {
   const [photoError, setPhotoError] = useState('');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deletePhotoIndex, setDeletePhotoIndex] = useState<number | null>(null);
+  const [stageZoom, setStageZoom] = useState(DEFAULT_STAGE_ZOOM);
+  const [imageControlFocused, setImageControlFocused] = useState(false);
+  const [panelExpanded, setPanelExpanded] = useState(true);
 
   const { width: screenWidth, height: screenHeight } = useWindowDimensions();
-  const panelHeight =
-    editorTab === 1
-      ? Math.max(340, Math.min(460, Math.round(screenHeight * 0.5)))
-      : editorTab === 0
-        ? Math.max(320, Math.min(430, Math.round(screenHeight * 0.46)))
-        : Math.max(280, Math.min(360, Math.round(screenHeight * 0.4)));
+  const panelHeightCollapsed = Math.max(320, Math.min(420, Math.round(screenHeight * 0.42)));
+  const panelHeightExpanded = Math.round(screenHeight * 0.65);
+  const panelHeight = panelExpanded ? panelHeightExpanded : panelHeightCollapsed;
   const availableCanvasHeight = Math.max(
-    180,
+    240,
     screenHeight - panelHeight - EDITOR_HEADER_RESERVED,
   );
-  const canvasWidth = Math.min(screenWidth - 44, Math.round(availableCanvasHeight * 0.75));
-  const canvasHeight = Math.round(canvasWidth * (4 / 3));
+  const canvasWidth = Math.max(
+    220,
+    Math.round(
+      screenWidth - CANVAS_AREA_HORIZONTAL_PADDING - CANVAS_FRAME_HORIZONTAL_PADDING,
+    ),
+  );
+  const canvasHeight = Math.max(
+    260,
+    Math.round(availableCanvasHeight - CANVAS_FRAME_VERTICAL_PADDING),
+  );
 
-  const EDITOR_TABS = ['Type 텍스트', '🖼 이미지', '✦ AI'];
+  const EDITOR_TABS = ['텍스트', '이미지', 'AI'];
 
   const goPreview = () => {
     trackClick('editor_preview_click', {
@@ -209,21 +221,24 @@ function Page() {
     }
   };
 
-  const handleAddPhoto = async (closeAfterSuccess = false) => {
+  const handleAddPhoto = async () => {
     trackPhotoAddClick(selectedPlacement, currentPhotos.length);
     if (currentPhotos.length >= 3) {
       setPhotoError('최대 3장까지 추가할 수 있어요.');
       return;
     }
-    if (closeAfterSuccess) {
-      // Give immediate UI feedback when pressed from start modal.
-      setShowStartModal(false);
-      setStartModalDismissed(true);
-    }
     const dataUrl = await pickPhoto();
     if (dataUrl) {
       addPhoto(dataUrl);
+      setActiveLayer('image');
     }
+  };
+
+  const handleAddPhotoFromStartModal = async () => {
+    // Close first for snappy feedback in the first-time flow only.
+    setShowStartModal(false);
+    setStartModalDismissed(true);
+    await handleAddPhoto();
   };
 
   const handleReplacePhoto = async () => {
@@ -231,6 +246,7 @@ function Page() {
     const dataUrl = await pickPhoto();
     if (dataUrl) {
       replacePhoto(dataUrl);
+      setActiveLayer('image');
     }
   };
 
@@ -264,6 +280,7 @@ function Page() {
   const handleSelectPhoto = (index: number) => {
     trackPhotoSelectThumbnail(selectedPlacement, index);
     selectPhoto(index);
+    setActiveLayer('image');
   };
 
   const handleStartModalClose = () => {
@@ -296,6 +313,23 @@ function Page() {
       setActiveLayer('image');
     }
     setEditorTab(nextIndex);
+  };
+
+  const handleResetToInitial = () => {
+    setStageZoom(DEFAULT_STAGE_ZOOM);
+    setImageTransform({
+      offsetX: 0,
+      offsetY: 0,
+      scale: selectedPrint.designScale,
+      rotation: 0,
+    });
+    setTextTransform({
+      ...textTransformRef.current,
+      offsetX: 0,
+      offsetY: 0,
+      scale: 1,
+      rotation: 0,
+    });
   };
 
   return (
@@ -357,13 +391,16 @@ function Page() {
       </View>
 
       {/* ── 캔버스 (최대화) ── */}
-      <View style={styles.canvasArea}>
-        <View style={styles.canvasStateRow}>
-          <Text style={styles.canvasStateText}>
-            선택 레이어: {activeLayer === 'text' ? '텍스트' : '이미지'}
-          </Text>
-        </View>
+      <View style={[styles.canvasArea, imageControlFocused && styles.canvasAreaFocused]}>
         <View style={styles.canvasFrame}>
+          <View pointerEvents="none" style={styles.canvasWorkspaceGrid}>
+            <View style={[styles.canvasWorkspaceGridLineH, { top: '25%' }]} />
+            <View style={[styles.canvasWorkspaceGridLineH, { top: '50%' }]} />
+            <View style={[styles.canvasWorkspaceGridLineH, { top: '75%' }]} />
+            <View style={[styles.canvasWorkspaceGridLineV, { left: '25%' }]} />
+            <View style={[styles.canvasWorkspaceGridLineV, { left: '50%' }]} />
+            <View style={[styles.canvasWorkspaceGridLineV, { left: '75%' }]} />
+          </View>
           <View style={[styles.canvasClip, { width: canvasWidth, height: canvasHeight }]}>
             <DesignStage
               template={buildTemplate(selectedProduct, selectedColor, selectedPlacement)}
@@ -372,7 +409,8 @@ function Page() {
               sizeLabel={orderLines[0]?.sizeLabel ?? selectedProduct.sizes[0]?.label}
               showPrintArea
               showGuides={false}
-              cameraScale={1}
+              interactionMode="free"
+              cameraScale={stageZoom}
               imageUri={designImageUri}
               imageTransform={imageTransform}
               textLayer={textLayer}
@@ -380,81 +418,34 @@ function Page() {
               activeLayer={activeLayer}
               onImageTransformChange={setImageTransform}
               onTextTransformChange={setTextTransform}
+              imageControlFocused={imageControlFocused}
+              onImageControlFocusChange={setImageControlFocused}
             />
+          </View>
+          <View style={styles.canvasTopOverlay} pointerEvents="box-none">
+            <View style={styles.canvasStateChip}>
+              <Text style={styles.canvasStateText}>
+                선택 레이어: {activeLayer === 'text' ? '텍스트' : '이미지'}
+              </Text>
+            </View>
           </View>
           <Pressable
             style={[
               styles.canvasAddButton,
               (loadingPhoto || currentPhotos.length >= 3) && styles.canvasAddButtonDisabled,
             ]}
-            onPress={() => handleAddPhoto(false)}
+            onPress={() => {
+              void handleAddPhoto();
+            }}
             disabled={loadingPhoto || currentPhotos.length >= 3}
           >
             <Text style={styles.canvasAddButtonPlus}>＋</Text>
           </Pressable>
-          {editorTab === 1 && (
-            <View
-              style={[
-                styles.liveAdjustCard,
-                { width: Math.max(190, Math.min(canvasWidth - 20, 280)) },
-              ]}
-            >
-              <View style={styles.liveAdjustHeader}>
-                <Text style={styles.liveAdjustTitle}>실시간 이미지 조정</Text>
-                <Pressable
-                  onPress={() =>
-                    setImageTransform({
-                      offsetX: 0,
-                      offsetY: 0,
-                      scale: selectedPrint.designScale,
-                      rotation: 0,
-                    })
-                  }
-                >
-                  <Text style={styles.liveAdjustResetText}>초기화</Text>
-                </Pressable>
-              </View>
-              <View style={styles.liveSliderRow}>
-                <Text style={styles.liveSliderLabel}>
-                  X {Math.round(imageTransform.offsetX * 100)}
-                </Text>
-                <ScaleSlider
-                  min={-0.55}
-                  max={0.55}
-                  value={imageTransform.offsetX}
-                  onChange={(offsetX) =>
-                    setImageTransform({ ...imageTransformRef.current, offsetX })
-                  }
-                />
-              </View>
-              <View style={styles.liveSliderRow}>
-                <Text style={styles.liveSliderLabel}>
-                  Y {Math.round(imageTransform.offsetY * 100)}
-                </Text>
-                <ScaleSlider
-                  min={-0.55}
-                  max={0.55}
-                  value={imageTransform.offsetY}
-                  onChange={(offsetY) =>
-                    setImageTransform({ ...imageTransformRef.current, offsetY })
-                  }
-                />
-              </View>
-              <View style={styles.liveSliderRow}>
-                <Text style={styles.liveSliderLabel}>
-                  크기 {imageTransform.scale.toFixed(2)}
-                </Text>
-                <ScaleSlider
-                  min={0.1}
-                  max={2.0}
-                  value={imageTransform.scale}
-                  onChange={(scale) =>
-                    setImageTransform({ ...imageTransformRef.current, scale })
-                  }
-                />
-              </View>
-            </View>
-          )}
+        </View>
+        <View style={styles.canvasOutsideActions}>
+          <Pressable style={styles.stageResetButton} onPress={handleResetToInitial}>
+            <Text style={styles.stageResetButtonText}>처음으로 되돌아가기</Text>
+          </Pressable>
         </View>
         {/* 출력 크기 + 해상도 안내 */}
         <View style={styles.canvasInfo}>
@@ -469,9 +460,22 @@ function Page() {
           )}
         </View>
       </View>
+      {imageControlFocused ? (
+        <Pressable
+          style={styles.fullScreenFocusBackdrop}
+          onPress={() => setImageControlFocused(false)}
+        />
+      ) : null}
 
       {/* ── 하단 탭 패널 ── */}
       <View style={[styles.panel, { height: panelHeight }]}>
+        <Pressable
+          style={styles.editPanelHeader}
+          onPress={() => setPanelExpanded((v) => !v)}
+        >
+          <Text style={styles.editPanelTitle}>편집하기</Text>
+          <Text style={styles.editPanelToggle}>{panelExpanded ? '▼' : '▲'}</Text>
+        </Pressable>
         <TabBar
           tabs={EDITOR_TABS}
           activeIndex={editorTab}
@@ -481,7 +485,7 @@ function Page() {
           style={styles.panelScroll}
           contentContainerStyle={styles.panelContent}
           scrollEnabled
-          showsVerticalScrollIndicator={false}
+          showsVerticalScrollIndicator
           nestedScrollEnabled
         >
           {/* ── 탭 0: 텍스트 ── */}
@@ -680,7 +684,9 @@ function Page() {
                       />
                       <SecondaryButton
                         label="추가"
-                        onPress={handleAddPhoto}
+                        onPress={() => {
+                          void handleAddPhoto();
+                        }}
                         disabled={loadingPhoto || currentPhotos.length >= 3}
                         style={styles.photoActionBtn}
                       />
@@ -699,7 +705,9 @@ function Page() {
                     </Text>
                     <SecondaryButton
                       label="사진 추가"
-                      onPress={() => handleAddPhoto(false)}
+                      onPress={() => {
+                        void handleAddPhoto();
+                      }}
                       disabled={loadingPhoto}
                     />
                   </View>
@@ -759,14 +767,14 @@ function Page() {
               <TextInput
                 style={styles.aiPromptInput}
                 placeholder="예) 오렌지 톤 플랫 아이콘 느낌의 볼드 로고"
-                placeholderTextColor="#9D826E"
+                placeholderTextColor="#A0907E"
                 value={aiPrompt}
                 onChangeText={setAiPrompt}
                 multiline
               />
               <View style={styles.aiActionRow}>
                 <PrimaryButton
-                  label="생성 화면 열기"
+                  label="정확히 만들기"
                   onPress={() => {
                     trackClick('editor_ai_open_generate_click', {
                       prompt_length: aiPrompt.trim().length,
@@ -849,7 +857,7 @@ function Page() {
               label="사진 추가하기"
               onPress={() => {
                 trackClick('editor_start_modal_upload_click');
-                void handleAddPhoto(true);
+                void handleAddPhotoFromStartModal();
               }}
               style={styles.startModalPrimary}
             />
@@ -893,7 +901,7 @@ const styles = StyleSheet.create({
     height: 34,
     borderRadius: 11,
     borderWidth: 1,
-    borderColor: '#ECDCCA',
+    borderColor: '#ECDAC7',
     backgroundColor: '#FFF9F2',
     alignItems: 'center',
     justifyContent: 'center',
@@ -913,7 +921,7 @@ const styles = StyleSheet.create({
     borderRadius: 11,
     height: 34,
     paddingHorizontal: 11,
-    backgroundColor: ORANGE_RED,
+    backgroundColor: ACCENT,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -953,7 +961,7 @@ const styles = StyleSheet.create({
   compactChangeText: {
     fontSize: 12,
     fontWeight: '600',
-    color: ORANGE_RED,
+    color: ACCENT,
   },
   compactPreview: {
     paddingHorizontal: theme.spacing.md,
@@ -962,18 +970,18 @@ const styles = StyleSheet.create({
     marginRight: theme.spacing.xs,
     backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: '#ECDCCA',
+    borderColor: '#F0DFCF',
   },
   compactPreviewText: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#776556',
+    color: '#7C6959',
   },
 
   /* ── Placement Segment ── */
   placementSegment: {
     flexDirection: 'row',
-    backgroundColor: NAVY_MID,
+    backgroundColor: WARM_MID,
     borderRadius: 999,
     borderWidth: 1,
     borderColor: 'rgba(240,223,207,0.92)',
@@ -992,7 +1000,7 @@ const styles = StyleSheet.create({
   segmentButtonText: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#776556',
+    color: '#7C6959',
   },
   segmentButtonTextActive: {
     color: '#2E231B',
@@ -1000,19 +1008,64 @@ const styles = StyleSheet.create({
 
   /* ── Canvas ── */
   canvasArea: {
+    width: '100%',
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 24,
     marginBottom: theme.spacing.xs,
   },
+  canvasAreaFocused: {
+    zIndex: 80,
+    elevation: 20,
+  },
+  canvasTopOverlay: {
+    position: 'absolute',
+    top: 10,
+    left: 10,
+    right: 56,
+    zIndex: 2,
+  },
   canvasStateRow: {
-    width: '100%',
-    marginBottom: theme.spacing.xs,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-start',
+  },
+  canvasStateChip: {
+    alignSelf: 'flex-start',
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: 'rgba(236,220,202,0.95)',
+    backgroundColor: 'rgba(255,249,242,0.96)',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    marginBottom: 8,
   },
   canvasStateText: {
+    fontSize: 11,
+    lineHeight: 15,
+    color: '#5F4A3B',
+    fontWeight: '700',
+  },
+  canvasOutsideActions: {
+    width: '100%',
+    alignItems: 'flex-end',
+    marginTop: theme.spacing.xs,
+    marginBottom: 2,
+  },
+  stageResetButton: {
+    minHeight: 34,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: '#F0DFCF',
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 12,
+  },
+  stageResetButtonText: {
     fontSize: 12,
-    lineHeight: 18,
-    color: '#776556',
+    lineHeight: 17,
+    color: ACCENT,
     fontWeight: '700',
   },
   canvasToolbar: {
@@ -1038,23 +1091,52 @@ const styles = StyleSheet.create({
   activeLayerBadgeText: {
     fontSize: 11,
     lineHeight: 16,
-    color: '#776556',
+    color: '#7C6959',
     fontWeight: '700',
   },
   canvasFrame: {
     position: 'relative',
+    width: '100%',
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: '#F1DFCD',
+    backgroundColor: '#FFF8F0',
+    paddingVertical: 18,
+    paddingHorizontal: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  canvasWorkspaceGrid: {
+    ...StyleSheet.absoluteFillObject,
+    borderRadius: 18,
+  },
+  canvasWorkspaceGridLineH: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    height: 1,
+    backgroundColor: 'rgba(95, 50, 14, 0.08)',
+  },
+  canvasWorkspaceGridLineV: {
+    position: 'absolute',
+    top: 0,
+    bottom: 0,
+    width: 1,
+    backgroundColor: 'rgba(95, 50, 14, 0.08)',
   },
   canvasClip: {
-    overflow: 'hidden',
-    borderRadius: 22,
-    borderWidth: 1,
-    borderColor: 'rgba(240,223,207,0.92)',
-    backgroundColor: NAVY_MID,
+    overflow: 'visible',
+    borderRadius: 0,
+    borderWidth: 0,
+    backgroundColor: 'transparent',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   canvasAddButton: {
     position: 'absolute',
     right: 14,
     top: 14,
+    zIndex: 3,
     width: 32,
     height: 32,
     borderRadius: 16,
@@ -1068,56 +1150,11 @@ const styles = StyleSheet.create({
     opacity: 0.45,
   },
   canvasAddButtonPlus: {
-    color: ORANGE_RED,
+    color: ACCENT,
     fontSize: 19,
     lineHeight: 19,
     fontWeight: '500',
     marginTop: -1,
-  },
-  liveAdjustCard: {
-    position: 'absolute',
-    left: 10,
-    right: 10,
-    bottom: 10,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: 'rgba(236, 208, 185, 0.9)',
-    backgroundColor: 'rgba(255, 252, 248, 0.95)',
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-    shadowColor: '#5F320E',
-    shadowOpacity: 0.14,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 6 },
-    elevation: 6,
-  },
-  liveAdjustHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 4,
-  },
-  liveAdjustTitle: {
-    fontSize: 11,
-    lineHeight: 16,
-    color: '#5B4638',
-    fontWeight: '700',
-  },
-  liveAdjustResetText: {
-    fontSize: 11,
-    lineHeight: 16,
-    color: ORANGE_RED,
-    fontWeight: '700',
-  },
-  liveSliderRow: {
-    marginTop: 3,
-  },
-  liveSliderLabel: {
-    fontSize: 10,
-    lineHeight: 14,
-    color: '#7A614E',
-    marginBottom: 2,
-    fontWeight: '700',
   },
   focusButton: {
     paddingHorizontal: theme.spacing.md,
@@ -1134,7 +1171,7 @@ const styles = StyleSheet.create({
   focusButtonText: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#776556',
+    color: '#7C6959',
   },
   focusButtonTextActive: {
     color: '#2E231B',
@@ -1150,22 +1187,50 @@ const styles = StyleSheet.create({
   },
   canvasInfoText: {
     fontSize: 11,
-    color: '#9D826E',
+    color: '#A0907E',
   },
   canvasInfoWarn: {
     fontSize: 11,
     color: '#ffc06e',
   },
+  fullScreenFocusBackdrop: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(46, 35, 27, 0.62)',
+    zIndex: 60,
+  },
 
   /* ── Bottom Panel ── */
   panel: {
     flexShrink: 0,
-    backgroundColor: NAVY_PANEL,
+    overflow: 'hidden',
+    backgroundColor: PANEL_BG,
     borderTopLeftRadius: theme.radius.xl,
     borderTopRightRadius: theme.radius.xl,
     borderTopWidth: 1,
     borderTopColor: 'rgba(240,223,207,0.92)',
     marginTop: theme.spacing.sm,
+  },
+  editPanelHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingTop: theme.spacing.sm,
+    paddingBottom: theme.spacing.xs,
+    paddingHorizontal: theme.spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(240,223,207,0.92)',
+    backgroundColor: '#FFFDF9',
+  },
+  editPanelTitle: {
+    fontSize: 14,
+    lineHeight: 20,
+    fontWeight: '700',
+    color: '#5A4637',
+  },
+  editPanelToggle: {
+    fontSize: 12,
+    color: '#A0907E',
+    fontWeight: '600',
   },
   panelExpanded: {
     flex: 2.7,
@@ -1186,7 +1251,7 @@ const styles = StyleSheet.create({
   dragHint: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#776556',
+    color: '#7C6959',
   },
   outOfBoundsInfo: {
     backgroundColor: theme.colors.surface,
@@ -1207,7 +1272,7 @@ const styles = StyleSheet.create({
   panelContent: {
     paddingHorizontal: theme.spacing.md,
     paddingTop: theme.spacing.md,
-    paddingBottom: theme.spacing.xl,
+    paddingBottom: 80,
   },
 
   /* ── Layer tab ── */
@@ -1233,7 +1298,7 @@ const styles = StyleSheet.create({
   sectionHint: {
     fontSize: 13,
     lineHeight: 20,
-    color: '#776556',
+    color: '#7C6959',
     marginBottom: theme.spacing.md,
   },
 
@@ -1241,7 +1306,7 @@ const styles = StyleSheet.create({
   transformHint: {
     fontSize: 13,
     lineHeight: 20,
-    color: '#776556',
+    color: '#7C6959',
     marginBottom: theme.spacing.sm,
   },
   sliderRow: {
@@ -1256,7 +1321,7 @@ const styles = StyleSheet.create({
   sliderLabel: {
     fontSize: 12,
     lineHeight: 18,
-    color: '#9D826E',
+    color: '#A0907E',
   },
   sliderValueText: {
     fontSize: 12,
@@ -1312,7 +1377,7 @@ const styles = StyleSheet.create({
   aiStatusText: {
     fontSize: 12,
     lineHeight: 18,
-    color: '#776556',
+    color: '#7C6959',
   },
 
   /* ── Options tab ── */
@@ -1327,7 +1392,7 @@ const styles = StyleSheet.create({
   },
   sizeHint: {
     ...theme.typography.caption,
-    color: '#9D826E',
+    color: '#A0907E',
     marginTop: theme.spacing.xs,
   },
   quantityRow: {
@@ -1378,18 +1443,18 @@ const styles = StyleSheet.create({
     fontSize: 22,
     lineHeight: 30,
     fontWeight: '800',
-    color: ORANGE_RED,
+    color: ACCENT,
     marginBottom: theme.spacing.xs,
   },
   priceOption: {
     fontSize: 12,
     lineHeight: 18,
-    color: '#776556',
+    color: '#7C6959',
   },
   priceNote: {
     fontSize: 12,
     lineHeight: 18,
-    color: '#776556',
+    color: '#7C6959',
     marginTop: theme.spacing.xs,
   },
 
@@ -1401,7 +1466,7 @@ const styles = StyleSheet.create({
   fontLabel: {
     fontSize: 12,
     lineHeight: 18,
-    color: '#9D826E',
+    color: '#A0907E',
     marginBottom: theme.spacing.sm,
   },
   fontButtons: {
@@ -1417,16 +1482,16 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,244,232,0.92)',
   },
   fontButtonSelected: {
-    borderColor: ORANGE_RED,
+    borderColor: ACCENT,
     backgroundColor: 'rgba(255,80,0,0.14)',
   },
   fontButtonText: {
     fontSize: 12,
     lineHeight: 18,
-    color: '#776556',
+    color: '#7C6959',
   },
   fontButtonTextSelected: {
-    color: '#FF6A00',
+    color: '#3182F6',
   },
 
   /* ── Photo Management ── */
@@ -1456,7 +1521,7 @@ const styles = StyleSheet.create({
     position: 'relative',
   },
   photoThumbnailActive: {
-    borderColor: ORANGE_RED,
+    borderColor: ACCENT,
     borderWidth: 3,
   },
   photoThumbnailImage: {
@@ -1486,7 +1551,7 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    backgroundColor: ORANGE_RED,
+    backgroundColor: ACCENT,
     paddingVertical: 2,
   },
   photoActiveText: {
@@ -1510,13 +1575,13 @@ const styles = StyleSheet.create({
   photoHint: {
     fontSize: 11,
     lineHeight: 16,
-    color: '#9D826E',
+    color: '#A0907E',
     marginTop: theme.spacing.xs,
   },
   photoSectionHint: {
     fontSize: 11,
     lineHeight: 18,
-    color: '#9D826E',
+    color: '#A0907E',
     marginBottom: theme.spacing.xs,
   },
   photoColorRow: {
@@ -1533,7 +1598,7 @@ const styles = StyleSheet.create({
   photoLoadingText: {
     fontSize: 12,
     lineHeight: 18,
-    color: '#776556',
+    color: '#7C6959',
     marginLeft: theme.spacing.sm,
   },
 
@@ -1585,7 +1650,7 @@ const styles = StyleSheet.create({
   },
   startModalPrimary: {
     marginBottom: theme.spacing.sm,
-    backgroundColor: ORANGE_RED,
+    backgroundColor: ACCENT,
   },
   startModalClose: {
     marginTop: theme.spacing.md,
@@ -1593,7 +1658,7 @@ const styles = StyleSheet.create({
   },
   startModalCloseText: {
     fontSize: 12,
-    color: '#776556',
+    color: '#7C6959',
     fontWeight: '600',
   },
 });

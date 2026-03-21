@@ -2,9 +2,37 @@ import { eventLog } from '@apps-in-toss/framework';
 
 type LogType = 'event' | 'screen' | 'click' | 'impression';
 type AnalyticsParams = Record<string, unknown>;
-const ANALYTICS_SCHEMA_DATE = '20260220';
+const ANALYTICS_SCHEMA_DATE = '20260321';
+let analyticsSessionId = '';
 
 const withDateSuffix = (name: string) => `${name}_${ANALYTICS_SCHEMA_DATE}`;
+
+const createAnalyticsSessionId = () => `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+
+const getAnalyticsSessionId = () => {
+  if (!analyticsSessionId) {
+    analyticsSessionId = createAnalyticsSessionId();
+  }
+  return analyticsSessionId;
+};
+
+const inferScreenId = (eventName: string, properties?: AnalyticsParams) => {
+  if (typeof properties?.screen_name === 'string' && properties.screen_name.trim()) {
+    return properties.screen_name.trim();
+  }
+  if (eventName.endsWith('_screen_view')) {
+    return eventName.replace(/_screen_view$/, '');
+  }
+  const [segment] = eventName.split('_');
+  return segment || 'unknown';
+};
+
+const createAitAnalyticsBase = (eventName: string, properties?: AnalyticsParams) => ({
+  event_time: new Date().toISOString(),
+  screen_id: inferScreenId(eventName, properties),
+  session_id: getAnalyticsSessionId(),
+  app_platform: 'toss_webview',
+});
 
 const suffixParamKeys = (properties?: AnalyticsParams): AnalyticsParams => {
   if (!properties) return {};
@@ -45,6 +73,7 @@ export const trackEvent = (
       log_type: logType,
       params: serializeParams(
         suffixParamKeys({
+          ...createAitAnalyticsBase(eventName, properties),
           ...properties,
           tracked_at: new Date().toISOString(),
         }),

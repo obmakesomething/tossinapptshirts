@@ -16,6 +16,16 @@ const https = require('https');
 const axios = require('axios');
 const { runPrintPipeline } = require('./printPipeline');
 const generationsRouter = require('./generations');
+const {
+  createAitSessionEnvelope,
+  createDisconnectAuthVerifier,
+} = require('./lib/aitPlatform');
+const { buildPromptDraft } = require('./promptDraftBuilder');
+const {
+  mapGenerationRequestToDraftInput,
+  buildGenerationModelPrompt,
+  buildBlockedGenerationError,
+} = require('./generationPolicyBridge');
 const { getPool, initializeDatabase, closePool } = require('./db');
 
 const app = express();
@@ -641,7 +651,14 @@ async function removeBackgroundVertexImagen({ inputBuffer, inputMimeType, reques
 
 async function buildOrderPdf(order) {
   return new Promise((resolve, reject) => {
+    const fontRegular = path.join(__dirname, '..', 'assets', 'fonts', 'NotoSansKR-Regular.ttf');
+    const fontBold = path.join(__dirname, '..', 'assets', 'fonts', 'NotoSansKR-Bold.ttf');
     const doc = new PDFDocument({ size: 'A4', margin: 48 });
+    if (fs.existsSync(fontRegular)) doc.registerFont('NotoSansKR', fontRegular);
+    if (fs.existsSync(fontBold)) doc.registerFont('NotoSansKR-Bold', fontBold);
+    const defaultFont = fs.existsSync(fontRegular) ? 'NotoSansKR' : 'Helvetica';
+    const boldFont = fs.existsSync(fontBold) ? 'NotoSansKR-Bold' : 'Helvetica-Bold';
+    doc.font(defaultFont);
     const chunks = [];
     doc.on('data', (chunk) => chunks.push(chunk));
     doc.on('end', () => resolve(Buffer.concat(chunks)));
@@ -652,9 +669,9 @@ async function buildOrderPdf(order) {
       try {
 
         // Header
-        doc.fontSize(18).text('주문서', { align: 'left' });
+        doc.font(boldFont).fontSize(18).text('주문서', { align: 'left' });
         doc.moveDown(0.5);
-        doc.fontSize(11).fillColor('#333');
+        doc.font(defaultFont).fontSize(11).fillColor('#333');
 
         const createdAt = order.createdAt || new Date().toISOString();
         doc.text(`주문번호: ${order.orderId || 'N/A'}`);
@@ -663,8 +680,8 @@ async function buildOrderPdf(order) {
         doc.moveDown();
 
         // Customer Info
-        doc.fontSize(13).text('주문자 정보');
-        doc.fontSize(11);
+        doc.font(boldFont).fontSize(13).text('주문자 정보');
+        doc.font(defaultFont).fontSize(11);
         if (order.customer) {
           doc.text(`이름: ${order.customer.name || ''}`);
           doc.text(`연락처: ${order.customer.phone || ''}`);
@@ -673,8 +690,8 @@ async function buildOrderPdf(order) {
         doc.moveDown();
 
         // Shipping Info
-        doc.fontSize(13).text('배송 정보');
-        doc.fontSize(11);
+        doc.font(boldFont).fontSize(13).text('배송 정보');
+        doc.font(defaultFont).fontSize(11);
         if (order.shipping) {
           doc.text(`수령인: ${order.shipping.name || order.customer?.name || ''}`);
           doc.text(`연락처: ${order.shipping.phone || order.customer?.phone || ''}`);
@@ -689,8 +706,8 @@ async function buildOrderPdf(order) {
         doc.moveDown();
 
         // Items with images
-        doc.fontSize(13).text('주문 상품');
-        doc.fontSize(11);
+        doc.font(boldFont).fontSize(13).text('주문 상품');
+        doc.font(defaultFont).fontSize(11);
         const items = Array.isArray(order.items) ? order.items : [];
 
         for (let index = 0; index < items.length; index++) {
@@ -803,8 +820,8 @@ async function buildOrderPdf(order) {
         if (doc.y > 700) {
           doc.addPage();
         }
-        doc.fontSize(13).fillColor('#000').text('가격 정보');
-        doc.fontSize(11).fillColor('#333');
+        doc.font(boldFont).fontSize(13).fillColor('#000').text('가격 정보');
+        doc.font(defaultFont).fontSize(11).fillColor('#333');
         if (order.pricing) {
           doc.text(`소계: ${order.pricing.subtotal || order.pricing.unitPrice || ''}`);
           doc.text(`수량: ${order.pricing.quantity || ''}`);
@@ -918,6 +935,29 @@ app.get('/health', async (_req, res) => {
 // Job-based generation API
 app.use('/api/generations', strictLimiter, generationsRouter);
 
+app.post('/v1/prompts/build-draft', strictLimiter, async (req, res) => {
+  try {
+    const draft = buildPromptDraft(req.body || {});
+    logEvent('info', 'prompt_draft_built', {
+      requestId: req.requestId,
+      decision: draft.decision,
+      reasonCode: draft.reason_code,
+      reviewLane: draft.review_lane,
+      riskScore: draft.risk_score,
+      templateId: draft.template_id,
+    });
+    res.json(draft);
+  } catch (error) {
+    logEvent('error', 'prompt_draft_build_failed', {
+      requestId: req.requestId,
+      ...formatError(error),
+    });
+    res
+      .status(500)
+      .json({ error: error.message || 'Failed to build prompt draft.', requestId: req.requestId });
+  }
+});
+
 app.post('/v1/images/upload', strictLimiter, async (req, res) => {
   try {
     const { filename, dataUrl, base64, contentType, returnBase64 } = req.body || {};
@@ -971,12 +1011,30 @@ app.post('/v1/images/upload', strictLimiter, async (req, res) => {
 
 app.post('/v1/images/generate', strictLimiter, async (req, res) => {
   try {
-    const { prompt, numberOfImages = 1, aspectRatio = '1:1', returnBase64 } = req.body || {};
+    const {
+      prompt,
+      numberOfImages = 1,
+      aspectRatio = '1:1',
+      returnBase64,
+      style_preset = 'minimal',
+    } = req.body || {};
     if (!prompt) return res.status(400).json({ error: 'Prompt is required.' });
     const count = Math.max(1, Math.min(4, Number(numberOfImages) || 1));
 
-    // Add white background instruction to prompt for easier background removal
-    const enhancedPrompt = `${prompt}, on a plain white background`;
+    const draftInput = mapGenerationRequestToDraftInput({
+      ...req.body,
+      prompt,
+      style_preset,
+      aspectRatio,
+    });
+    const policyDraft = buildPromptDraft(draftInput);
+    if (policyDraft.decision === 'BLOCK') {
+      return res.status(400).json(buildBlockedGenerationError(policyDraft));
+    }
+    const enhancedPrompt = buildGenerationModelPrompt({
+      policyPrompt: policyDraft.imagen_prompt,
+      stylePreset: style_preset,
+    });
     const size =
       aspectRatio === '3:4'
         ? '1024x1536'
@@ -995,6 +1053,9 @@ app.post('/v1/images/generate', strictLimiter, async (req, res) => {
       count,
       originalPrompt: prompt,
       enhancedPrompt: enhancedPrompt,
+      reasonCode: policyDraft.reason_code,
+      reviewLane: policyDraft.review_lane,
+      riskScore: policyDraft.risk_score,
       promptLength: enhancedPrompt.length,
       promptSnippet: enhancedPrompt.slice(0, 120),
       returnBase64: !!returnBase64,
@@ -1412,6 +1473,7 @@ app.post('/v1/orders/submit', strictLimiter, async (req, res) => {
             allow_warn_to_pass: true, // Allow warnings to pass, only fail on errors
             text_layer: order.pipeline?.textLayer || order.items?.[0]?.text || null,
             image_transform: order.pipeline?.imageTransform || null,
+            remove_background: order.pipeline?.removeBackground !== false, // Default: true
           });
           pipelineResult = await persistPipelineArtifacts({ orderId, pipelineResult });
 
@@ -2132,6 +2194,10 @@ function parseBasicAuthCredentials(rawHeaderValue) {
 function verifyTossCallbackAuth(req, res, next) {
   const TOSS_CALLBACK_USERNAME = process.env.TOSS_CALLBACK_USERNAME;
   const TOSS_CALLBACK_PASSWORD = process.env.TOSS_CALLBACK_PASSWORD;
+  const verifyDisconnectAuthorization = createDisconnectAuthVerifier({
+    username: TOSS_CALLBACK_USERNAME,
+    password: TOSS_CALLBACK_PASSWORD,
+  });
 
   // If credentials not configured, skip auth check (for testing)
   if (!TOSS_CALLBACK_USERNAME || !TOSS_CALLBACK_PASSWORD) {
@@ -2170,7 +2236,8 @@ function verifyTossCallbackAuth(req, res, next) {
   }
 
   const parsed = parseBasicAuthCredentials(authHeader);
-  if (parsed && parsed.username === TOSS_CALLBACK_USERNAME && parsed.password === TOSS_CALLBACK_PASSWORD) {
+  const authResult = verifyDisconnectAuthorization(authHeader);
+  if (authResult.ok) {
     next();
   } else {
     logEvent('warn', 'toss_callback_auth_invalid', {
@@ -2329,10 +2396,19 @@ app.post('/v1/auth/login', strictLimiter, async (req, res) => {
       scope: userInfo.scope,
     });
 
-    // Return userKey and other user info to client
+    const sessionEnvelope = createAitSessionEnvelope({
+      sessionToken: crypto.randomUUID(),
+      user: { id: String(userInfo.userKey), role: null, alias: null },
+      identity: {
+        userKey: String(userInfo.userKey),
+        referrer: referrer || null,
+        scope: userInfo.scope ?? null,
+      },
+      mode: 'live',
+    });
+
     res.json({
-      userKey: String(userInfo.userKey), // Convert to string for header use
-      scope: userInfo.scope,
+      ...sessionEnvelope,
       agreedTerms: userInfo.agreedTerms,
       // Note: Encrypted personal info is not sent to client
       requestId: req.requestId,

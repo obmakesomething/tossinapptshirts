@@ -14,6 +14,7 @@ import {
   Card,
   Chip,
   DisabledHint,
+  FullScreenLoader,
   PageHeader,
   PrimaryButton,
   Screen,
@@ -30,14 +31,18 @@ import {
   trackScreenView,
 } from '../utils/analytics';
 
-const ORANGE_RED = '#FF6A00';
-const NAVY_DEEP = '#FFF8F1';
-const NAVY_MID = '#FFF2E5';
+const ORANGE_RED = '#3182F6';
+const WARM_DEEP = '#FFFAF5';
+const WARM_MID = '#FFF4E8';
 const NAVY_PANEL = '#FFFFFF';
 
 export const Route = createRoute('/upload', {
   component: Page,
 });
+
+type ImageMutationResponse = Record<string, unknown> & {
+  dataUrl?: string;
+};
 
 function Page() {
   const navigation = Route.useNavigation();
@@ -121,8 +126,8 @@ function Page() {
       if (!response.ok) {
         throw new Error('업로드하지 못했어요. 다시 시도해 주세요.');
       }
-      const data = await response.json();
-      if (!data.dataUrl) {
+      const data = await response.json() as ImageMutationResponse;
+      if (typeof data.dataUrl !== 'string') {
         throw new Error('업로드 결과를 확인하지 못했어요. 다시 시도해 주세요.');
       }
       trackImageUploaded('file_picker');
@@ -209,8 +214,8 @@ function Page() {
       if (!response.ok) {
         throw new Error('배경을 제거하지 못했어요. 다시 시도해 주세요.');
       }
-      const data = await response.json();
-      if (!data.dataUrl) {
+      const data = await response.json() as ImageMutationResponse;
+      if (typeof data.dataUrl !== 'string') {
         throw new Error('배경 제거 결과를 확인하지 못했어요. 다시 시도해 주세요.');
       }
       trackImageUploaded('background_removed');
@@ -279,10 +284,10 @@ function Page() {
         throw new Error('스타일을 변환하지 못했어요. 다시 시도해 주세요.');
       }
 
-      const data = await response.json();
+      const data = await response.json() as ImageMutationResponse;
       console.log('[StyleTransfer] Response keys:', Object.keys(data));
 
-      if (!data.dataUrl) {
+      if (typeof data.dataUrl !== 'string') {
         console.error('[StyleTransfer] Missing dataUrl in response:', data);
         throw new Error('스타일 변환 결과를 확인하지 못했어요. 다시 시도해 주세요.');
       }
@@ -311,6 +316,7 @@ function Page() {
 
 
   return (
+  <>
     <Screen contentStyle={styles.screenContent}>
       <View style={styles.bgOrbTop} />
       <View style={styles.bgOrbBottom} />
@@ -480,12 +486,17 @@ function Page() {
         />
       </View>
     </Screen>
+    <FullScreenLoader
+      visible={bgRemovalStatus === 'loading'}
+      message="배경을 제거하고 있어요..."
+    />
+  </>
   );
 }
 
 const styles = StyleSheet.create({
   screenContent: {
-    backgroundColor: NAVY_DEEP,
+    backgroundColor: WARM_DEEP,
     paddingBottom: theme.spacing.xl,
   },
   bgOrbTop: {
@@ -527,7 +538,7 @@ const styles = StyleSheet.create({
   },
   headerBackText: {
     fontSize: 12,
-    color: '#776556',
+    color: '#7C6959',
     fontWeight: '700',
   },
   title: {
@@ -537,13 +548,13 @@ const styles = StyleSheet.create({
   },
   subtitle: {
     ...theme.typography.body,
-    color: '#776556',
+    color: '#7C6959',
     marginBottom: theme.spacing.xs,
   },
   cropGuide: {
     fontSize: 12,
     lineHeight: 18,
-    color: '#776556',
+    color: '#7C6959',
     backgroundColor: 'rgba(255,244,232,0.92)',
     borderWidth: 1,
     borderColor: 'rgba(240,223,207,0.92)',
@@ -567,7 +578,7 @@ const styles = StyleSheet.create({
     width: '100%',
     height: 280,
     borderRadius: theme.radius.md,
-    backgroundColor: NAVY_MID,
+    backgroundColor: WARM_MID,
     borderWidth: 1,
     borderColor: 'rgba(240,223,207,0.92)',
     marginBottom: theme.spacing.md,
@@ -593,7 +604,7 @@ const styles = StyleSheet.create({
   previewText: {
     fontSize: 12,
     lineHeight: 18,
-    color: '#776556',
+    color: '#7C6959',
   },
   loadingRow: {
     flexDirection: 'row',
@@ -603,7 +614,7 @@ const styles = StyleSheet.create({
   loadingText: {
     fontSize: 12,
     lineHeight: 18,
-    color: '#776556',
+    color: '#7C6959',
     marginLeft: theme.spacing.sm,
   },
   errorText: {
@@ -696,7 +707,7 @@ const styles = StyleSheet.create({
   },
   modalCancelButton: {
     marginTop: theme.spacing.sm,
-    backgroundColor: '#FFF2E5',
+    backgroundColor: '#FFF4E8',
   },
   actionRow: {
     marginTop: theme.spacing.md,
@@ -740,7 +751,7 @@ const styles = StyleSheet.create({
   quickFaqAnswer: {
     fontSize: 12,
     lineHeight: 18,
-    color: '#776556',
+    color: '#7C6959',
     marginTop: 2,
   },
   nextButton: {
