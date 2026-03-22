@@ -17,7 +17,6 @@ import { useCatalog } from '../context/catalog';
 import { faqCategories, faqItems } from '../data/faq';
 import { buildTemplate } from '../data/mockupTemplates';
 import { API_BASE_URL } from '../config';
-import { resolveColorValue } from '../data/colorMap';
 import {
   resolveCategoryPreviewColor,
   syncCategoryColorMap,
@@ -36,11 +35,7 @@ const MATERIAL_BY_CATEGORY: Record<string, string> = {
 };
 
 const heroDesignImageUri = `${API_BASE_URL}/mockups/hero_design.png`;
-const HERO_STATS = [
-  { value: '2,400+', label: '월 주문' },
-  { value: '4.9★', label: '만족도' },
-  { value: '3~5일', label: '배송' },
-];
+// 통계는 실제 수치 확보 전까지 미노출
 
 export const Route = createRoute('/', {
   component: Page,
@@ -95,10 +90,6 @@ function Page() {
   const selectedCategoryProduct =
     productByCategory[selectedCategory] ?? selectedProduct;
   const activeCategoryIndex = categories.indexOf(selectedCategory);
-  const selectedCategoryColor = resolveCategoryPreviewColor(
-    selectedCategoryProduct,
-    selectedColorByCategory,
-  );
 
   useEffect(() => {
     setSelectedColorByCategory((prev) => syncCategoryColorMap(products, prev));
@@ -213,12 +204,6 @@ function Page() {
     });
     selectCategory(category);
   };
-  const renderSizeLabel = (label: string) => {
-    if (label === '2XL') return '2X';
-    if (label === '3XL') return '3X';
-    if (label === '4XL') return '4X';
-    return label;
-  };
 
   return (
     <Screen contentStyle={styles.screenContent}>
@@ -232,26 +217,18 @@ function Page() {
           </View>
         </View>
         <Text style={styles.heroTitle}>
-          나만의{'\n'}커스텀 의류를{'\n'}지금 만들어요
+          나만의 굿즈,{'\n'}AI로 바로{'\n'}만들어보세요
         </Text>
         <Text style={styles.heroSubtitle}>
           티셔츠 · 후드 · 맨투맨
           {'\n'}
-          AI 디자인부터 결제까지 한 번에
+          디자인부터 결제까지 한 번에
         </Text>
         <PrimaryButton
-          label="✦ 지금 만들어보기"
+          label="지금 만들어보기"
           onPress={goToEditor}
           style={styles.heroCtaButton}
         />
-        <View style={styles.heroStatRow}>
-          {HERO_STATS.map((stat) => (
-            <View key={stat.label} style={styles.heroStatCard}>
-              <Text style={styles.heroStatValue}>{stat.value}</Text>
-              <Text style={styles.heroStatLabel}>{stat.label}</Text>
-            </View>
-          ))}
-        </View>
       </View>
 
       <View style={styles.homeCard}>
@@ -356,71 +333,17 @@ function Page() {
           {MATERIAL_BY_CATEGORY[selectedCategoryProduct.category] ?? '코튼 혼방'} · {selectedCategoryProduct.modelName}
         </Text>
 
-        <View style={styles.metaRow}>
-          <View style={styles.metaCol}>
-            <Text style={styles.metaLabel}>색상</Text>
-            <View style={styles.colorDotRow}>
-              {selectedCategoryProduct.colors.map((color) => (
-                <Pressable
-                  key={color}
-                  onPress={() => {
-                    trackClick('home_color_dot_click', {
-                      category: selectedCategory,
-                      product_id: selectedCategoryProduct.id,
-                      color,
-                    });
-                    setSelectedColorByCategory((prev) => ({
-                      ...prev,
-                      [selectedCategory]: color,
-                    }));
-                    setSelectedColor(color);
-                  }}
-                  style={styles.colorDotButton}
-                  accessibilityRole="button"
-                  accessibilityLabel={`${color} 색상`}
-                >
-                  <View
-                    style={[
-                      styles.colorDot,
-                      { backgroundColor: resolveColorValue(color) },
-                      resolveColorValue(color) === '#FFFFFF' &&
-                      styles.colorDotWhite,
-                      selectedCategoryColor === color && styles.colorDotSelected,
-                    ]}
-                  />
-                </Pressable>
-              ))}
-            </View>
-          </View>
-
-          <View style={[styles.metaCol, styles.metaColRight]}>
-            <Text style={styles.metaLabel}>소재</Text>
-            <Text style={styles.metaValue}>
-              {MATERIAL_BY_CATEGORY[selectedCategoryProduct.category] ?? '코튼 혼방'}
-            </Text>
-          </View>
-        </View>
-
-        <View style={styles.sizeBlock}>
-          <Text style={styles.metaLabel}>사이즈</Text>
-          <View style={styles.sizeChipRow}>
-            {selectedCategoryProduct.sizes.map((size) => (
-              <View key={size.label} style={styles.sizeChip}>
-                <Text style={styles.sizeChipText}>
-                  {renderSizeLabel(size.label)}
-                </Text>
-              </View>
-            ))}
-          </View>
-        </View>
+        <Text style={styles.productSpecLine}>
+          {selectedCategoryProduct.colors.join('·')} | {selectedCategoryProduct.sizes.length > 0 ? `${selectedCategoryProduct.sizes[0]?.label}~${selectedCategoryProduct.sizes[selectedCategoryProduct.sizes.length - 1]?.label}` : ''}
+        </Text>
 
         <Pressable onPress={goToProducts} style={styles.detailLinkButton}>
-          <Text style={styles.detailLinkText}>세부 정보 보기 {'>'}</Text>
+          <Text style={styles.detailLinkText}>사이즈·소재·인쇄 정보 {'>'}</Text>
         </Pressable>
       </View>
 
       <Text style={styles.noticeText}>
-        제작 주문 특성상 제작/배송은 보통 7-14일 소요될 수 있어요. (3만원 이상 배송비 무료)
+        제작 주문 특성상 배송까지 보통 7~14일 소요될 수 있어요. (₩60,000 이상 무료배송)
       </Text>
 
       {/* FAQ 섹션 - 인터랙션 완료 후 렌더 */}
@@ -429,7 +352,7 @@ function Page() {
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>자주 묻는 질문</Text>
             <Pressable onPress={goToFAQ}>
-              <Text style={styles.sectionAction}>전체 보기</Text>
+              <Text style={styles.sectionAction}>자주 묻는 질문 더보기 →</Text>
             </Pressable>
           </View>
           <Text style={styles.faqDescription}>

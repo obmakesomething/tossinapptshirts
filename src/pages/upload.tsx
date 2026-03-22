@@ -31,7 +31,7 @@ import {
   trackScreenView,
 } from '../utils/analytics';
 
-const ORANGE_RED = '#3182F6';
+const ORANGE_RED = '#2A6ED4';
 const WARM_DEEP = '#FFFAF5';
 const WARM_MID = '#FFF4E8';
 const NAVY_PANEL = '#FFFFFF';
@@ -107,7 +107,7 @@ function Page() {
       case 'error':
         return '다시 시도해 주세요';
       default:
-        return '배경 제거해 볼까요?';
+        return '배경 지워볼까요?';
     }
   };
 
@@ -212,18 +212,18 @@ function Page() {
         },
       );
       if (!response.ok) {
-        throw new Error('배경을 제거하지 못했어요. 다시 시도해 주세요.');
+        throw new Error('배경을 지우지 못했어요. 다시 시도해 주세요.');
       }
       const data = await response.json() as ImageMutationResponse;
       if (typeof data.dataUrl !== 'string') {
-        throw new Error('배경 제거 결과를 확인하지 못했어요. 다시 시도해 주세요.');
+        throw new Error('배경 지우기 결과를 확인하지 못했어요. 다시 시도해 주세요.');
       }
       trackImageUploaded('background_removed');
       trackEvent('upload_remove_background_success');
       setDesignImageUri(data.dataUrl);
       setLastDataUrl(null);
       setBgRemovalStatus('success');
-      setSuccessMessage('✓ 배경을 제거했어요!');
+      setSuccessMessage('✓ 배경을 지웠어요!');
       setTimeout(() => {
         setSuccessMessage('');
         setBgRemovalStatus('idle');
@@ -233,7 +233,7 @@ function Page() {
       trackEvent('upload_remove_background_failed', {
         reason: err instanceof Error ? err.message : 'unknown',
       });
-      setError(err instanceof Error ? err.message : '배경을 제거하지 못했어요. 다시 시도해 주세요.');
+      setError(err instanceof Error ? err.message : '배경을 지우지 못했어요. 다시 시도해 주세요.');
       setTimeout(() => setBgRemovalStatus('idle'), 3000);
     }
   };
@@ -324,7 +324,7 @@ function Page() {
 
       <Text style={styles.title}>먼저 사진을 올려주세요</Text>
       <Text style={styles.subtitle}>
-        + 버튼으로 사진을 불러오고 배경 제거/스타일 변경까지 한 번에 진행할 수 있어요.
+        + 버튼으로 사진을 불러오고 배경 지우기/스타일 변경까지 한 번에 진행할 수 있어요.
       </Text>
       <Text style={styles.cropGuide}>
         💡 팁: 중앙 피사체가 크게 보이는 사진일수록 인쇄 결과가 더 또렷해요.
@@ -488,7 +488,7 @@ function Page() {
     </Screen>
     <FullScreenLoader
       visible={bgRemovalStatus === 'loading'}
-      message="배경을 제거하고 있어요..."
+      message="배경을 지우는 중이에요..."
     />
   </>
   );

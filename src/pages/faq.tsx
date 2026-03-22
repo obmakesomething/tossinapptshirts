@@ -10,7 +10,7 @@ import {
 import { Card, PageHeader, Screen, theme } from '../components/ui';
 import { faqCategories, faqItems } from '../data/faq';
 
-const ORANGE_RED = '#3182F6';
+const ORANGE_RED = '#2A6ED4';
 const WARM_DEEP = '#FFFAF5';
 const NAVY_PANEL = '#FFFFFF';
 
@@ -230,7 +230,7 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   categoryTextActive: {
-    color: '#3182F6',
+    color: '#2A6ED4',
   },
   scrollContent: {
     paddingBottom: theme.spacing.xl,
@@ -296,7 +296,7 @@ const styles = StyleSheet.create({
     fontSize: 20,
     lineHeight: 22,
     fontWeight: '300',
-    color: '#A0907E',
+    color: '#7A6B5D',
     marginLeft: theme.spacing.sm,
   },
   answerRow: {

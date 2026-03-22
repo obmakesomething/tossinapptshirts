@@ -196,7 +196,7 @@ const styles = StyleSheet.create({
   footer: {
     fontSize: 12,
     lineHeight: 18,
-    color: '#A0907E',
+    color: '#7A6B5D',
     marginTop: theme.spacing.xl,
     textAlign: 'center',
   },

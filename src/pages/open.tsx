@@ -20,7 +20,7 @@ function Page() {
 
   return (
     <View style={styles.container}>
-      <ActivityIndicator size="small" color="#3182F6" />
+      <ActivityIndicator size="small" color="#2A6ED4" />
       <Text style={styles.text}>앱을 여는 중이에요...</Text>
     </View>
   );

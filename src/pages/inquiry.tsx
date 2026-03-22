@@ -11,7 +11,7 @@ import {
 import { Card, PrimaryButton, Screen, theme } from '../components/ui';
 import { API_BASE_URL } from '../config';
 
-const ORANGE_RED = '#3182F6';
+const ORANGE_RED = '#2A6ED4';
 const WARM_DEEP = '#FFFAF5';
 const NAVY_PANEL = '#FFFFFF';
 const WARM_MID = '#FFF4E8';
@@ -204,7 +204,7 @@ const styles = StyleSheet.create({
   hint: {
     fontSize: 12,
     lineHeight: 18,
-    color: '#A0907E',
+    color: '#7A6B5D',
     marginTop: theme.spacing.md,
   },
   errorText: {

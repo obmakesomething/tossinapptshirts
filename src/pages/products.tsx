@@ -13,7 +13,7 @@ import { useCatalog } from '../context/catalog';
 import { resolveColorValue } from '../data/colorMap';
 import { trackClick, trackScreenView } from '../utils/analytics';
 
-const ACCENT = '#3182F6';
+const ACCENT = '#2A6ED4';
 const WARM_MID = '#FFF4E8';
 
 export const Route = createRoute('/products', {

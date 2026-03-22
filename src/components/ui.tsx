@@ -20,26 +20,26 @@ export const theme = {
     surface: '#FFFFFF',
     surfaceSecondary: '#FFF4E8',
     // ── Accent ──
-    primary: '#3182F6',
+    primary: '#2A6ED4',
     primarySoft: '#E8F2FF',
-    primaryPressed: '#2B72DE',
+    primaryPressed: '#2360B8',
     // ── Text (warm) ──
     textPrimary: '#2E231B',
     textSecondary: '#7C6959',
-    textTertiary: '#A0907E',
+    textTertiary: '#7A6B5D',
     // ── Borders (warm) ──
     border: '#F0DFCF',
-    muted: '#A0907E',
+    muted: '#7A6B5D',
     // ── Semantic ──
     success: '#0EA76F',
     successSoft: '#E9F9F2',
     successBorder: '#AEE6CF',
     warning: '#F59E0B',
-    error: '#E03E3E',
+    error: '#D93025',
     errorSoft: '#FDEDEE',
     errorBorder: '#F6C2C2',
     errorPressed: '#FADFE0',
-    info: '#3182F6',
+    info: '#2A6ED4',
     infoSoft: '#EAF2FF',
     infoBorder: '#BED3F1',
   },
@@ -814,4 +814,163 @@ const styles = StyleSheet.create({
     color: theme.colors.textSecondary,
     fontWeight: '700',
   },
+});
+
+/* ── Badge ── */
+type BadgeVariant = 'success' | 'warning' | 'error';
+type BadgeProps = {
+  variant: BadgeVariant;
+  label: string;
+};
+
+const badgeConfig: Record<BadgeVariant, { bg: string; border: string; icon: string }> = {
+  success: { bg: '#E9F9F2', border: '#AEE6CF', icon: '✅' },
+  warning: { bg: '#FFF8E1', border: '#F5E6B8', icon: '⚠️' },
+  error: { bg: '#FDEDEE', border: '#F6C2C2', icon: '❌' },
+};
+
+export function Badge({ variant, label }: BadgeProps) {
+  const config = badgeConfig[variant];
+  return (
+    <View style={[badgeStyles.container, { backgroundColor: config.bg, borderColor: config.border }]}>
+      <Text style={badgeStyles.icon}>{config.icon}</Text>
+      <Text style={badgeStyles.label}>{label}</Text>
+    </View>
+  );
+}
+
+const badgeStyles = StyleSheet.create({
+  container: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  icon: { fontSize: 16, marginRight: 8 },
+  label: { fontSize: 14, fontWeight: '600', color: theme.colors.textPrimary },
+});
+
+/* ── ConfirmDialog ── */
+type ConfirmDialogProps = {
+  visible: boolean;
+  title: string;
+  message: string;
+  confirmLabel?: string;
+  cancelLabel?: string;
+  onConfirm: () => void;
+  onCancel: () => void;
+  destructive?: boolean;
+};
+
+export function ConfirmDialog({
+  visible,
+  title,
+  message,
+  confirmLabel = '확인',
+  cancelLabel = '취소',
+  onConfirm,
+  onCancel,
+  destructive = false,
+}: ConfirmDialogProps) {
+  return (
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onCancel}>
+      <Pressable style={confirmStyles.overlay} onPress={onCancel}>
+        <View style={confirmStyles.content}>
+          <Text style={confirmStyles.title}>{title}</Text>
+          <Text style={confirmStyles.message}>{message}</Text>
+          <View style={confirmStyles.actions}>
+            <Pressable style={confirmStyles.cancelBtn} onPress={onCancel}>
+              <Text style={confirmStyles.cancelText}>{cancelLabel}</Text>
+            </Pressable>
+            <Pressable
+              style={[confirmStyles.confirmBtn, destructive && confirmStyles.destructiveBtn]}
+              onPress={onConfirm}
+            >
+              <Text style={[confirmStyles.confirmText, destructive && confirmStyles.destructiveText]}>
+                {confirmLabel}
+              </Text>
+            </Pressable>
+          </View>
+        </View>
+      </Pressable>
+    </Modal>
+  );
+}
+
+const confirmStyles = StyleSheet.create({
+  overlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  content: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 24,
+    marginHorizontal: 32,
+    width: '85%',
+  },
+  title: { fontSize: 18, fontWeight: '700', color: theme.colors.textPrimary, marginBottom: 8 },
+  message: { fontSize: 14, color: theme.colors.textSecondary, lineHeight: 20, marginBottom: 20 },
+  actions: { flexDirection: 'row', justifyContent: 'flex-end', gap: 12 },
+  cancelBtn: { paddingVertical: 10, paddingHorizontal: 16, borderRadius: 8 },
+  cancelText: { fontSize: 14, fontWeight: '600', color: theme.colors.textSecondary },
+  confirmBtn: { paddingVertical: 10, paddingHorizontal: 16, borderRadius: 8, backgroundColor: theme.colors.primary },
+  confirmText: { fontSize: 14, fontWeight: '600', color: '#FFFFFF' },
+  destructiveBtn: { backgroundColor: theme.colors.error },
+  destructiveText: { color: '#FFFFFF' },
+});
+
+/* ── Timeline ── */
+type TimelineStep = {
+  label: string;
+  time?: string;
+  completed: boolean;
+};
+
+type TimelineProps = {
+  steps: TimelineStep[];
+};
+
+export function Timeline({ steps }: TimelineProps) {
+  return (
+    <View style={timelineStyles.container}>
+      {steps.map((step, index) => (
+        <View key={index} style={timelineStyles.row}>
+          <View style={timelineStyles.dotCol}>
+            <View style={[timelineStyles.dot, step.completed && timelineStyles.dotCompleted]} />
+            {index < steps.length - 1 && (
+              <View style={[timelineStyles.line, step.completed && timelineStyles.lineCompleted]} />
+            )}
+          </View>
+          <View style={timelineStyles.content}>
+            <Text style={[timelineStyles.label, step.completed && timelineStyles.labelCompleted]}>
+              {step.label}
+            </Text>
+            {step.time ? <Text style={timelineStyles.time}>{step.time}</Text> : null}
+          </View>
+        </View>
+      ))}
+    </View>
+  );
+}
+
+const timelineStyles = StyleSheet.create({
+  container: { paddingVertical: 8 },
+  row: { flexDirection: 'row', minHeight: 40 },
+  dotCol: { width: 24, alignItems: 'center' },
+  dot: {
+    width: 12, height: 12, borderRadius: 6,
+    backgroundColor: '#E8DCC0', borderWidth: 2, borderColor: '#E8DCC0',
+  },
+  dotCompleted: { backgroundColor: theme.colors.primary, borderColor: theme.colors.primary },
+  line: { width: 2, flex: 1, backgroundColor: '#E8DCC0' },
+  lineCompleted: { backgroundColor: theme.colors.primary },
+  content: { flex: 1, paddingLeft: 12, paddingBottom: 8 },
+  label: { fontSize: 14, color: theme.colors.textTertiary },
+  labelCompleted: { color: theme.colors.textPrimary, fontWeight: '600' },
+  time: { fontSize: 12, color: theme.colors.textTertiary, marginTop: 2 },
 });

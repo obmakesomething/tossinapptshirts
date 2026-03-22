@@ -2,10 +2,7 @@ import { eventLog } from '@apps-in-toss/framework';
 
 type LogType = 'event' | 'screen' | 'click' | 'impression';
 type AnalyticsParams = Record<string, unknown>;
-const ANALYTICS_SCHEMA_DATE = '20260321';
 let analyticsSessionId = '';
-
-const withDateSuffix = (name: string) => `${name}_${ANALYTICS_SCHEMA_DATE}`;
 
 const createAnalyticsSessionId = () => `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
 
@@ -33,13 +30,6 @@ const createAitAnalyticsBase = (eventName: string, properties?: AnalyticsParams)
   session_id: getAnalyticsSessionId(),
   app_platform: 'toss_webview',
 });
-
-const suffixParamKeys = (properties?: AnalyticsParams): AnalyticsParams => {
-  if (!properties) return {};
-  return Object.fromEntries(
-    Object.entries(properties).map(([key, value]) => [withDateSuffix(key), value]),
-  );
-};
 
 const serializeParams = (properties?: AnalyticsParams) => {
   if (!properties) return {};
@@ -69,15 +59,13 @@ export const trackEvent = (
 ) => {
   try {
     const payload = {
-      log_name: withDateSuffix(eventName),
+      log_name: eventName,
       log_type: logType,
-      params: serializeParams(
-        suffixParamKeys({
-          ...createAitAnalyticsBase(eventName, properties),
-          ...properties,
-          tracked_at: new Date().toISOString(),
-        }),
-      ),
+      params: serializeParams({
+        ...createAitAnalyticsBase(eventName, properties),
+        ...properties,
+        tracked_at: new Date().toISOString(),
+      }),
     } as const;
 
     void eventLog(payload).catch((error) => {

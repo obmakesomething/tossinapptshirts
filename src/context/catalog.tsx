@@ -49,6 +49,8 @@ export type OrderLine = {
   quantity: number;
 };
 
+export type LayerId = `${Placement}-${'image' | 'text'}`;
+
 type CatalogContextValue = {
   products: CatalogProduct[];
   selectedProduct: CatalogProduct;
@@ -64,6 +66,7 @@ type CatalogContextValue = {
   imageTransform: LayerTransform;
   textTransform: LayerTransform;
   activeLayer: 'image' | 'text';
+  selectedLayerId: LayerId;
   textLayer: TextLayer;
   savedDesigns: SavedDesign[];
   // Front/back specific states for preview
@@ -187,8 +190,15 @@ export function CatalogProvider({ children }: { children: React.ReactNode }) {
   const [backPhotoIndex, setBackPhotoIndex] = useState(0);
 
   const [designPrompt, setDesignPrompt] = useState('');
-  const [activeLayer, setActiveLayer] = useState<'image' | 'text'>('image');
+  const [activeLayer, setActiveLayerState] = useState<'image' | 'text'>('image');
   const [savedDesigns, setSavedDesigns] = useState<SavedDesign[]>([]);
+
+  // Derived selectedLayerId from placement + activeLayer
+  const selectedLayerId: LayerId = `${selectedPlacement}-${activeLayer}` as LayerId;
+
+  const setActiveLayer = (layer: 'image' | 'text') => {
+    setActiveLayerState(layer);
+  };
 
   // Current placement design accessors
   const currentPhotos = selectedPlacement === 'front' ? frontPhotos : backPhotos;
@@ -525,6 +535,7 @@ export function CatalogProvider({ children }: { children: React.ReactNode }) {
     imageTransform,
     textTransform,
     activeLayer,
+    selectedLayerId,
     textLayer,
     frontDesignImageUri,
     frontImageTransform,

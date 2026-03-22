@@ -31,7 +31,7 @@ import {
   trackScreenView,
 } from '../utils/analytics';
 
-const ORANGE_RED = '#3182F6';
+const ORANGE_RED = '#2A6ED4';
 const WARM_DEEP = '#FFFAF5';
 const WARM_MID = '#FFF4E8';
 const NAVY_PANEL = '#FFFFFF';
@@ -85,6 +85,9 @@ function Page() {
   const [loginLoading, setLoginLoading] = useState(false);
   const address2InputRef = useRef<TextInput>(null);
   const [editingOrder, setEditingOrder] = useState(false);
+  const [agreedPrivacy, setAgreedPrivacy] = useState(false);
+  const [agreedTerms, setAgreedTerms] = useState(false);
+  const [agreedCustom, setAgreedCustom] = useState(false);
   const userKey = aitSession?.identity?.userKey ?? '';
 
   useEffect(() => {
@@ -543,7 +546,7 @@ function Page() {
 
         <Text style={styles.sectionTitle}>어디로 보내드릴까요?</Text>
         <SecondaryButton
-          label="주소 찾기"
+          label="주소 검색하기"
           onPress={() => {
             trackClick('order_address_search_click');
             console.log('[Order] Opening address search modal');
@@ -612,9 +615,24 @@ function Page() {
         ))}
       </Card>
 
-      <Text style={styles.noticeText}>
-        결제 전 최종 시안/사이즈/배송지를 꼭 확인해 주세요. 주문 완료 후 제작이 시작되면 변경이 제한될 수 있어요.
-      </Text>
+      {/* 동의 체크박스 */}
+      <View style={styles.agreementSection}>
+        <Pressable style={styles.checkboxRow} onPress={() => setAgreedPrivacy(!agreedPrivacy)}>
+          <Text style={styles.checkbox}>{agreedPrivacy ? '☑' : '☐'}</Text>
+          <Text style={styles.checkboxLabel}>개인정보 수집·이용 동의 (필수)</Text>
+        </Pressable>
+        <Pressable style={styles.checkboxRow} onPress={() => setAgreedTerms(!agreedTerms)}>
+          <Text style={styles.checkbox}>{agreedTerms ? '☑' : '☐'}</Text>
+          <Text style={styles.checkboxLabel}>이용약관 동의 (필수)</Text>
+        </Pressable>
+        <Pressable style={styles.checkboxRow} onPress={() => setAgreedCustom(!agreedCustom)}>
+          <Text style={styles.checkbox}>{agreedCustom ? '☑' : '☐'}</Text>
+          <Text style={styles.checkboxLabel}>커스텀 제작 특성 확인 (필수)</Text>
+        </Pressable>
+        <Text style={styles.customNotice}>
+          주문 제작 상품이라 단순 변심 교환·환불이 어렵습니다.
+        </Text>
+      </View>
 
       {error ? <Text style={styles.errorText}>{error}</Text> : null}
       {success ? (
@@ -631,9 +649,18 @@ function Page() {
                 : '토스페이로 결제하기'
           }
           onPress={handleSubmit}
-          disabled={submitting || success}
+          disabled={submitting || success || !agreedPrivacy || !agreedTerms || !agreedCustom || !name || !phone || !email || !address1}
           style={styles.primaryCta}
         />
+        {!success && !submitting && (!name || !phone || !email || !address1 || !agreedPrivacy || !agreedTerms || !agreedCustom) && (
+          <Text style={styles.disabledReason}>
+            {!name ? '※ 이름을 입력해주세요' :
+             !phone ? '※ 연락처를 입력해주세요' :
+             !email ? '※ 이메일을 입력해주세요' :
+             !address1 ? '※ 주소를 입력해주세요' :
+             '※ 필수 동의 항목을 확인해주세요'}
+          </Text>
+        )}
         <SecondaryButton label="돌아가기" onPress={() => navigation.goBack()} />
       </View>
 
@@ -923,6 +950,36 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#7C6959',
     marginBottom: theme.spacing.sm,
+  },
+  agreementSection: {
+    marginTop: theme.spacing.md,
+    marginBottom: theme.spacing.md,
+  },
+  checkboxRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 6,
+  },
+  checkbox: {
+    fontSize: 18,
+    marginRight: 8,
+    color: '#2E231B',
+  },
+  checkboxLabel: {
+    fontSize: 14,
+    color: '#2E231B',
+  },
+  customNotice: {
+    fontSize: 12,
+    color: '#7A6B5D',
+    marginLeft: 26,
+    marginTop: 2,
+  },
+  disabledReason: {
+    fontSize: 12,
+    color: '#D93025',
+    textAlign: 'center',
+    marginTop: 4,
   },
   addressSearchButton: {
     marginBottom: theme.spacing.sm,

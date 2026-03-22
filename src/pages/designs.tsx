@@ -16,7 +16,7 @@ import { type SavedDesign, useCatalog } from '../context/catalog';
 import { catalogProducts } from '../data/catalog';
 import { buildTemplate } from '../data/mockupTemplates';
 
-const ORANGE_RED = '#3182F6';
+const ORANGE_RED = '#2A6ED4';
 const WARM_DEEP = '#FFFAF5';
 const NAVY_PANEL = '#FFFFFF';
 

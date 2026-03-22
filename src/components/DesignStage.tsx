@@ -867,14 +867,14 @@ const styles = StyleSheet.create({
     position: 'absolute',
     borderWidth: 2,
     borderRadius: 8,
-    borderColor: '#3182F6',
+    borderColor: '#2A6ED4',
     borderStyle: 'dashed',
     backgroundColor: 'transparent',
   },
   imageRotateButton: {
     position: 'absolute',
     borderWidth: 1,
-    borderColor: '#3182F6',
+    borderColor: '#2A6ED4',
     backgroundColor: 'rgba(255,255,255,0.96)',
     shadowColor: '#5F320E',
     shadowOpacity: 0.16,
@@ -885,12 +885,12 @@ const styles = StyleSheet.create({
     elevation: 4,
   },
   imageRotateButtonActive: {
-    backgroundColor: '#3182F6',
+    backgroundColor: '#2A6ED4',
   },
   imageRotateButtonText: {
     fontSize: 14,
     lineHeight: 16,
-    color: '#3182F6',
+    color: '#2A6ED4',
     fontWeight: '700',
   },
   imageRotateButtonTextActive: {
@@ -927,13 +927,13 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFAF5',
   },
   adjustPopupTabActive: {
-    borderColor: '#3182F6',
-    backgroundColor: '#3182F6',
+    borderColor: '#2A6ED4',
+    backgroundColor: '#2A6ED4',
   },
   adjustPopupTabText: {
     fontSize: 11,
     lineHeight: 14,
-    color: '#3182F6',
+    color: '#2A6ED4',
     fontWeight: '700',
   },
   adjustPopupTabTextActive: {
@@ -955,7 +955,7 @@ const styles = StyleSheet.create({
   rotateNudgeButtonText: {
     fontSize: 14,
     lineHeight: 18,
-    color: '#3182F6',
+    color: '#2A6ED4',
     fontWeight: '700',
   },
   rotateNudgeRow: {

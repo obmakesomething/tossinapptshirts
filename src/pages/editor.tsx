@@ -1,7 +1,7 @@
 import { fetchAlbumPhotos } from '@apps-in-toss/native-modules';
 import { createRoute } from '@granite-js/react-native';
 import { TextField } from '@toss/tds-react-native';
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Image,
   Modal,
@@ -35,7 +35,7 @@ import {
   trackScreenView,
 } from '../utils/analytics';
 
-const ACCENT = '#3182F6';
+const ACCENT = '#2A6ED4';
 const WARM_MID = '#FFF4E8';
 const PANEL_BG = '#FFFFFF';
 const EDITOR_HEADER_RESERVED = 100;
@@ -88,7 +88,7 @@ function Page() {
 
 
 
-  const [editorTab, setEditorTab] = useState(1);
+  const [editorTab, setEditorTab] = useState(0);
   const [aiPrompt, setAiPrompt] = useState('');
   const [showStartModal, setShowStartModal] = useState(false);
   const [startModalDismissed, setStartModalDismissed] = useState(false);
@@ -101,6 +101,64 @@ function Page() {
   const [stageZoom, setStageZoom] = useState(DEFAULT_STAGE_ZOOM);
   const [imageControlFocused, setImageControlFocused] = useState(false);
   const [panelExpanded, setPanelExpanded] = useState(true);
+
+  // ── Undo/Redo history ──
+  type EditorSnapshot = {
+    imageTransform: typeof imageTransform;
+    textTransform: typeof textTransform;
+    textLayer: typeof textLayer;
+  };
+  const MAX_HISTORY = 30;
+  const [undoStack, setUndoStack] = useState<EditorSnapshot[]>([]);
+  const [redoStack, setRedoStack] = useState<EditorSnapshot[]>([]);
+  const snapshotRef = useRef<EditorSnapshot>({
+    imageTransform,
+    textTransform,
+    textLayer,
+  });
+
+  const pushSnapshot = useCallback(() => {
+    setUndoStack((prev) => {
+      const next = [...prev, snapshotRef.current];
+      return next.length > MAX_HISTORY ? next.slice(-MAX_HISTORY) : next;
+    });
+    setRedoStack([]);
+  }, []);
+
+  const handleUndo = useCallback(() => {
+    setUndoStack((prev) => {
+      if (prev.length === 0) return prev;
+      const last = prev[prev.length - 1]!;
+      const rest = prev.slice(0, -1);
+      // Push current state to redo
+      setRedoStack((r) => [...r, snapshotRef.current]);
+      // Restore
+      setImageTransform(last.imageTransform);
+      setTextTransform(last.textTransform);
+      setTextLayer(last.textLayer);
+      return rest;
+    });
+  }, [setImageTransform, setTextTransform, setTextLayer]);
+
+  const handleRedo = useCallback(() => {
+    setRedoStack((prev) => {
+      if (prev.length === 0) return prev;
+      const last = prev[prev.length - 1]!;
+      const rest = prev.slice(0, -1);
+      // Push current state to undo
+      setUndoStack((u) => [...u, snapshotRef.current]);
+      // Restore
+      setImageTransform(last.imageTransform);
+      setTextTransform(last.textTransform);
+      setTextLayer(last.textLayer);
+      return rest;
+    });
+  }, [setImageTransform, setTextTransform, setTextLayer]);
+
+  // Keep snapshot ref in sync
+  useEffect(() => {
+    snapshotRef.current = { imageTransform, textTransform, textLayer };
+  }, [imageTransform, textTransform, textLayer]);
 
   const { width: screenWidth, height: screenHeight } = useWindowDimensions();
   const panelHeightCollapsed = Math.max(320, Math.min(420, Math.round(screenHeight * 0.42)));
@@ -121,7 +179,7 @@ function Page() {
     Math.round(availableCanvasHeight - CANVAS_FRAME_VERTICAL_PADDING),
   );
 
-  const EDITOR_TABS = ['텍스트', '이미지', 'AI'];
+  const EDITOR_TABS = ['이미지', '텍스트', 'AI'];
 
   const goPreview = () => {
     trackClick('editor_preview_click', {
@@ -173,6 +231,7 @@ function Page() {
     trackClick('editor_add_text_click', {
       placement: selectedPlacement,
     });
+    pushSnapshot();
     const colorKey = selectedColor.toLowerCase();
     const isDark = ['블랙', '네이비', '차콜', 'black', 'navy', 'charcoal'].some(
       (c) => colorKey.includes(c),
@@ -255,7 +314,7 @@ function Page() {
 
   const handleOpenBgRemoval = () => {
     if (!designImageUri) {
-      setPhotoError('배경 제거할 사진을 먼저 추가해 주세요.');
+      setPhotoError('배경을 지울 사진을 먼저 추가해 주세요.');
       return;
     }
     trackClick('editor_open_background_removal_click', {
@@ -311,14 +370,15 @@ function Page() {
       tab_index: nextIndex,
     });
     if (nextIndex === 0) {
-      setActiveLayer('text');
-    } else if (nextIndex === 1) {
       setActiveLayer('image');
+    } else if (nextIndex === 1) {
+      setActiveLayer('text');
     }
     setEditorTab(nextIndex);
   };
 
   const handleResetToInitial = () => {
+    pushSnapshot();
     setStageZoom(DEFAULT_STAGE_ZOOM);
     setImageTransform({
       offsetX: 0,
@@ -347,12 +407,28 @@ function Page() {
             <Text style={styles.headerIconText}>←</Text>
           </Pressable>
           <Text style={styles.editorTopTitle}>이미지 편집</Text>
-          <Pressable
-            style={styles.orderMiniButton}
-            onPress={goOrder}
-          >
-            <Text style={styles.orderMiniButtonText}>🛒 주문</Text>
-          </Pressable>
+          <View style={styles.headerActions}>
+            <Pressable
+              style={[styles.headerIconButton, undoStack.length === 0 && styles.headerIconDisabled]}
+              onPress={handleUndo}
+              disabled={undoStack.length === 0}
+            >
+              <Text style={[styles.headerIconText, undoStack.length === 0 && styles.headerIconTextDisabled]}>↩</Text>
+            </Pressable>
+            <Pressable
+              style={[styles.headerIconButton, redoStack.length === 0 && styles.headerIconDisabled]}
+              onPress={handleRedo}
+              disabled={redoStack.length === 0}
+            >
+              <Text style={[styles.headerIconText, redoStack.length === 0 && styles.headerIconTextDisabled]}>↪</Text>
+            </Pressable>
+            <Pressable
+              style={styles.orderMiniButton}
+              onPress={goOrder}
+            >
+              <Text style={styles.orderMiniButtonText}>🛒 주문</Text>
+            </Pressable>
+          </View>
         </View>
         <View style={styles.compactProduct}>
           <View style={[styles.compactDot, { backgroundColor: resolveColorValue(selectedColor) }]} />
@@ -363,7 +439,7 @@ function Page() {
             onPress={goPreview}
             style={styles.compactPreview}
           >
-            <Text style={styles.compactPreviewText}>미리보기</Text>
+            <Text style={styles.compactPreviewText}>완성 보기</Text>
           </Pressable>
           <Pressable
             onPress={() => navigation.navigate('/products')}
@@ -465,7 +541,7 @@ function Page() {
         </View>
         <View style={styles.canvasOutsideActions}>
           <Pressable style={styles.stageResetButton} onPress={handleResetToInitial}>
-            <Text style={styles.stageResetButtonText}>처음으로 되돌아가기</Text>
+            <Text style={styles.stageResetButtonText}>편집 내용 초기화</Text>
           </Pressable>
         </View>
         {/* 출력 크기 + 해상도 안내 */}
@@ -511,8 +587,8 @@ function Page() {
           bounces={false}
           keyboardShouldPersistTaps="handled"
         >
-          {/* ── 탭 0: 텍스트 ── */}
-          {editorTab === 0 && (
+          {/* ── 탭 1: 텍스트 ── */}
+          {editorTab === 1 && (
             <View>
               <Text style={styles.sectionTitle}>텍스트 편집</Text>
 
@@ -600,14 +676,30 @@ function Page() {
                       ))}
                     </View>
                   </View>
-                  <SecondaryButton
-                    label="텍스트 삭제하기"
-                    onPress={() => {
-                      setTextLayer({ ...textLayer, enabled: false });
-                      setActiveLayer('image');
-                    }}
-                    style={{ marginTop: theme.spacing.sm }}
-                  />
+                  <View style={styles.textActionRow}>
+                    <SecondaryButton
+                      label="삭제"
+                      onPress={() => {
+                        pushSnapshot();
+                        setTextLayer({ ...textLayer, enabled: false });
+                        setActiveLayer('image');
+                      }}
+                      style={styles.textActionBtn}
+                    />
+                    <SecondaryButton
+                      label="복제"
+                      onPress={() => {
+                        pushSnapshot();
+                        // Duplicate text with slight offset
+                        setTextTransform({
+                          ...textTransform,
+                          offsetX: textTransform.offsetX + 0.05,
+                          offsetY: textTransform.offsetY + 0.05,
+                        });
+                      }}
+                      style={styles.textActionBtn}
+                    />
+                  </View>
                   <View style={styles.sliderRow}>
                     <View style={styles.sliderHeadRow}>
                       <Text style={styles.sliderLabel}>X 위치</Text>
@@ -661,8 +753,8 @@ function Page() {
             </View>
           )}
 
-          {/* ── 탭 1: 이미지 ── */}
-          {editorTab === 1 && (
+          {/* ── 탭 0: 이미지 ── */}
+          {editorTab === 0 && (
             <View>
               <View style={styles.photoManagementSection}>
                 <Text style={styles.sectionTitle}>이미지 편집</Text>
@@ -714,7 +806,13 @@ function Page() {
                         style={styles.photoActionBtn}
                       />
                       <SecondaryButton
-                        label="배경제거"
+                        label="삭제"
+                        onPress={() => handleDeletePhoto(currentPhotoIndex)}
+                        disabled={loadingPhoto || currentPhotos.length === 0}
+                        style={styles.photoActionBtn}
+                      />
+                      <SecondaryButton
+                        label="배경 지우기"
                         onPress={handleOpenBgRemoval}
                         disabled={loadingPhoto}
                         style={styles.photoActionBtn}
@@ -790,7 +888,7 @@ function Page() {
               <TextInput
                 style={styles.aiPromptInput}
                 placeholder="예) 오렌지 톤 플랫 아이콘 느낌의 볼드 로고"
-                placeholderTextColor="#A0907E"
+                placeholderTextColor="#7A6B5D"
                 value={aiPrompt}
                 onChangeText={setAiPrompt}
                 multiline
@@ -809,7 +907,7 @@ function Page() {
                 <SecondaryButton
                   label="현재 이미지 적용"
                   onPress={() => {
-                    setEditorTab(1);
+                    setEditorTab(0);
                     setActiveLayer('image');
                   }}
                   disabled={!designImageUri}
@@ -874,7 +972,7 @@ function Page() {
           >
             <Text style={styles.modalTitle}>사진 편집 시작</Text>
             <Text style={styles.modalSubtitle}>
-              사진을 올려 바로 배경 제거/위치 조정을 시작하거나, AI 이미지 생성으로 시작할 수 있어요.
+              사진을 올려 바로 배경 지우기/위치 조정을 시작하거나, AI 이미지 생성으로 시작할 수 있어요.
             </Text>
             <PrimaryButton
               label="사진 추가하기"
@@ -933,6 +1031,17 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#5A4637',
     fontWeight: '700',
+  },
+  headerIconDisabled: {
+    opacity: 0.35,
+  },
+  headerIconTextDisabled: {
+    color: '#B0A090',
+  },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
   },
   editorTopTitle: {
     fontSize: 20,
@@ -1236,7 +1345,7 @@ const styles = StyleSheet.create({
   zoomLabel: {
     fontSize: 10,
     fontWeight: '600',
-    color: '#A0907E',
+    color: '#7A6B5D',
   },
 
   /* ── Canvas Info ── */
@@ -1249,7 +1358,7 @@ const styles = StyleSheet.create({
   },
   canvasInfoText: {
     fontSize: 11,
-    color: '#A0907E',
+    color: '#7A6B5D',
   },
   canvasInfoWarn: {
     fontSize: 11,
@@ -1290,7 +1399,7 @@ const styles = StyleSheet.create({
   },
   editPanelToggle: {
     fontSize: 12,
-    color: '#A0907E',
+    color: '#7A6B5D',
     fontWeight: '600',
   },
   panelExpanded: {
@@ -1353,6 +1462,18 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(240,223,207,0.92)',
   },
+  textActionRow: {
+    flexDirection: 'row',
+    gap: theme.spacing.sm,
+    marginTop: theme.spacing.sm,
+  },
+  textActionBtn: {
+    flex: 1,
+    minHeight: 36,
+    paddingVertical: 8,
+    paddingHorizontal: 8,
+    borderRadius: 10,
+  },
   sectionTitle: {
     ...theme.typography.subheading,
     color: '#2E231B',
@@ -1384,7 +1505,7 @@ const styles = StyleSheet.create({
   sliderLabel: {
     fontSize: 12,
     lineHeight: 18,
-    color: '#A0907E',
+    color: '#7A6B5D',
   },
   sliderValueText: {
     fontSize: 12,
@@ -1455,7 +1576,7 @@ const styles = StyleSheet.create({
   },
   sizeHint: {
     ...theme.typography.caption,
-    color: '#A0907E',
+    color: '#7A6B5D',
     marginTop: theme.spacing.xs,
   },
   quantityRow: {
@@ -1529,7 +1650,7 @@ const styles = StyleSheet.create({
   fontLabel: {
     fontSize: 12,
     lineHeight: 18,
-    color: '#A0907E',
+    color: '#7A6B5D',
     marginBottom: theme.spacing.sm,
   },
   fontButtons: {
@@ -1554,7 +1675,7 @@ const styles = StyleSheet.create({
     color: '#7C6959',
   },
   fontButtonTextSelected: {
-    color: '#3182F6',
+    color: '#2A6ED4',
   },
 
   /* ── Photo Management ── */
@@ -1638,13 +1759,13 @@ const styles = StyleSheet.create({
   photoHint: {
     fontSize: 11,
     lineHeight: 16,
-    color: '#A0907E',
+    color: '#7A6B5D',
     marginTop: theme.spacing.xs,
   },
   photoSectionHint: {
     fontSize: 11,
     lineHeight: 18,
-    color: '#A0907E',
+    color: '#7A6B5D',
     marginBottom: theme.spacing.xs,
   },
   photoColorRow: {

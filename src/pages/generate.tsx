@@ -33,7 +33,7 @@ import {
   trackScreenView,
 } from '../utils/analytics';
 
-const ORANGE_RED = '#3182F6';
+const ORANGE_RED = '#2A6ED4';
 const WARM_DEEP = '#FFFAF5';
 const WARM_MID = '#FFF4E8';
 const NAVY_PANEL = '#FFFFFF';
@@ -276,21 +276,21 @@ function Page() {
         },
       );
       if (!response.ok) {
-        throw new Error('배경을 제거하지 못했어요. 다시 시도해 주세요.');
+        throw new Error('배경을 지우지 못했어요. 다시 시도해 주세요.');
       }
       const data = await response.json() as RemoveBackgroundResponse;
       if (typeof data.dataUrl !== 'string') {
-        throw new Error('배경 제거 결과를 확인하지 못했어요. 다시 시도해 주세요.');
+        throw new Error('배경 지우기 결과를 확인하지 못했어요. 다시 시도해 주세요.');
       }
       trackEvent('generate_remove_background_success');
       setResultUrl(data.dataUrl);
-      setSuccessMessage('✓ 배경을 제거했어요!');
+      setSuccessMessage('✓ 배경을 지웠어요!');
       setTimeout(() => setSuccessMessage(''), 3000);
     } catch (err) {
       trackEvent('generate_remove_background_failed', {
         reason: err instanceof Error ? err.message : 'unknown',
       });
-      setError(err instanceof Error ? err.message : '배경을 제거하지 못했어요. 다시 시도해 주세요.');
+      setError(err instanceof Error ? err.message : '배경을 지우지 못했어요. 다시 시도해 주세요.');
     } finally {
       setRemovingBg(false);
     }
@@ -337,7 +337,7 @@ function Page() {
               </Card>
             </View>
             <SecondaryButton
-              label={removingBg ? '배경 제거하고 있어요...' : '배경 제거하기'}
+              label={removingBg ? '배경을 지우는 중이에요...' : '배경 지우기'}
               onPress={handleRemoveBackground}
               disabled={removingBg}
               style={styles.bgRemoveButton}
@@ -486,7 +486,7 @@ function Page() {
       />
       <FullScreenLoader
         visible={removingBg}
-        message="배경을 제거하고 있어요..."
+        message="배경을 지우는 중이에요..."
       />
     </>
   );
@@ -557,7 +557,7 @@ const styles = StyleSheet.create({
   helperText: {
     fontSize: 12,
     lineHeight: 18,
-    color: '#A0907E',
+    color: '#7A6B5D',
     marginTop: theme.spacing.sm,
     marginBottom: theme.spacing.lg,
   },
@@ -624,7 +624,7 @@ const styles = StyleSheet.create({
   resultPlaceholder: {
     fontSize: 12,
     lineHeight: 18,
-    color: '#A0907E',
+    color: '#7A6B5D',
     textAlign: 'center',
     paddingHorizontal: theme.spacing.md,
   },

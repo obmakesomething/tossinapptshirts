@@ -208,7 +208,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,244,232,0.92)',
     borderRadius: theme.radius.sm,
     borderLeftWidth: 4,
-    borderLeftColor: '#3182F6',
+    borderLeftColor: '#2A6ED4',
   },
   sectionTitle: {
     fontSize: 16,
@@ -231,7 +231,7 @@ const styles = StyleSheet.create({
   footer: {
     fontSize: 12,
     lineHeight: 18,
-    color: '#A0907E',
+    color: '#7A6B5D',
     marginTop: theme.spacing.xl,
     textAlign: 'center',
   },
