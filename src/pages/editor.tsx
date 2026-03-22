@@ -487,6 +487,8 @@ function Page() {
           scrollEnabled
           showsVerticalScrollIndicator
           nestedScrollEnabled
+          bounces={false}
+          keyboardShouldPersistTaps="handled"
         >
           {/* ── 탭 0: 텍스트 ── */}
           {editorTab === 0 && (
@@ -1202,7 +1204,6 @@ const styles = StyleSheet.create({
   /* ── Bottom Panel ── */
   panel: {
     flexShrink: 0,
-    overflow: 'hidden',
     backgroundColor: PANEL_BG,
     borderTopLeftRadius: theme.radius.xl,
     borderTopRightRadius: theme.radius.xl,
@@ -1268,11 +1269,13 @@ const styles = StyleSheet.create({
   },
   panelScroll: {
     flex: 1,
+    minHeight: 0,
   },
   panelContent: {
     paddingHorizontal: theme.spacing.md,
     paddingTop: theme.spacing.md,
-    paddingBottom: 80,
+    paddingBottom: 120,
+    flexGrow: 1,
   },
 
   /* ── Layer tab ── */
