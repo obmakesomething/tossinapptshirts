@@ -39,7 +39,10 @@ const ACCENT = '#3182F6';
 const WARM_MID = '#FFF4E8';
 const PANEL_BG = '#FFFFFF';
 const EDITOR_HEADER_RESERVED = 100;
-const DEFAULT_STAGE_ZOOM = 1;
+const DEFAULT_STAGE_ZOOM = 1.3;
+const MIN_STAGE_ZOOM = 0.6;
+const MAX_STAGE_ZOOM = 3.0;
+const ZOOM_STEP = 0.2;
 const CANVAS_AREA_HORIZONTAL_PADDING = 16 * 2;
 const CANVAS_FRAME_HORIZONTAL_PADDING = 8 * 2;
 const CANVAS_FRAME_VERTICAL_PADDING = 12 * 2;
@@ -428,6 +431,24 @@ function Page() {
                 선택 레이어: {activeLayer === 'text' ? '텍스트' : '이미지'}
               </Text>
             </View>
+          </View>
+          {/* ── 줌 컨트롤 ── */}
+          <View style={styles.zoomControls} pointerEvents="box-none">
+            <Pressable
+              style={[styles.zoomButton, stageZoom >= MAX_STAGE_ZOOM && styles.zoomButtonDisabled]}
+              onPress={() => setStageZoom((z) => Math.min(MAX_STAGE_ZOOM, +(z + ZOOM_STEP).toFixed(1)))}
+              disabled={stageZoom >= MAX_STAGE_ZOOM}
+            >
+              <Text style={styles.zoomButtonText}>＋</Text>
+            </Pressable>
+            <Text style={styles.zoomLabel}>{Math.round(stageZoom * 100)}%</Text>
+            <Pressable
+              style={[styles.zoomButton, stageZoom <= MIN_STAGE_ZOOM && styles.zoomButtonDisabled]}
+              onPress={() => setStageZoom((z) => Math.max(MIN_STAGE_ZOOM, +(z - ZOOM_STEP).toFixed(1)))}
+              disabled={stageZoom <= MIN_STAGE_ZOOM}
+            >
+              <Text style={styles.zoomButtonText}>－</Text>
+            </Pressable>
           </View>
           <Pressable
             style={[
@@ -1177,6 +1198,45 @@ const styles = StyleSheet.create({
   },
   focusButtonTextActive: {
     color: '#2E231B',
+  },
+
+  /* ── Zoom Controls ── */
+  zoomControls: {
+    position: 'absolute',
+    right: 10,
+    bottom: 10,
+    zIndex: 5,
+    alignItems: 'center',
+    gap: 4,
+  },
+  zoomButton: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: 'rgba(255,255,255,0.95)',
+    borderWidth: 1,
+    borderColor: 'rgba(240,223,207,0.92)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 1 },
+    elevation: 2,
+  },
+  zoomButtonDisabled: {
+    opacity: 0.35,
+  },
+  zoomButtonText: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#5A4637',
+    lineHeight: 20,
+  },
+  zoomLabel: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: '#A0907E',
   },
 
   /* ── Canvas Info ── */
