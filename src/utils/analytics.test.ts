@@ -12,7 +12,7 @@ describe('analytics naming', () => {
     mockedEventLog.mockClear();
   });
 
-  it('appends today date to click event name and all param keys', () => {
+  it('keeps click event names and param keys stable, with the date as a param', () => {
     trackClick('home_primary_cta_click', {
       product_id: 'p-001',
       amount: 10000,
@@ -20,32 +20,34 @@ describe('analytics naming', () => {
 
     expect(mockedEventLog).toHaveBeenCalledWith(
       expect.objectContaining({
-        log_name: 'home_primary_cta_click_20260321',
+        log_name: 'home_primary_cta_click',
         log_type: 'click',
         params: expect.objectContaining({
-          screen_id_20260321: 'home',
-          session_id_20260321: expect.any(String),
-          app_platform_20260321: 'toss_webview',
-          product_id_20260321: 'p-001',
-          amount_20260321: 10000,
+          screen_id: 'home',
+          session_id: expect.any(String),
+          app_platform: 'toss_webview',
+          product_id: 'p-001',
+          amount: 10000,
+          event_time: expect.any(String),
+          tracked_at: expect.any(String),
         }),
       }),
     );
   });
 
-  it('appends today date to screen event name and built-in params', () => {
+  it('keeps screen event names and built-in params stable', () => {
     trackScreenView('home', { entry: 'root' });
 
     expect(mockedEventLog).toHaveBeenCalledWith(
       expect.objectContaining({
-        log_name: 'home_screen_view_20260321',
+        log_name: 'home_screen_view',
         log_type: 'screen',
         params: expect.objectContaining({
-          screen_id_20260321: 'home',
-          session_id_20260321: expect.any(String),
-          app_platform_20260321: 'toss_webview',
-          screen_name_20260321: 'home',
-          entry_20260321: 'root',
+          screen_id: 'home',
+          session_id: expect.any(String),
+          app_platform: 'toss_webview',
+          screen_name: 'home',
+          entry: 'root',
         }),
       }),
     );

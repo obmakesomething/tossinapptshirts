@@ -9,7 +9,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { Card, PrimaryButton, SecondaryButton, theme } from './ui';
+import { Card, CloseIcon, PrimaryButton, SecondaryButton, theme } from './ui';
 import { API_BASE_URL } from '../config';
 
 type InquiryModalProps = {
@@ -91,7 +91,7 @@ export function InquiryModal({ visible, onClose }: InquiryModalProps) {
         <View style={styles.header}>
           <Text style={styles.headerTitle}>1대1 문의</Text>
           <Pressable onPress={handleClose} disabled={submitting}>
-            <Text style={styles.closeButton}>✕</Text>
+            <CloseIcon size={16} />
           </Pressable>
         </View>
 

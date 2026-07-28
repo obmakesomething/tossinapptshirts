@@ -31,10 +31,10 @@ import {
   trackScreenView,
 } from '../utils/analytics';
 
-const ORANGE_RED = '#2A6ED4';
-const WARM_DEEP = '#FFFAF5';
-const WARM_MID = '#FFF4E8';
-const NAVY_PANEL = '#FFFFFF';
+const ACCENT = '#1B64DA';
+const PAGE_BG = '#F2F4F6';
+const FILL_SOFT = '#F2F4F6';
+const PANEL = '#FFFFFF';
 
 export const Route = createRoute('/upload', {
   component: Page,
@@ -90,7 +90,7 @@ function Page() {
       case 'loading':
         return { backgroundColor: theme.colors.textSecondary };
       case 'success':
-        return { backgroundColor: '#52C41A' }; // Green
+        return { backgroundColor: '#0F8A5F' }; // Green
       case 'error':
         return { backgroundColor: theme.colors.error };
       default:
@@ -318,8 +318,6 @@ function Page() {
   return (
   <>
     <Screen contentStyle={styles.screenContent}>
-      <View style={styles.bgOrbTop} />
-      <View style={styles.bgOrbBottom} />
       <PageHeader title="사진 편집 시작" onBack={() => navigation.goBack()} />
 
       <Text style={styles.title}>먼저 사진을 올려주세요</Text>
@@ -327,7 +325,7 @@ function Page() {
         + 버튼으로 사진을 불러오고 배경 지우기/스타일 변경까지 한 번에 진행할 수 있어요.
       </Text>
       <Text style={styles.cropGuide}>
-        💡 팁: 중앙 피사체가 크게 보이는 사진일수록 인쇄 결과가 더 또렷해요.
+        팁 · 중앙 피사체가 크게 보이는 사진일수록 인쇄 결과가 더 또렷해요.
       </Text>
 
       <Card style={styles.uploadCard}>
@@ -496,26 +494,8 @@ function Page() {
 
 const styles = StyleSheet.create({
   screenContent: {
-    backgroundColor: WARM_DEEP,
+    backgroundColor: PAGE_BG,
     paddingBottom: theme.spacing.xl,
-  },
-  bgOrbTop: {
-    position: 'absolute',
-    top: -100,
-    right: -80,
-    width: 240,
-    height: 240,
-    borderRadius: 120,
-    backgroundColor: 'rgba(255,186,132,0.32)',
-  },
-  bgOrbBottom: {
-    position: 'absolute',
-    bottom: 10,
-    left: -70,
-    width: 220,
-    height: 220,
-    borderRadius: 110,
-    backgroundColor: 'rgba(255,221,186,0.42)',
   },
   headerRow: {
     flexDirection: 'row',
@@ -525,39 +505,39 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     fontSize: 20,
-    fontWeight: '800',
-    color: '#2E231B',
+    fontWeight: '700',
+    color: '#191F28',
   },
   headerBack: {
     borderRadius: 999,
     borderWidth: 1,
-    borderColor: 'rgba(240,223,207,0.92)',
-    backgroundColor: 'rgba(255,244,232,0.92)',
+    borderColor: '#E5E8EB',
+    backgroundColor: '#F2F4F6',
     paddingVertical: 6,
     paddingHorizontal: 12,
   },
   headerBackText: {
     fontSize: 12,
-    color: '#7C6959',
+    color: '#4E5968',
     fontWeight: '700',
   },
   title: {
     ...theme.typography.heading,
-    color: '#2E231B',
+    color: '#191F28',
     marginBottom: theme.spacing.xs,
   },
   subtitle: {
     ...theme.typography.body,
-    color: '#7C6959',
+    color: '#4E5968',
     marginBottom: theme.spacing.xs,
   },
   cropGuide: {
     fontSize: 12,
     lineHeight: 18,
-    color: '#7C6959',
-    backgroundColor: 'rgba(255,244,232,0.92)',
+    color: '#4E5968',
+    backgroundColor: '#F2F4F6',
     borderWidth: 1,
-    borderColor: 'rgba(240,223,207,0.92)',
+    borderColor: '#E5E8EB',
     padding: theme.spacing.sm,
     borderRadius: theme.radius.sm,
     marginBottom: theme.spacing.lg,
@@ -565,22 +545,20 @@ const styles = StyleSheet.create({
   uploadCard: {
     alignItems: 'center',
     marginBottom: theme.spacing.lg,
-    backgroundColor: NAVY_PANEL,
-    borderColor: 'rgba(240,223,207,0.92)',
-    borderWidth: 1,
-    shadowColor: '#5F320E',
-    shadowOpacity: 0.28,
-    shadowRadius: 16,
-    shadowOffset: { width: 0, height: 10 },
+    backgroundColor: PANEL,
+    shadowColor: '#191F28',
+    shadowOpacity: 0.05,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 3 },
     elevation: 7,
   },
   uploadPreview: {
     width: '100%',
     height: 280,
     borderRadius: theme.radius.md,
-    backgroundColor: WARM_MID,
+    backgroundColor: FILL_SOFT,
     borderWidth: 1,
-    borderColor: 'rgba(240,223,207,0.92)',
+    borderColor: '#E5E8EB',
     marginBottom: theme.spacing.md,
     alignItems: 'center',
     justifyContent: 'center',
@@ -593,7 +571,7 @@ const styles = StyleSheet.create({
     fontSize: 36,
     lineHeight: 44,
     fontWeight: '700',
-    color: ORANGE_RED,
+    color: ACCENT,
     marginBottom: theme.spacing.xs,
   },
   previewImage: {
@@ -604,7 +582,7 @@ const styles = StyleSheet.create({
   previewText: {
     fontSize: 12,
     lineHeight: 18,
-    color: '#7C6959',
+    color: '#4E5968',
   },
   loadingRow: {
     flexDirection: 'row',
@@ -614,31 +592,31 @@ const styles = StyleSheet.create({
   loadingText: {
     fontSize: 12,
     lineHeight: 18,
-    color: '#7C6959',
+    color: '#4E5968',
     marginLeft: theme.spacing.sm,
   },
   errorText: {
     fontSize: 12,
     lineHeight: 18,
-    color: '#ffb8b8',
+    color: '#F7C6CB',
     marginBottom: theme.spacing.sm,
   },
   successText: {
     fontSize: 12,
     lineHeight: 18,
-    color: '#8ee0b2',
+    color: '#B5E6D0',
     marginBottom: theme.spacing.sm,
     fontWeight: '600',
   },
   bgRemoveButton: {
     marginTop: theme.spacing.md,
     width: '100%',
-    backgroundColor: ORANGE_RED,
+    backgroundColor: ACCENT,
   },
   styleButton: {
     marginTop: theme.spacing.sm,
     width: '100%',
-    backgroundColor: 'rgba(240,223,207,0.92)',
+    backgroundColor: '#E5E8EB',
   },
   undoRow: {
     width: '100%',
@@ -648,8 +626,8 @@ const styles = StyleSheet.create({
   undoButton: {
     borderRadius: 999,
     borderWidth: 1,
-    borderColor: 'rgba(240,223,207,0.92)',
-    backgroundColor: 'rgba(255,244,232,0.92)',
+    borderColor: '#E5E8EB',
+    backgroundColor: '#F2F4F6',
     paddingHorizontal: 12,
     paddingVertical: 8,
   },
@@ -663,10 +641,10 @@ const styles = StyleSheet.create({
     fontSize: 12,
     lineHeight: 18,
     fontWeight: '700',
-    color: ORANGE_RED,
+    color: ACCENT,
   },
   disabledToolButton: {
-    backgroundColor: 'rgba(255,244,232,0.92)',
+    backgroundColor: '#F2F4F6',
   },
   modalOverlay: {
     flex: 1,
@@ -707,7 +685,7 @@ const styles = StyleSheet.create({
   },
   modalCancelButton: {
     marginTop: theme.spacing.sm,
-    backgroundColor: '#FFF4E8',
+    backgroundColor: '#F2F4F6',
   },
   actionRow: {
     marginTop: theme.spacing.md,
@@ -717,13 +695,11 @@ const styles = StyleSheet.create({
   quickFaqCard: {
     marginTop: theme.spacing.md,
     marginBottom: theme.spacing.md,
-    backgroundColor: NAVY_PANEL,
-    borderColor: 'rgba(240,223,207,0.92)',
-    borderWidth: 1,
+    backgroundColor: PANEL,
   },
   quickFaqTitle: {
     ...theme.typography.subheading,
-    color: '#2E231B',
+    color: '#191F28',
     marginBottom: theme.spacing.sm,
   },
   quickFaqRow: {
@@ -736,7 +712,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
     lineHeight: 18,
     fontWeight: '700',
-    color: ORANGE_RED,
+    color: ACCENT,
     marginTop: 1,
   },
   quickFaqBody: {
@@ -745,16 +721,16 @@ const styles = StyleSheet.create({
   quickFaqQuestion: {
     fontSize: 12,
     lineHeight: 18,
-    color: '#2E231B',
+    color: '#191F28',
     fontWeight: '600',
   },
   quickFaqAnswer: {
     fontSize: 12,
     lineHeight: 18,
-    color: '#7C6959',
+    color: '#4E5968',
     marginTop: 2,
   },
   nextButton: {
-    backgroundColor: ORANGE_RED,
+    backgroundColor: ACCENT,
   },
 });

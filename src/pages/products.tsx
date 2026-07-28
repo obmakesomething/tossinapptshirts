@@ -13,8 +13,8 @@ import { useCatalog } from '../context/catalog';
 import { resolveColorValue } from '../data/colorMap';
 import { trackClick, trackScreenView } from '../utils/analytics';
 
-const ACCENT = '#2A6ED4';
-const WARM_MID = '#FFF4E8';
+const ACCENT = '#1B64DA';
+const FILL_SOFT = '#F2F4F6';
 
 export const Route = createRoute('/products', {
   component: Page,
@@ -163,25 +163,25 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     fontSize: 20,
-    fontWeight: '800',
-    color: '#2E231B',
+    fontWeight: '700',
+    color: '#191F28',
   },
   headerBack: {
     borderRadius: 999,
     borderWidth: 1,
-    borderColor: 'rgba(240,223,207,0.92)',
-    backgroundColor: 'rgba(255,244,232,0.92)',
+    borderColor: '#E5E8EB',
+    backgroundColor: '#F2F4F6',
     paddingVertical: 6,
     paddingHorizontal: 12,
   },
   headerBackText: {
     fontSize: 12,
-    color: '#7C6959',
+    color: '#4E5968',
     fontWeight: '700',
   },
   subtitle: {
     ...theme.typography.body,
-    color: '#7C6959',
+    color: '#4E5968',
     marginBottom: theme.spacing.lg,
   },
   list: {},
@@ -190,7 +190,7 @@ const styles = StyleSheet.create({
   },
   categoryTitle: {
     ...theme.typography.subheading,
-    color: '#2E231B',
+    color: '#191F28',
     marginBottom: theme.spacing.sm,
   },
   cardPressable: {
@@ -200,17 +200,15 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#FFFFFF',
-    borderColor: 'rgba(240,223,207,0.92)',
-    borderWidth: 1,
-    shadowColor: '#5F320E',
-    shadowOpacity: 0.16,
-    shadowRadius: 14,
-    shadowOffset: { width: 0, height: 8 },
+    shadowColor: '#191F28',
+    shadowOpacity: 0.05,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 3 },
     elevation: 6,
   },
   cardSelected: {
     borderColor: ACCENT,
-    backgroundColor: WARM_MID,
+    backgroundColor: FILL_SOFT,
   },
   cardExpanded: {
     borderColor: ACCENT,
@@ -221,24 +219,24 @@ const styles = StyleSheet.create({
     borderRadius: theme.radius.md,
     marginRight: theme.spacing.md,
     backgroundColor: '#FFFFFF',
-    shadowColor: '#5F320E',
-    shadowOpacity: 0.24,
+    shadowColor: '#191F28',
+    shadowOpacity: 0.12,
     shadowRadius: 12,
     shadowOffset: { width: 0, height: 6 },
     elevation: 8,
   },
   colorSection: {
     padding: theme.spacing.md,
-    backgroundColor: WARM_MID,
+    backgroundColor: FILL_SOFT,
     borderRadius: theme.radius.md,
     marginTop: theme.spacing.sm,
     borderWidth: 1,
-    borderColor: 'rgba(240,223,207,0.92)',
+    borderColor: '#E5E8EB',
   },
   colorTitle: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#2E231B',
+    color: '#191F28',
     lineHeight: 20,
     marginBottom: theme.spacing.sm,
   },
@@ -256,11 +254,11 @@ const styles = StyleSheet.create({
   },
   cardTitle: {
     ...theme.typography.subheading,
-    color: '#2E231B',
+    color: '#191F28',
     marginBottom: theme.spacing.xs,
   },
   cardMeta: {
     ...theme.typography.caption,
-    color: '#7C6959',
+    color: '#4E5968',
   },
 });

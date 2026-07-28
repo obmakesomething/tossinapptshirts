@@ -188,21 +188,21 @@ export function MockupCanvas({
 
 const styles = StyleSheet.create({
   container: {
-    borderRadius: 18,
+    borderRadius: 16,
     overflow: 'hidden',
     backgroundColor: theme.colors.surface,
     borderWidth: 1,
     borderColor: theme.colors.border,
-    shadowColor: '#5F320E',
-    shadowOpacity: 0.14,
-    shadowRadius: 14,
-    shadowOffset: { width: 0, height: 8 },
+    shadowColor: '#191F28',
+    shadowOpacity: 0.05,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 3 },
     elevation: 6,
   },
   image: {
     ...StyleSheet.absoluteFillObject,
-    shadowColor: '#5F320E',
-    shadowOpacity: 0.20,
+    shadowColor: '#191F28',
+    shadowOpacity: 0.14,
     shadowRadius: 16,
     shadowOffset: { width: 0, height: 10 },
   },

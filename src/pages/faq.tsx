@@ -1,5 +1,5 @@
 import { createRoute } from '@granite-js/react-native';
-import React, { useRef, useState } from 'react';
+import React, { useState } from 'react';
 import {
   Pressable,
   ScrollView,
@@ -7,12 +7,12 @@ import {
   Text,
   View,
 } from 'react-native';
-import { Card, PageHeader, Screen, theme } from '../components/ui';
+import { Card, Chevron, Chip, PageHeader, Screen, theme } from '../components/ui';
 import { faqCategories, faqItems } from '../data/faq';
 
-const ORANGE_RED = '#2A6ED4';
-const WARM_DEEP = '#FFFAF5';
-const NAVY_PANEL = '#FFFFFF';
+const ACCENT = '#1B64DA';
+const PAGE_BG = '#F2F4F6';
+const PANEL = '#FFFFFF';
 
 export const Route = createRoute('/faq', {
   component: Page,
@@ -22,303 +22,186 @@ function Page() {
   const navigation = Route.useNavigation();
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
-  const scrollViewRef = useRef<ScrollView>(null);
-  const categoryRefs = useRef<{ [key: string]: number }>({});
 
   const toggleExpand = (id: string) => {
     setExpandedId(expandedId === id ? null : id);
   };
 
-  const scrollToCategory = (categoryId: string) => {
-    setSelectedCategory(categoryId);
-    if (categoryId === 'all') {
-      scrollViewRef.current?.scrollTo({ y: 0, animated: true });
-    } else {
-      const yOffset = categoryRefs.current[categoryId];
-      if (yOffset !== undefined) {
-        scrollViewRef.current?.scrollTo({ y: yOffset - 10, animated: true });
-      }
-    }
-  };
-
-  const handleLayout = (categoryId: string, y: number) => {
-    categoryRefs.current[categoryId] = y;
-  };
-
-  const filteredItems =
+  /**
+   * Categories filter the list in place — the page keeps a single scroll
+   * container so the list never scrolls inside another scroll view.
+   */
+  const groupedItems =
     selectedCategory === 'all'
-      ? faqItems
-      : faqItems.filter((item) => item.category === selectedCategory);
-
-  const groupedItems = selectedCategory === 'all'
-    ? faqCategories.map((cat) => ({
-      ...cat,
-      items: faqItems.filter((item) => item.category === cat.id),
-    }))
-    : [
-      {
-        ...faqCategories.find((c) => c.id === selectedCategory)!,
-        items: filteredItems,
-      },
-    ];
+      ? faqCategories.map((cat) => ({
+          ...cat,
+          items: faqItems.filter((item) => item.category === cat.id),
+        }))
+      : faqCategories
+          .filter((cat) => cat.id === selectedCategory)
+          .map((cat) => ({
+            ...cat,
+            items: faqItems.filter((item) => item.category === cat.id),
+          }));
 
   return (
     <Screen contentStyle={styles.screenContent}>
-      <PageHeader title="자주 묻는 질문" onBack={() => navigation.goBack()} />
+      <PageHeader
+        title="자주 묻는 질문"
+        subtitle="제작부터 배송까지 궁금한 점을 모았어요"
+        onBack={() => navigation.goBack()}
+      />
 
-      <Text style={styles.subtitle}>
-        찾으시는 내용이 있으신가요?
-      </Text>
-
-      {/* Category Navigation Buttons */}
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
         style={styles.categoryScroll}
         contentContainerStyle={styles.categoryScrollContent}
       >
-        <Pressable
-          style={[
-            styles.categoryChip,
-            selectedCategory === 'all' && styles.categoryChipActive,
-          ]}
-          onPress={() => scrollToCategory('all')}
-        >
-          <Text
-            style={[
-              styles.categoryText,
-              selectedCategory === 'all' && styles.categoryTextActive,
-            ]}
-          >
-            전체
-          </Text>
-        </Pressable>
+        <Chip
+          label="전체"
+          selected={selectedCategory === 'all'}
+          onPress={() => setSelectedCategory('all')}
+          style={styles.categoryChip}
+        />
         {faqCategories.map((category) => (
-          <Pressable
+          <Chip
             key={category.id}
-            style={[
-              styles.categoryChip,
-              selectedCategory === category.id && styles.categoryChipActive,
-            ]}
-            onPress={() => scrollToCategory(category.id)}
-          >
-            <Text
-              style={[
-                styles.categoryText,
-                selectedCategory === category.id && styles.categoryTextActive,
-              ]}
-            >
-              {category.icon} {category.title}
-            </Text>
-          </Pressable>
+            label={category.title}
+            selected={selectedCategory === category.id}
+            onPress={() => setSelectedCategory(category.id)}
+            style={styles.categoryChip}
+          />
         ))}
       </ScrollView>
 
-      {/* FAQ Content */}
-      <ScrollView
-        ref={scrollViewRef}
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContent}
-      >
-        {groupedItems.map((group) => (
-          <View
-            key={group.id}
-            onLayout={(e) => handleLayout(group.id, e.nativeEvent.layout.y)}
-          >
-            {/* Category Header */}
-            <View style={styles.categoryHeader}>
-              <Text style={styles.categoryHeaderIcon}>{group.icon}</Text>
-              <Text style={styles.categoryHeaderTitle}>{group.title}</Text>
-              <Text style={styles.categoryCount}>{group.items.length}개</Text>
-            </View>
-
-            {/* FAQ Items grouped in one card */}
-            <Card style={styles.faqCard}>
-              {group.items.map((item, idx) => {
-                const isExpanded = expandedId === item.id;
-                const isLast = idx === group.items.length - 1;
-                return (
-                  <View key={item.id}>
-                    <Pressable onPress={() => toggleExpand(item.id)} style={styles.faqItem}>
-                      <View style={styles.questionRow}>
-                        <Text style={styles.qLabel}>Q</Text>
-                        <Text style={styles.questionText}>{item.question}</Text>
-                        <Text style={styles.expandIcon}>
-                          {isExpanded ? '−' : '+'}
-                        </Text>
-                      </View>
-                      {isExpanded && (
-                        <View style={styles.answerRow}>
-                          <Text style={styles.aLabel}>A</Text>
-                          <Text style={styles.answerText}>{item.answer}</Text>
-                        </View>
-                      )}
-                    </Pressable>
-                    {!isLast && <View style={styles.faqDivider} />}
-                  </View>
-                );
-              })}
-            </Card>
+      {groupedItems.map((group) => (
+        <View key={group.id}>
+          <View style={styles.categoryHeader}>
+            <Text style={styles.categoryHeaderTitle}>{group.title}</Text>
+            <Text style={styles.categoryCount}>{group.items.length}</Text>
           </View>
-        ))}
 
-        {/* Bottom Padding */}
-        <View style={styles.bottomPadding} />
-      </ScrollView>
+          <Card style={styles.faqCard}>
+            {group.items.map((item, idx) => {
+              const isExpanded = expandedId === item.id;
+              const isLast = idx === group.items.length - 1;
+              return (
+                <View key={item.id}>
+                  <Pressable
+                    onPress={() => toggleExpand(item.id)}
+                    style={({ pressed }) => [styles.faqItem, pressed && styles.faqItemPressed]}
+                    accessibilityRole="button"
+                    accessibilityState={{ expanded: isExpanded }}
+                  >
+                    <View style={styles.questionRow}>
+                      <Text style={styles.qLabel}>Q</Text>
+                      <Text style={styles.questionText}>{item.question}</Text>
+                      <View style={styles.expandIcon}>
+                        <Chevron direction={isExpanded ? 'up' : 'down'} size={8} />
+                      </View>
+                    </View>
+                    {isExpanded && (
+                      <View style={styles.answerRow}>
+                        <Text style={styles.aLabel}>A</Text>
+                        <Text style={styles.answerText}>{item.answer}</Text>
+                      </View>
+                    )}
+                  </Pressable>
+                  {!isLast && <View style={styles.faqDivider} />}
+                </View>
+              );
+            })}
+          </Card>
+        </View>
+      ))}
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
   screenContent: {
-    backgroundColor: WARM_DEEP,
-  },
-  headerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: theme.spacing.md,
-  },
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: '800',
-    color: '#2E231B',
-  },
-  headerBack: {
-    borderRadius: 999,
-    borderWidth: 1,
-    borderColor: 'rgba(240,223,207,0.92)',
-    backgroundColor: 'rgba(255,244,232,0.92)',
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-  },
-  headerBackText: {
-    fontSize: 12,
-    color: '#7C6959',
-    fontWeight: '700',
-  },
-  subtitle: {
-    ...theme.typography.body,
-    color: '#7C6959',
-    marginBottom: theme.spacing.md,
+    backgroundColor: PAGE_BG,
   },
   categoryScroll: {
-    maxHeight: 44,
-    marginBottom: theme.spacing.md,
+    marginBottom: theme.spacing.lg,
   },
   categoryScrollContent: {
-    paddingRight: theme.spacing.md,
+    paddingRight: theme.spacing.xl,
     alignItems: 'center',
   },
   categoryChip: {
-    paddingHorizontal: theme.spacing.md,
-    paddingVertical: theme.spacing.sm,
-    borderRadius: 20,
-    backgroundColor: NAVY_PANEL,
-    borderWidth: 1,
-    borderColor: 'rgba(240,223,207,0.92)',
     marginRight: theme.spacing.sm,
-  },
-  categoryChipActive: {
-    backgroundColor: 'rgba(255,80,0,0.2)',
-    borderColor: ORANGE_RED,
-  },
-  categoryText: {
-    fontSize: 13,
-    lineHeight: 18,
-    color: '#7C6959',
-    fontWeight: '500',
-  },
-  categoryTextActive: {
-    color: '#2A6ED4',
-  },
-  scrollContent: {
-    paddingBottom: theme.spacing.xl,
   },
   categoryHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     marginTop: theme.spacing.lg,
-    marginBottom: theme.spacing.sm,
-    paddingBottom: theme.spacing.sm,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(240,223,207,0.92)',
-  },
-  categoryHeaderIcon: {
-    fontSize: 20,
-    marginRight: theme.spacing.sm,
+    marginBottom: theme.spacing.md,
   },
   categoryHeaderTitle: {
-    flex: 1,
-    fontSize: 16,
-    lineHeight: 24,
-    fontWeight: '700',
-    color: '#2E231B',
+    ...theme.typography.subheading,
+    color: theme.colors.textPrimary,
+    marginRight: theme.spacing.sm,
   },
   categoryCount: {
-    fontSize: 12,
-    color: '#7C6959',
-    backgroundColor: 'rgba(255,244,232,0.92)',
-    paddingHorizontal: theme.spacing.sm,
-    paddingVertical: 2,
-    borderRadius: 10,
+    ...theme.typography.label,
+    color: theme.colors.textTertiary,
   },
   faqCard: {
     marginBottom: theme.spacing.md,
-    backgroundColor: NAVY_PANEL,
-    borderColor: 'rgba(240,223,207,0.92)',
-    borderWidth: 1,
+    backgroundColor: PANEL,
+    paddingVertical: theme.spacing.xs,
   },
   faqItem: {
-    paddingVertical: theme.spacing.sm,
+    paddingVertical: theme.spacing.lg,
+  },
+  faqItemPressed: {
+    opacity: 0.6,
   },
   faqDivider: {
     height: 1,
-    backgroundColor: 'rgba(240,223,207,0.92)',
+    backgroundColor: theme.colors.divider,
   },
   questionRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
   },
   qLabel: {
-    ...theme.typography.body,
+    ...theme.typography.bodyStrong,
     fontWeight: '700',
-    color: ORANGE_RED,
-    marginRight: theme.spacing.sm,
+    color: ACCENT,
+    marginRight: theme.spacing.md,
   },
   questionText: {
     flex: 1,
-    ...theme.typography.body,
-    fontWeight: '600',
-    color: '#2E231B',
+    ...theme.typography.bodyStrong,
+    color: theme.colors.textPrimary,
   },
   expandIcon: {
-    fontSize: 20,
-    lineHeight: 22,
-    fontWeight: '300',
-    color: '#7A6B5D',
+    width: 20,
+    height: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
     marginLeft: theme.spacing.sm,
   },
   answerRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    marginTop: theme.spacing.md,
-    paddingTop: theme.spacing.md,
+    marginTop: theme.spacing.lg,
+    paddingTop: theme.spacing.lg,
     borderTopWidth: 1,
-    borderTopColor: 'rgba(240,223,207,0.92)',
+    borderTopColor: theme.colors.divider,
   },
   aLabel: {
-    ...theme.typography.body,
+    ...theme.typography.bodyStrong,
     fontWeight: '700',
-    color: '#7C6959',
-    marginRight: theme.spacing.sm,
+    color: theme.colors.textTertiary,
+    marginRight: theme.spacing.md,
   },
   answerText: {
     flex: 1,
     ...theme.typography.body,
-    color: '#7C6959',
-  },
-  bottomPadding: {
-    height: 40,
+    color: theme.colors.textSecondary,
   },
 });

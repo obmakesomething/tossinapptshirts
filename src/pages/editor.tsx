@@ -17,6 +17,8 @@ import {
 import { DesignStage } from '../components/DesignStage';
 import { ScaleSlider } from '../components/ScaleSlider';
 import {
+  Chevron,
+  CloseIcon,
   PrimaryButton,
   SecondaryButton,
   TabBar,
@@ -35,8 +37,8 @@ import {
   trackScreenView,
 } from '../utils/analytics';
 
-const ACCENT = '#2A6ED4';
-const WARM_MID = '#FFF4E8';
+const ACCENT = '#1B64DA';
+const FILL_SOFT = '#F2F4F6';
 const PANEL_BG = '#FFFFFF';
 const EDITOR_HEADER_RESERVED = 100;
 const DEFAULT_STAGE_ZOOM = 1.3;
@@ -571,7 +573,7 @@ function Page() {
           onPress={() => setPanelExpanded((v) => !v)}
         >
           <Text style={styles.editPanelTitle}>편집하기</Text>
-          <Text style={styles.editPanelToggle}>{panelExpanded ? '▼' : '▲'}</Text>
+          <Chevron direction={panelExpanded ? 'down' : 'up'} size={9} />
         </Pressable>
         <TabBar
           tabs={EDITOR_TABS}
@@ -779,7 +781,7 @@ function Page() {
                               style={styles.photoDeleteBtn}
                               onPress={() => handleDeletePhoto(index)}
                             >
-                              <Text style={styles.photoDeleteText}>✕</Text>
+                              <CloseIcon size={10} color="#FFFFFF" />
                             </Pressable>
                           )}
                           {index === currentPhotoIndex && (
@@ -888,7 +890,7 @@ function Page() {
               <TextInput
                 style={styles.aiPromptInput}
                 placeholder="예) 오렌지 톤 플랫 아이콘 느낌의 볼드 로고"
-                placeholderTextColor="#7A6B5D"
+                placeholderTextColor="#8B95A1"
                 value={aiPrompt}
                 onChangeText={setAiPrompt}
                 multiline
@@ -1020,23 +1022,23 @@ const styles = StyleSheet.create({
   headerIconButton: {
     width: 34,
     height: 34,
-    borderRadius: 11,
+    borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#ECDAC7',
-    backgroundColor: '#FFF9F2',
+    borderColor: '#E5E8EB',
+    backgroundColor: '#F2F4F6',
     alignItems: 'center',
     justifyContent: 'center',
   },
   headerIconText: {
     fontSize: 16,
-    color: '#5A4637',
+    color: '#4E5968',
     fontWeight: '700',
   },
   headerIconDisabled: {
     opacity: 0.35,
   },
   headerIconTextDisabled: {
-    color: '#B0A090',
+    color: '#8B95A1',
   },
   headerActions: {
     flexDirection: 'row',
@@ -1046,11 +1048,11 @@ const styles = StyleSheet.create({
   editorTopTitle: {
     fontSize: 20,
     lineHeight: 28,
-    fontWeight: '800',
+    fontWeight: '700',
     color: theme.colors.textPrimary,
   },
   orderMiniButton: {
-    borderRadius: 11,
+    borderRadius: 12,
     height: 34,
     paddingHorizontal: 11,
     backgroundColor: ACCENT,
@@ -1080,15 +1082,15 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 14,
     fontWeight: '600',
-    color: '#2E231B',
+    color: '#191F28',
   },
   compactChange: {
     paddingHorizontal: theme.spacing.md,
     paddingVertical: theme.spacing.xs,
     borderRadius: 999,
-    backgroundColor: 'rgba(255,244,232,0.92)',
+    backgroundColor: '#F2F4F6',
     borderWidth: 1,
-    borderColor: 'rgba(240,223,207,0.92)',
+    borderColor: '#E5E8EB',
   },
   compactChangeText: {
     fontSize: 12,
@@ -1102,21 +1104,21 @@ const styles = StyleSheet.create({
     marginRight: theme.spacing.xs,
     backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: '#F0DFCF',
+    borderColor: '#E5E8EB',
   },
   compactPreviewText: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#7C6959',
+    color: '#4E5968',
   },
 
   /* ── Placement Segment ── */
   placementSegment: {
     flexDirection: 'row',
-    backgroundColor: WARM_MID,
+    backgroundColor: FILL_SOFT,
     borderRadius: 999,
     borderWidth: 1,
-    borderColor: 'rgba(240,223,207,0.92)',
+    borderColor: '#E5E8EB',
     padding: 2,
     marginBottom: theme.spacing.sm,
   },
@@ -1127,15 +1129,15 @@ const styles = StyleSheet.create({
     borderRadius: 999,
   },
   segmentButtonActive: {
-    backgroundColor: 'rgba(240,223,207,0.92)',
+    backgroundColor: '#E5E8EB',
   },
   segmentButtonText: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#7C6959',
+    color: '#4E5968',
   },
   segmentButtonTextActive: {
-    color: '#2E231B',
+    color: '#191F28',
   },
 
   /* ── Canvas ── */
@@ -1166,8 +1168,8 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-start',
     borderRadius: 999,
     borderWidth: 1,
-    borderColor: 'rgba(236,220,202,0.95)',
-    backgroundColor: 'rgba(255,249,242,0.96)',
+    borderColor: '#E5E8EB',
+    backgroundColor: '#FFFFFF',
     paddingHorizontal: 10,
     paddingVertical: 5,
     marginBottom: 8,
@@ -1175,7 +1177,7 @@ const styles = StyleSheet.create({
   canvasStateText: {
     fontSize: 11,
     lineHeight: 15,
-    color: '#5F4A3B',
+    color: '#4E5968',
     fontWeight: '700',
   },
   canvasOutsideActions: {
@@ -1188,7 +1190,7 @@ const styles = StyleSheet.create({
     minHeight: 34,
     borderRadius: 999,
     borderWidth: 1,
-    borderColor: '#F0DFCF',
+    borderColor: '#E5E8EB',
     backgroundColor: '#FFFFFF',
     alignItems: 'center',
     justifyContent: 'center',
@@ -1215,24 +1217,24 @@ const styles = StyleSheet.create({
   activeLayerBadge: {
     borderRadius: 999,
     borderWidth: 1,
-    borderColor: 'rgba(255,244,232,0.92)',
-    backgroundColor: 'rgba(255,244,232,0.92)',
+    borderColor: '#F2F4F6',
+    backgroundColor: '#F2F4F6',
     paddingVertical: 4,
     paddingHorizontal: 10,
   },
   activeLayerBadgeText: {
     fontSize: 11,
     lineHeight: 16,
-    color: '#7C6959',
+    color: '#4E5968',
     fontWeight: '700',
   },
   canvasFrame: {
     position: 'relative',
     width: '100%',
-    borderRadius: 18,
+    borderRadius: 16,
     borderWidth: 1,
-    borderColor: '#F1DFCD',
-    backgroundColor: '#FFF8F0',
+    borderColor: '#E5E8EB',
+    backgroundColor: '#F2F4F6',
     paddingVertical: 18,
     paddingHorizontal: 10,
     alignItems: 'center',
@@ -1240,21 +1242,21 @@ const styles = StyleSheet.create({
   },
   canvasWorkspaceGrid: {
     ...StyleSheet.absoluteFillObject,
-    borderRadius: 18,
+    borderRadius: 16,
   },
   canvasWorkspaceGridLineH: {
     position: 'absolute',
     left: 0,
     right: 0,
     height: 1,
-    backgroundColor: 'rgba(95, 50, 14, 0.08)',
+    backgroundColor: 'rgba(25, 31, 40, 0.06)',
   },
   canvasWorkspaceGridLineV: {
     position: 'absolute',
     top: 0,
     bottom: 0,
     width: 1,
-    backgroundColor: 'rgba(95, 50, 14, 0.08)',
+    backgroundColor: 'rgba(25, 31, 40, 0.06)',
   },
   canvasClip: {
     overflow: 'visible',
@@ -1272,9 +1274,9 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: 'rgba(255,244,232,0.92)',
+    backgroundColor: '#F2F4F6',
     borderWidth: 1,
-    borderColor: 'rgba(240,223,207,0.92)',
+    borderColor: '#E5E8EB',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -1293,20 +1295,20 @@ const styles = StyleSheet.create({
     paddingVertical: theme.spacing.xs,
     borderRadius: 999,
     borderWidth: 1,
-    borderColor: 'rgba(255,244,232,0.92)',
-    backgroundColor: 'rgba(255,244,232,0.92)',
+    borderColor: '#F2F4F6',
+    backgroundColor: '#F2F4F6',
   },
   focusButtonActive: {
-    borderColor: 'rgba(240,223,207,0.92)',
-    backgroundColor: 'rgba(255,244,232,0.92)',
+    borderColor: '#E5E8EB',
+    backgroundColor: '#F2F4F6',
   },
   focusButtonText: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#7C6959',
+    color: '#4E5968',
   },
   focusButtonTextActive: {
-    color: '#2E231B',
+    color: '#191F28',
   },
 
   /* ── Zoom Controls ── */
@@ -1321,10 +1323,10 @@ const styles = StyleSheet.create({
   zoomButton: {
     width: 34,
     height: 34,
-    borderRadius: 17,
+    borderRadius: 16,
     backgroundColor: 'rgba(255,255,255,0.95)',
     borderWidth: 1,
-    borderColor: 'rgba(240,223,207,0.92)',
+    borderColor: '#E5E8EB',
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: '#000',
@@ -1339,13 +1341,13 @@ const styles = StyleSheet.create({
   zoomButtonText: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#5A4637',
+    color: '#4E5968',
     lineHeight: 20,
   },
   zoomLabel: {
     fontSize: 10,
     fontWeight: '600',
-    color: '#7A6B5D',
+    color: '#8B95A1',
   },
 
   /* ── Canvas Info ── */
@@ -1358,7 +1360,7 @@ const styles = StyleSheet.create({
   },
   canvasInfoText: {
     fontSize: 11,
-    color: '#7A6B5D',
+    color: '#8B95A1',
   },
   canvasInfoWarn: {
     fontSize: 11,
@@ -1366,7 +1368,7 @@ const styles = StyleSheet.create({
   },
   fullScreenFocusBackdrop: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(46, 35, 27, 0.62)',
+    backgroundColor: 'rgba(25, 31, 40, 0.5)',
     zIndex: 60,
   },
 
@@ -1377,7 +1379,7 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: theme.radius.xl,
     borderTopRightRadius: theme.radius.xl,
     borderTopWidth: 1,
-    borderTopColor: 'rgba(240,223,207,0.92)',
+    borderTopColor: '#E5E8EB',
     marginTop: theme.spacing.sm,
   },
   editPanelHeader: {
@@ -1388,18 +1390,18 @@ const styles = StyleSheet.create({
     paddingBottom: theme.spacing.xs,
     paddingHorizontal: theme.spacing.md,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(240,223,207,0.92)',
-    backgroundColor: '#FFFDF9',
+    borderBottomColor: '#E5E8EB',
+    backgroundColor: '#FFFFFF',
   },
   editPanelTitle: {
     fontSize: 14,
     lineHeight: 20,
     fontWeight: '700',
-    color: '#5A4637',
+    color: '#4E5968',
   },
   editPanelToggle: {
     fontSize: 12,
-    color: '#7A6B5D',
+    color: '#8B95A1',
     fontWeight: '600',
   },
   panelExpanded: {
@@ -1415,13 +1417,13 @@ const styles = StyleSheet.create({
     width: 40,
     height: 4,
     borderRadius: 2,
-    backgroundColor: 'rgba(240,223,207,0.92)',
+    backgroundColor: '#E5E8EB',
     marginBottom: theme.spacing.xs,
   },
   dragHint: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#7C6959',
+    color: '#4E5968',
   },
   outOfBoundsInfo: {
     backgroundColor: theme.colors.surface,
@@ -1460,7 +1462,7 @@ const styles = StyleSheet.create({
     marginBottom: theme.spacing.md,
     paddingBottom: theme.spacing.md,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(240,223,207,0.92)',
+    borderBottomColor: '#E5E8EB',
   },
   textActionRow: {
     flexDirection: 'row',
@@ -1476,13 +1478,13 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     ...theme.typography.subheading,
-    color: '#2E231B',
+    color: '#191F28',
     marginBottom: theme.spacing.sm,
   },
   sectionHint: {
     fontSize: 13,
     lineHeight: 20,
-    color: '#7C6959',
+    color: '#4E5968',
     marginBottom: theme.spacing.md,
   },
 
@@ -1490,7 +1492,7 @@ const styles = StyleSheet.create({
   transformHint: {
     fontSize: 13,
     lineHeight: 20,
-    color: '#7C6959',
+    color: '#4E5968',
     marginBottom: theme.spacing.sm,
   },
   sliderRow: {
@@ -1505,12 +1507,12 @@ const styles = StyleSheet.create({
   sliderLabel: {
     fontSize: 12,
     lineHeight: 18,
-    color: '#7A6B5D',
+    color: '#8B95A1',
   },
   sliderValueText: {
     fontSize: 12,
     lineHeight: 18,
-    color: '#5B4638',
+    color: '#4E5968',
     fontWeight: '700',
   },
   outOfBoundsWarning: {
@@ -1542,13 +1544,13 @@ const styles = StyleSheet.create({
     minHeight: 68,
     borderRadius: theme.radius.md,
     borderWidth: 1,
-    borderColor: 'rgba(240,223,207,0.92)',
-    backgroundColor: '#FFF8F0',
+    borderColor: '#E5E8EB',
+    backgroundColor: '#F2F4F6',
     paddingHorizontal: theme.spacing.md,
     paddingVertical: theme.spacing.sm,
     fontSize: 13,
     lineHeight: 19,
-    color: '#2E231B',
+    color: '#191F28',
     textAlignVertical: 'top',
   },
   aiActionRow: {
@@ -1561,7 +1563,7 @@ const styles = StyleSheet.create({
   aiStatusText: {
     fontSize: 12,
     lineHeight: 18,
-    color: '#7C6959',
+    color: '#4E5968',
   },
 
   /* ── Options tab ── */
@@ -1576,7 +1578,7 @@ const styles = StyleSheet.create({
   },
   sizeHint: {
     ...theme.typography.caption,
-    color: '#7A6B5D',
+    color: '#8B95A1',
     marginTop: theme.spacing.xs,
   },
   quantityRow: {
@@ -1587,7 +1589,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     lineHeight: 22,
     fontWeight: '700',
-    color: '#2E231B',
+    color: '#191F28',
     marginHorizontal: theme.spacing.lg,
   },
   addLineButton: {
@@ -1599,12 +1601,12 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingVertical: theme.spacing.sm,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(240,223,207,0.92)',
+    borderBottomColor: '#E5E8EB',
   },
   confirmText: {
     fontSize: 14,
     lineHeight: 20,
-    color: '#2E231B',
+    color: '#191F28',
     fontWeight: '600',
   },
   removeText: {
@@ -1615,30 +1617,30 @@ const styles = StyleSheet.create({
   },
   priceCard: {
     marginTop: theme.spacing.lg,
-    backgroundColor: 'rgba(255,244,232,0.92)',
-    borderColor: 'rgba(240,223,207,0.92)',
+    backgroundColor: '#F2F4F6',
+    borderColor: '#E5E8EB',
   },
   priceTitle: {
     ...theme.typography.subheading,
-    color: '#2E231B',
+    color: '#191F28',
     marginBottom: theme.spacing.xs,
   },
   priceValue: {
     fontSize: 22,
     lineHeight: 30,
-    fontWeight: '800',
+    fontWeight: '700',
     color: ACCENT,
     marginBottom: theme.spacing.xs,
   },
   priceOption: {
     fontSize: 12,
     lineHeight: 18,
-    color: '#7C6959',
+    color: '#4E5968',
   },
   priceNote: {
     fontSize: 12,
     lineHeight: 18,
-    color: '#7C6959',
+    color: '#4E5968',
     marginTop: theme.spacing.xs,
   },
 
@@ -1650,7 +1652,7 @@ const styles = StyleSheet.create({
   fontLabel: {
     fontSize: 12,
     lineHeight: 18,
-    color: '#7A6B5D',
+    color: '#8B95A1',
     marginBottom: theme.spacing.sm,
   },
   fontButtons: {
@@ -1661,21 +1663,21 @@ const styles = StyleSheet.create({
     paddingVertical: theme.spacing.sm,
     borderRadius: 999,
     borderWidth: 1,
-    borderColor: 'rgba(240,223,207,0.92)',
+    borderColor: '#E5E8EB',
     marginRight: theme.spacing.sm,
-    backgroundColor: 'rgba(255,244,232,0.92)',
+    backgroundColor: '#F2F4F6',
   },
   fontButtonSelected: {
     borderColor: ACCENT,
-    backgroundColor: 'rgba(255,80,0,0.14)',
+    backgroundColor: 'rgba(49, 130, 246, 0.14)',
   },
   fontButtonText: {
     fontSize: 12,
     lineHeight: 18,
-    color: '#7C6959',
+    color: '#4E5968',
   },
   fontButtonTextSelected: {
-    color: '#2A6ED4',
+    color: '#1B64DA',
   },
 
   /* ── Photo Management ── */
@@ -1683,7 +1685,7 @@ const styles = StyleSheet.create({
     marginBottom: theme.spacing.md,
     paddingBottom: theme.spacing.md,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(240,223,207,0.92)',
+    borderBottomColor: '#E5E8EB',
   },
   photoError: {
     fontSize: 12,
@@ -1759,13 +1761,13 @@ const styles = StyleSheet.create({
   photoHint: {
     fontSize: 11,
     lineHeight: 16,
-    color: '#7A6B5D',
+    color: '#8B95A1',
     marginTop: theme.spacing.xs,
   },
   photoSectionHint: {
     fontSize: 11,
     lineHeight: 18,
-    color: '#7A6B5D',
+    color: '#8B95A1',
     marginBottom: theme.spacing.xs,
   },
   photoColorRow: {
@@ -1782,7 +1784,7 @@ const styles = StyleSheet.create({
   photoLoadingText: {
     fontSize: 12,
     lineHeight: 18,
-    color: '#7C6959',
+    color: '#4E5968',
     marginLeft: theme.spacing.sm,
   },
 
@@ -1842,7 +1844,7 @@ const styles = StyleSheet.create({
   },
   startModalCloseText: {
     fontSize: 12,
-    color: '#7C6959',
+    color: '#4E5968',
     fontWeight: '600',
   },
 });

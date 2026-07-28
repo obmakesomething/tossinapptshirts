@@ -8,14 +8,13 @@ export type FAQItem = {
 export type FAQCategory = {
   id: string;
   title: string;
-  icon: string;
 };
 
 export const faqCategories: FAQCategory[] = [
-  { id: 'product', title: '제작/품질', icon: '🎽' },
-  { id: 'delivery', title: '배송/사이즈', icon: '📦' },
-  { id: 'care', title: '세탁/관리', icon: '🧺' },
-  { id: 'refund', title: '교환/환불', icon: '📋' },
+  { id: 'product', title: '제작/품질' },
+  { id: 'delivery', title: '배송/사이즈' },
+  { id: 'care', title: '세탁/관리' },
+  { id: 'refund', title: '교환/환불' },
 ];
 
 export const faqItems: FAQItem[] = [

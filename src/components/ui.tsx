@@ -9,63 +9,167 @@ import {
   type StyleProp,
   StyleSheet,
   Text,
+  type TextStyle,
   View,
   type ViewStyle,
 } from 'react-native';
 
+/**
+ * Design tokens — Toss-native neutral.
+ * Grayscale surfaces, single blue accent, minimal elevation.
+ * Text colors are AA-verified against the surface they sit on.
+ */
 export const theme = {
   colors: {
-    // ── Warm-tone base (aligned with current-ait-preview.html) ──
-    background: '#FFFAF5',
+    // ── Surfaces ──
+    background: '#F2F4F6',
     surface: '#FFFFFF',
-    surfaceSecondary: '#FFF4E8',
+    surfaceSecondary: '#F2F4F6',
+    surfacePressed: '#EDF0F3',
     // ── Accent ──
-    primary: '#2A6ED4',
-    primarySoft: '#E8F2FF',
-    primaryPressed: '#2360B8',
-    // ── Text (warm) ──
-    textPrimary: '#2E231B',
-    textSecondary: '#7C6959',
-    textTertiary: '#7A6B5D',
-    // ── Borders (warm) ──
-    border: '#F0DFCF',
-    muted: '#7A6B5D',
+    primary: '#1B64DA', // fills + text (white on this = 5.4:1)
+    primaryBright: '#3182F6', // decorative only (borders, dots, focus)
+    primarySoft: '#E8F3FF',
+    primaryPressed: '#154FB0',
+    // ── Text ──
+    textPrimary: '#191F28',
+    textSecondary: '#4E5968',
+    textTertiary: '#8B95A1',
+    textDisabled: '#B0B8C1',
+    // ── Lines ──
+    border: '#E5E8EB',
+    divider: '#F2F4F6',
+    muted: '#8B95A1',
     // ── Semantic ──
-    success: '#0EA76F',
-    successSoft: '#E9F9F2',
-    successBorder: '#AEE6CF',
-    warning: '#F59E0B',
-    error: '#D93025',
-    errorSoft: '#FDEDEE',
-    errorBorder: '#F6C2C2',
-    errorPressed: '#FADFE0',
-    info: '#2A6ED4',
-    infoSoft: '#EAF2FF',
-    infoBorder: '#BED3F1',
+    success: '#0F8A5F',
+    successSoft: '#E8F8F1',
+    successBorder: '#B5E6D0',
+    warning: '#B26A00',
+    warningSoft: '#FFF6E5',
+    error: '#E02D3C',
+    errorSoft: '#FEECEE',
+    errorBorder: '#F7C6CB',
+    errorPressed: '#FBD9DD',
+    info: '#1B64DA',
+    infoSoft: '#E8F3FF',
+    infoBorder: '#C4DDFB',
   },
   spacing: {
     xs: 4,
     sm: 8,
     md: 12,
     lg: 16,
-    xl: 24,
+    xl: 20,
     xxl: 32,
   },
   radius: {
-    sm: 6,
-    md: 14,
-    lg: 18,
-    xl: 24,
+    sm: 8,
+    md: 12,
+    lg: 16,
+    xl: 20,
+    xxl: 24,
+    full: 999,
   },
   typography: {
-    display: { fontSize: 28, lineHeight: 36, fontWeight: '900' as const },
-    heading: { fontSize: 20, lineHeight: 28, fontWeight: '800' as const },
-    subheading: { fontSize: 16, lineHeight: 24, fontWeight: '700' as const },
-    body: { fontSize: 14, lineHeight: 22, fontWeight: '400' as const },
-    label: { fontSize: 13, lineHeight: 20, fontWeight: '600' as const },
-    caption: { fontSize: 12, lineHeight: 18, fontWeight: '500' as const },
+    display: { fontSize: 26, lineHeight: 36, fontWeight: '700' as const, letterSpacing: -0.6 },
+    heading: { fontSize: 20, lineHeight: 28, fontWeight: '700' as const, letterSpacing: -0.4 },
+    subheading: { fontSize: 17, lineHeight: 24, fontWeight: '700' as const, letterSpacing: -0.3 },
+    body: { fontSize: 15, lineHeight: 22, fontWeight: '400' as const, letterSpacing: -0.2 },
+    bodyStrong: { fontSize: 15, lineHeight: 22, fontWeight: '600' as const, letterSpacing: -0.2 },
+    label: { fontSize: 13, lineHeight: 18, fontWeight: '600' as const, letterSpacing: -0.1 },
+    caption: { fontSize: 12, lineHeight: 17, fontWeight: '500' as const, letterSpacing: 0 },
+  },
+  /** Elevation is intentionally near-flat — separation comes from surface color. */
+  shadow: {
+    none: {},
+    card: {
+      shadowColor: '#191F28',
+      shadowOpacity: 0.04,
+      shadowRadius: 12,
+      shadowOffset: { width: 0, height: 2 },
+      elevation: 1,
+    },
+    raised: {
+      shadowColor: '#191F28',
+      shadowOpacity: 0.08,
+      shadowRadius: 20,
+      shadowOffset: { width: 0, height: 6 },
+      elevation: 4,
+    },
+    footer: {
+      shadowColor: '#191F28',
+      shadowOpacity: 0.06,
+      shadowRadius: 16,
+      shadowOffset: { width: 0, height: -4 },
+      elevation: 8,
+    },
   },
 };
+
+/* ── Chevron ──────────────────────────────────────────── */
+
+type ChevronProps = {
+  direction?: 'up' | 'down' | 'left' | 'right';
+  size?: number;
+  color?: string;
+};
+
+const chevronRotation = {
+  down: '45deg',
+  up: '-135deg',
+  right: '-45deg',
+  left: '135deg',
+} as const;
+
+export function Chevron({
+  direction = 'down',
+  size = 8,
+  color = theme.colors.textTertiary,
+}: ChevronProps) {
+  return (
+    <View
+      style={{
+        width: size,
+        height: size,
+        borderRightWidth: 1.8,
+        borderBottomWidth: 1.8,
+        borderColor: color,
+        transform: [{ rotate: chevronRotation[direction] }],
+      }}
+    />
+  );
+}
+
+/* ── CloseIcon ────────────────────────────────────────── */
+
+export function CloseIcon({ size = 14, color = theme.colors.textSecondary }: { size?: number; color?: string }) {
+  return (
+    <View style={{ width: size, height: size, justifyContent: 'center' }}>
+      <View
+        style={{
+          position: 'absolute',
+          width: size,
+          height: 1.8,
+          backgroundColor: color,
+          borderRadius: 1,
+          transform: [{ rotate: '45deg' }],
+        }}
+      />
+      <View
+        style={{
+          position: 'absolute',
+          width: size,
+          height: 1.8,
+          backgroundColor: color,
+          borderRadius: 1,
+          transform: [{ rotate: '-45deg' }],
+        }}
+      />
+    </View>
+  );
+}
+
+/* ── Screen ───────────────────────────────────────────── */
 
 type ScreenProps = {
   children: React.ReactNode;
@@ -93,22 +197,58 @@ export function Screen({
   );
 }
 
-/* ── Page Header ── */
+/* ── Page Header ──────────────────────────────────────── */
+
 type PageHeaderProps = {
   title: string;
   onBack: () => void;
+  subtitle?: string;
 };
 
-export function PageHeader({ title, onBack }: PageHeaderProps) {
+export function PageHeader({ title, onBack, subtitle }: PageHeaderProps) {
   return (
-    <View style={styles.pageHeaderRow}>
-      <Text style={styles.pageHeaderTitle}>{title}</Text>
-      <Pressable onPress={onBack} style={styles.pageHeaderBack}>
-        <Text style={styles.pageHeaderBackText}>이전</Text>
+    <View style={styles.pageHeader}>
+      <Pressable
+        onPress={onBack}
+        style={({ pressed }) => [styles.pageHeaderBack, pressed && styles.pageHeaderBackPressed]}
+        accessibilityRole="button"
+        accessibilityLabel="이전 화면으로"
+        hitSlop={8}
+      >
+        <Chevron direction="left" size={10} color={theme.colors.textPrimary} />
       </Pressable>
+      <Text style={styles.pageHeaderTitle}>{title}</Text>
+      {subtitle ? <Text style={styles.pageHeaderSubtitle}>{subtitle}</Text> : null}
     </View>
   );
 }
+
+/* ── SectionTitle ─────────────────────────────────────── */
+
+type SectionTitleProps = {
+  title: string;
+  description?: string;
+  action?: { label: string; onPress: () => void };
+  style?: StyleProp<ViewStyle>;
+};
+
+export function SectionTitle({ title, description, action, style }: SectionTitleProps) {
+  return (
+    <View style={[styles.sectionTitleWrap, style]}>
+      <View style={styles.sectionTitleRow}>
+        <Text style={styles.sectionTitleText}>{title}</Text>
+        {action ? (
+          <Pressable onPress={action.onPress} accessibilityRole="button" hitSlop={8}>
+            <Text style={styles.sectionTitleAction}>{action.label}</Text>
+          </Pressable>
+        ) : null}
+      </View>
+      {description ? <Text style={styles.sectionTitleDesc}>{description}</Text> : null}
+    </View>
+  );
+}
+
+/* ── TopBar ───────────────────────────────────────────── */
 
 type TopBarProps = {
   title: string;
@@ -116,21 +256,20 @@ type TopBarProps = {
   onRightPress?: () => void;
 };
 
-export function TopBar({
-  title,
-  rightLabel,
-  onRightPress,
-}: TopBarProps) {
+export function TopBar({ title, rightLabel, onRightPress }: TopBarProps) {
   return (
     <View style={styles.topBar}>
       <View style={styles.topBarButton} />
-      <Text style={styles.topBarTitle}>{title}</Text>
+      <Text style={styles.topBarTitle} numberOfLines={1}>
+        {title}
+      </Text>
       {rightLabel ? (
         <Pressable
           style={styles.topBarButton}
           onPress={onRightPress}
           accessibilityRole="button"
           accessibilityLabel={rightLabel}
+          hitSlop={8}
         >
           <Text style={styles.topBarAction}>{rightLabel}</Text>
         </Pressable>
@@ -141,32 +280,62 @@ export function TopBar({
   );
 }
 
+/* ── Buttons ──────────────────────────────────────────── */
+
+type ButtonSize = 'lg' | 'md' | 'sm';
+
 type ButtonProps = {
   label: string;
   onPress?: () => void;
   disabled?: boolean;
+  loading?: boolean;
+  size?: ButtonSize;
   style?: StyleProp<ViewStyle>;
+};
+
+const buttonSizes: Record<ButtonSize, { height: number; radius: number; fontSize: number }> = {
+  lg: { height: 56, radius: theme.radius.lg, fontSize: 17 },
+  md: { height: 48, radius: theme.radius.md, fontSize: 15 },
+  sm: { height: 38, radius: theme.radius.sm, fontSize: 14 },
 };
 
 export function PrimaryButton({
   label,
   onPress,
   disabled,
+  loading,
+  size = 'lg',
   style,
 }: ButtonProps) {
+  const s = buttonSizes[size];
   return (
     <Pressable
       accessibilityRole="button"
+      accessibilityState={{ disabled: Boolean(disabled) }}
       onPress={onPress}
-      disabled={disabled}
+      disabled={disabled || loading}
       style={({ pressed }) => [
+        styles.buttonBase,
+        { height: s.height, borderRadius: s.radius },
         styles.primaryButton,
         pressed && styles.primaryButtonPressed,
-        disabled && styles.buttonDisabled,
+        disabled && styles.primaryButtonDisabled,
         style,
       ]}
     >
-      <Text style={styles.primaryButtonText}>{label}</Text>
+      {loading ? (
+        <ActivityIndicator size="small" color="#FFFFFF" />
+      ) : (
+        <Text
+          style={[
+            styles.primaryButtonText,
+            { fontSize: s.fontSize },
+            disabled && styles.buttonTextDisabled,
+          ]}
+        >
+          {label}
+        </Text>
+      )}
     </Pressable>
   );
 }
@@ -175,42 +344,68 @@ export function SecondaryButton({
   label,
   onPress,
   disabled,
+  loading,
+  size = 'lg',
   style,
 }: ButtonProps) {
+  const s = buttonSizes[size];
   return (
     <Pressable
       accessibilityRole="button"
+      accessibilityState={{ disabled: Boolean(disabled) }}
       onPress={onPress}
-      disabled={disabled}
+      disabled={disabled || loading}
       style={({ pressed }) => [
+        styles.buttonBase,
+        { height: s.height, borderRadius: s.radius },
         styles.secondaryButton,
         pressed && styles.secondaryButtonPressed,
-        disabled && styles.buttonDisabled,
+        disabled && styles.secondaryButtonDisabled,
         style,
       ]}
     >
-      <Text style={styles.secondaryButtonText}>{label}</Text>
+      {loading ? (
+        <ActivityIndicator size="small" color={theme.colors.textSecondary} />
+      ) : (
+        <Text
+          style={[
+            styles.secondaryButtonText,
+            { fontSize: s.fontSize },
+            disabled && styles.buttonTextDisabled,
+          ]}
+        >
+          {label}
+        </Text>
+      )}
     </Pressable>
   );
 }
 
-export function DangerButton({ label, onPress, disabled, style }: ButtonProps) {
+export function DangerButton({ label, onPress, disabled, size = 'lg', style }: ButtonProps) {
+  const s = buttonSizes[size];
   return (
     <Pressable
       accessibilityRole="button"
+      accessibilityState={{ disabled: Boolean(disabled) }}
       onPress={onPress}
       disabled={disabled}
       style={({ pressed }) => [
+        styles.buttonBase,
+        { height: s.height, borderRadius: s.radius },
         styles.dangerButton,
         pressed && styles.dangerButtonPressed,
-        disabled && styles.buttonDisabled,
+        disabled && styles.secondaryButtonDisabled,
         style,
       ]}
     >
-      <Text style={styles.dangerButtonText}>{label}</Text>
+      <Text style={[styles.dangerButtonText, { fontSize: s.fontSize }, disabled && styles.buttonTextDisabled]}>
+        {label}
+      </Text>
     </Pressable>
   );
 }
+
+/* ── Chip ─────────────────────────────────────────────── */
 
 type ChipProps = {
   label: string;
@@ -223,20 +418,22 @@ export function Chip({ label, selected, onPress, style }: ChipProps) {
   return (
     <Pressable
       accessibilityRole="button"
+      accessibilityState={{ selected: Boolean(selected) }}
       accessibilityLabel={label}
       onPress={onPress}
-      style={[
+      style={({ pressed }) => [
         styles.chip,
         selected ? styles.chipSelected : styles.chipDefault,
+        pressed && !selected && styles.chipPressed,
         style,
       ]}
     >
-      <Text style={[styles.chipText, selected && styles.chipTextSelected]}>
-        {label}
-      </Text>
+      <Text style={[styles.chipText, selected && styles.chipTextSelected]}>{label}</Text>
     </Pressable>
   );
 }
+
+/* ── ColorSwatch ──────────────────────────────────────── */
 
 type ColorSwatchProps = {
   label: string;
@@ -245,38 +442,67 @@ type ColorSwatchProps = {
   onPress?: () => void;
 };
 
-export function ColorSwatch({
-  label,
-  color,
-  selected,
-  onPress,
-}: ColorSwatchProps) {
+export function ColorSwatch({ label, color, selected, onPress }: ColorSwatchProps) {
   return (
     <Pressable
       onPress={onPress}
       style={styles.swatchWrapper}
       accessibilityRole="button"
+      accessibilityState={{ selected: Boolean(selected) }}
       accessibilityLabel={`${label} 색상`}
     >
-      <View
-        style={[
-          styles.swatch,
-          { backgroundColor: color },
-          selected && styles.swatchSelected,
-        ]}
-      />
-      <Text style={styles.swatchLabel}>{label}</Text>
+      <View style={[styles.swatchRing, selected && styles.swatchRingSelected]}>
+        <View style={[styles.swatch, { backgroundColor: color }]} />
+      </View>
+      <Text style={[styles.swatchLabel, selected && styles.swatchLabelSelected]}>{label}</Text>
     </Pressable>
   );
 }
 
+/* ── Card ─────────────────────────────────────────────── */
+
 type CardProps = {
   children: React.ReactNode;
   style?: StyleProp<ViewStyle>;
+  /** flat: no shadow, used inside already-elevated surfaces */
+  flat?: boolean;
 };
 
-export function Card({ children, style }: CardProps) {
-  return <View style={[styles.card, style]}>{children}</View>;
+export function Card({ children, style, flat }: CardProps) {
+  return <View style={[styles.card, !flat && theme.shadow.card, style]}>{children}</View>;
+}
+
+/* ── ListRow ──────────────────────────────────────────── */
+
+type ListRowProps = {
+  label: string;
+  value?: string;
+  onPress?: () => void;
+  last?: boolean;
+  valueStyle?: StyleProp<TextStyle>;
+};
+
+export function ListRow({ label, value, onPress, last, valueStyle }: ListRowProps) {
+  const content = (
+    <View style={[styles.listRow, last && styles.listRowLast]}>
+      <Text style={styles.listRowLabel}>{label}</Text>
+      <View style={styles.listRowRight}>
+        {value ? <Text style={[styles.listRowValue, valueStyle]}>{value}</Text> : null}
+        {onPress ? <Chevron direction="right" size={7} /> : null}
+      </View>
+    </View>
+  );
+
+  if (!onPress) return content;
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      style={({ pressed }) => pressed && styles.listRowPressed}
+    >
+      {content}
+    </Pressable>
+  );
 }
 
 /* ── StickyFooter ─────────────────────────────────────── */
@@ -288,8 +514,7 @@ type StickyFooterProps = {
 
 export function StickyFooter({ children, fadeEnabled = true }: StickyFooterProps) {
   return (
-    <View style={styles.stickyFooter}>
-      {fadeEnabled && <View style={styles.stickyFooterFade} />}
+    <View style={[styles.stickyFooter, fadeEnabled && theme.shadow.footer]}>
       <View style={styles.stickyFooterInner}>{children}</View>
     </View>
   );
@@ -326,12 +551,13 @@ export function CollapsibleSection({
     <View style={styles.collapsible}>
       <Pressable
         accessibilityRole="button"
+        accessibilityState={{ expanded: open }}
         accessibilityLabel={`${title} ${open ? '접기' : '펼치기'}`}
         onPress={() => setOpen((v) => !v)}
-        style={styles.collapsibleHeader}
+        style={({ pressed }) => [styles.collapsibleHeader, pressed && styles.collapsibleHeaderPressed]}
       >
         <Text style={styles.collapsibleTitle}>{title}</Text>
-        <Text style={styles.collapsibleArrow}>{open ? '▲' : '▼'}</Text>
+        <Chevron direction={open ? 'up' : 'down'} size={8} />
       </Pressable>
       {open && <View style={styles.collapsibleBody}>{children}</View>}
     </View>
@@ -357,7 +583,7 @@ export function BottomSheet({ visible, onClose, title, children }: BottomSheetPr
       animationType="slide"
       onRequestClose={onClose}
     >
-      <Pressable style={styles.sheetOverlay} onPress={onClose}>
+      <Pressable style={styles.sheetOverlay} onPress={onClose} accessibilityLabel="닫기">
         <View />
       </Pressable>
       <View style={styles.sheetContainer}>
@@ -367,8 +593,14 @@ export function BottomSheet({ visible, onClose, title, children }: BottomSheetPr
         {title && (
           <View style={styles.sheetTitleRow}>
             <Text style={styles.sheetTitle}>{title}</Text>
-            <Pressable onPress={onClose} accessibilityRole="button" accessibilityLabel="닫기">
-              <Text style={styles.sheetClose}>✕</Text>
+            <Pressable
+              onPress={onClose}
+              accessibilityRole="button"
+              accessibilityLabel="닫기"
+              hitSlop={10}
+              style={styles.sheetCloseButton}
+            >
+              <CloseIcon />
             </Pressable>
           </View>
         )}
@@ -384,7 +616,7 @@ export function BottomSheet({ visible, onClose, title, children }: BottomSheetPr
   );
 }
 
-/* ── TabBar (for BottomSheet tabs) ────────────────────── */
+/* ── TabBar ───────────────────────────────────────────── */
 
 type TabBarProps = {
   tabs: string[];
@@ -399,11 +631,32 @@ export function TabBar({ tabs, activeIndex, onChangeIndex }: TabBarProps) {
         <Pressable
           key={tab}
           accessibilityRole="tab"
+          accessibilityState={{ selected: i === activeIndex }}
           accessibilityLabel={tab}
           onPress={() => onChangeIndex(i)}
           style={[styles.tabItem, i === activeIndex && styles.tabItemActive]}
         >
-          <Text style={[styles.tabText, i === activeIndex && styles.tabTextActive]}>
+          <Text style={[styles.tabText, i === activeIndex && styles.tabTextActive]}>{tab}</Text>
+        </Pressable>
+      ))}
+    </View>
+  );
+}
+
+/* ── SegmentedControl ─────────────────────────────────── */
+
+export function SegmentedControl({ tabs, activeIndex, onChangeIndex }: TabBarProps) {
+  return (
+    <View style={styles.segmented}>
+      {tabs.map((tab, i) => (
+        <Pressable
+          key={tab}
+          accessibilityRole="tab"
+          accessibilityState={{ selected: i === activeIndex }}
+          onPress={() => onChangeIndex(i)}
+          style={[styles.segmentedItem, i === activeIndex && styles.segmentedItemActive]}
+        >
+          <Text style={[styles.segmentedText, i === activeIndex && styles.segmentedTextActive]}>
             {tab}
           </Text>
         </Pressable>
@@ -412,12 +665,19 @@ export function TabBar({ tabs, activeIndex, onChangeIndex }: TabBarProps) {
   );
 }
 
+/* ── FullScreenLoader ─────────────────────────────────── */
+
 type FullScreenLoaderProps = {
   visible: boolean;
   message?: string;
+  description?: string;
 };
 
-export function FullScreenLoader({ visible, message = '로딩 중...' }: FullScreenLoaderProps) {
+export function FullScreenLoader({
+  visible,
+  message = '로딩 중...',
+  description,
+}: FullScreenLoaderProps) {
   if (!visible) return null;
 
   return (
@@ -426,6 +686,7 @@ export function FullScreenLoader({ visible, message = '로딩 중...' }: FullScr
         <View style={styles.loaderContent}>
           <ActivityIndicator size="large" color={theme.colors.primary} />
           <Text style={styles.loaderMessage}>{message}</Text>
+          {description ? <Text style={styles.loaderDescription}>{description}</Text> : null}
         </View>
       </View>
     </Modal>
@@ -436,21 +697,22 @@ export function FullScreenLoader({ visible, message = '로딩 중...' }: FullScr
 
 type InfoBoxProps = {
   children: React.ReactNode;
-  type?: 'info' | 'warning' | 'success';
+  type?: 'info' | 'warning' | 'success' | 'neutral';
 };
 
 const infoBoxColors = {
-  info: { bg: 'rgba(96,165,250,0.12)', border: '#60A5FA' },
-  warning: { bg: 'rgba(251,191,36,0.12)', border: '#FBBF24' },
-  success: { bg: 'rgba(74,222,128,0.12)', border: '#4ADE80' },
+  info: { bg: theme.colors.infoSoft, text: theme.colors.textSecondary },
+  warning: { bg: theme.colors.warningSoft, text: theme.colors.textSecondary },
+  success: { bg: theme.colors.successSoft, text: theme.colors.textSecondary },
+  neutral: { bg: theme.colors.surfaceSecondary, text: theme.colors.textSecondary },
 };
 
 export function InfoBox({ children, type = 'info' }: InfoBoxProps) {
   const c = infoBoxColors[type];
   return (
-    <View style={[styles.infoBox, { backgroundColor: c.bg, borderLeftColor: c.border }]}>
+    <View style={[styles.infoBox, { backgroundColor: c.bg }]}>
       {typeof children === 'string' ? (
-        <Text style={styles.infoBoxText}>{children}</Text>
+        <Text style={[styles.infoBoxText, { color: c.text }]}>{children}</Text>
       ) : (
         children
       )}
@@ -458,383 +720,30 @@ export function InfoBox({ children, type = 'info' }: InfoBoxProps) {
   );
 }
 
-const styles = StyleSheet.create({
-  safe: {
-    flex: 1,
-    backgroundColor: theme.colors.background,
-  },
-  container: {
-    padding: theme.spacing.xl,
-    paddingBottom: theme.spacing.xxl,
-  },
-  topBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: theme.spacing.lg,
-  },
-  topBarButton: {
-    width: 48,
-    height: 40,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  topBarAction: {
-    fontSize: 18,
-    color: theme.colors.textPrimary,
-  },
-  topBarTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: theme.colors.textPrimary,
-  },
+/* ── Badge ────────────────────────────────────────────── */
 
-  /* ── Primary Button ── */
-  primaryButton: {
-    backgroundColor: theme.colors.primary,
-    paddingVertical: 14,
-    paddingHorizontal: theme.spacing.lg,
-    borderRadius: theme.radius.md,
-    alignItems: 'center',
-    justifyContent: 'center',
-    minHeight: 48,
-    shadowColor: '#5F320E',
-    shadowOpacity: 0.18,
-    shadowRadius: 14,
-    shadowOffset: { width: 0, height: 7 },
-    elevation: 6,
-  },
-  primaryButtonPressed: {
-    backgroundColor: theme.colors.primaryPressed,
-  },
-  primaryButtonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '700',
-  },
-
-  /* ── Secondary Button (glassmorphic dark) ── */
-  secondaryButton: {
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    paddingVertical: 14,
-    paddingHorizontal: theme.spacing.lg,
-    borderRadius: theme.radius.md,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: theme.colors.surfaceSecondary,
-    minHeight: 48,
-    shadowColor: '#5F320E',
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 3,
-  },
-  secondaryButtonPressed: {
-    backgroundColor: '#FFE8D0',
-  },
-  secondaryButtonText: {
-    color: theme.colors.textSecondary,
-    fontSize: 16,
-    fontWeight: '600',
-  },
-
-  /* ── Danger Button ── */
-  dangerButton: {
-    borderWidth: 1,
-    borderColor: theme.colors.errorBorder,
-    paddingVertical: 14,
-    paddingHorizontal: theme.spacing.lg,
-    borderRadius: theme.radius.md,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: theme.colors.errorSoft,
-    minHeight: 48,
-  },
-  dangerButtonPressed: {
-    backgroundColor: theme.colors.errorPressed,
-  },
-  dangerButtonText: {
-    color: theme.colors.error,
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  buttonDisabled: {
-    opacity: 0.45,
-  },
-
-  /* ── Chip ── */
-  chip: {
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 999,
-    borderWidth: 1,
-  },
-  chipDefault: {
-    borderColor: theme.colors.border,
-    backgroundColor: theme.colors.surfaceSecondary,
-  },
-  chipSelected: {
-    borderColor: theme.colors.primary,
-    backgroundColor: theme.colors.primarySoft,
-  },
-  chipText: {
-    fontSize: 14,
-    color: theme.colors.textSecondary,
-    fontWeight: '600',
-  },
-  chipTextSelected: {
-    color: theme.colors.primary,
-  },
-
-  /* ── ColorSwatch ── */
-  swatchWrapper: {
-    alignItems: 'center',
-    marginRight: theme.spacing.sm,
-  },
-  swatch: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    marginBottom: 6,
-  },
-  swatchSelected: {
-    borderColor: theme.colors.primary,
-    borderWidth: 2,
-  },
-  swatchLabel: {
-    fontSize: 12,
-    color: theme.colors.textSecondary,
-  },
-
-  /* ── Card ── */
-  card: {
-    backgroundColor: theme.colors.surface,
-    borderRadius: theme.radius.md,
-    padding: theme.spacing.lg,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    shadowColor: '#5F320E',
-    shadowOpacity: 0.10,
-    shadowRadius: 16,
-    shadowOffset: { width: 0, height: 9 },
-    elevation: 5,
-  },
-
-  /* StickyFooter */
-  stickyFooter: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-  },
-  stickyFooterFade: {
-    height: 24,
-    backgroundColor: 'transparent',
-    borderTopWidth: 0,
-    opacity: 0.95,
-  },
-  stickyFooterInner: {
-    backgroundColor: theme.colors.background,
-    paddingHorizontal: theme.spacing.xl,
-    paddingTop: theme.spacing.md,
-    paddingBottom: theme.spacing.xl,
-  },
-
-  /* DisabledHint */
-  disabledHint: {
-    fontSize: 13,
-    color: theme.colors.textTertiary,
-    textAlign: 'center',
-    marginTop: theme.spacing.sm,
-  },
-
-  /* CollapsibleSection */
-  collapsible: {
-    marginBottom: theme.spacing.md,
-  },
-  collapsibleHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: theme.spacing.md,
-  },
-  collapsibleTitle: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: theme.colors.textPrimary,
-  },
-  collapsibleArrow: {
-    fontSize: 12,
-    color: theme.colors.textTertiary,
-  },
-  collapsibleBody: {
-    paddingTop: theme.spacing.sm,
-  },
-
-  /* BottomSheet */
-  sheetOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(46, 35, 27, 0.34)',
-  },
-  sheetContainer: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    maxHeight: SCREEN_HEIGHT * 0.7,
-    backgroundColor: theme.colors.surface,
-    borderTopLeftRadius: theme.radius.xl,
-    borderTopRightRadius: theme.radius.xl,
-    borderTopWidth: 1,
-    borderTopColor: theme.colors.border,
-  },
-  sheetHandleRow: {
-    alignItems: 'center',
-    paddingTop: theme.spacing.sm,
-    paddingBottom: theme.spacing.xs,
-  },
-  sheetHandle: {
-    width: 36,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: '#DAC8BB',
-  },
-  sheetTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: theme.spacing.xl,
-    paddingVertical: theme.spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.border,
-  },
-  sheetTitle: {
-    fontSize: 17,
-    fontWeight: '700',
-    color: theme.colors.textPrimary,
-  },
-  sheetClose: {
-    fontSize: 18,
-    color: theme.colors.textSecondary,
-    padding: theme.spacing.xs,
-  },
-  sheetScroll: {
-    flex: 1,
-  },
-  sheetScrollContent: {
-    padding: theme.spacing.xl,
-    paddingBottom: theme.spacing.xxl,
-  },
-
-  /* TabBar */
-  tabBar: {
-    flexDirection: 'row',
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.border,
-  },
-  tabItem: {
-    flex: 1,
-    alignItems: 'center',
-    paddingVertical: theme.spacing.md,
-  },
-  tabItemActive: {
-    borderBottomWidth: 2,
-    borderBottomColor: theme.colors.primary,
-  },
-  tabText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: theme.colors.textTertiary,
-  },
-  tabTextActive: {
-    color: theme.colors.primary,
-  },
-
-  /* FullScreenLoader */
-  fullScreenLoader: {
-    flex: 1,
-    backgroundColor: 'rgba(46, 35, 27, 0.56)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  loaderContent: {
-    backgroundColor: theme.colors.surface,
-    borderRadius: theme.radius.lg,
-    padding: theme.spacing.xxl,
-    alignItems: 'center',
-    minWidth: 200,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-  },
-  loaderMessage: {
-    marginTop: theme.spacing.lg,
-    fontSize: 16,
-    fontWeight: '600',
-    color: theme.colors.textPrimary,
-    textAlign: 'center',
-  },
-
-  /* InfoBox */
-  infoBox: {
-    borderLeftWidth: 4,
-    padding: 12,
-    marginBottom: 15,
-    borderRadius: 4,
-  },
-  infoBoxText: {
-    fontSize: 14,
-    color: theme.colors.textSecondary,
-    lineHeight: 20,
-  },
-
-  /* PageHeader */
-  pageHeaderRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: theme.spacing.md,
-  },
-  pageHeaderTitle: {
-    ...theme.typography.heading,
-    color: theme.colors.textPrimary,
-  },
-  pageHeaderBack: {
-    borderRadius: 999,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    backgroundColor: theme.colors.surfaceSecondary,
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-  },
-  pageHeaderBackText: {
-    fontSize: 12,
-    color: theme.colors.textSecondary,
-    fontWeight: '700',
-  },
-});
-
-/* ── Badge ── */
-type BadgeVariant = 'success' | 'warning' | 'error';
+type BadgeVariant = 'success' | 'warning' | 'error' | 'info' | 'neutral';
 type BadgeProps = {
   variant: BadgeVariant;
   label: string;
+  /** dot: pill with a leading status dot. plain: text-only pill. */
+  dot?: boolean;
 };
 
-const badgeConfig: Record<BadgeVariant, { bg: string; border: string; icon: string }> = {
-  success: { bg: '#E9F9F2', border: '#AEE6CF', icon: '✅' },
-  warning: { bg: '#FFF8E1', border: '#F5E6B8', icon: '⚠️' },
-  error: { bg: '#FDEDEE', border: '#F6C2C2', icon: '❌' },
+const badgeConfig: Record<BadgeVariant, { bg: string; fg: string }> = {
+  success: { bg: theme.colors.successSoft, fg: theme.colors.success },
+  warning: { bg: theme.colors.warningSoft, fg: theme.colors.warning },
+  error: { bg: theme.colors.errorSoft, fg: theme.colors.error },
+  info: { bg: theme.colors.infoSoft, fg: theme.colors.info },
+  neutral: { bg: theme.colors.surfaceSecondary, fg: theme.colors.textSecondary },
 };
 
-export function Badge({ variant, label }: BadgeProps) {
+export function Badge({ variant, label, dot = true }: BadgeProps) {
   const config = badgeConfig[variant];
   return (
-    <View style={[badgeStyles.container, { backgroundColor: config.bg, borderColor: config.border }]}>
-      <Text style={badgeStyles.icon}>{config.icon}</Text>
-      <Text style={badgeStyles.label}>{label}</Text>
+    <View style={[badgeStyles.container, { backgroundColor: config.bg }]}>
+      {dot ? <View style={[badgeStyles.dot, { backgroundColor: config.fg }]} /> : null}
+      <Text style={[badgeStyles.label, { color: config.fg }]}>{label}</Text>
     </View>
   );
 }
@@ -843,16 +752,61 @@ const badgeStyles = StyleSheet.create({
   container: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderWidth: 1,
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+    alignSelf: 'flex-start',
+    borderRadius: theme.radius.full,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
   },
-  icon: { fontSize: 16, marginRight: 8 },
-  label: { fontSize: 14, fontWeight: '600', color: theme.colors.textPrimary },
+  dot: { width: 6, height: 6, borderRadius: 3, marginRight: 6 },
+  label: { fontSize: 13, fontWeight: '700', letterSpacing: -0.2 },
 });
 
-/* ── ConfirmDialog ── */
+/* ── EmptyState ───────────────────────────────────────── */
+
+type EmptyStateProps = {
+  title: string;
+  description?: string;
+  action?: { label: string; onPress: () => void };
+};
+
+export function EmptyState({ title, description, action }: EmptyStateProps) {
+  return (
+    <View style={styles.emptyState}>
+      <View style={styles.emptyStateMark} />
+      <Text style={styles.emptyStateTitle}>{title}</Text>
+      {description ? <Text style={styles.emptyStateDesc}>{description}</Text> : null}
+      {action ? (
+        <PrimaryButton label={action.label} onPress={action.onPress} size="md" style={styles.emptyStateAction} />
+      ) : null}
+    </View>
+  );
+}
+
+/* ── Skeleton ─────────────────────────────────────────── */
+
+export function Skeleton({
+  height = 16,
+  width,
+  radius = theme.radius.sm,
+  style,
+}: {
+  height?: number;
+  width?: number | `${number}%`;
+  radius?: number;
+  style?: StyleProp<ViewStyle>;
+}) {
+  return (
+    <View
+      style={[
+        { height, width: width ?? '100%', borderRadius: radius, backgroundColor: '#EDF0F3' },
+        style,
+      ]}
+    />
+  );
+}
+
+/* ── ConfirmDialog ────────────────────────────────────── */
+
 type ConfirmDialogProps = {
   visible: boolean;
   title: string;
@@ -876,25 +830,33 @@ export function ConfirmDialog({
 }: ConfirmDialogProps) {
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onCancel}>
-      <Pressable style={confirmStyles.overlay} onPress={onCancel}>
+      <View style={confirmStyles.overlay}>
+        <Pressable style={confirmStyles.overlayFill} onPress={onCancel} accessibilityLabel="닫기" />
         <View style={confirmStyles.content}>
           <Text style={confirmStyles.title}>{title}</Text>
           <Text style={confirmStyles.message}>{message}</Text>
           <View style={confirmStyles.actions}>
-            <Pressable style={confirmStyles.cancelBtn} onPress={onCancel}>
+            <Pressable
+              style={({ pressed }) => [confirmStyles.cancelBtn, pressed && confirmStyles.cancelBtnPressed]}
+              onPress={onCancel}
+              accessibilityRole="button"
+            >
               <Text style={confirmStyles.cancelText}>{cancelLabel}</Text>
             </Pressable>
             <Pressable
-              style={[confirmStyles.confirmBtn, destructive && confirmStyles.destructiveBtn]}
+              style={({ pressed }) => [
+                confirmStyles.confirmBtn,
+                destructive && confirmStyles.destructiveBtn,
+                pressed && confirmStyles.confirmBtnPressed,
+              ]}
               onPress={onConfirm}
+              accessibilityRole="button"
             >
-              <Text style={[confirmStyles.confirmText, destructive && confirmStyles.destructiveText]}>
-                {confirmLabel}
-              </Text>
+              <Text style={confirmStyles.confirmText}>{confirmLabel}</Text>
             </Pressable>
           </View>
         </View>
-      </Pressable>
+      </View>
     </Modal>
   );
 }
@@ -902,29 +864,55 @@ export function ConfirmDialog({
 const confirmStyles = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
+    backgroundColor: 'rgba(25, 31, 40, 0.5)',
     justifyContent: 'center',
     alignItems: 'center',
+    paddingHorizontal: 32,
   },
+  overlayFill: { ...StyleSheet.absoluteFillObject },
   content: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
+    backgroundColor: theme.colors.surface,
+    borderRadius: theme.radius.xl,
     padding: 24,
-    marginHorizontal: 32,
-    width: '85%',
+    width: '100%',
+    maxWidth: 340,
   },
-  title: { fontSize: 18, fontWeight: '700', color: theme.colors.textPrimary, marginBottom: 8 },
-  message: { fontSize: 14, color: theme.colors.textSecondary, lineHeight: 20, marginBottom: 20 },
-  actions: { flexDirection: 'row', justifyContent: 'flex-end', gap: 12 },
-  cancelBtn: { paddingVertical: 10, paddingHorizontal: 16, borderRadius: 8 },
-  cancelText: { fontSize: 14, fontWeight: '600', color: theme.colors.textSecondary },
-  confirmBtn: { paddingVertical: 10, paddingHorizontal: 16, borderRadius: 8, backgroundColor: theme.colors.primary },
-  confirmText: { fontSize: 14, fontWeight: '600', color: '#FFFFFF' },
+  title: {
+    ...theme.typography.subheading,
+    color: theme.colors.textPrimary,
+    marginBottom: 8,
+  },
+  message: {
+    ...theme.typography.body,
+    color: theme.colors.textSecondary,
+    marginBottom: 24,
+  },
+  actions: { flexDirection: 'row', gap: 8 },
+  cancelBtn: {
+    flex: 1,
+    height: 48,
+    borderRadius: theme.radius.md,
+    backgroundColor: theme.colors.surfaceSecondary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cancelBtnPressed: { backgroundColor: '#E5E8EB' },
+  cancelText: { fontSize: 15, fontWeight: '700', color: theme.colors.textSecondary },
+  confirmBtn: {
+    flex: 1,
+    height: 48,
+    borderRadius: theme.radius.md,
+    backgroundColor: theme.colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  confirmBtnPressed: { opacity: 0.85 },
+  confirmText: { fontSize: 15, fontWeight: '700', color: '#FFFFFF' },
   destructiveBtn: { backgroundColor: theme.colors.error },
-  destructiveText: { color: '#FFFFFF' },
 });
 
-/* ── Timeline ── */
+/* ── Timeline ─────────────────────────────────────────── */
+
 type TimelineStep = {
   label: string;
   time?: string;
@@ -939,9 +927,11 @@ export function Timeline({ steps }: TimelineProps) {
   return (
     <View style={timelineStyles.container}>
       {steps.map((step, index) => (
-        <View key={index} style={timelineStyles.row}>
+        <View key={`${step.label}-${index}`} style={timelineStyles.row}>
           <View style={timelineStyles.dotCol}>
-            <View style={[timelineStyles.dot, step.completed && timelineStyles.dotCompleted]} />
+            <View style={[timelineStyles.dot, step.completed && timelineStyles.dotCompleted]}>
+              {step.completed ? <View style={timelineStyles.dotInner} /> : null}
+            </View>
             {index < steps.length - 1 && (
               <View style={[timelineStyles.line, step.completed && timelineStyles.lineCompleted]} />
             )}
@@ -959,18 +949,488 @@ export function Timeline({ steps }: TimelineProps) {
 }
 
 const timelineStyles = StyleSheet.create({
-  container: { paddingVertical: 8 },
-  row: { flexDirection: 'row', minHeight: 40 },
+  container: { paddingVertical: 4 },
+  row: { flexDirection: 'row', minHeight: 48 },
   dotCol: { width: 24, alignItems: 'center' },
   dot: {
-    width: 12, height: 12, borderRadius: 6,
-    backgroundColor: '#E8DCC0', borderWidth: 2, borderColor: '#E8DCC0',
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    backgroundColor: theme.colors.surfaceSecondary,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  dotCompleted: { backgroundColor: theme.colors.primary, borderColor: theme.colors.primary },
-  line: { width: 2, flex: 1, backgroundColor: '#E8DCC0' },
+  dotCompleted: { backgroundColor: theme.colors.primary },
+  dotInner: { width: 5, height: 5, borderRadius: 3, backgroundColor: '#FFFFFF' },
+  line: { width: 2, flex: 1, backgroundColor: theme.colors.border, marginVertical: 2 },
   lineCompleted: { backgroundColor: theme.colors.primary },
-  content: { flex: 1, paddingLeft: 12, paddingBottom: 8 },
-  label: { fontSize: 14, color: theme.colors.textTertiary },
-  labelCompleted: { color: theme.colors.textPrimary, fontWeight: '600' },
-  time: { fontSize: 12, color: theme.colors.textTertiary, marginTop: 2 },
+  content: { flex: 1, paddingLeft: 12, paddingBottom: 16 },
+  label: { ...theme.typography.body, color: theme.colors.textTertiary },
+  labelCompleted: { color: theme.colors.textPrimary, fontWeight: '700' },
+  time: { ...theme.typography.caption, color: theme.colors.textTertiary, marginTop: 2 },
+});
+
+const styles = StyleSheet.create({
+  safe: {
+    flex: 1,
+    backgroundColor: theme.colors.background,
+  },
+  container: {
+    padding: theme.spacing.xl,
+    paddingBottom: 40,
+  },
+
+  /* ── TopBar ── */
+  topBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    height: 48,
+    marginBottom: theme.spacing.md,
+  },
+  topBarButton: {
+    minWidth: 48,
+    height: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  topBarAction: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: theme.colors.primary,
+  },
+  topBarTitle: {
+    ...theme.typography.subheading,
+    color: theme.colors.textPrimary,
+    flex: 1,
+    textAlign: 'center',
+  },
+
+  /* ── PageHeader ── */
+  pageHeader: {
+    marginBottom: theme.spacing.xl,
+  },
+  pageHeaderBack: {
+    width: 40,
+    height: 40,
+    marginLeft: -10,
+    marginBottom: theme.spacing.xs,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: theme.radius.full,
+  },
+  pageHeaderBackPressed: {
+    backgroundColor: theme.colors.surfacePressed,
+  },
+  pageHeaderTitle: {
+    ...theme.typography.display,
+    color: theme.colors.textPrimary,
+  },
+  pageHeaderSubtitle: {
+    ...theme.typography.body,
+    color: theme.colors.textSecondary,
+    marginTop: theme.spacing.sm,
+  },
+
+  /* ── SectionTitle ── */
+  sectionTitleWrap: {
+    marginBottom: theme.spacing.md,
+  },
+  sectionTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  sectionTitleText: {
+    ...theme.typography.heading,
+    color: theme.colors.textPrimary,
+  },
+  sectionTitleAction: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: theme.colors.primary,
+  },
+  sectionTitleDesc: {
+    ...theme.typography.body,
+    color: theme.colors.textSecondary,
+    marginTop: theme.spacing.xs,
+  },
+
+  /* ── Buttons ── */
+  buttonBase: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: theme.spacing.lg,
+  },
+  primaryButton: {
+    backgroundColor: theme.colors.primary,
+  },
+  primaryButtonPressed: {
+    backgroundColor: theme.colors.primaryPressed,
+  },
+  primaryButtonDisabled: {
+    backgroundColor: theme.colors.border,
+  },
+  primaryButtonText: {
+    color: '#FFFFFF',
+    fontWeight: '700',
+    letterSpacing: -0.3,
+  },
+  secondaryButton: {
+    backgroundColor: '#EDF0F3',
+  },
+  secondaryButtonPressed: {
+    backgroundColor: '#E1E5E9',
+  },
+  secondaryButtonDisabled: {
+    backgroundColor: theme.colors.surfaceSecondary,
+  },
+  secondaryButtonText: {
+    color: theme.colors.textSecondary,
+    fontWeight: '700',
+    letterSpacing: -0.3,
+  },
+  dangerButton: {
+    backgroundColor: theme.colors.errorSoft,
+  },
+  dangerButtonPressed: {
+    backgroundColor: theme.colors.errorPressed,
+  },
+  dangerButtonText: {
+    color: theme.colors.error,
+    fontWeight: '700',
+    letterSpacing: -0.3,
+  },
+  buttonTextDisabled: {
+    color: theme.colors.textDisabled,
+  },
+
+  /* ── Chip ── */
+  chip: {
+    minHeight: 40,
+    paddingHorizontal: 16,
+    paddingVertical: 9,
+    borderRadius: theme.radius.full,
+    borderWidth: 1,
+    justifyContent: 'center',
+  },
+  chipDefault: {
+    borderColor: theme.colors.border,
+    backgroundColor: theme.colors.surface,
+  },
+  chipPressed: {
+    backgroundColor: theme.colors.surfacePressed,
+  },
+  chipSelected: {
+    borderColor: theme.colors.primaryBright,
+    backgroundColor: theme.colors.primarySoft,
+  },
+  chipText: {
+    fontSize: 14,
+    color: theme.colors.textSecondary,
+    fontWeight: '600',
+    letterSpacing: -0.2,
+  },
+  chipTextSelected: {
+    color: theme.colors.primary,
+    fontWeight: '700',
+  },
+
+  /* ── ColorSwatch ── */
+  swatchWrapper: {
+    alignItems: 'center',
+    marginRight: theme.spacing.md,
+  },
+  swatchRing: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: 'transparent',
+    marginBottom: 6,
+  },
+  swatchRingSelected: {
+    borderColor: theme.colors.primaryBright,
+  },
+  swatch: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+  },
+  swatchLabel: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: theme.colors.textTertiary,
+  },
+  swatchLabelSelected: {
+    color: theme.colors.textPrimary,
+    fontWeight: '700',
+  },
+
+  /* ── Card ── */
+  card: {
+    backgroundColor: theme.colors.surface,
+    borderRadius: theme.radius.xl,
+    padding: theme.spacing.xl,
+  },
+
+  /* ── ListRow ── */
+  listRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    minHeight: 52,
+    paddingVertical: theme.spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.divider,
+  },
+  listRowLast: {
+    borderBottomWidth: 0,
+  },
+  listRowPressed: {
+    opacity: 0.6,
+  },
+  listRowLabel: {
+    ...theme.typography.body,
+    color: theme.colors.textSecondary,
+  },
+  listRowRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    flexShrink: 1,
+  },
+  listRowValue: {
+    ...theme.typography.bodyStrong,
+    color: theme.colors.textPrimary,
+    textAlign: 'right',
+  },
+
+  /* ── StickyFooter ── */
+  stickyFooter: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: theme.colors.surface,
+  },
+  stickyFooterInner: {
+    paddingHorizontal: theme.spacing.xl,
+    paddingTop: theme.spacing.md,
+    paddingBottom: theme.spacing.xl,
+  },
+
+  /* ── DisabledHint ── */
+  disabledHint: {
+    ...theme.typography.label,
+    fontWeight: '500',
+    color: theme.colors.textTertiary,
+    textAlign: 'center',
+    marginTop: theme.spacing.sm,
+  },
+
+  /* ── CollapsibleSection ── */
+  collapsible: {
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.divider,
+  },
+  collapsibleHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    minHeight: 56,
+    paddingVertical: theme.spacing.lg,
+  },
+  collapsibleHeaderPressed: {
+    opacity: 0.6,
+  },
+  collapsibleTitle: {
+    ...theme.typography.bodyStrong,
+    color: theme.colors.textPrimary,
+    flex: 1,
+    paddingRight: theme.spacing.md,
+  },
+  collapsibleBody: {
+    paddingBottom: theme.spacing.lg,
+  },
+
+  /* ── BottomSheet ── */
+  sheetOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(25, 31, 40, 0.5)',
+  },
+  sheetContainer: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    maxHeight: SCREEN_HEIGHT * 0.78,
+    backgroundColor: theme.colors.surface,
+    borderTopLeftRadius: theme.radius.xxl,
+    borderTopRightRadius: theme.radius.xxl,
+  },
+  sheetHandleRow: {
+    alignItems: 'center',
+    paddingTop: theme.spacing.md,
+    paddingBottom: theme.spacing.xs,
+  },
+  sheetHandle: {
+    width: 40,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: '#D1D6DB',
+  },
+  sheetTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: theme.spacing.xl,
+    paddingVertical: theme.spacing.lg,
+  },
+  sheetTitle: {
+    ...theme.typography.heading,
+    color: theme.colors.textPrimary,
+  },
+  sheetCloseButton: {
+    width: 32,
+    height: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  sheetScroll: {
+    flex: 1,
+  },
+  sheetScrollContent: {
+    paddingHorizontal: theme.spacing.xl,
+    paddingBottom: theme.spacing.xxl,
+  },
+
+  /* ── TabBar ── */
+  tabBar: {
+    flexDirection: 'row',
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.divider,
+  },
+  tabItem: {
+    flex: 1,
+    alignItems: 'center',
+    paddingVertical: theme.spacing.md,
+  },
+  tabItemActive: {
+    borderBottomWidth: 2,
+    borderBottomColor: theme.colors.textPrimary,
+  },
+  tabText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: theme.colors.textTertiary,
+    letterSpacing: -0.2,
+  },
+  tabTextActive: {
+    color: theme.colors.textPrimary,
+    fontWeight: '700',
+  },
+
+  /* ── SegmentedControl ── */
+  segmented: {
+    flexDirection: 'row',
+    backgroundColor: theme.colors.surfaceSecondary,
+    borderRadius: theme.radius.md,
+    padding: 4,
+  },
+  segmentedItem: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    height: 40,
+    borderRadius: theme.radius.sm,
+  },
+  segmentedItemActive: {
+    backgroundColor: theme.colors.surface,
+    ...theme.shadow.card,
+  },
+  segmentedText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: theme.colors.textTertiary,
+  },
+  segmentedTextActive: {
+    color: theme.colors.textPrimary,
+    fontWeight: '700',
+  },
+
+  /* ── FullScreenLoader ── */
+  fullScreenLoader: {
+    flex: 1,
+    backgroundColor: 'rgba(25, 31, 40, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 40,
+  },
+  loaderContent: {
+    backgroundColor: theme.colors.surface,
+    borderRadius: theme.radius.xl,
+    paddingVertical: theme.spacing.xxl,
+    paddingHorizontal: theme.spacing.xl,
+    alignItems: 'center',
+    minWidth: 220,
+    ...theme.shadow.raised,
+  },
+  loaderMessage: {
+    marginTop: theme.spacing.lg,
+    ...theme.typography.subheading,
+    color: theme.colors.textPrimary,
+    textAlign: 'center',
+  },
+  loaderDescription: {
+    marginTop: theme.spacing.xs,
+    ...theme.typography.label,
+    fontWeight: '500',
+    color: theme.colors.textTertiary,
+    textAlign: 'center',
+  },
+
+  /* ── InfoBox ── */
+  infoBox: {
+    padding: theme.spacing.lg,
+    borderRadius: theme.radius.md,
+    marginBottom: theme.spacing.md,
+  },
+  infoBoxText: {
+    ...theme.typography.body,
+  },
+
+  /* ── EmptyState ── */
+  emptyState: {
+    alignItems: 'center',
+    paddingVertical: 56,
+    paddingHorizontal: theme.spacing.xl,
+  },
+  emptyStateMark: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: theme.colors.surfaceSecondary,
+    marginBottom: theme.spacing.lg,
+  },
+  emptyStateTitle: {
+    ...theme.typography.subheading,
+    color: theme.colors.textPrimary,
+    textAlign: 'center',
+  },
+  emptyStateDesc: {
+    ...theme.typography.body,
+    color: theme.colors.textTertiary,
+    textAlign: 'center',
+    marginTop: theme.spacing.sm,
+  },
+  emptyStateAction: {
+    marginTop: theme.spacing.xl,
+    paddingHorizontal: theme.spacing.xxl,
+  },
 });

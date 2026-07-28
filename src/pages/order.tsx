@@ -31,10 +31,10 @@ import {
   trackScreenView,
 } from '../utils/analytics';
 
-const ORANGE_RED = '#2A6ED4';
-const WARM_DEEP = '#FFFAF5';
-const WARM_MID = '#FFF4E8';
-const NAVY_PANEL = '#FFFFFF';
+const ACCENT = '#1B64DA';
+const PAGE_BG = '#F2F4F6';
+const FILL_SOFT = '#F2F4F6';
+const PANEL = '#FFFFFF';
 
 export const Route = createRoute('/order', {
   component: Page,
@@ -473,8 +473,6 @@ function Page() {
   if (!userKey) {
     return (
       <Screen contentStyle={styles.screenContent}>
-        <View style={styles.bgOrbTop} />
-        <View style={styles.bgOrbBottom} />
         <View style={styles.headerRow}>
           <Text style={styles.headerTitle}>주문하기</Text>
           <Pressable onPress={() => navigation.goBack()} style={styles.headerBack}>
@@ -509,8 +507,6 @@ function Page() {
   // If logged in, show full order form
   return (
     <Screen contentStyle={styles.screenContent}>
-      <View style={styles.bgOrbTop} />
-      <View style={styles.bgOrbBottom} />
       <View style={styles.headerRow}>
         <Text style={styles.headerTitle}>주문하기</Text>
         <Pressable onPress={() => navigation.goBack()} style={styles.headerBack}>
@@ -678,26 +674,8 @@ function Page() {
 
 const styles = StyleSheet.create({
   screenContent: {
-    backgroundColor: WARM_DEEP,
+    backgroundColor: PAGE_BG,
     paddingBottom: theme.spacing.xl,
-  },
-  bgOrbTop: {
-    position: 'absolute',
-    top: -110,
-    right: -80,
-    width: 250,
-    height: 250,
-    borderRadius: 125,
-    backgroundColor: 'rgba(255,186,132,0.32)',
-  },
-  bgOrbBottom: {
-    position: 'absolute',
-    bottom: 0,
-    left: -90,
-    width: 240,
-    height: 240,
-    borderRadius: 120,
-    backgroundColor: 'rgba(255,221,186,0.42)',
   },
   headerRow: {
     flexDirection: 'row',
@@ -707,31 +685,29 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     fontSize: 20,
-    fontWeight: '800',
-    color: '#2E231B',
+    fontWeight: '700',
+    color: '#191F28',
   },
   headerBack: {
     borderRadius: 999,
     borderWidth: 1,
-    borderColor: 'rgba(240,223,207,0.92)',
-    backgroundColor: 'rgba(255,244,232,0.92)',
+    borderColor: '#E5E8EB',
+    backgroundColor: '#F2F4F6',
     paddingVertical: 6,
     paddingHorizontal: 12,
   },
   headerBackText: {
     fontSize: 12,
-    color: '#7C6959',
+    color: '#4E5968',
     fontWeight: '700',
   },
   summaryCard: {
     marginBottom: theme.spacing.lg,
-    backgroundColor: NAVY_PANEL,
-    borderColor: 'rgba(240,223,207,0.92)',
-    borderWidth: 1,
-    shadowColor: '#5F320E',
-    shadowOpacity: 0.24,
-    shadowRadius: 14,
-    shadowOffset: { width: 0, height: 8 },
+    backgroundColor: PANEL,
+    shadowColor: '#191F28',
+    shadowOpacity: 0.05,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 3 },
     elevation: 6,
   },
   summaryHeader: {
@@ -743,21 +719,21 @@ const styles = StyleSheet.create({
   summaryTitle: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#2E231B',
+    color: '#191F28',
   },
   editingBadge: {
     borderRadius: 999,
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderWidth: 1,
-    borderColor: 'rgba(255,106,0,0.26)',
-    backgroundColor: 'rgba(255,106,0,0.12)',
+    borderColor: 'rgba(49, 130, 246, 0.26)',
+    backgroundColor: 'rgba(49, 130, 246, 0.12)',
   },
   editingBadgeText: {
     fontSize: 11,
     lineHeight: 16,
     fontWeight: '700',
-    color: ORANGE_RED,
+    color: ACCENT,
   },
   optionEditButton: {
     marginTop: theme.spacing.sm,
@@ -773,28 +749,28 @@ const styles = StyleSheet.create({
   editHint: {
     fontSize: 12,
     lineHeight: 18,
-    color: '#7C6959',
+    color: '#4E5968',
     marginBottom: theme.spacing.xs,
   },
   editButton: {
     fontSize: 14,
     fontWeight: '600',
-    color: ORANGE_RED,
+    color: ACCENT,
   },
   summaryMeta: {
     fontSize: 12,
-    color: '#7C6959',
+    color: '#4E5968',
   },
   editSection: {
     marginTop: theme.spacing.md,
     paddingTop: theme.spacing.md,
     borderTopWidth: 1,
-    borderTopColor: 'rgba(240,223,207,0.92)',
+    borderTopColor: '#E5E8EB',
   },
   editSectionTitle: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#2E231B',
+    color: '#191F28',
     marginTop: theme.spacing.md,
     marginBottom: theme.spacing.sm,
   },
@@ -812,12 +788,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: theme.spacing.sm,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(240,223,207,0.92)',
+    borderBottomColor: '#E5E8EB',
   },
   orderLineSize: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#2E231B',
+    color: '#191F28',
   },
   quantityControl: {
     flexDirection: 'row',
@@ -828,21 +804,21 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: 'rgba(255,80,0,0.16)',
+    backgroundColor: 'rgba(49, 130, 246, 0.16)',
     borderWidth: 1,
-    borderColor: 'rgba(255,80,0,0.26)',
+    borderColor: 'rgba(49, 130, 246, 0.26)',
     alignItems: 'center',
     justifyContent: 'center',
   },
   quantityButtonText: {
     fontSize: 18,
     fontWeight: '600',
-    color: ORANGE_RED,
+    color: ACCENT,
   },
   quantityValue: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#2E231B',
+    color: '#191F28',
     minWidth: 32,
     textAlign: 'center',
   },
@@ -856,20 +832,16 @@ const styles = StyleSheet.create({
   },
   formCard: {
     marginBottom: theme.spacing.lg,
-    backgroundColor: NAVY_PANEL,
-    borderColor: 'rgba(240,223,207,0.92)',
-    borderWidth: 1,
+    backgroundColor: PANEL,
   },
   quickFaqCard: {
     marginBottom: theme.spacing.md,
-    backgroundColor: NAVY_PANEL,
-    borderColor: 'rgba(240,223,207,0.92)',
-    borderWidth: 1,
+    backgroundColor: PANEL,
   },
   quickFaqTitle: {
     fontSize: 14,
     fontWeight: '700',
-    color: '#2E231B',
+    color: '#191F28',
     marginBottom: theme.spacing.sm,
   },
   quickFaqRow: {
@@ -882,7 +854,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
     lineHeight: 18,
     fontWeight: '700',
-    color: ORANGE_RED,
+    color: ACCENT,
     marginTop: 1,
   },
   quickFaqBody: {
@@ -891,31 +863,31 @@ const styles = StyleSheet.create({
   quickFaqQuestion: {
     fontSize: 12,
     lineHeight: 18,
-    color: '#7C6959',
+    color: '#4E5968',
     fontWeight: '600',
   },
   quickFaqAnswer: {
     fontSize: 12,
     lineHeight: 18,
-    color: '#7C6959',
+    color: '#4E5968',
     marginTop: 2,
   },
   sectionTitle: {
     fontSize: 14,
     fontWeight: '700',
-    color: '#2E231B',
+    color: '#191F28',
     marginBottom: theme.spacing.sm,
     marginTop: theme.spacing.sm,
   },
   input: {
     borderWidth: 1,
-    borderColor: 'rgba(240,223,207,0.92)',
+    borderColor: '#E5E8EB',
     borderRadius: theme.radius.md,
     paddingHorizontal: theme.spacing.md,
     paddingVertical: theme.spacing.sm,
     fontSize: 13,
-    color: '#2E231B',
-    backgroundColor: WARM_MID,
+    color: '#191F28',
+    backgroundColor: FILL_SOFT,
     marginBottom: theme.spacing.sm,
   },
   memoInput: {
@@ -933,22 +905,22 @@ const styles = StyleSheet.create({
     gap: theme.spacing.sm,
   },
   primaryCta: {
-    backgroundColor: ORANGE_RED,
+    backgroundColor: ACCENT,
   },
   errorText: {
     fontSize: 12,
     lineHeight: 18,
-    color: '#ffb8b8',
+    color: '#F7C6CB',
     marginBottom: theme.spacing.sm,
   },
   successText: {
     fontSize: 12,
-    color: '#8de3b5',
+    color: '#B5E6D0',
     marginBottom: theme.spacing.sm,
   },
   noticeText: {
     fontSize: 12,
-    color: '#7C6959',
+    color: '#4E5968',
     marginBottom: theme.spacing.sm,
   },
   agreementSection: {
@@ -963,21 +935,21 @@ const styles = StyleSheet.create({
   checkbox: {
     fontSize: 18,
     marginRight: 8,
-    color: '#2E231B',
+    color: '#191F28',
   },
   checkboxLabel: {
     fontSize: 14,
-    color: '#2E231B',
+    color: '#191F28',
   },
   customNotice: {
     fontSize: 12,
-    color: '#7A6B5D',
+    color: '#8B95A1',
     marginLeft: 26,
     marginTop: 2,
   },
   disabledReason: {
     fontSize: 12,
-    color: '#D93025',
+    color: '#E02D3C',
     textAlign: 'center',
     marginTop: 4,
   },
@@ -986,22 +958,20 @@ const styles = StyleSheet.create({
   },
   loginCard: {
     marginBottom: theme.spacing.lg,
-    backgroundColor: NAVY_PANEL,
-    borderColor: 'rgba(240,223,207,0.92)',
-    borderWidth: 1,
+    backgroundColor: PANEL,
     alignItems: 'center',
     padding: theme.spacing.lg,
   },
   loginTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#2E231B',
+    color: '#191F28',
     marginBottom: theme.spacing.sm,
     textAlign: 'center',
   },
   loginDesc: {
     fontSize: 14,
-    color: '#7C6959',
+    color: '#4E5968',
     lineHeight: 20,
     textAlign: 'center',
   },

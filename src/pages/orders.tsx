@@ -11,7 +11,7 @@ import {
 import { API_BASE_URL } from '../config';
 import { formatPrice } from '../utils/format';
 
-const WARM_DEEP = '#FFFAF5';
+const PAGE_BG = '#F2F4F6';
 
 export const Route = createRoute('/orders' as never, {
   component: Page,
@@ -112,7 +112,7 @@ function Page() {
 
 const styles = StyleSheet.create({
   screenContent: {
-    backgroundColor: WARM_DEEP,
+    backgroundColor: PAGE_BG,
     paddingBottom: theme.spacing.xl,
   },
   emptyState: {

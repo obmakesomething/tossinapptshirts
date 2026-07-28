@@ -16,9 +16,9 @@ import { type SavedDesign, useCatalog } from '../context/catalog';
 import { catalogProducts } from '../data/catalog';
 import { buildTemplate } from '../data/mockupTemplates';
 
-const ORANGE_RED = '#2A6ED4';
-const WARM_DEEP = '#FFFAF5';
-const NAVY_PANEL = '#FFFFFF';
+const ACCENT = '#1B64DA';
+const PAGE_BG = '#F2F4F6';
+const PANEL = '#FFFFFF';
 
 export const Route = createRoute('/designs', {
   component: Page,
@@ -160,7 +160,7 @@ function Page() {
 
 const styles = StyleSheet.create({
   screenContent: {
-    backgroundColor: WARM_DEEP,
+    backgroundColor: PAGE_BG,
   },
   headerRow: {
     flexDirection: 'row',
@@ -170,17 +170,17 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     fontSize: 20,
-    fontWeight: '800',
-    color: '#2E231B',
+    fontWeight: '700',
+    color: '#191F28',
   },
   headerBackText: {
     fontSize: 12,
-    color: '#7C6959',
+    color: '#4E5968',
     fontWeight: '700',
   },
   title: {
     ...theme.typography.body,
-    color: '#7C6959',
+    color: '#4E5968',
     marginBottom: theme.spacing.lg,
   },
   list: {
@@ -190,9 +190,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     padding: theme.spacing.md,
     marginBottom: theme.spacing.md,
-    backgroundColor: NAVY_PANEL,
-    borderColor: 'rgba(240,223,207,0.92)',
-    borderWidth: 1,
+    backgroundColor: PANEL,
   },
   cardBody: {
     flex: 1,
@@ -200,13 +198,13 @@ const styles = StyleSheet.create({
   cardTitle: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#2E231B',
+    color: '#191F28',
     lineHeight: 22,
     marginBottom: theme.spacing.xs,
   },
   cardMeta: {
     fontSize: 12,
-    color: '#7C6959',
+    color: '#4E5968',
     lineHeight: 18,
     marginBottom: theme.spacing.sm,
   },
@@ -221,20 +219,18 @@ const styles = StyleSheet.create({
   emptyCard: {
     alignItems: 'center',
     paddingVertical: theme.spacing.xl,
-    backgroundColor: NAVY_PANEL,
-    borderColor: 'rgba(240,223,207,0.92)',
-    borderWidth: 1,
+    backgroundColor: PANEL,
   },
   emptyText: {
     ...theme.typography.heading,
-    color: '#2E231B',
+    color: '#191F28',
     marginBottom: theme.spacing.xs,
   },
   emptySubtext: {
     ...theme.typography.body,
-    color: '#7C6959',
+    color: '#4E5968',
   },
   newButton: {
-    backgroundColor: ORANGE_RED,
+    backgroundColor: ACCENT,
   },
 });

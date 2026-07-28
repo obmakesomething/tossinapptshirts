@@ -12,7 +12,15 @@ import {
   View,
 } from 'react-native';
 import { MockupCanvas } from '../components/MockupCanvas';
-import { Card, PrimaryButton, Screen, theme } from '../components/ui';
+import {
+  Badge,
+  Card,
+  Chevron,
+  PrimaryButton,
+  Screen,
+  SectionTitle,
+  theme,
+} from '../components/ui';
 import { useCatalog } from '../context/catalog';
 import { faqCategories, faqItems } from '../data/faq';
 import { buildTemplate } from '../data/mockupTemplates';
@@ -209,20 +217,13 @@ function Page() {
     <Screen contentStyle={styles.screenContent}>
       <View style={styles.heroSection}>
         <View style={styles.heroBadgeRow}>
-          <View style={styles.heroBadgePrimary}>
-            <Text style={styles.heroBadgePrimaryText}>AI 디자인 굿즈 제작</Text>
-          </View>
-          <View style={styles.heroBadgeSecondary}>
-            <Text style={styles.heroBadgeSecondaryText}>토스 독점</Text>
-          </View>
+          <Badge variant="info" label="토스 독점" dot={false} />
         </View>
         <Text style={styles.heroTitle}>
-          나만의 굿즈,{'\n'}AI로 바로{'\n'}만들어보세요
+          나만의 굿즈,{'\n'}AI로 바로 만들어보세요
         </Text>
         <Text style={styles.heroSubtitle}>
-          티셔츠 · 후드 · 맨투맨
-          {'\n'}
-          디자인부터 결제까지 한 번에
+          티셔츠 · 후드 · 맨투맨 — 디자인부터 결제까지 한 번에
         </Text>
         <PrimaryButton
           label="지금 만들어보기"
@@ -337,8 +338,13 @@ function Page() {
           {selectedCategoryProduct.colors.join('·')} | {selectedCategoryProduct.sizes.length > 0 ? `${selectedCategoryProduct.sizes[0]?.label}~${selectedCategoryProduct.sizes[selectedCategoryProduct.sizes.length - 1]?.label}` : ''}
         </Text>
 
-        <Pressable onPress={goToProducts} style={styles.detailLinkButton}>
-          <Text style={styles.detailLinkText}>사이즈·소재·인쇄 정보 {'>'}</Text>
+        <Pressable
+          onPress={goToProducts}
+          style={({ pressed }) => [styles.detailLinkButton, pressed && styles.detailLinkPressed]}
+          accessibilityRole="button"
+        >
+          <Text style={styles.detailLinkText}>사이즈·소재·인쇄 정보</Text>
+          <Chevron direction="right" size={7} color={theme.colors.primary} />
         </Pressable>
       </View>
 
@@ -349,38 +355,31 @@ function Page() {
       {/* FAQ 섹션 - 인터랙션 완료 후 렌더 */}
       {interactionComplete && (
         <View style={styles.faqSection}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>자주 묻는 질문</Text>
-            <Pressable onPress={goToFAQ}>
-              <Text style={styles.sectionAction}>자주 묻는 질문 더보기 →</Text>
-            </Pressable>
-          </View>
-          <Text style={styles.faqDescription}>
-            카테고리별 핵심 질문만 먼저 보여드려요. 더 자세한 내용은 전체 보기에서 확인할 수 있어요.
-          </Text>
+          <SectionTitle
+            title="자주 묻는 질문"
+            description="카테고리별 핵심 질문만 먼저 보여드려요."
+            action={{ label: '전체 보기', onPress: goToFAQ }}
+          />
           {groupedFaqs.map(({ category, items }) => {
             const previewItems = items.slice(0, 1);
             return (
               <View key={category.id} style={styles.faqCategoryBlock}>
-                <View style={styles.faqCategoryHeader}>
-                  <Text style={styles.faqCategoryTitle}>
-                    {category.icon} {category.title}
-                  </Text>
-                  <Text style={styles.faqCategoryCount}>
-                    {previewItems.length}/{items.length}개
-                  </Text>
-                </View>
+                <Text style={styles.faqCategoryTitle}>{category.title}</Text>
                 {previewItems.map((item) => {
                   const expanded = !!expandedFaqMap[item.id];
                   return (
                     <Card key={item.id} style={styles.faqCard}>
-                      <Pressable onPress={() => toggleFAQ(item.id)}>
+                      <Pressable
+                        onPress={() => toggleFAQ(item.id)}
+                        accessibilityRole="button"
+                        accessibilityState={{ expanded }}
+                      >
                         <View style={styles.faqRow}>
                           <Text style={styles.faqQ}>Q</Text>
                           <Text style={styles.faqQuestion}>{item.question}</Text>
-                          <Text style={styles.faqArrow}>
-                            {expanded ? '▾' : '▸'}
-                          </Text>
+                          <View style={styles.faqArrow}>
+                            <Chevron direction={expanded ? 'up' : 'down'} size={8} />
+                          </View>
                         </View>
                         {expanded && (
                           <View style={styles.faqAnswerRow}>
@@ -406,120 +405,50 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.background,
     paddingBottom: 42,
   },
+  /* Hero sits directly on the page — no card, so the product card below
+     is the first thing that reads as elevated. */
   heroSection: {
-    borderRadius: 26,
-    marginBottom: theme.spacing.md,
-    padding: theme.spacing.lg,
-    backgroundColor: '#FFF6ED',
-    shadowColor: '#5F320E',
-    shadowOpacity: 0.14,
-    shadowRadius: 18,
-    shadowOffset: { width: 0, height: 10 },
-    elevation: 6,
-    borderWidth: 1,
-    borderColor: '#F7DFC7',
+    paddingTop: theme.spacing.sm,
+    paddingBottom: theme.spacing.xl,
   },
   heroBadgeRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: theme.spacing.md,
-    gap: 8,
-  },
-  heroBadgePrimary: {
-    borderRadius: 999,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 106, 0, 0.25)',
-    backgroundColor: 'rgba(255, 106, 0, 0.10)',
-  },
-  heroBadgePrimaryText: {
-    fontSize: 11,
-    color: '#402E20',
-    fontWeight: '700',
-  },
-  heroBadgeSecondary: {
-    borderRadius: 999,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderWidth: 1,
-    borderColor: 'rgba(49, 130, 246, 0.30)',
-    backgroundColor: 'rgba(49, 130, 246, 0.10)',
-  },
-  heroBadgeSecondaryText: {
-    fontSize: 11,
-    color: '#2778D8',
-    fontWeight: '700',
+    marginBottom: theme.spacing.lg,
   },
   heroTitle: {
-    fontSize: 31,
-    lineHeight: 37,
-    fontWeight: '900',
-    color: '#32251B',
-    letterSpacing: -0.8,
-    marginBottom: 10,
+    fontSize: 30,
+    lineHeight: 40,
+    fontWeight: '700',
+    color: theme.colors.textPrimary,
+    letterSpacing: -0.9,
   },
   heroSubtitle: {
-    fontSize: 14,
-    lineHeight: 21,
-    color: '#776556',
-    marginBottom: 14,
+    ...theme.typography.body,
+    color: theme.colors.textSecondary,
+    marginTop: theme.spacing.md,
+    marginBottom: theme.spacing.xl,
   },
   heroCtaButton: {
-    borderRadius: 16,
-    minHeight: 52,
-    marginBottom: theme.spacing.md,
-  },
-  heroStatRow: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  heroStatCard: {
-    flex: 1,
-    borderRadius: 12,
-    paddingVertical: 9,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#F0DFCF',
-    backgroundColor: 'rgba(255, 255, 255, 0.70)',
-  },
-  heroStatValue: {
-    fontSize: 13,
-    lineHeight: 16,
-    fontWeight: '800',
-    color: '#402E20',
-  },
-  heroStatLabel: {
-    fontSize: 11,
-    lineHeight: 14,
-    color: '#715D4D',
-    marginTop: 2,
+    marginBottom: 0,
   },
   homeCard: {
     backgroundColor: theme.colors.surface,
-    borderWidth: 1,
-    borderColor: '#F1E0CE',
-    borderRadius: 26,
-    padding: theme.spacing.md,
-    marginBottom: theme.spacing.md,
-    shadowColor: '#5F320E',
-    shadowOpacity: 0.14,
-    shadowRadius: 16,
-    shadowOffset: { width: 0, height: 8 },
-    elevation: 3,
+    borderRadius: theme.radius.xl,
+    padding: theme.spacing.lg,
+    marginBottom: theme.spacing.lg,
+    ...theme.shadow.card,
   },
   carouselShell: {
-    borderRadius: 20,
+    borderRadius: theme.radius.lg,
     overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: '#F6E5D3',
-    backgroundColor: '#FFF8F1',
+    backgroundColor: theme.colors.surfaceSecondary,
   },
   carouselContent: {
     paddingVertical: theme.spacing.sm,
   },
   carouselCard: {
-    borderRadius: 18,
+    borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: theme.spacing.sm,
@@ -529,14 +458,14 @@ const styles = StyleSheet.create({
     aspectRatio: 4 / 5,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#FFF8EF',
-    borderRadius: 18,
+    backgroundColor: theme.colors.surfaceSecondary,
+    borderRadius: theme.radius.lg,
   },
   mockupObjectShadow: {
-    shadowColor: '#5F320E',
-    shadowOpacity: 0.19,
-    shadowRadius: 16,
-    shadowOffset: { width: 0, height: 11 },
+    shadowColor: '#191F28',
+    shadowOpacity: 0.12,
+    shadowRadius: 14,
+    shadowOffset: { width: 0, height: 8 },
     elevation: 7,
   },
   carouselDots: {
@@ -553,7 +482,7 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 99,
-    backgroundColor: '#DAC8BB',
+    backgroundColor: '#D1D6DB',
   },
   carouselDotActive: {
     width: 24,
@@ -563,26 +492,24 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'flex-end',
     justifyContent: 'space-between',
-    marginTop: theme.spacing.sm,
+    marginTop: theme.spacing.lg,
   },
   productName: {
-    fontSize: 22,
-    lineHeight: 28,
-    fontWeight: '800',
-    color: '#2F241B',
-    letterSpacing: -0.4,
+    ...theme.typography.heading,
+    color: theme.colors.textPrimary,
   },
   productPrice: {
-    fontSize: 21,
+    fontSize: 20,
     lineHeight: 28,
-    fontWeight: '800',
-    color: theme.colors.primary,
+    fontWeight: '700',
+    letterSpacing: -0.4,
+    color: theme.colors.textPrimary,
   },
   productSpecLine: {
-    marginTop: 2,
-    fontSize: 12,
-    lineHeight: 18,
-    color: '#765F4E',
+    marginTop: theme.spacing.xs,
+    ...theme.typography.label,
+    fontWeight: '500',
+    color: theme.colors.textTertiary,
   },
   metaRow: {
     flexDirection: 'row',
@@ -618,7 +545,7 @@ const styles = StyleSheet.create({
   colorDotButton: {
     width: 26,
     height: 26,
-    borderRadius: 13,
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -648,7 +575,7 @@ const styles = StyleSheet.create({
   sizeChip: {
     width: 36,
     height: 36,
-    borderRadius: 18,
+    borderRadius: 16,
     borderWidth: 1,
     borderColor: theme.colors.border,
     backgroundColor: theme.colors.surfaceSecondary,
@@ -662,124 +589,83 @@ const styles = StyleSheet.create({
     lineHeight: 14,
   },
   detailLinkButton: {
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    minHeight: 44,
     marginTop: theme.spacing.md,
   },
+  detailLinkPressed: {
+    opacity: 0.6,
+  },
   detailLinkText: {
-    fontSize: 13,
-    lineHeight: 18,
+    ...theme.typography.label,
     color: theme.colors.primary,
     fontWeight: '700',
-  },
-  sectionTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: theme.colors.textPrimary,
-    lineHeight: 26,
-  },
-  sectionAction: {
-    fontSize: 14,
-    color: theme.colors.primary,
-    fontWeight: '700',
-    lineHeight: 20,
   },
   noticeText: {
     ...theme.typography.caption,
-    color: theme.colors.textSecondary,
+    color: theme.colors.textTertiary,
     textAlign: 'center',
     marginBottom: theme.spacing.xxl,
     paddingHorizontal: theme.spacing.md,
   },
   faqSection: {
-    marginTop: theme.spacing.sm,
-    marginBottom: theme.spacing.md,
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: theme.spacing.sm,
-  },
-  faqDescription: {
-    fontSize: 14,
-    color: theme.colors.textSecondary,
-    lineHeight: 20,
-    marginTop: theme.spacing.sm,
     marginBottom: theme.spacing.md,
   },
   faqCategoryBlock: {
-    marginBottom: theme.spacing.md,
-  },
-  faqCategoryHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: theme.spacing.sm,
-    paddingHorizontal: theme.spacing.xs,
+    marginBottom: theme.spacing.lg,
   },
   faqCategoryTitle: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: theme.colors.textPrimary,
-    lineHeight: 20,
-  },
-  faqCategoryCount: {
-    fontSize: 12,
+    ...theme.typography.label,
     color: theme.colors.textTertiary,
+    marginBottom: theme.spacing.sm,
   },
   faqCard: {
     marginBottom: theme.spacing.sm,
     backgroundColor: theme.colors.surface,
-    shadowColor: '#5F320E',
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    shadowOffset: { width: 0, height: 1 },
-    elevation: 1,
+    padding: theme.spacing.lg,
   },
   faqRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
   },
   faqQ: {
-    fontSize: 14,
-    lineHeight: 20,
+    ...theme.typography.bodyStrong,
     fontWeight: '700',
     color: theme.colors.primary,
-    marginRight: theme.spacing.sm,
+    marginRight: theme.spacing.md,
   },
   faqQuestion: {
     flex: 1,
-    fontSize: 14,
-    lineHeight: 20,
+    ...theme.typography.bodyStrong,
     color: theme.colors.textPrimary,
-    fontWeight: '600',
   },
   faqArrow: {
-    fontSize: 14,
-    lineHeight: 20,
-    color: theme.colors.textTertiary,
+    width: 20,
+    height: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
     marginLeft: theme.spacing.sm,
-    marginTop: 1,
   },
   faqAnswerRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    marginTop: theme.spacing.md,
-    paddingTop: theme.spacing.md,
+    marginTop: theme.spacing.lg,
+    paddingTop: theme.spacing.lg,
     borderTopWidth: 1,
-    borderTopColor: theme.colors.border,
+    borderTopColor: theme.colors.divider,
   },
   faqA: {
-    fontSize: 14,
-    lineHeight: 20,
+    ...theme.typography.bodyStrong,
     fontWeight: '700',
-    color: theme.colors.textSecondary,
-    marginRight: theme.spacing.sm,
+    color: theme.colors.textTertiary,
+    marginRight: theme.spacing.md,
   },
   faqAnswer: {
     flex: 1,
-    fontSize: 13,
-    lineHeight: 20,
+    ...theme.typography.body,
     color: theme.colors.textSecondary,
   },
 });

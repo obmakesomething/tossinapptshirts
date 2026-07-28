@@ -1,92 +1,71 @@
 /**
  * Toast UI Component
- * 
+ *
  * Floating toast notifications with action buttons.
+ * Dark neutral pill so it reads on any screen background;
+ * status is carried by a colored dot rather than the whole surface.
  */
 
 import React from 'react';
 import {
+    ActivityIndicator,
     Pressable,
     StyleSheet,
     Text,
     View,
 } from 'react-native';
-import { theme } from './ui';
+import { CloseIcon, theme } from './ui';
 import { type Toast, useToast } from '../context/toastContext';
+
+const statusDotColor: Record<string, string> = {
+    success: '#3DD68C',
+    error: '#FF6B78',
+    loading: theme.colors.textTertiary,
+};
 
 const ToastItem: React.FC<{ toast: Toast; onDismiss: () => void }> = ({
     toast,
     onDismiss,
 }) => {
-    const getBackgroundColor = () => {
-        switch (toast.type) {
-            case 'success':
-                return theme.colors.successSoft;
-            case 'error':
-                return theme.colors.errorSoft;
-            case 'loading':
-                return theme.colors.surface;
-            default:
-                return theme.colors.surface;
-        }
-    };
-
-    const getBorderColor = () => {
-        switch (toast.type) {
-            case 'success':
-                return theme.colors.successBorder;
-            case 'error':
-                return theme.colors.errorBorder;
-            case 'loading':
-                return theme.colors.border;
-            default:
-                return theme.colors.border;
-        }
-    };
-
-    const getTextColor = () => {
-        switch (toast.type) {
-            case 'success':
-                return theme.colors.success;
-            case 'error':
-                return theme.colors.error;
-            default:
-                return theme.colors.textPrimary;
-        }
-    };
-
     return (
-        <View
-            style={[
-                styles.toast,
-                {
-                    backgroundColor: getBackgroundColor(),
-                    borderColor: getBorderColor(),
-                },
-            ]}
-        >
+        <View style={styles.toast}>
             <View style={styles.content}>
-                {toast.type === 'loading' && (
-                    <Text style={styles.loadingIcon}>⏳</Text>
+                {toast.type === 'loading' ? (
+                    <ActivityIndicator
+                        size="small"
+                        color="#FFFFFF"
+                        style={styles.spinner}
+                    />
+                ) : (
+                    <View
+                        style={[
+                            styles.statusDot,
+                            { backgroundColor: statusDotColor[toast.type] ?? '#FFFFFF' },
+                        ]}
+                    />
                 )}
-                {toast.type === 'success' && (
-                    <Text style={styles.successIcon}>✓</Text>
-                )}
-                {toast.type === 'error' && (
-                    <Text style={styles.errorIcon}>✕</Text>
-                )}
-                <Text style={[styles.message, { color: getTextColor() }]}>
+                <Text style={styles.message} numberOfLines={3}>
                     {toast.message}
                 </Text>
             </View>
             {toast.action && (
-                <Pressable onPress={toast.action.onPress} style={styles.actionButton}>
+                <Pressable
+                    onPress={toast.action.onPress}
+                    style={({ pressed }) => [styles.actionButton, pressed && styles.pressed]}
+                    accessibilityRole="button"
+                >
                     <Text style={styles.actionText}>{toast.action.label}</Text>
                 </Pressable>
             )}
             {!toast.action && toast.type !== 'loading' && (
-                <Pressable onPress={onDismiss} style={styles.dismissButton}>
-                    <Text style={styles.dismissText}>×</Text>
+                <Pressable
+                    onPress={onDismiss}
+                    style={styles.dismissButton}
+                    accessibilityRole="button"
+                    accessibilityLabel="알림 닫기"
+                    hitSlop={8}
+                >
+                    <CloseIcon size={12} color="#B0B8C1" />
                 </Pressable>
             )}
         </View>
@@ -99,7 +78,7 @@ export function ToastContainer() {
     if (toasts.length === 0) return null;
 
     return (
-        <View style={styles.container}>
+        <View style={styles.container} pointerEvents="box-none">
             {toasts.map((toast) => (
                 <ToastItem
                     key={toast.id}
@@ -123,63 +102,60 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
+        minHeight: 52,
         paddingVertical: 12,
         paddingHorizontal: 16,
-        borderRadius: 12,
-        borderWidth: 1,
+        borderRadius: theme.radius.lg,
         marginBottom: 8,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 4,
-        elevation: 4,
+        backgroundColor: 'rgba(25, 31, 40, 0.94)',
+        shadowColor: '#191F28',
+        shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: 0.18,
+        shadowRadius: 20,
+        elevation: 8,
     },
     content: {
         flexDirection: 'row',
         alignItems: 'center',
         flex: 1,
     },
-    loadingIcon: {
-        fontSize: 16,
-        marginRight: 8,
+    statusDot: {
+        width: 6,
+        height: 6,
+        borderRadius: 3,
+        marginRight: 10,
     },
-    successIcon: {
-        fontSize: 16,
-        color: theme.colors.success,
-        marginRight: 8,
-        fontWeight: '700',
-    },
-    errorIcon: {
-        fontSize: 16,
-        color: theme.colors.error,
-        marginRight: 8,
-        fontWeight: '700',
+    spinner: {
+        marginRight: 10,
     },
     message: {
         fontSize: 14,
         lineHeight: 20,
+        fontWeight: '600',
+        letterSpacing: -0.2,
+        color: '#FFFFFF',
         flex: 1,
     },
     actionButton: {
-        paddingVertical: 6,
+        paddingVertical: 7,
         paddingHorizontal: 12,
-        backgroundColor: theme.colors.primary,
-        borderRadius: 8,
+        backgroundColor: 'rgba(255, 255, 255, 0.16)',
+        borderRadius: theme.radius.sm,
         marginLeft: 12,
+    },
+    pressed: {
+        opacity: 0.7,
     },
     actionText: {
         fontSize: 13,
-        fontWeight: '600',
-        color: '#fff',
+        fontWeight: '700',
+        color: '#FFFFFF',
     },
     dismissButton: {
-        paddingHorizontal: 8,
-        paddingVertical: 4,
+        width: 28,
+        height: 28,
+        alignItems: 'center',
+        justifyContent: 'center',
         marginLeft: 8,
-    },
-    dismissText: {
-        fontSize: 20,
-        color: theme.colors.textSecondary,
-        fontWeight: '300',
     },
 });

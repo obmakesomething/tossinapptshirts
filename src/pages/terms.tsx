@@ -3,8 +3,8 @@ import React from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Screen, theme } from '../components/ui';
 
-const WARM_DEEP = '#FFFAF5';
-const NAVY_PANEL = '#FFFFFF';
+const PAGE_BG = '#F2F4F6';
+const PANEL = '#FFFFFF';
 
 export const Route = createRoute('/terms', {
   component: Page,
@@ -144,7 +144,7 @@ function Page() {
 
 const styles = StyleSheet.create({
   screenContent: {
-    backgroundColor: WARM_DEEP,
+    backgroundColor: PAGE_BG,
   },
   headerRow: {
     flexDirection: 'row',
@@ -154,49 +154,49 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     fontSize: 20,
-    fontWeight: '800',
-    color: '#2E231B',
+    fontWeight: '700',
+    color: '#191F28',
   },
   headerBack: {
     borderRadius: 999,
     borderWidth: 1,
-    borderColor: 'rgba(240,223,207,0.92)',
-    backgroundColor: 'rgba(255,244,232,0.92)',
+    borderColor: '#E5E8EB',
+    backgroundColor: '#F2F4F6',
     paddingVertical: 6,
     paddingHorizontal: 12,
   },
   headerBackText: {
     fontSize: 12,
-    color: '#7C6959',
+    color: '#4E5968',
     fontWeight: '700',
   },
   content: {
-    backgroundColor: NAVY_PANEL,
+    backgroundColor: PANEL,
     borderRadius: theme.radius.lg,
     paddingHorizontal: theme.spacing.md,
     paddingVertical: theme.spacing.lg,
     borderWidth: 1,
-    borderColor: 'rgba(240,223,207,0.92)',
+    borderColor: '#E5E8EB',
     paddingBottom: theme.spacing.xl,
   },
   sectionTitle: {
     fontSize: 16,
     lineHeight: 24,
     fontWeight: '700',
-    color: '#2E231B',
+    color: '#191F28',
     marginTop: theme.spacing.lg,
     marginBottom: theme.spacing.sm,
   },
   paragraph: {
     fontSize: 13,
     lineHeight: 22,
-    color: '#7C6959',
+    color: '#4E5968',
     marginBottom: theme.spacing.md,
   },
   footer: {
     fontSize: 12,
     lineHeight: 18,
-    color: '#7A6B5D',
+    color: '#8B95A1',
     marginTop: theme.spacing.xl,
     textAlign: 'center',
   },

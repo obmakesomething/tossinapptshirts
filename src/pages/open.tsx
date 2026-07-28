@@ -20,7 +20,7 @@ function Page() {
 
   return (
     <View style={styles.container}>
-      <ActivityIndicator size="small" color="#2A6ED4" />
+      <ActivityIndicator size="small" color="#1B64DA" />
       <Text style={styles.text}>앱을 여는 중이에요...</Text>
     </View>
   );
@@ -34,7 +34,7 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   text: {
-    color: '#7D8793',
+    color: '#8B95A1',
     fontSize: 14,
   },
 });

@@ -4,8 +4,10 @@ import React, { useState } from 'react';
 import { Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { MockupCanvas } from '../components/MockupCanvas';
 import {
+  Badge,
   Card,
   ColorSwatch,
+  ListRow,
   PageHeader,
   PrimaryButton,
   SecondaryButton,
@@ -18,9 +20,9 @@ import { buildTemplate } from '../data/mockupTemplates';
 import { calcPricing } from '../data/pricing';
 import { formatPrice } from '../utils/format';
 
-const ORANGE_RED = '#2A6ED4';
-const WARM_DEEP = '#FFFAF5';
-const NAVY_PANEL = '#FFFFFF';
+const ACCENT = '#1B64DA';
+const PAGE_BG = '#F2F4F6';
+const PANEL = '#FFFFFF';
 
 export const Route = createRoute('/preview', {
   component: Page,
@@ -96,12 +98,11 @@ function Page() {
 
   return (
     <Screen contentStyle={styles.screenContent}>
-      <View style={styles.bgOrbTop} />
-      <View style={styles.bgOrbBottom} />
-      <PageHeader title="완성 확인" onBack={() => navigation.goBack()} />
-
-      <Text style={styles.title}>{selectedProduct.name}</Text>
-      <Text style={styles.subtitle}>다른 색상으로도 확인해 보세요</Text>
+      <PageHeader
+        title="완성 확인"
+        subtitle={`${selectedProduct.name} · 다른 색상으로도 확인해 보세요`}
+        onBack={() => navigation.goBack()}
+      />
 
       <ScrollView horizontal showsHorizontalScrollIndicator={false}>
         {filteredShots.map((label, index) => {
@@ -153,13 +154,9 @@ function Page() {
 
       {/* 인쇄 품질 배지 */}
       <Card style={styles.qualityCard}>
-        <View style={styles.qualityBadgeRow}>
-          <Text style={styles.qualityBadgeIcon}>✅</Text>
-          <View style={styles.qualityBadgeContent}>
-            <Text style={styles.qualityBadgeTitle}>양호 — 선명하게 인쇄돼요</Text>
-            <Text style={styles.qualityBadgeDesc}>해상도 3200×3200px (300DPI)</Text>
-          </View>
-        </View>
+        <Badge variant="success" label="인쇄 품질 양호" />
+        <Text style={styles.qualityBadgeTitle}>선명하게 인쇄돼요</Text>
+        <Text style={styles.qualityBadgeDesc}>해상도 3200×3200px · 300DPI</Text>
       </Card>
 
       <Card style={styles.priceCard}>
@@ -196,13 +193,13 @@ function Page() {
       {/* 배송 안내 */}
       <Card style={styles.infoCard}>
         <Text style={styles.infoTitle}>배송 안내</Text>
-        <Text style={styles.infoDesc}>📦 예상 출고: 결제 후 3~5영업일</Text>
-        <Text style={styles.infoDesc}>🚚 배송: 출고 후 1~2일</Text>
+        <ListRow label="예상 출고" value="결제 후 3~5영업일" />
+        <ListRow label="배송" value="출고 후 1~2일" last />
       </Card>
 
       {/* 커스텀 제작 안내 */}
       <Card style={styles.policyCard}>
-        <Text style={styles.policyTitle}>⚠️ 커스텀 제작 안내</Text>
+        <Text style={styles.policyTitle}>커스텀 제작 안내</Text>
         <Text style={styles.policyDesc}>
           주문 제작 상품이라 단순 변심으로 교환·환불이 어렵습니다.{'\n'}
           불량 시 100% 재제작해드려요.
@@ -231,207 +228,120 @@ function Page() {
 
 const styles = StyleSheet.create({
   screenContent: {
-    backgroundColor: WARM_DEEP,
+    backgroundColor: PAGE_BG,
     paddingBottom: theme.spacing.xl,
-  },
-  bgOrbTop: {
-    position: 'absolute',
-    top: -100,
-    right: -80,
-    width: 230,
-    height: 230,
-    borderRadius: 115,
-    backgroundColor: 'rgba(255,196,146,0.35)',
-  },
-  bgOrbBottom: {
-    position: 'absolute',
-    bottom: 20,
-    left: -70,
-    width: 210,
-    height: 210,
-    borderRadius: 105,
-    backgroundColor: 'rgba(255,221,186,0.42)',
-  },
-  headerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: theme.spacing.md,
-  },
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: '800',
-    color: '#2E231B',
-  },
-  headerBack: {
-    borderRadius: 999,
-    borderWidth: 1,
-    borderColor: 'rgba(240,223,207,0.92)',
-    backgroundColor: 'rgba(255,244,232,0.92)',
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-  },
-  headerBackText: {
-    fontSize: 12,
-    color: '#7C6959',
-    fontWeight: '700',
-  },
-  title: {
-    ...theme.typography.heading,
-    color: '#2E231B',
-  },
-  subtitle: {
-    ...theme.typography.body,
-    color: '#7C6959',
-    marginTop: theme.spacing.xs,
-    marginBottom: theme.spacing.md,
   },
   mockupCard: {
     width: 220,
     alignItems: 'center',
-    backgroundColor: NAVY_PANEL,
-    borderColor: 'rgba(240,223,207,0.92)',
-    borderWidth: 1,
+    backgroundColor: PANEL,
+    padding: theme.spacing.lg,
   },
   mockupSpacing: {
     marginLeft: theme.spacing.md,
   },
   mockupLabel: {
-    fontSize: 13,
-    color: '#7C6959',
-    lineHeight: 20,
-    marginTop: theme.spacing.sm,
+    ...theme.typography.label,
+    color: theme.colors.textTertiary,
+    marginTop: theme.spacing.md,
   },
   section: {
-    marginTop: theme.spacing.lg,
+    marginTop: theme.spacing.xl,
   },
   sectionTitle: {
     ...theme.typography.subheading,
-    color: '#2E231B',
-    marginBottom: theme.spacing.sm,
+    color: theme.colors.textPrimary,
+    marginBottom: theme.spacing.md,
   },
   swatchRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
   },
   qualityCard: {
-    marginTop: theme.spacing.lg,
-    backgroundColor: '#E9F9F2',
-    borderColor: '#AEE6CF',
-    borderWidth: 1,
-  },
-  qualityBadgeRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  qualityBadgeIcon: {
-    fontSize: 20,
-    marginRight: theme.spacing.sm,
-  },
-  qualityBadgeContent: {
-    flex: 1,
+    marginTop: theme.spacing.xl,
   },
   qualityBadgeTitle: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#2E231B',
-    lineHeight: 20,
+    ...theme.typography.subheading,
+    color: theme.colors.textPrimary,
+    marginTop: theme.spacing.md,
   },
   qualityBadgeDesc: {
-    fontSize: 12,
-    color: '#7C6959',
-    lineHeight: 18,
-    marginTop: 2,
+    ...theme.typography.label,
+    fontWeight: '500',
+    color: theme.colors.textTertiary,
+    marginTop: theme.spacing.xs,
   },
   priceCard: {
     marginTop: theme.spacing.md,
-    backgroundColor: NAVY_PANEL,
-    borderColor: 'rgba(240,223,207,0.92)',
-    borderWidth: 1,
-    padding: theme.spacing.lg,
+    backgroundColor: PANEL,
   },
   priceLabel: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: '#2E231B',
-    marginBottom: theme.spacing.md,
+    ...theme.typography.subheading,
+    color: theme.colors.textPrimary,
+    marginBottom: theme.spacing.lg,
   },
   priceRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: theme.spacing.xs,
+    alignItems: 'center',
+    paddingVertical: theme.spacing.xs,
   },
   priceRowLabel: {
-    fontSize: 14,
-    color: '#7C6959',
+    ...theme.typography.body,
+    color: theme.colors.textSecondary,
   },
   priceRowValue: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#2E231B',
+    ...theme.typography.bodyStrong,
+    color: theme.colors.textPrimary,
   },
   priceSubDetail: {
-    fontSize: 12,
-    color: '#7A6B5D',
-    marginLeft: theme.spacing.md,
-    marginBottom: theme.spacing.sm,
+    ...theme.typography.caption,
+    color: theme.colors.textTertiary,
+    marginBottom: theme.spacing.xs,
   },
   priceDivider: {
     height: 1,
-    backgroundColor: 'rgba(240,223,207,0.92)',
-    marginVertical: theme.spacing.sm,
+    backgroundColor: theme.colors.divider,
+    marginVertical: theme.spacing.md,
   },
   priceTotalLabel: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: '#2E231B',
+    ...theme.typography.subheading,
+    color: theme.colors.textPrimary,
   },
   priceTotalValue: {
-    fontSize: 20,
+    fontSize: 22,
+    lineHeight: 30,
     fontWeight: '700',
-    color: ORANGE_RED,
+    letterSpacing: -0.5,
+    color: theme.colors.textPrimary,
   },
   infoCard: {
     marginTop: theme.spacing.md,
-    backgroundColor: NAVY_PANEL,
-    borderColor: 'rgba(240,223,207,0.92)',
-    borderWidth: 1,
+    backgroundColor: PANEL,
   },
   infoTitle: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: '#2E231B',
-    lineHeight: 22,
+    ...theme.typography.subheading,
+    color: theme.colors.textPrimary,
     marginBottom: theme.spacing.sm,
-  },
-  infoDesc: {
-    fontSize: 13,
-    color: '#7C6959',
-    lineHeight: 22,
   },
   policyCard: {
     marginTop: theme.spacing.md,
-    backgroundColor: '#FFF8E1',
-    borderColor: '#F5E6B8',
-    borderWidth: 1,
+    backgroundColor: theme.colors.warningSoft,
   },
   policyTitle: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#2E231B',
-    lineHeight: 20,
+    ...theme.typography.bodyStrong,
+    color: theme.colors.textPrimary,
     marginBottom: theme.spacing.xs,
   },
   policyDesc: {
-    fontSize: 13,
-    color: '#7C6959',
-    lineHeight: 20,
+    ...theme.typography.body,
+    color: theme.colors.textSecondary,
   },
   primaryActionRow: {
-    marginTop: theme.spacing.lg,
+    marginTop: theme.spacing.xxl,
   },
   orderNowButton: {
-    backgroundColor: ORANGE_RED,
+    backgroundColor: ACCENT,
   },
   actionRow: {
     marginTop: theme.spacing.md,

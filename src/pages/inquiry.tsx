@@ -11,10 +11,10 @@ import {
 import { Card, PrimaryButton, Screen, theme } from '../components/ui';
 import { API_BASE_URL } from '../config';
 
-const ORANGE_RED = '#2A6ED4';
-const WARM_DEEP = '#FFFAF5';
-const NAVY_PANEL = '#FFFFFF';
-const WARM_MID = '#FFF4E8';
+const ACCENT = '#1B64DA';
+const PAGE_BG = '#F2F4F6';
+const PANEL = '#FFFFFF';
+const FILL_SOFT = '#F2F4F6';
 
 export const Route = createRoute('/inquiry' as never, {
   component: Page,
@@ -141,7 +141,7 @@ function Page() {
 
 const styles = StyleSheet.create({
   screenContent: {
-    backgroundColor: WARM_DEEP,
+    backgroundColor: PAGE_BG,
   },
   headerRow: {
     flexDirection: 'row',
@@ -151,51 +151,49 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     fontSize: 20,
-    fontWeight: '800',
-    color: '#2E231B',
+    fontWeight: '700',
+    color: '#191F28',
   },
   headerBack: {
     borderRadius: 999,
     borderWidth: 1,
-    borderColor: 'rgba(240,223,207,0.92)',
-    backgroundColor: 'rgba(255,244,232,0.92)',
+    borderColor: '#E5E8EB',
+    backgroundColor: '#F2F4F6',
     paddingVertical: 6,
     paddingHorizontal: 12,
   },
   headerBackText: {
     fontSize: 12,
-    color: '#7C6959',
+    color: '#4E5968',
     fontWeight: '700',
   },
   subtitle: {
     fontSize: 13,
     lineHeight: 20,
-    color: '#7C6959',
+    color: '#4E5968',
     marginBottom: theme.spacing.lg,
   },
   formCard: {
     marginBottom: theme.spacing.lg,
-    backgroundColor: NAVY_PANEL,
-    borderColor: 'rgba(240,223,207,0.92)',
-    borderWidth: 1,
+    backgroundColor: PANEL,
   },
   label: {
     fontSize: 14,
     lineHeight: 20,
     fontWeight: '600',
-    color: '#2E231B',
+    color: '#191F28',
     marginBottom: theme.spacing.xs,
   },
   input: {
     borderWidth: 1,
-    borderColor: 'rgba(240,223,207,0.92)',
+    borderColor: '#E5E8EB',
     borderRadius: theme.radius.md,
     paddingHorizontal: theme.spacing.md,
     paddingVertical: theme.spacing.sm,
     fontSize: 14,
     lineHeight: 20,
-    color: '#2E231B',
-    backgroundColor: WARM_MID,
+    color: '#191F28',
+    backgroundColor: FILL_SOFT,
   },
   textArea: {
     height: 120,
@@ -204,17 +202,17 @@ const styles = StyleSheet.create({
   hint: {
     fontSize: 12,
     lineHeight: 18,
-    color: '#7A6B5D',
+    color: '#8B95A1',
     marginTop: theme.spacing.md,
   },
   errorText: {
     fontSize: 12,
     lineHeight: 18,
-    color: '#ffb8b8',
+    color: '#F7C6CB',
     marginBottom: theme.spacing.sm,
   },
   submitButton: {
-    backgroundColor: ORANGE_RED,
+    backgroundColor: ACCENT,
   },
   loadingRow: {
     flexDirection: 'row',
@@ -225,7 +223,7 @@ const styles = StyleSheet.create({
   loadingText: {
     fontSize: 12,
     lineHeight: 18,
-    color: '#7C6959',
+    color: '#4E5968',
     marginLeft: theme.spacing.sm,
   },
 });

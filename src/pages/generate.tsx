@@ -33,10 +33,10 @@ import {
   trackScreenView,
 } from '../utils/analytics';
 
-const ORANGE_RED = '#2A6ED4';
-const WARM_DEEP = '#FFFAF5';
-const WARM_MID = '#FFF4E8';
-const NAVY_PANEL = '#FFFFFF';
+const ACCENT = '#1B64DA';
+const PAGE_BG = '#F2F4F6';
+const FILL_SOFT = '#F2F4F6';
+const PANEL = '#FFFFFF';
 
 export const Route = createRoute('/generate', {
   component: Page,
@@ -318,8 +318,6 @@ function Page() {
   return (
     <>
       <Screen contentStyle={styles.screenContent}>
-        <View style={styles.bgOrbTop} />
-        <View style={styles.bgOrbBottom} />
         <PageHeader title="AI 이미지 생성" onBack={() => navigation.goBack()} />
 
         <Text style={styles.title}>AI로 이미지를 만들어 볼까요?</Text>
@@ -494,26 +492,8 @@ function Page() {
 
 const styles = StyleSheet.create({
   screenContent: {
-    backgroundColor: WARM_DEEP,
+    backgroundColor: PAGE_BG,
     paddingBottom: theme.spacing.xl,
-  },
-  bgOrbTop: {
-    position: 'absolute',
-    top: -100,
-    right: -80,
-    width: 230,
-    height: 230,
-    borderRadius: 115,
-    backgroundColor: 'rgba(255,196,146,0.35)',
-  },
-  bgOrbBottom: {
-    position: 'absolute',
-    bottom: 20,
-    left: -70,
-    width: 210,
-    height: 210,
-    borderRadius: 105,
-    backgroundColor: 'rgba(255,221,186,0.42)',
   },
   headerRow: {
     flexDirection: 'row',
@@ -523,48 +503,48 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     fontSize: 20,
-    fontWeight: '800',
-    color: '#2E231B',
+    fontWeight: '700',
+    color: '#191F28',
   },
   headerBack: {
     borderRadius: 999,
     borderWidth: 1,
-    borderColor: 'rgba(240,223,207,0.92)',
-    backgroundColor: 'rgba(255,244,232,0.92)',
+    borderColor: '#E5E8EB',
+    backgroundColor: '#F2F4F6',
     paddingVertical: 6,
     paddingHorizontal: 12,
   },
   headerBackText: {
     fontSize: 12,
-    color: '#7C6959',
+    color: '#4E5968',
     fontWeight: '700',
   },
   title: {
     ...theme.typography.heading,
-    color: '#2E231B',
+    color: '#191F28',
     marginBottom: theme.spacing.sm,
   },
   input: {
     minHeight: 96,
     borderWidth: 1,
-    borderColor: 'rgba(240,223,207,0.92)',
+    borderColor: '#E5E8EB',
     borderRadius: theme.radius.md,
     padding: theme.spacing.md,
-    backgroundColor: WARM_MID,
+    backgroundColor: FILL_SOFT,
     fontSize: 14,
-    color: '#2E231B',
+    color: '#191F28',
   },
   helperText: {
     fontSize: 12,
     lineHeight: 18,
-    color: '#7A6B5D',
+    color: '#8B95A1',
     marginTop: theme.spacing.sm,
     marginBottom: theme.spacing.lg,
   },
   helperHint: {
     fontSize: 11,
     lineHeight: 16,
-    color: ORANGE_RED,
+    color: ACCENT,
     marginTop: theme.spacing.xs,
     fontStyle: 'italic',
   },
@@ -582,7 +562,7 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     ...theme.typography.subheading,
-    color: '#2E231B',
+    color: '#191F28',
     marginBottom: theme.spacing.sm,
   },
   chipRow: {
@@ -604,9 +584,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     position: 'relative',
     overflow: 'hidden',
-    backgroundColor: NAVY_PANEL,
-    borderColor: 'rgba(240,223,207,0.92)',
-    borderWidth: 1,
+    backgroundColor: PANEL,
   },
   checkerboardBg: {
     position: 'absolute',
@@ -614,7 +592,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: WARM_MID,
+    backgroundColor: FILL_SOFT,
   },
   resultImage: {
     width: '100%',
@@ -624,13 +602,13 @@ const styles = StyleSheet.create({
   resultPlaceholder: {
     fontSize: 12,
     lineHeight: 18,
-    color: '#7A6B5D',
+    color: '#8B95A1',
     textAlign: 'center',
     paddingHorizontal: theme.spacing.md,
   },
   bgRemoveButton: {
     marginTop: theme.spacing.md,
-    backgroundColor: ORANGE_RED,
+    backgroundColor: ACCENT,
   },
   undoRow: {
     marginTop: theme.spacing.sm,
@@ -639,8 +617,8 @@ const styles = StyleSheet.create({
   undoButton: {
     borderRadius: 999,
     borderWidth: 1,
-    borderColor: 'rgba(240,223,207,0.92)',
-    backgroundColor: 'rgba(255,244,232,0.92)',
+    borderColor: '#E5E8EB',
+    backgroundColor: '#F2F4F6',
     paddingHorizontal: 12,
     paddingVertical: 8,
   },
@@ -654,15 +632,15 @@ const styles = StyleSheet.create({
     fontSize: 12,
     lineHeight: 18,
     fontWeight: '700',
-    color: ORANGE_RED,
+    color: ACCENT,
   },
   loadingSection: {
     marginTop: theme.spacing.md,
     paddingVertical: theme.spacing.md,
     paddingHorizontal: theme.spacing.md,
-    backgroundColor: NAVY_PANEL,
+    backgroundColor: PANEL,
     borderWidth: 1,
-    borderColor: 'rgba(240,223,207,0.92)',
+    borderColor: '#E5E8EB',
     borderRadius: theme.radius.md,
   },
   loadingRow: {
@@ -672,41 +650,41 @@ const styles = StyleSheet.create({
   loadingText: {
     fontSize: 14,
     lineHeight: 20,
-    color: '#2E231B',
+    color: '#191F28',
     marginLeft: theme.spacing.sm,
     fontWeight: '600',
   },
   etaText: {
     fontSize: 12,
     lineHeight: 18,
-    color: '#7C6959',
+    color: '#4E5968',
     marginTop: theme.spacing.xs,
     marginLeft: 28,
   },
   backgroundHint: {
     fontSize: 12,
     lineHeight: 18,
-    color: ORANGE_RED,
+    color: ACCENT,
     marginTop: theme.spacing.sm,
     fontWeight: '500',
   },
   errorText: {
     fontSize: 12,
     lineHeight: 18,
-    color: '#ffb8b8',
+    color: '#F7C6CB',
     marginTop: theme.spacing.sm,
   },
   successText: {
     fontSize: 12,
     lineHeight: 18,
-    color: '#8ee0b2',
+    color: '#B5E6D0',
     marginTop: theme.spacing.sm,
     fontWeight: '600',
   },
   regenerateHint: {
     fontSize: 12,
     lineHeight: 18,
-    color: ORANGE_RED,
+    color: ACCENT,
     marginTop: theme.spacing.sm,
     textAlign: 'center',
     fontWeight: '500',
@@ -715,9 +693,9 @@ const styles = StyleSheet.create({
     marginTop: theme.spacing.lg,
   },
   generateButton: {
-    backgroundColor: ORANGE_RED,
+    backgroundColor: ACCENT,
   },
   useImageButton: {
-    backgroundColor: ORANGE_RED,
+    backgroundColor: ACCENT,
   },
 });
