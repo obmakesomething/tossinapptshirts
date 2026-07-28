@@ -84,14 +84,52 @@
 
 ---
 
+## 제출 경로
+
+### 콘솔
+
+- 웹 콘솔: **https://apps-in-toss.toss.im/**
+- 심사 소요: 번들 검토 최대 영업일 3일 / 앱 정보 검토 1~2일
+- 번들 용량 제한: 압축 해제 기준 100MB (현재 `merchandisegpt.ait` 3.6MB)
+- 흐름: 번들 업로드 → `검토 요청하기` → 승인 후 `출시하기`
+
+### Console MCP (권장 — 브라우저 없이 처리 가능)
+
+앱인토스가 콘솔용 MCP 서버를 공식 제공합니다. `bundle_upload`,
+`bundle_submit_review`, `bundle_set_release_note`, `bundle_rollback` 등을 노출합니다.
+
+```bash
+claude mcp add --transport http apps-in-toss-console https://mcp.toss.im/adapters/apps-in-toss-console/mcp --client-id mcp-gateway
+```
+
+등록 후 대화형 `claude` 세션에서 `/mcp` → 어댑터 선택 → Toss SSO + Biz Login 인증.
+`Connected` 표시되면 업로드·검토 요청을 대화로 진행할 수 있습니다.
+
+> 인증은 OAuth라 비대화형 세션에서는 진행할 수 없습니다.
+
+출처: [콘솔 MCP 가이드](https://developers-apps-in-toss.toss.im/guide/console-mcp.md),
+[미니앱 등록하기](https://developers-apps-in-toss.toss.im/guide/operation/console-workspace.md),
+[미니앱 출시하기](https://developers-apps-in-toss.toss.im/guide/operation/deploy.md)
+
 ## 제출 전 체크리스트
 
-- [ ] Sandbox 시뮬레이터에서 16개 화면 육안 확인 (특히 홈 / 에디터 / 미리보기 / 주문)
+- [ ] Sandbox 시뮬레이터에서 17개 화면 육안 확인 (특히 홈 / 에디터 / 미리보기 / 주문)
 - [ ] 에디터 하단 패널 토글·사진 삭제 버튼 동작 확인 (아이콘 교체분)
 - [ ] Toast 다크 pill이 밝은 화면·어두운 화면 양쪽에서 읽히는지 확인
 - [ ] 콘솔에서 앱 버전 증가 후 `merchandisegpt.ait` 업로드
 - [ ] 변경사항 필드에 위 "콘솔 입력용 요약" 붙여넣기
 - [ ] 심사 제출
+
+### 시뮬레이터 샌드박스 앱
+
+육안 확인이 필요할 때 (2026-06-05 빌드, 68,205,039 바이트):
+
+```bash
+curl -L -o ~/Downloads/ait-sandbox.zip https://static.toss.im/appsintoss/apps-in-toss-sandbox-202606022149.zip
+```
+
+압축 해제 후 `.app`을 시뮬레이터 화면에 드래그 앤 드롭 → 샌드박스 앱 실행 →
+로그인 → 워크스페이스 → 스킴 입력란에 `intoss://merchandisegpt`.
 
 ---
 
