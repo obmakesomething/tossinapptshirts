@@ -10,6 +10,7 @@ import {
 } from 'react';
 import { theme } from '../components/ui';
 import { type CatalogProduct, catalogProducts } from '../data/catalog';
+import type { AitSessionEnvelope } from '../ait/sessionEnvelope';
 import type { Placement } from '../data/mockupTemplates';
 import { type PrintOption, printOptions } from '../data/printOptions';
 
@@ -83,6 +84,14 @@ type CatalogContextValue = {
   backPhotos: string[];
   frontPhotoIndex: number;
   backPhotoIndex: number;
+  /**
+   * Toss session, shared so every screen can reach the same userKey.
+   * It used to live only in /order's local state, which meant order history,
+   * inquiries, and withdrawal erasure each keyed off a different identifier.
+   */
+  aitSession: AitSessionEnvelope | null;
+  userKey: string;
+  setAitSession: (session: AitSessionEnvelope | null) => void;
   setSelectedProductId: (id: string) => void;
   setSelectedColor: (color: string) => void;
   addOrderLine: (sizeLabel: string, quantity?: number) => void;
@@ -113,6 +122,7 @@ const CatalogContext = createContext<CatalogContextValue | null>(null);
 
 export function CatalogProvider({ children }: { children: React.ReactNode }) {
   const products = catalogProducts;
+  const [aitSession, setAitSession] = useState<AitSessionEnvelope | null>(null);
   const fallbackProduct = products[0];
   if (!fallbackProduct) {
     throw new Error('Catalog products are missing.');
@@ -536,6 +546,9 @@ export function CatalogProvider({ children }: { children: React.ReactNode }) {
     textTransform,
     activeLayer,
     selectedLayerId,
+    aitSession,
+    userKey: aitSession?.identity?.userKey ?? '',
+    setAitSession,
     textLayer,
     frontDesignImageUri,
     frontImageTransform,

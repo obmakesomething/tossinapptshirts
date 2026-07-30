@@ -11,6 +11,7 @@ import {
   theme,
 } from '../components/ui';
 import { API_BASE_URL } from '../config';
+import { useCatalog } from '../context/catalog';
 import { formatPrice } from '../utils/format';
 
 const PAGE_BG = '#F2F4F6';
@@ -46,17 +47,20 @@ function Page() {
   const navigation = Route.useNavigation();
   const params = Route.useParams() as { orderId?: string };
   const orderId = params.orderId ?? '';
+  const { userKey } = useCatalog();
 
   const [order, setOrder] = useState<OrderDetail | null>(null);
   const [loading, setLoading] = useState(true);
 
   const fetchOrder = useCallback(async () => {
-    if (!orderId) {
+    if (!orderId || !userKey) {
       setLoading(false);
       return;
     }
     try {
-      const res = await fetch(`${API_BASE_URL}/v1/orders/${orderId}`);
+      const res = await fetch(`${API_BASE_URL}/v1/orders/${orderId}`, {
+        headers: { 'x-toss-user-key': userKey },
+      });
       if (res.ok) {
         const data = await res.json();
         setOrder(data);
@@ -66,7 +70,7 @@ function Page() {
     } finally {
       setLoading(false);
     }
-  }, [orderId]);
+  }, [orderId, userKey]);
 
   useEffect(() => {
     fetchOrder();

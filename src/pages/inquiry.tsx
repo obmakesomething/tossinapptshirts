@@ -9,6 +9,7 @@ import {
   View,
 } from 'react-native';
 import { Card, PrimaryButton, Screen, theme } from '../components/ui';
+import { useCatalog } from '../context/catalog';
 import { API_BASE_URL } from '../config';
 
 const ACCENT = '#1B64DA';
@@ -22,6 +23,7 @@ export const Route = createRoute('/inquiry' as never, {
 
 function Page() {
   const navigation = Route.useNavigation();
+  const { userKey } = useCatalog();
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [userName, setUserName] = useState('');
@@ -38,8 +40,13 @@ function Page() {
     setError('');
 
     try {
-      // Generate a simple userId (in production, use proper auth)
-      const userId = `user-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+      // Key the inquiry to the Toss user when there is a session. A random id
+      // per submission — what this used to do — meant the author could never
+      // see their own inquiry again, and withdrawal erasure had nothing to
+      // match on. Anonymous submissions keep a throwaway id, and are the one
+      // case erasure genuinely cannot reach.
+      const userId =
+        userKey || `anon-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 
       const response = await fetch(`${API_BASE_URL}/v1/inquiries`, {
         method: 'POST',

@@ -114,6 +114,40 @@ async function initializeDatabase() {
       CREATE INDEX IF NOT EXISTS idx_inquiry_replies_inquiry_id ON inquiry_replies(inquiry_id)
     `);
 
+    // Orders. Until now an order existed only as an outbound email, so the
+    // service could neither show a customer their own history nor erase their
+    // personal data on withdrawal.
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS orders (
+        order_id VARCHAR(64) PRIMARY KEY,
+        user_id VARCHAR(128),
+        status VARCHAR(24) NOT NULL DEFAULT 'received',
+        product_name TEXT,
+        color VARCHAR(64),
+        lines TEXT,
+        print_sides VARCHAR(32),
+        total_amount INTEGER NOT NULL DEFAULT 0,
+        quantity INTEGER NOT NULL DEFAULT 0,
+        recipient VARCHAR(100),
+        phone VARCHAR(40),
+        email VARCHAR(200),
+        address TEXT,
+        memo TEXT,
+        items JSONB NOT NULL DEFAULT '[]'::jsonb,
+        pricing JSONB NOT NULL DEFAULT '{}'::jsonb,
+        tracking_carrier VARCHAR(64),
+        tracking_number VARCHAR(64),
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `);
+    await pool.query(`
+      CREATE INDEX IF NOT EXISTS idx_orders_user_id ON orders(user_id)
+    `);
+    await pool.query(`
+      CREATE INDEX IF NOT EXISTS idx_orders_created_at ON orders(created_at DESC)
+    `);
+
     // Async generation job tracking (Cloud Run-safe, survives instance restart)
     await pool.query(`
       CREATE TABLE IF NOT EXISTS generation_jobs (

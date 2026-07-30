@@ -9,6 +9,7 @@ import {
   theme,
 } from '../components/ui';
 import { API_BASE_URL } from '../config';
+import { useCatalog } from '../context/catalog';
 import { formatPrice } from '../utils/format';
 
 const PAGE_BG = '#F2F4F6';
@@ -40,12 +41,21 @@ const statusBadgeVariant: Record<OrderStatus, 'success' | 'warning' | 'error'> =
 
 function Page() {
   const navigation = Route.useNavigation();
+  const { userKey } = useCatalog();
   const [orders, setOrders] = useState<OrderSummary[]>([]);
   const [loading, setLoading] = useState(true);
 
   const fetchOrders = useCallback(async () => {
+    // Orders are scoped to the Toss user, so without a session there is
+    // nothing to ask for — show the empty state rather than a failed request.
+    if (!userKey) {
+      setLoading(false);
+      return;
+    }
     try {
-      const res = await fetch(`${API_BASE_URL}/v1/orders`);
+      const res = await fetch(`${API_BASE_URL}/v1/orders`, {
+        headers: { 'x-toss-user-key': userKey },
+      });
       if (res.ok) {
         const data = await res.json();
         setOrders(data.orders ?? []);
@@ -55,7 +65,7 @@ function Page() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [userKey]);
 
   useEffect(() => {
     fetchOrders();

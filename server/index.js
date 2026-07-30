@@ -27,6 +27,12 @@ const {
   buildBlockedGenerationError,
 } = require('./generationPolicyBridge');
 const { getPool, initializeDatabase, closePool } = require('./db');
+const {
+  saveOrder,
+  listOrdersByUser,
+  getOrderForUser,
+  deleteOrdersByUser,
+} = require('./orders');
 
 const app = express();
 
@@ -1678,6 +1684,33 @@ ${pdfUrl ? `\n📄 PDF 다운로드: ${pdfUrl}` : ''}
       status: 'submitted',
     });
 
+    // Best-effort persistence. The email above is what actually gets the order
+    // fulfilled, so a database problem must not fail a paid order — but it does
+    // need to be loud, because an unstored order is invisible to the customer's
+    // history and to withdrawal erasure.
+    try {
+      const userId = req.headers['x-toss-user-key'] || order.userKey || null;
+      const saved = await saveOrder({ order, userId });
+      if (saved) {
+        logEvent('info', 'order_persisted', {
+          requestId: req.requestId,
+          orderId: saved.order_id,
+          hasUserId: Boolean(userId),
+        });
+      } else {
+        logEvent('warn', 'order_persist_skipped_no_db', {
+          requestId: req.requestId,
+          orderId: order.orderId || '',
+        });
+      }
+    } catch (persistError) {
+      logEvent('error', 'order_persist_failed', {
+        requestId: req.requestId,
+        orderId: order.orderId || '',
+        ...formatError(persistError),
+      });
+    }
+
     res.json({ ok: true, pdfUrl, pipeline: pipelineResult, requestId: req.requestId });
   } catch (error) {
     logEvent('error', 'order_submit_failed', {
@@ -2250,17 +2283,85 @@ function verifyTossCallbackAuth(req, res, next) {
   }
 }
 
+// ========================================
+// Order history
+// ========================================
+// The /orders and /order-detail screens have been calling these since the
+// post-purchase journey shipped; until now neither route existed, so both
+// screens failed their fetch and fell through to their empty state.
+
+/**
+ * Orders are private, and an order id is derivable from a timestamp
+ * (`MG-${Date.now()}`). Both routes therefore require the caller's Toss user
+ * key and scope every query to it.
+ */
+function requireUserKey(req, res) {
+  const userKey = req.headers['x-toss-user-key'];
+  if (!userKey) {
+    res.status(401).json({
+      error: 'x-toss-user-key header is required.',
+      requestId: req.requestId,
+    });
+    return null;
+  }
+  return String(userKey);
+}
+
+app.get('/v1/orders', async (req, res) => {
+  const userKey = requireUserKey(req, res);
+  if (!userKey) return;
+
+  try {
+    const orders = await listOrdersByUser(userKey);
+    if (orders === null) {
+      return res.status(503).json({ error: 'Database not configured.', requestId: req.requestId });
+    }
+    return res.json({ orders, requestId: req.requestId });
+  } catch (error) {
+    logEvent('error', 'order_list_failed', {
+      requestId: req.requestId,
+      ...formatError(error),
+    });
+    return res.status(500).json({ error: 'Failed to load orders.', requestId: req.requestId });
+  }
+});
+
+app.get('/v1/orders/:orderId', async (req, res) => {
+  const userKey = requireUserKey(req, res);
+  if (!userKey) return;
+
+  try {
+    const order = await getOrderForUser(req.params.orderId, userKey);
+    if (order === null) {
+      // Same answer whether the order belongs to someone else or does not
+      // exist, so this cannot be used to probe for other customers' orders.
+      return res.status(404).json({ error: 'Order not found.', requestId: req.requestId });
+    }
+    return res.json(order);
+  } catch (error) {
+    logEvent('error', 'order_detail_failed', {
+      requestId: req.requestId,
+      ...formatError(error),
+    });
+    return res.status(500).json({ error: 'Failed to load order.', requestId: req.requestId });
+  }
+});
+
 /**
  * Erase everything we hold that is keyed to a withdrawn user.
  *
  * What is actually user-keyed in this service:
+ *   - orders.user_id               → deleted here (name, phone, email, address)
  *   - inquiries.user_id            → deleted here
  *   - inquiry_replies              → removed by ON DELETE CASCADE on inquiry_id
  *
  * Deliberately not touched, because none of it is linkable to a user id:
  *   - generation_jobs  — params carry no user id, and rows self-expire via expires_at
  *   - GCS objects      — keys are `${prefix}/${timestamp}-${random}`, no user in the path
- *   - orders           — never persisted server-side; they are emailed and gone
+ *
+ * Still outside code's reach: the order PDF and print files mailed to
+ * ORDER_EMAIL_TO stay in that mailbox. Erasing those is a mailbox retention
+ * policy, not something this endpoint can do.
  *
  * Returns per-store counts so the caller can log what was actually destroyed.
  * Throws if a delete fails, so the handler can answer non-2xx instead of
@@ -2272,9 +2373,11 @@ async function eraseUserData(userId) {
     throw new Error('Database not configured - cannot erase user data.');
   }
 
+  const ordersDeleted = await deleteOrdersByUser(userId);
   const inquiries = await pool.query('DELETE FROM inquiries WHERE user_id = $1', [userId]);
 
   return {
+    ordersDeleted,
     inquiriesDeleted: inquiries.rowCount || 0,
   };
 }
@@ -2707,6 +2810,33 @@ app.post('/v1/payment/execute', strictLimiter, async (req, res) => {
           payMethod: data.success?.payMethod,
           approvalTime: data.success?.approvalTime,
         };
+
+        // Persist before the email/PDF work below. This is the live checkout
+        // path — /v1/orders/submit is not called by the app — and payment has
+        // already succeeded here, so every stored row is a paid order.
+        // Best-effort: the email is what gets the order fulfilled, so a
+        // database problem must not fail a payment that already went through.
+        try {
+          const saved = await saveOrder({ order: orderData, userId: userKey || null });
+          if (saved) {
+            logEvent('info', 'order_persisted', {
+              requestId: req.requestId,
+              orderId: saved.order_id,
+              hasUserId: Boolean(userKey),
+            });
+          } else {
+            logEvent('warn', 'order_persist_skipped_no_db', {
+              requestId: req.requestId,
+              orderId: orderData.orderId || '',
+            });
+          }
+        } catch (persistError) {
+          logEvent('error', 'order_persist_failed', {
+            requestId: req.requestId,
+            orderId: orderData.orderId || '',
+            ...formatError(persistError),
+          });
+        }
 
         const mailer = getMailer();
         if (mailer) {

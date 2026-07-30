@@ -20,7 +20,6 @@ import { calcPricing } from '../data/pricing';
 import { formatPrice } from '../utils/format';
 import {
   normalizeAitSessionEnvelope,
-  type AitSessionEnvelope,
 } from '../ait/sessionEnvelope';
 import {
   trackClick,
@@ -66,6 +65,8 @@ function Page() {
     addOrderLine,
     removeOrderLine,
     setOrderLineQuantity,
+    userKey,
+    setAitSession,
   } = useCatalog();
 
   const [name, setName] = useState('');
@@ -81,14 +82,12 @@ function Page() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
   const [postcodeModalVisible, setPostcodeModalVisible] = useState(false);
-  const [aitSession, setAitSession] = useState<AitSessionEnvelope | null>(null);
   const [loginLoading, setLoginLoading] = useState(false);
   const address2InputRef = useRef<TextInput>(null);
   const [editingOrder, setEditingOrder] = useState(false);
   const [agreedPrivacy, setAgreedPrivacy] = useState(false);
   const [agreedTerms, setAgreedTerms] = useState(false);
   const [agreedCustom, setAgreedCustom] = useState(false);
-  const userKey = aitSession?.identity?.userKey ?? '';
 
   useEffect(() => {
     trackScreenView(userKey ? 'order_checkout' : 'order_login', {
