@@ -3,6 +3,48 @@ const { Pool } = require('pg');
 // PostgreSQL connection pool
 let pool = null;
 
+/**
+ * Decide whether this connection string needs TLS.
+ *
+ * Supabase (and any other hosted Postgres reached over the internet) refuses
+ * non-TLS connections, so SSL cannot hinge on NODE_ENV the way it used to —
+ * that left local development unable to reach Supabase at all.
+ *
+ * TLS is skipped only where it is genuinely absent:
+ *   - Cloud SQL over a unix socket (`host=/cloudsql/...`), where the proxy
+ *     already provides the encrypted channel
+ *   - loopback hosts, i.e. a local postgres
+ *   - an explicit PG_DISABLE_SSL=true escape hatch
+ */
+function resolveSslConfig(databaseUrl) {
+  if (String(process.env.PG_DISABLE_SSL || 'false') === 'true') return false;
+
+  const url = String(databaseUrl);
+  if (url.includes('host=/cloudsql/') || url.includes('/.s.PGSQL.')) return false;
+
+  let host = '';
+  try {
+    host = new URL(url).hostname;
+  } catch {
+    // Key/value style DSNs ("host=... dbname=...") never carry a TLS host we
+    // can parse; fall through and let the generic case decide.
+    const match = url.match(/host=([^\s]+)/);
+    host = match ? match[1] : '';
+  }
+
+  // A host that is a filesystem path is a unix socket, so there is no TLS to
+  // negotiate — this covers socket dirs other than Cloud SQL's /cloudsql/.
+  if (host.startsWith('/') || host.startsWith('%2F')) return false;
+
+  if (host === 'localhost' || host === '127.0.0.1' || host === '::1' || host === '') {
+    return false;
+  }
+
+  // Hosted Postgres. Supabase serves a chain that Node's default bundle does
+  // not verify, so verification is relaxed rather than dropping TLS entirely.
+  return { rejectUnauthorized: false };
+}
+
 function getPool() {
   if (!pool) {
     const DATABASE_URL = process.env.DATABASE_URL;
@@ -11,19 +53,14 @@ function getPool() {
       return null;
     }
 
-    // Cloud Run + Cloud SQL: if we connect via unix socket (/cloudsql/...), SSL is unnecessary
-    // and can cause connection issues depending on proxy/driver behavior.
-    const looksLikeCloudSqlSocket = String(DATABASE_URL).includes('host=/cloudsql/');
-    const forceDisableSsl = String(process.env.PG_DISABLE_SSL || 'false') === 'true';
-
     pool = new Pool({
       connectionString: DATABASE_URL,
-      ssl:
-        looksLikeCloudSqlSocket || forceDisableSsl
-          ? false
-          : process.env.NODE_ENV === 'production'
-            ? { rejectUnauthorized: false }
-            : false,
+      ssl: resolveSslConfig(DATABASE_URL),
+      // Supabase's transaction-mode pooler (port 6543) caps connections much
+      // lower than a dedicated instance, and Cloud Run runs several instances.
+      max: Number(process.env.PG_POOL_MAX || 5),
+      idleTimeoutMillis: Number(process.env.PG_IDLE_TIMEOUT_MS || 10_000),
+      connectionTimeoutMillis: Number(process.env.PG_CONNECT_TIMEOUT_MS || 10_000),
     });
 
     pool.on('error', (err) => {
@@ -120,4 +157,5 @@ module.exports = {
   getPool,
   initializeDatabase,
   closePool,
+  resolveSslConfig,
 };
