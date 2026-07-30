@@ -147,3 +147,31 @@ curl -L -o ~/Downloads/ait-sandbox.zip https://static.toss.im/appsintoss/apps-in
 > `@granite-js/react-native`와 `@apps-in-toss/web-framework`가 둘 다 `granite` bin을 제공해
 > 설치 순서에 따라 링크 대상이 달라집니다. 상위 저장소에서도 `npm install`을 다시 하면
 > 같은 문제가 재현될 수 있습니다.
+
+**이 문제는 `npm install`을 할 때마다 재발합니다.** web-framework 쪽으로 링크되면
+`granite dev`가 RN 프로젝트에 없는 `config.web.commands`를 참조하다 즉시 죽습니다:
+
+```
+TypeError: Cannot read properties of undefined (reading 'commands')
+  at @apps-in-toss/web-framework/dist/cli/index.js:15534
+```
+
+### `granite dev` 온디바이스 번들링 (`metro-hermes-compiler`)
+
+시뮬레이터에서 미니앱이 **빈 흰 화면**으로 뜨면 번들 서버를 먼저 확인하세요:
+
+```bash
+curl -s -o /dev/null -w "%{http_code}\n" "http://127.0.0.1:8081/index.bundle?platform=ios&dev=true"
+```
+
+500이면 원인은 대개 이것입니다:
+
+```
+Error: Cannot find module 'metro-hermes-compiler'
+  at getBytecodeVersion (@granite-js/mpack/dist/vendors/metro/src/Server.js:37)
+```
+
+`@granite-js/mpack`이 벤더링한 metro가 런타임에 요구하는데 **선언하지 않은** 패키지입니다.
+메인 저장소에도 없었으므로 이전부터 `granite dev` 번들링이 동작하지 않던 상태였고,
+`devDependencies`에 `metro-hermes-compiler@0.73.10`을 추가해 해결했습니다.
+`ait build`(프로덕션)는 이 패키지 없이도 정상 동작하므로, 이 증상은 dev 서버 전용입니다.
