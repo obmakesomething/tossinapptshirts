@@ -2250,44 +2250,103 @@ function verifyTossCallbackAuth(req, res, next) {
   }
 }
 
-// Toss Apps-in-Toss - User disconnect callback endpoint
-// This endpoint receives events when users disconnect/withdraw from the app
-app.post('/v1/toss/disconnect', verifyTossCallbackAuth, express.json(), (req, res) => {
-  const { userId, eventType } = req.body || {};
+/**
+ * Erase everything we hold that is keyed to a withdrawn user.
+ *
+ * What is actually user-keyed in this service:
+ *   - inquiries.user_id            → deleted here
+ *   - inquiry_replies              → removed by ON DELETE CASCADE on inquiry_id
+ *
+ * Deliberately not touched, because none of it is linkable to a user id:
+ *   - generation_jobs  — params carry no user id, and rows self-expire via expires_at
+ *   - GCS objects      — keys are `${prefix}/${timestamp}-${random}`, no user in the path
+ *   - orders           — never persisted server-side; they are emailed and gone
+ *
+ * Returns per-store counts so the caller can log what was actually destroyed.
+ * Throws if a delete fails, so the handler can answer non-2xx instead of
+ * claiming an erasure that did not happen.
+ */
+async function eraseUserData(userId) {
+  const pool = getPool();
+  if (!pool) {
+    throw new Error('Database not configured - cannot erase user data.');
+  }
+
+  const inquiries = await pool.query('DELETE FROM inquiries WHERE user_id = $1', [userId]);
+
+  return {
+    inquiriesDeleted: inquiries.rowCount || 0,
+  };
+}
+
+/**
+ * Shared handler for the Apps in Toss withdrawal callback.
+ *
+ * Registered in the console under 유저정보 불러오기 → 콜백 정보. The console lets
+ * the method be GET or POST, so both are wired to this.
+ *
+ * Erasure is idempotent: a repeat event for an already-erased user deletes zero
+ * rows and still answers 200, so Toss retries cannot wedge.
+ */
+async function handleTossDisconnect(req, res, source) {
+  const payload = source === 'query' ? req.query || {} : req.body || {};
+  const { userId, eventType } = payload;
 
   logEvent('info', 'toss_user_disconnect', {
     userId,
     eventType,
+    source,
     requestId: req.requestId,
   });
 
-  // TODO: Handle user data deletion according to your privacy policy
-  // - Remove user from database
-  // - Delete user's saved designs
-  // - Delete user's inquiries (or anonymize them)
-  // - Delete user's personal information
+  if (!userId) {
+    logEvent('warn', 'toss_user_disconnect_missing_user', {
+      source,
+      requestId: req.requestId,
+    });
+    return res.status(400).json({ error: 'userId is required.', requestId: req.requestId });
+  }
 
-  // For now, just log the event
-  console.log(`Toss user ${userId} disconnected (event: ${eventType})`);
+  try {
+    const erased = await eraseUserData(userId);
 
-  // Always return success to Toss
-  res.json({ success: true });
-});
+    logEvent('info', 'toss_user_data_erased', {
+      userId,
+      eventType,
+      source,
+      ...erased,
+      requestId: req.requestId,
+    });
 
-// Toss Apps-in-Toss - User disconnect callback (GET method)
-app.get('/v1/toss/disconnect', verifyTossCallbackAuth, (req, res) => {
-  const { userId, eventType } = req.query || {};
+    return res.json({ success: true, erased, requestId: req.requestId });
+  } catch (error) {
+    // Answer non-2xx on purpose. Reporting success here would tell Toss the
+    // erasure completed while the personal data is still sitting in the
+    // database, so this needs to stay visibly failed and get retried.
+    logEvent('error', 'toss_user_data_erase_failed', {
+      userId,
+      eventType,
+      source,
+      requestId: req.requestId,
+      ...formatError(error),
+    });
 
-  logEvent('info', 'toss_user_disconnect_get', {
-    userId,
-    eventType,
-    requestId: req.requestId,
-  });
+    return res.status(500).json({
+      error: 'Failed to erase user data.',
+      requestId: req.requestId,
+    });
+  }
+}
 
-  console.log(`Toss user ${userId} disconnected via GET (event: ${eventType})`);
+// Toss Apps-in-Toss - User withdrawal callback (POST)
+app.post('/v1/toss/disconnect', verifyTossCallbackAuth, express.json(), (req, res) =>
+  handleTossDisconnect(req, res, 'body'),
+);
 
-  res.json({ success: true });
-});
+// Toss Apps-in-Toss - User withdrawal callback (GET)
+app.get('/v1/toss/disconnect', verifyTossCallbackAuth, (req, res) =>
+  handleTossDisconnect(req, res, 'query'),
+);
 
 // ========================================
 // Toss OAuth Login Endpoints
