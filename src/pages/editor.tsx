@@ -314,18 +314,6 @@ function Page() {
     }
   };
 
-  const handleOpenBgRemoval = () => {
-    if (!designImageUri) {
-      setPhotoError('배경을 지울 사진을 먼저 추가해 주세요.');
-      return;
-    }
-    trackClick('editor_open_background_removal_click', {
-      placement: selectedPlacement,
-      has_selection: Boolean(currentPhotos.length > 0),
-    });
-    navigation.navigate('/upload');
-  };
-
   const handleDeletePhoto = (index: number) => {
     trackPhotoRemoveClick(selectedPlacement, index);
     setDeletePhotoIndex(index);
@@ -813,12 +801,6 @@ function Page() {
                         disabled={loadingPhoto || currentPhotos.length === 0}
                         style={styles.photoActionBtn}
                       />
-                      <SecondaryButton
-                        label="배경 지우기"
-                        onPress={handleOpenBgRemoval}
-                        disabled={loadingPhoto}
-                        style={styles.photoActionBtn}
-                      />
                     </View>
                   </View>
                 ) : (
@@ -974,7 +956,7 @@ function Page() {
           >
             <Text style={styles.modalTitle}>사진 편집 시작</Text>
             <Text style={styles.modalSubtitle}>
-              사진을 올려 바로 배경 지우기/위치 조정을 시작하거나, AI 이미지 생성으로 시작할 수 있어요.
+              사진을 올려 바로 위치·크기 조정을 시작하거나, AI 이미지 생성으로 시작할 수 있어요.
             </Text>
             <PrimaryButton
               label="사진 추가하기"

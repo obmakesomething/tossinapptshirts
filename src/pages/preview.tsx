@@ -1,7 +1,7 @@
 import { share, getTossShareLink } from '@apps-in-toss/framework';
 import { createRoute } from '@granite-js/react-native';
 import React, { useState } from 'react';
-import { Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, Image, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { MockupCanvas } from '../components/MockupCanvas';
 import {
   Badge,
@@ -19,6 +19,12 @@ import { resolveColorValue } from '../data/colorMap';
 import { buildTemplate } from '../data/mockupTemplates';
 import { calcPricing } from '../data/pricing';
 import { formatPrice } from '../utils/format';
+import {
+  type PrintResolutionResult,
+  evaluatePrintResolution,
+} from '../utils/printResolution';
+import { getGarmentCategory, getGarmentMeasurements } from '../data/garmentSizes';
+import { calculatePrintSize } from '../utils/printSizeCalculator';
 
 const ACCENT = '#1B64DA';
 const PAGE_BG = '#F2F4F6';
@@ -50,6 +56,7 @@ function Page() {
     selectedPrint,
   } = useCatalog();
   const [saving, setSaving] = useState(false);
+  const [printQuality, setPrintQuality] = useState<PrintResolutionResult | null>(null);
   const filteredShots = printBackEnabled
     ? mockupShots
     : mockupShots.slice(0, 1);
@@ -60,6 +67,47 @@ function Page() {
     printOption: selectedPrint,
     printBackEnabled,
   });
+
+  const designUri = frontDesignImageUri ?? backDesignImageUri;
+  const sizeLabel = orderLines[0]?.sizeLabel ?? selectedProduct.sizes[0]?.label ?? '';
+
+  React.useEffect(() => {
+    if (!designUri) {
+      setPrintQuality(null);
+      return;
+    }
+    let cancelled = false;
+    const measurements = getGarmentMeasurements(
+      getGarmentCategory(selectedProduct.name),
+      sizeLabel,
+    );
+    if (!measurements) {
+      setPrintQuality(null);
+      return;
+    }
+    const printSize = calculatePrintSize(measurements, selectedPrint, 'front');
+    Image.getSize(
+      designUri,
+      (pixelWidth, pixelHeight) => {
+        if (cancelled) return;
+        setPrintQuality(
+          evaluatePrintResolution({
+            pixelWidth,
+            pixelHeight,
+            printWidthCm: printSize.widthCm,
+            printHeightCm: printSize.heightCm,
+          }),
+        );
+      },
+      // Size is unreadable for some URIs; stay silent rather than claim a level.
+      () => {
+        if (!cancelled) setPrintQuality(null);
+      },
+    );
+    return () => {
+      cancelled = true;
+    };
+  }, [designUri, selectedProduct.name, sizeLabel, selectedPrint]);
 
   const handleSave = async () => {
     if (saving) return;
@@ -152,12 +200,29 @@ function Page() {
         </View>
       </View>
 
-      {/* 인쇄 품질 배지 */}
-      <Card style={styles.qualityCard}>
-        <Badge variant="success" label="인쇄 품질 양호" />
-        <Text style={styles.qualityBadgeTitle}>선명하게 인쇄돼요</Text>
-        <Text style={styles.qualityBadgeDesc}>해상도 3200×3200px · 300DPI</Text>
-      </Card>
+      {/* 인쇄 품질 — 올린 이미지의 실제 해상도 기준 */}
+      {printQuality ? (
+        <Card style={styles.qualityCard}>
+          <Badge
+            variant={
+              printQuality.level === 'good'
+                ? 'success'
+                : printQuality.level === 'low'
+                  ? 'warning'
+                  : 'error'
+            }
+            label={
+              printQuality.level === 'good'
+                ? '인쇄 품질 양호'
+                : printQuality.level === 'low'
+                  ? '인쇄 품질 주의'
+                  : '해상도 부족'
+            }
+          />
+          <Text style={styles.qualityBadgeTitle}>{printQuality.title}</Text>
+          <Text style={styles.qualityBadgeDesc}>{printQuality.description}</Text>
+        </Card>
+      ) : null}
 
       <Card style={styles.priceCard}>
         <Text style={styles.priceLabel}>가격 정보</Text>

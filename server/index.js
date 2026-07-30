@@ -8,7 +8,7 @@ const nodemailer = require('nodemailer');
 const PDFDocument = require('pdfkit');
 const { isGcsConfigured, uploadToGcs, getSignedReadUrl } = require('./gcs');
 const OpenAI = require('openai');
-const { GoogleGenAI, RawReferenceImage, MaskReferenceImage, MaskReferenceMode, EditMode } = require('@google/genai');
+const { GoogleGenAI } = require('@google/genai');
 const fs = require('fs');
 const fsp = require('fs/promises');
 const path = require('path');
@@ -189,12 +189,7 @@ const OPENAI_IMAGE_MODEL = process.env.OPENAI_IMAGE_MODEL || 'gpt-image-1';
 const OPENAI_IMAGE_QUALITY = process.env.OPENAI_IMAGE_QUALITY || 'medium';
 const IMAGEN_MODEL = process.env.IMAGEN_MODEL || 'imagen-4.0-generate-001';
 const IMAGEN_EDIT_MODEL = process.env.IMAGEN_EDIT_MODEL || 'imagen-3.0-capability-001';
-const VERTEX_PROJECT_ID = process.env.VERTEX_PROJECT_ID || process.env.GOOGLE_CLOUD_PROJECT || '';
-const VERTEX_LOCATION = process.env.VERTEX_LOCATION || process.env.GOOGLE_CLOUD_LOCATION || 'us-central1';
-const VERTEX_API_KEY = process.env.VERTEX_API_KEY || process.env.GOOGLE_API_KEY || '';
-const REMOVE_BG_PROVIDER = process.env.REMOVE_BG_PROVIDER || (VERTEX_PROJECT_ID ? 'vertex_imagen' : 'clipdrop');
 const ORDER_OUTPUT_DIR = process.env.ORDER_OUTPUT_DIR || path.join('/tmp', 'order-output');
-const CLIPDROP_API_KEY = process.env.CLIPDROP_API_KEY || '';
 const KAKAO_WEBHOOK_URL = process.env.KAKAO_WEBHOOK_URL || '';
 const KAKAO_WEBHOOK_TOKEN = process.env.KAKAO_WEBHOOK_TOKEN || '';
 
@@ -272,44 +267,6 @@ function getImagenClient() {
   return imagenClient;
 }
 
-let vertexClient;
-function getVertexClient() {
-  if (vertexClient) return vertexClient;
-
-  if (!VERTEX_PROJECT_ID || !VERTEX_LOCATION) {
-    throw new Error('VERTEX_PROJECT_ID and VERTEX_LOCATION are required for Vertex AI image editing.');
-  }
-
-  const apiKey = VERTEX_API_KEY;
-  const serviceAccountJson =
-    process.env.GOOGLE_SERVICE_ACCOUNT_JSON ||
-    process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON ||
-    '';
-  const serviceAccountBase64 =
-    process.env.GOOGLE_SERVICE_ACCOUNT_JSON_BASE64 ||
-    process.env.GOOGLE_APPLICATION_CREDENTIALS_BASE64 ||
-    '';
-
-  let googleAuthOptions;
-  const rawCreds = serviceAccountJson || (serviceAccountBase64 ? Buffer.from(serviceAccountBase64, 'base64').toString('utf8') : '');
-  if (!apiKey && rawCreds) {
-    try {
-      googleAuthOptions = { credentials: JSON.parse(rawCreds) };
-    } catch (error) {
-      throw new Error(`Invalid service account JSON for Vertex auth: ${error?.message || 'unknown_error'}`);
-    }
-  }
-
-  vertexClient = new GoogleGenAI({
-    vertexai: true,
-    project: VERTEX_PROJECT_ID,
-    location: VERTEX_LOCATION,
-    ...(apiKey ? { apiKey } : {}),
-    ...(googleAuthOptions ? { googleAuthOptions } : {}),
-  });
-
-  return vertexClient;
-}
 
 function isGcsEnabled() {
   return isGcsConfigured();
@@ -383,7 +340,6 @@ function derivePipelineWorkDir(pipelineResult) {
   if (!pipelineResult) return null;
   const candidates = [
     pipelineResult?.paths?.print_ready_png,
-    pipelineResult?.paths?.upscaled_raw,
     pipelineResult?.paths?.qc_report_json,
     pipelineResult?.output_path,
   ].filter(Boolean);
@@ -493,167 +449,11 @@ async function sendKakaoNotification(payload) {
   });
 }
 
-async function removeBackgroundClipdrop({ sourcePath, apiKey, outputPath }) {
-  const endpoint = 'https://clipdrop-api.co/remove-background/v1';
-  const form = new FormData();
-  const buffer = await fsp.readFile(sourcePath);
-  form.append('image_file', new Blob([buffer]), path.basename(sourcePath));
-  const response = await fetch(endpoint, {
-    method: 'POST',
-    headers: {
-      'x-api-key': apiKey,
-    },
-    body: form,
-  });
-  if (!response.ok) {
-    const text = await response.text();
-    throw new Error(`clipdrop_remove_bg_failed: ${text}`);
-  }
-  const result = Buffer.from(await response.arrayBuffer());
-  await fsp.writeFile(outputPath, result);
-  return outputPath;
-}
 
-function clampNumber(value, min, max) {
-  if (value < min) return min;
-  if (value > max) return max;
-  return value;
-}
 
-function medianNumber(values) {
-  if (!values.length) return 0;
-  const sorted = [...values].sort((a, b) => a - b);
-  const mid = Math.floor(sorted.length / 2);
-  if (sorted.length % 2 === 1) return sorted[mid];
-  return Math.round((sorted[mid - 1] + sorted[mid]) / 2);
-}
 
-async function estimateBackgroundKeyColorRgb(inputBuffer) {
-  const sharp = require('sharp');
-  const { data, info } = await sharp(inputBuffer)
-    .resize(64, 64, { fit: 'fill' })
-    .raw()
-    .toBuffer({ resolveWithObject: true });
 
-  const w = info.width;
-  const h = info.height;
-  const ch = info.channels;
-  const coords = [
-    [0, 0],
-    [w - 1, 0],
-    [0, h - 1],
-    [w - 1, h - 1],
-    [Math.floor(w / 2), 0],
-    [Math.floor(w / 2), h - 1],
-    [0, Math.floor(h / 2)],
-    [w - 1, Math.floor(h / 2)],
-  ];
 
-  const rs = [];
-  const gs = [];
-  const bs = [];
-  for (const [x, y] of coords) {
-    const idx = (y * w + x) * ch;
-    rs.push(data[idx]);
-    gs.push(data[idx + 1]);
-    bs.push(data[idx + 2]);
-  }
-
-  return {
-    r: medianNumber(rs),
-    g: medianNumber(gs),
-    b: medianNumber(bs),
-  };
-}
-
-async function chromaKeyToTransparentPng(inputBuffer, options) {
-  const sharp = require('sharp');
-  const keyColor = options?.keyColor || { r: 0, g: 255, b: 0 };
-  const low = Number.isFinite(options?.low) ? options.low : 40;
-  const high = Number.isFinite(options?.high) ? options.high : 140;
-  if (high <= low) {
-    throw new Error('invalid_chroma_key_thresholds');
-  }
-
-  const { data, info } = await sharp(inputBuffer).raw().toBuffer({ resolveWithObject: true });
-  const w = info.width;
-  const h = info.height;
-  const ch = info.channels;
-  const pxCount = w * h;
-  const out = Buffer.alloc(pxCount * 4);
-
-  for (let i = 0; i < pxCount; i++) {
-    const base = i * ch;
-    const r = data[base];
-    const g = data[base + 1];
-    const b = data[base + 2];
-    const a = ch >= 4 ? data[base + 3] : 255;
-
-    const dr = r - keyColor.r;
-    const dg = g - keyColor.g;
-    const db = b - keyColor.b;
-    const dist = Math.sqrt(dr * dr + dg * dg + db * db);
-
-    let keep = 0;
-    if (dist <= low) keep = 0;
-    else if (dist >= high) keep = 1;
-    else keep = (dist - low) / (high - low);
-
-    const outBase = i * 4;
-    out[outBase] = r;
-    out[outBase + 1] = g;
-    out[outBase + 2] = b;
-    out[outBase + 3] = Math.round(a * clampNumber(keep, 0, 1));
-  }
-
-  return sharp(out, { raw: { width: w, height: h, channels: 4 } }).png().toBuffer();
-}
-
-async function removeBackgroundVertexImagen({ inputBuffer, inputMimeType, requestId }) {
-  const ai = getVertexClient();
-
-  const raw = new RawReferenceImage();
-  raw.referenceId = 1;
-  raw.referenceImage = { imageBytes: inputBuffer.toString('base64'), mimeType: inputMimeType };
-
-  const mask = new MaskReferenceImage();
-  mask.referenceId = 2;
-  // Let the model infer the mask: we want the background only.
-  mask.config = { maskMode: MaskReferenceMode.MASK_MODE_BACKGROUND };
-
-  // We intentionally force a chroma-key background to deterministically create a transparent PNG.
-  const prompt = 'Replace the background with a uniform solid neon green (#00FF00). No gradients, no shadows. Keep the subject unchanged.';
-
-  const response = await ai.models.editImage({
-    model: IMAGEN_EDIT_MODEL,
-    prompt,
-    referenceImages: [raw, mask],
-    config: {
-      numberOfImages: 1,
-      editMode: EditMode.EDIT_MODE_BGSWAP,
-      outputMimeType: 'image/png',
-      addWatermark: false,
-    },
-  });
-
-  const imageBytes = response?.generatedImages?.[0]?.image?.imageBytes;
-  if (!imageBytes) {
-    throw new Error('vertex_remove_bg_empty');
-  }
-
-  const bgswapBuffer = Buffer.from(imageBytes, 'base64');
-  const keyColor = await estimateBackgroundKeyColorRgb(bgswapBuffer);
-
-  logEvent('info', 'remove_background_vertex_keycolor', {
-    requestId,
-    provider: 'vertex_imagen',
-    model: IMAGEN_EDIT_MODEL,
-    keyColor,
-  });
-
-  // Thresholds tuned for typical "solid-ish" backgrounds that still include some compression / model variance.
-  return chromaKeyToTransparentPng(bgswapBuffer, { keyColor, low: 40, high: 140 });
-}
 
 async function buildOrderPdf(order) {
   return new Promise((resolve, reject) => {
@@ -926,10 +726,8 @@ app.get('/health', async (_req, res) => {
       gcs: Boolean(isGcsEnabled()),
       openai: Boolean(process.env.OPENAI_API_KEY),
       smtp: Boolean(process.env.SMTP_USER && process.env.SMTP_PASS),
-      clipdrop: Boolean(CLIPDROP_API_KEY),
       db: databaseConfigured ? databaseHealthy : true,
       databaseConfigured,
-      vertex: Boolean(VERTEX_PROJECT_ID && VERTEX_LOCATION && (VERTEX_API_KEY || process.env.GOOGLE_SERVICE_ACCOUNT_JSON || process.env.GOOGLE_SERVICE_ACCOUNT_JSON_BASE64)),
     },
   };
   if (databaseError) {
@@ -1119,85 +917,6 @@ app.post('/v1/images/generate', strictLimiter, async (req, res) => {
   }
 });
 
-app.post('/v1/images/remove-background', strictLimiter, async (req, res) => {
-  let clipdropTempDir = '';
-  try {
-    const { imageUrl, dataUrl, filename, returnBase64 } = req.body || {};
-    if (!imageUrl && !dataUrl) {
-      return res.status(400).json({ error: 'imageUrl or dataUrl is required.' });
-    }
-    const baseName = filename || `remove-bg-${Date.now()}`;
-    const safeBaseName = String(baseName).replace(/[^a-zA-Z0-9-_]/g, '_');
-    logEvent('info', 'remove_background_request', {
-      requestId: req.requestId,
-      sourceType: imageUrl ? 'url' : 'dataUrl',
-      imageHost: imageUrl ? new URL(imageUrl).host : '',
-      filename: filename || '',
-      returnBase64: !!returnBase64,
-      provider: REMOVE_BG_PROVIDER,
-    });
-
-    let inputBuffer;
-    let inputMimeType = 'image/png';
-    if (dataUrl) {
-      const decoded = decodeDataUrl(dataUrl);
-      if (!decoded) return res.status(400).json({ error: 'Invalid dataUrl.' });
-      inputBuffer = decoded.buffer;
-      inputMimeType = decoded.mimeType || inputMimeType;
-    } else {
-      inputBuffer = await downloadToBuffer(imageUrl);
-      if (!inputBuffer) return res.status(400).json({ error: 'Failed to download imageUrl.' });
-    }
-
-    let outputBuffer;
-    if (REMOVE_BG_PROVIDER === 'clipdrop') {
-      if (!CLIPDROP_API_KEY) {
-        return res.status(500).json({ error: 'CLIPDROP_API_KEY is required when REMOVE_BG_PROVIDER=clipdrop.' });
-      }
-      clipdropTempDir = await fsp.mkdtemp(path.join('/tmp', 'clipdrop-'));
-      const inputPath = path.join(clipdropTempDir, `${safeBaseName}.png`);
-      await fsp.writeFile(inputPath, inputBuffer);
-      const outputPath = path.join(clipdropTempDir, `${safeBaseName}-nobg.png`);
-      await removeBackgroundClipdrop({ sourcePath: inputPath, apiKey: CLIPDROP_API_KEY, outputPath });
-      outputBuffer = await fsp.readFile(outputPath);
-    } else if (REMOVE_BG_PROVIDER === 'vertex_imagen') {
-      outputBuffer = await removeBackgroundVertexImagen({
-        inputBuffer,
-        inputMimeType,
-        requestId: req.requestId,
-      });
-    } else {
-      return res.status(400).json({ error: `Unsupported REMOVE_BG_PROVIDER: ${REMOVE_BG_PROVIDER}` });
-    }
-
-    const key = `${IMAGE_PREFIX}/${Date.now()}-${Math.random()
-      .toString(36)
-      .slice(2)}-${baseName}.png`;
-    const url = await uploadToStorage({ kind: 'image', key, body: outputBuffer, contentType: 'image/png' });
-    logEvent('info', 'remove_background_result', {
-      requestId: req.requestId,
-      url,
-      bytes: outputBuffer.length,
-      provider: REMOVE_BG_PROVIDER,
-    });
-
-    const result = { url, requestId: req.requestId };
-    if (returnBase64) {
-      result.dataUrl = `data:image/png;base64,${outputBuffer.toString('base64')}`;
-    }
-    res.json(result);
-  } catch (error) {
-    logEvent('error', 'remove_background_failed', {
-      requestId: req.requestId,
-      ...formatError(error),
-    });
-    res.status(500).json({ error: error.message || 'Remove background failed.', requestId: req.requestId });
-  } finally {
-    if (clipdropTempDir && isPathInTmp(clipdropTempDir)) {
-      await safeRemoveDir(clipdropTempDir);
-    }
-  }
-});
 
 // Image crop endpoint
 app.post('/v1/images/crop', strictLimiter, async (req, res) => {
@@ -1362,10 +1081,7 @@ app.post('/v1/print-files/process', strictLimiter, async (req, res) => {
       order_id: orderId,
       target_width_px: payload.target_width_px,
       target_height_px: payload.target_height_px,
-      gcp_project_id: payload.gcp_project_id || process.env.GCP_PROJECT_ID,
-      gcp_location: payload.gcp_location || process.env.GCP_LOCATION,
       output_dir: payload.output_dir || ORDER_OUTPUT_DIR,
-      allow_warn_to_pass: false,
     });
     const persisted = await persistPipelineArtifacts({ orderId, pipelineResult: result });
     workDirToCleanup = derivePipelineWorkDir(result);
@@ -1473,13 +1189,9 @@ app.post('/v1/orders/submit', strictLimiter, async (req, res) => {
             order_id: orderId,
             target_width_px: targetWidth,
             target_height_px: targetHeight,
-            gcp_project_id: process.env.GCP_PROJECT_ID,
-            gcp_location: process.env.GCP_LOCATION,
             output_dir: ORDER_OUTPUT_DIR,
-            allow_warn_to_pass: true, // Allow warnings to pass, only fail on errors
             text_layer: order.pipeline?.textLayer || order.items?.[0]?.text || null,
             image_transform: order.pipeline?.imageTransform || null,
-            remove_background: order.pipeline?.removeBackground !== false, // Default: true
           });
           pipelineResult = await persistPipelineArtifacts({ orderId, pipelineResult });
 
@@ -2897,10 +2609,7 @@ app.post('/v1/payment/execute', strictLimiter, async (req, res) => {
                   order_id: orderId,
                   target_width_px: targetWidth,
                   target_height_px: targetHeight,
-                  gcp_project_id: process.env.GCP_PROJECT_ID,
-                  gcp_location: process.env.GCP_LOCATION,
                   output_dir: ORDER_OUTPUT_DIR,
-                  allow_warn_to_pass: true,
                 });
                 pipelineResult = await persistPipelineArtifacts({ orderId, pipelineResult });
 
@@ -3185,9 +2894,6 @@ async function startServer() {
       openaiQuality: OPENAI_IMAGE_QUALITY,
       imagenModel: IMAGEN_MODEL,
       imagenEnabled: Boolean(process.env.GOOGLE_API_KEY),
-      vertexEnabled: Boolean(VERTEX_PROJECT_ID),
-      vertexLocation: VERTEX_LOCATION,
-      clipdropEnabled: Boolean(CLIPDROP_API_KEY),
       databaseEnabled: Boolean(process.env.DATABASE_URL),
       kakaoApiEnabled: Boolean(process.env.KAKAO_REST_API_KEY),
       orderOutputDir: ORDER_OUTPUT_DIR,

@@ -14,7 +14,6 @@ import {
   Card,
   Chip,
   DisabledHint,
-  FullScreenLoader,
   PageHeader,
   PrimaryButton,
   Screen,
@@ -40,6 +39,20 @@ export const Route = createRoute('/upload', {
   component: Page,
 });
 
+/**
+ * Sniff the image type from the head of a base64 payload.
+ *
+ * The album module hands back bare base64 with no mime type. PNG must be
+ * detected rather than assumed away, otherwise a transparent design gets
+ * re-encoded as JPEG and loses its alpha channel.
+ */
+function guessImageMimeType(base64: string): string {
+  if (base64.startsWith('iVBOR')) return 'image/png';
+  if (base64.startsWith('R0lGOD')) return 'image/gif';
+  if (base64.startsWith('UklGR')) return 'image/webp';
+  return 'image/jpeg';
+}
+
 type ImageMutationResponse = Record<string, unknown> & {
   dataUrl?: string;
 };
@@ -49,10 +62,6 @@ function Page() {
   const { designImageUri, setDesignImageUri } = useCatalog();
   const [uploading, setUploading] = useState(false);
   const [loadingAlbum, setLoadingAlbum] = useState(false);
-  const [bgRemovalStatus, setBgRemovalStatus] = useState<
-    'idle' | 'loading' | 'success' | 'error'
-  >('idle');
-  const [bgRemovalUndoUri, setBgRemovalUndoUri] = useState<string | null>(null);
   const [lastDataUrl, setLastDataUrl] = useState<string | null>(null);
   const [error, setError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
@@ -82,33 +91,6 @@ function Page() {
       has_design_image: !!designImageUri,
     });
     navigation.navigate('/editor');
-  };
-
-  // Get button style based on background removal status
-  const getBgRemovalButtonStyle = () => {
-    switch (bgRemovalStatus) {
-      case 'loading':
-        return { backgroundColor: theme.colors.textSecondary };
-      case 'success':
-        return { backgroundColor: '#0F8A5F' }; // Green
-      case 'error':
-        return { backgroundColor: theme.colors.error };
-      default:
-        return {};
-    }
-  };
-
-  const getBgRemovalButtonText = () => {
-    switch (bgRemovalStatus) {
-      case 'loading':
-        return '처리하고 있어요...';
-      case 'success':
-        return '완료됐어요!';
-      case 'error':
-        return '다시 시도해 주세요';
-      default:
-        return '배경 지워볼까요?';
-    }
   };
 
   const uploadDataUrl = async (dataUrl: string, filename: string) => {
@@ -164,16 +146,17 @@ function Page() {
         setError('앨범에서 사진을 불러오지 못했어요. 다시 선택해 주세요.');
         return;
       }
+      // Keep PNG as PNG: transparency is now the only way to get a cut-out
+      // design, so defaulting everything to JPEG would silently flatten alpha.
       const dataUrl = photo.dataUri.startsWith('data:')
         ? photo.dataUri
-        : `data:image/jpeg;base64,${photo.dataUri}`;
+        : `data:${guessImageMimeType(photo.dataUri)};base64,${photo.dataUri}`;
       trackEvent('upload_photo_pick_success', {
         source: 'album',
         has_photo_id: !!photo.id,
       });
       setDesignImageUri(null);
       setLastDataUrl(dataUrl);
-      setBgRemovalUndoUri(null);
       await uploadDataUrl(dataUrl, `album-${photo.id || 'unknown'}`);
     } catch (err) {
       setError(
@@ -182,71 +165,6 @@ function Page() {
     } finally {
       setLoadingAlbum(false);
     }
-  };
-
-  const handleRemoveBackground = async () => {
-    if (!designImageUri && !lastDataUrl) return;
-    const before = designImageUri ?? lastDataUrl;
-    trackClick('upload_remove_background_click', {
-      source_type: lastDataUrl ? 'local_data_url' : 'uploaded_data_url',
-    });
-    setBgRemovalStatus('loading');
-    setError('');
-    setSuccessMessage('');
-    setBgRemovalUndoUri(before ?? null);
-    try {
-      const response = await fetch(
-        `${API_BASE_URL}/v1/images/remove-background`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(
-            lastDataUrl
-              ? { dataUrl: lastDataUrl, filename: 'upload', returnBase64: true }
-              : {
-                dataUrl: designImageUri,
-                filename: 'upload',
-                returnBase64: true,
-              },
-          ),
-        },
-      );
-      if (!response.ok) {
-        throw new Error('배경을 지우지 못했어요. 다시 시도해 주세요.');
-      }
-      const data = await response.json() as ImageMutationResponse;
-      if (typeof data.dataUrl !== 'string') {
-        throw new Error('배경 지우기 결과를 확인하지 못했어요. 다시 시도해 주세요.');
-      }
-      trackImageUploaded('background_removed');
-      trackEvent('upload_remove_background_success');
-      setDesignImageUri(data.dataUrl);
-      setLastDataUrl(null);
-      setBgRemovalStatus('success');
-      setSuccessMessage('✓ 배경을 지웠어요!');
-      setTimeout(() => {
-        setSuccessMessage('');
-        setBgRemovalStatus('idle');
-      }, 3000);
-    } catch (err) {
-      setBgRemovalStatus('error');
-      trackEvent('upload_remove_background_failed', {
-        reason: err instanceof Error ? err.message : 'unknown',
-      });
-      setError(err instanceof Error ? err.message : '배경을 지우지 못했어요. 다시 시도해 주세요.');
-      setTimeout(() => setBgRemovalStatus('idle'), 3000);
-    }
-  };
-
-  const handleUndoBackground = () => {
-    if (!bgRemovalUndoUri) return;
-    trackClick('upload_remove_background_undo_click');
-    setDesignImageUri(bgRemovalUndoUri);
-    setLastDataUrl(null);
-    setBgRemovalUndoUri(null);
-    setBgRemovalStatus('idle');
-    setSuccessMessage('원본으로 되돌렸어요.');
-    setTimeout(() => setSuccessMessage(''), 2500);
   };
 
   const handleStyleTransfer = async (style: string) => {
@@ -297,7 +215,6 @@ function Page() {
       trackEvent('upload_style_transfer_success', { style });
       setDesignImageUri(data.dataUrl);
       setLastDataUrl(null);
-      setBgRemovalUndoUri(null);
       setSuccessMessage('✓ 스타일을 변환했어요!');
       setTimeout(() => setSuccessMessage(''), 3000);
     } catch (err) {
@@ -322,10 +239,10 @@ function Page() {
 
       <Text style={styles.title}>먼저 사진을 올려주세요</Text>
       <Text style={styles.subtitle}>
-        + 버튼으로 사진을 불러오고 배경 지우기/스타일 변경까지 한 번에 진행할 수 있어요.
+        + 버튼으로 사진을 불러오고 AI 스타일 변경까지 한 번에 진행할 수 있어요.
       </Text>
       <Text style={styles.cropGuide}>
-        팁 · 중앙 피사체가 크게 보이는 사진일수록 인쇄 결과가 더 또렷해요.
+        팁 · 배경이 투명한 PNG를 올리면 원하는 모양만 인쇄돼요. 사진은 클수록 또렷해요.
       </Text>
 
       <Card style={styles.uploadCard}>
@@ -349,31 +266,6 @@ function Page() {
           <View style={styles.loadingRow}>
             <ActivityIndicator color={theme.colors.primary} />
             <Text style={styles.loadingText}>이미지를 업로드하고 있어요...</Text>
-          </View>
-        ) : null}
-        <SecondaryButton
-          label={getBgRemovalButtonText()}
-          onPress={handleRemoveBackground}
-          disabled={!previewUri || bgRemovalStatus === 'loading' || stylingImage}
-          style={[
-            styles.bgRemoveButton,
-            previewUri ? getBgRemovalButtonStyle() : styles.disabledToolButton,
-          ]}
-        />
-        {bgRemovalUndoUri ? (
-          <View style={styles.undoRow}>
-            <Pressable
-              onPress={handleUndoBackground}
-              disabled={bgRemovalStatus === 'loading' || uploading || stylingImage}
-              style={({ pressed }) => [
-                styles.undoButton,
-                pressed && styles.undoButtonPressed,
-                (bgRemovalStatus === 'loading' || uploading || stylingImage) &&
-                styles.undoButtonDisabled,
-              ]}
-            >
-              <Text style={styles.undoButtonText}>되돌리기</Text>
-            </Pressable>
           </View>
         ) : null}
         <SecondaryButton
@@ -484,10 +376,6 @@ function Page() {
         />
       </View>
     </Screen>
-    <FullScreenLoader
-      visible={bgRemovalStatus === 'loading'}
-      message="배경을 지우는 중이에요..."
-    />
   </>
   );
 }

@@ -3,7 +3,6 @@ import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Image,
-  Pressable,
   StyleSheet,
   Text,
   TextInput,
@@ -19,16 +18,13 @@ import {
   PageHeader,
   PrimaryButton,
   Screen,
-  SecondaryButton,
   theme,
 } from '../components/ui';
-import { API_BASE_URL } from '../config';
 import { useCatalog } from '../context/catalog';
 import { useJobTracker, type JobStage } from '../context/jobTracker';
 import { useToast } from '../context/toastContext';
 import {
   trackClick,
-  trackEvent,
   trackImageGenerated,
   trackScreenView,
 } from '../utils/analytics';
@@ -55,10 +51,6 @@ const promptExamples = [
   'Cute bear mascot, flat illustration',
 ];
 
-interface RemoveBackgroundResponse {
-  dataUrl?: string;
-}
-
 // Stage labels for display
 const stageLabels: Record<string, string> = {
   validate_input: '업로드 확인',
@@ -76,18 +68,14 @@ function Page() {
   const [style, setStyle] = useState<string>(styleOptions[0] ?? '미니멀');
   const [ratio, setRatio] = useState<string>(ratioOptions[0] ?? '1:1');
   const [resultUrl, setResultUrl] = useState<string | null>(null);
-  const [removingBg, setRemovingBg] = useState(false);
-  const [bgRemovalUndoUrl, setBgRemovalUndoUrl] = useState<string | null>(null);
   const [showExamples, setShowExamples] = useState(true);
   const [error, setError] = useState('');
-  const [successMessage, setSuccessMessage] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
 
   // Watch for job completion and update UI
   useEffect(() => {
     if (activeJob?.status === 'succeeded' && activeJob.result?.preview_url) {
       setResultUrl(activeJob.result.preview_url);
-      setBgRemovalUndoUrl(null);
       setDesignPrompt(prompt.trim() || '');
       setError(''); // Clear any previous errors
       setIsGenerating(false);
@@ -215,7 +203,6 @@ function Page() {
     setIsGenerating(true);
     setError('');
     setResultUrl(null);
-    setBgRemovalUndoUrl(null);
     setDesignPrompt(prompt.trim());
 
     // Clear any previous completed job before starting new one
@@ -258,53 +245,6 @@ function Page() {
     setIsGenerating(false);
   };
 
-  const handleRemoveBackground = async () => {
-    if (!resultUrl) return;
-    trackClick('generate_remove_background_click');
-    setBgRemovalUndoUrl(resultUrl);
-    setRemovingBg(true);
-    setError('');
-    setSuccessMessage('');
-    await new Promise(requestAnimationFrame);
-    try {
-      const response = await fetch(
-        `${API_BASE_URL}/v1/images/remove-background`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ dataUrl: resultUrl, returnBase64: true }),
-        },
-      );
-      if (!response.ok) {
-        throw new Error('배경을 지우지 못했어요. 다시 시도해 주세요.');
-      }
-      const data = await response.json() as RemoveBackgroundResponse;
-      if (typeof data.dataUrl !== 'string') {
-        throw new Error('배경 지우기 결과를 확인하지 못했어요. 다시 시도해 주세요.');
-      }
-      trackEvent('generate_remove_background_success');
-      setResultUrl(data.dataUrl);
-      setSuccessMessage('✓ 배경을 지웠어요!');
-      setTimeout(() => setSuccessMessage(''), 3000);
-    } catch (err) {
-      trackEvent('generate_remove_background_failed', {
-        reason: err instanceof Error ? err.message : 'unknown',
-      });
-      setError(err instanceof Error ? err.message : '배경을 지우지 못했어요. 다시 시도해 주세요.');
-    } finally {
-      setRemovingBg(false);
-    }
-  };
-
-  const handleUndoBackground = () => {
-    if (!bgRemovalUndoUrl) return;
-    trackClick('generate_remove_background_undo_click');
-    setResultUrl(bgRemovalUndoUrl);
-    setBgRemovalUndoUrl(null);
-    setSuccessMessage('원본으로 되돌렸어요!');
-    setTimeout(() => setSuccessMessage(''), 2500);
-  };
-
   // Get current stage progress
   const getStageProgress = () => {
     if (!activeJob?.stage) return null;
@@ -334,27 +274,6 @@ function Page() {
                 />
               </Card>
             </View>
-            <SecondaryButton
-              label={removingBg ? '배경을 지우는 중이에요...' : '배경 지우기'}
-              onPress={handleRemoveBackground}
-              disabled={removingBg}
-              style={styles.bgRemoveButton}
-            />
-            {bgRemovalUndoUrl ? (
-              <View style={styles.undoRow}>
-                <Pressable
-                  onPress={handleUndoBackground}
-                  disabled={removingBg}
-                  style={({ pressed }) => [
-                    styles.undoButton,
-                    pressed && styles.undoButtonPressed,
-                    removingBg && styles.undoButtonDisabled,
-                  ]}
-                >
-                  <Text style={styles.undoButtonText}>되돌리기</Text>
-                </Pressable>
-              </View>
-            ) : null}
           </View>
         ) : null}
 
@@ -461,9 +380,6 @@ function Page() {
         )}
 
         {error ? <Text style={styles.errorText}>{error}</Text> : null}
-        {successMessage ? (
-          <Text style={styles.successText}>{successMessage}</Text>
-        ) : null}
 
         <View style={styles.bottomAction}>
           <PrimaryButton
@@ -481,10 +397,6 @@ function Page() {
       <FullScreenLoader
         visible={isLoading}
         message={loadingMessages[loadingMessageIndex] || loadingMessages[0]}
-      />
-      <FullScreenLoader
-        visible={removingBg}
-        message="배경을 지우는 중이에요..."
       />
     </>
   );
