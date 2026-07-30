@@ -9,7 +9,7 @@ COPY package.json package-lock.json ./
 RUN npm ci --omit=dev
 
 COPY server ./server
-COPY server-public ./server-public
+COPY public ./public
 
 ENV PORT=8080
 EXPOSE 8080

@@ -160,7 +160,7 @@ server/
 ### 정적 파일
 
 ```
-server-public/mockups/       # 목업 이미지 (배경 투명 PNG)
+public/mockups/              # 목업 이미지 (배경 투명 PNG, 정적 서빙)
 assets/fonts/                # NotoSansKR-Regular.ttf, NotoSansKR-Bold.ttf
 ```
 

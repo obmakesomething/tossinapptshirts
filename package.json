@@ -9,7 +9,6 @@
     "ios:ait:run": "bash scripts/run-ait-ios.sh",
     "ios:ait:doctor": "bash scripts/run-ait-ios.sh --doctor-only",
     "start": "node server/index.js",
-    "start:cluster": "node server/cluster.js",
     "server": "node server/index.js",
     "test": "jest --passWithNoTests",
     "typecheck": "tsc --noEmit",

@@ -6,7 +6,7 @@ const compression = require('compression');
 const rateLimit = require('express-rate-limit');
 const nodemailer = require('nodemailer');
 const PDFDocument = require('pdfkit');
-const { isGcsConfigured, uploadToGcs, getSignedReadUrl } = require('./gcs');
+const { isBlobConfigured, uploadToBlob } = require('./blobStorage');
 const OpenAI = require('openai');
 const { GoogleGenAI } = require('@google/genai');
 const fs = require('fs');
@@ -97,23 +97,42 @@ app.use((error, _req, res, next) => {
   return next(error);
 });
 
+/**
+ * Rate limiting.
+ *
+ * express-rate-limit's default MemoryStore counts per process. On a serverless
+ * host each warm instance keeps its own tally, so the effective limit becomes
+ * max x instances. With Redis credentials present the counters are shared and
+ * the limit means what it says; without them we fall back to per-instance
+ * counting and report that at boot.
+ */
+const { createRateLimitStore, rateLimitStoreKind } = require('./rateLimitStore');
+
+const buildLimiter = ({ windowMs, max, message, prefix }) =>
+  rateLimit({
+    windowMs,
+    max,
+    message,
+    standardHeaders: true,
+    legacyHeaders: false,
+    store: createRateLimitStore({ windowMs, prefix }),
+  });
+
 // Global rate limiter: 100 requests per 15 minutes per IP
-const globalLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
+const globalLimiter = buildLimiter({
+  windowMs: 15 * 60 * 1000,
   max: 100,
   message: { error: 'Too many requests, please try again later.' },
-  standardHeaders: true,
-  legacyHeaders: false,
+  prefix: 'rl:global:',
 });
 app.use(globalLimiter);
 
 // Strict rate limiter for expensive operations
-const strictLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 20, // 20 requests per 15 minutes
+const strictLimiter = buildLimiter({
+  windowMs: 15 * 60 * 1000,
+  max: 20,
   message: { error: 'Rate limit exceeded for this operation.' },
-  standardHeaders: true,
-  legacyHeaders: false,
+  prefix: 'rl:strict:',
 });
 
 const logEvent = (level, event, payload) => {
@@ -135,6 +154,23 @@ const formatError = (error) => ({
 // Configuration constants (must be defined before middleware)
 const PORT = process.env.PORT || 3000;
 const REQUEST_TIMEOUT_MS = Number(process.env.REQUEST_TIMEOUT_MS) || 120000; // 2 minutes default
+
+/**
+ * Kick off schema initialisation at module load and gate requests on it.
+ *
+ * A long-lived process gets this via startServer(), but a serverless host
+ * imports this module and dispatches a request straight away, so the first
+ * request could otherwise race table creation on a fresh database.
+ * initializeDatabase() is CREATE TABLE IF NOT EXISTS throughout, so running it
+ * once per cold start is harmless.
+ */
+const databaseReady = initializeDatabase().catch((error) => {
+  console.error('Database initialization failed, continuing without it:', error?.message);
+});
+
+app.use((_req, _res, next) => {
+  databaseReady.then(() => next(), () => next());
+});
 
 // Request timeout middleware
 app.use((req, res, next) => {
@@ -180,11 +216,8 @@ app.use((req, res, next) => {
   });
   next();
 });
-const IMAGE_PREFIX = process.env.GCS_IMAGE_PREFIX || 'uploads';
-const PDF_PREFIX = process.env.GCS_PDF_PREFIX || 'orders';
-const GCS_UPLOAD_BUCKET = process.env.GCS_UPLOAD_BUCKET || '';
-const GCS_ORDER_BUCKET = process.env.GCS_ORDER_BUCKET || '';
-const SIGNED_URL_TTL_SECONDS = Number(process.env.SIGNED_URL_TTL_SECONDS) || 60 * 60 * 24 * 7; // 7 days (v4 max)
+const IMAGE_PREFIX = process.env.BLOB_IMAGE_PREFIX || 'uploads';
+const PDF_PREFIX = process.env.BLOB_PDF_PREFIX || 'orders';
 const OPENAI_IMAGE_MODEL = process.env.OPENAI_IMAGE_MODEL || 'gpt-image-1';
 const OPENAI_IMAGE_QUALITY = process.env.OPENAI_IMAGE_QUALITY || 'medium';
 const IMAGEN_MODEL = process.env.IMAGEN_MODEL || 'imagen-4.0-generate-001';
@@ -268,38 +301,29 @@ function getImagenClient() {
 }
 
 
-function isGcsEnabled() {
-  return isGcsConfigured();
+function isStorageEnabled() {
+  return isBlobConfigured();
 }
 
-function resolveGcsBucket(kind) {
-  if (kind === 'pdf') return GCS_ORDER_BUCKET;
-  return GCS_UPLOAD_BUCKET;
+/**
+ * Order PDFs carry the customer's name, phone and address, so they are stored
+ * privately. Everything else is design artwork the app has to render directly.
+ */
+function resolveBlobAccess(kind) {
+  return kind === 'pdf' ? 'private' : 'public';
 }
 
 async function uploadToStorage({ kind, key, body, contentType }) {
-  if (!isGcsEnabled()) {
-    throw new Error('GCS is not configured. Set GCS_UPLOAD_BUCKET/GCS_ORDER_BUCKET.');
+  if (!isStorageEnabled()) {
+    throw new Error('Blob storage is not configured. Set BLOB_READ_WRITE_TOKEN.');
   }
 
-  const bucketName = resolveGcsBucket(kind);
-  if (!bucketName) {
-    throw new Error(`GCS bucket for kind "${kind}" is not configured.`);
-  }
-
+  const access = resolveBlobAccess(kind);
   try {
-    await uploadToGcs({ bucketName, key, body, contentType });
-    return await getSignedReadUrl({
-      bucketName,
-      key,
-      ttlSeconds: SIGNED_URL_TTL_SECONDS,
-    });
+    const { url } = await uploadToBlob({ key, body, contentType, access });
+    return url;
   } catch (error) {
-    logEvent('error', 'gcs_upload_failed', {
-      bucketName,
-      key,
-      ...formatError(error),
-    });
+    logEvent('error', 'blob_upload_failed', { key, access, ...formatError(error) });
     throw error;
   }
 }
@@ -355,7 +379,7 @@ function isPathInTmp(targetPath) {
 }
 
 async function persistPipelineArtifacts({ orderId, pipelineResult }) {
-  if (!pipelineResult || !pipelineResult.paths || !isGcsEnabled()) {
+  if (!pipelineResult || !pipelineResult.paths || !isStorageEnabled()) {
     return pipelineResult;
   }
 
@@ -667,23 +691,17 @@ function getMailer() {
 // Helmet sets `Cross-Origin-Resource-Policy: same-origin` by default, which can block
 // images from being rendered in cross-origin contexts (e.g. Apps in Toss preview/webview).
 // Allow these public mockups to be embedded cross-origin.
-const MOCKUPS_DIR = path.join(process.cwd(), 'server-public/mockups');
+// Mockups live in public/ so a static host can serve them without waking a
+// function; vercel.json routes /mockups/* straight to those files. This handler
+// is the local-development path and the fallback when no static host is in
+// front. The former .png -> .jpg fallback is gone: every .jpg now has a
+// matching .png, so it never fired.
+const MOCKUPS_DIR = path.join(process.cwd(), 'public/mockups');
 app.use(
   '/mockups',
   (_req, res, next) => {
     res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
     next();
-  },
-  (req, _res, next) => {
-    if (!req.path.toLowerCase().endsWith('.png')) return next();
-    const relPath = req.path.replace(/^\/+/, '');
-    const pngPath = path.join(MOCKUPS_DIR, relPath);
-    if (fs.existsSync(pngPath)) return next();
-    const jpgPath = pngPath.replace(/\.png$/i, '.jpg');
-    if (fs.existsSync(jpgPath)) {
-      req.url = req.url.replace(/\.png(\?.*)?$/i, '.jpg$1');
-    }
-    return next();
   },
   express.static(MOCKUPS_DIR),
 );
@@ -723,7 +741,7 @@ app.get('/health', async (_req, res) => {
       pid: process.pid,
     },
     services: {
-      gcs: Boolean(isGcsEnabled()),
+      blob: Boolean(isStorageEnabled()),
       openai: Boolean(process.env.OPENAI_API_KEY),
       smtp: Boolean(process.env.SMTP_USER && process.env.SMTP_PASS),
       db: databaseConfigured ? databaseHealthy : true,
@@ -1289,8 +1307,7 @@ ${pipelineInfo}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 📎 첨부 파일
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-- 주문서 PDF (상세 정보, 디자인 이미지, 목업 이미지 포함)${pipelineResult?.output_path ? '\n- 인쇄용 PNG 파일 (업스케일링 완료)' : ''}
-${pdfUrl ? `\n📄 PDF 다운로드: ${pdfUrl}` : ''}
+- 주문서 PDF (상세 정보, 디자인 이미지, 목업 이미지 포함)${pipelineResult?.output_path ? '\n- 인쇄용 PNG 파일' : ''}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ⚠️ 확인해 주세요
@@ -1365,7 +1382,6 @@ ${itemsSummary}
 📎 첨부 파일
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 주문 내역서 PDF가 첨부되어 있어요.
-${pdfUrl ? `\n📄 PDF 다운로드: ${pdfUrl}` : ''}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ⚠️ 안내
@@ -1423,7 +1439,8 @@ ${pdfUrl ? `\n📄 PDF 다운로드: ${pdfUrl}` : ''}
       });
     }
 
-    res.json({ ok: true, pdfUrl, pipeline: pipelineResult, requestId: req.requestId });
+    // pdfUrl is a private blob identifier — it stays server-side.
+    res.json({ ok: true, pipeline: pipelineResult, requestId: req.requestId });
   } catch (error) {
     logEvent('error', 'order_submit_failed', {
       requestId: req.requestId,
@@ -2875,26 +2892,20 @@ let serverInstance = null;
 let isShuttingDown = false;
 
 async function startServer() {
-  try {
-    await initializeDatabase();
-  } catch (error) {
-    console.error('Database initialization failed, but continuing:', error.message);
-  }
+  await databaseReady;
 
   serverInstance = app.listen(PORT, () => {
     logEvent('info', 'server_config', {
       port: PORT,
-      gcsEnabled: isGcsEnabled(),
-      gcsUploadBucket: GCS_UPLOAD_BUCKET || '',
-      gcsOrderBucket: GCS_ORDER_BUCKET || '',
+      blobEnabled: isStorageEnabled(),
       imagePrefix: IMAGE_PREFIX,
       pdfPrefix: PDF_PREFIX,
-      signedUrlTtlSeconds: SIGNED_URL_TTL_SECONDS,
       openaiModel: OPENAI_IMAGE_MODEL,
       openaiQuality: OPENAI_IMAGE_QUALITY,
       imagenModel: IMAGEN_MODEL,
       imagenEnabled: Boolean(process.env.GOOGLE_API_KEY),
       databaseEnabled: Boolean(process.env.DATABASE_URL),
+      rateLimitStore: rateLimitStoreKind(),
       kakaoApiEnabled: Boolean(process.env.KAKAO_REST_API_KEY),
       orderOutputDir: ORDER_OUTPUT_DIR,
     });
@@ -2935,4 +2946,13 @@ process.on('SIGINT', () => {
   void gracefulShutdown('SIGINT');
 });
 
-startServer();
+/**
+ * Bind a port only when run as a long-lived process. A serverless host imports
+ * this module and invokes the exported app per request, where listening would
+ * be wrong.
+ */
+if (require.main === module) {
+  startServer();
+}
+
+module.exports = app;
