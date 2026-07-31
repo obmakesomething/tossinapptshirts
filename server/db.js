@@ -45,6 +45,32 @@ function resolveSslConfig(databaseUrl) {
   return { rejectUnauthorized: false };
 }
 
+/**
+ * Describe where a connection string points, without any of its secrets.
+ *
+ * A malformed DATABASE_URL surfaces as an opaque DNS failure ("ENOTFOUND
+ * <something>"), and the value cannot be read back once stored, so this
+ * reports the parsed target for diagnosis. Only host, port and database are
+ * included — never the user or password.
+ */
+function describeConnectionTarget(databaseUrl) {
+  const url = String(databaseUrl || '');
+  if (!url) return { configured: false };
+
+  try {
+    const parsed = new URL(url);
+    return {
+      configured: true,
+      host: parsed.hostname,
+      port: parsed.port || '(default)',
+      database: parsed.pathname.replace(/^\//, '') || '(none)',
+      length: url.length,
+    };
+  } catch {
+    return { configured: true, parseError: true, length: url.length };
+  }
+}
+
 function getPool() {
   if (!pool) {
     const DATABASE_URL = process.env.DATABASE_URL;
@@ -192,4 +218,5 @@ module.exports = {
   initializeDatabase,
   closePool,
   resolveSslConfig,
+  describeConnectionTarget,
 };

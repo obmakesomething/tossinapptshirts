@@ -25,7 +25,12 @@ const {
   buildGenerationModelPrompt,
   buildBlockedGenerationError,
 } = require('./generationPolicyBridge');
-const { getPool, initializeDatabase, closePool } = require('./db');
+const {
+  getPool,
+  initializeDatabase,
+  closePool,
+  describeConnectionTarget,
+} = require('./db');
 const {
   saveOrder,
   listOrdersByUser,
@@ -733,6 +738,10 @@ app.get('/health', async (_req, res) => {
   };
   if (databaseError) {
     health.services.dbError = databaseError;
+    // A bad DATABASE_URL only ever shows up as an opaque DNS failure, and the
+    // stored value cannot be read back, so report where it actually points.
+    // Host, port and database name only — no user, no password.
+    health.services.dbTarget = describeConnectionTarget(process.env.DATABASE_URL);
   }
   res.status(health.ok ? 200 : 503).json(health);
 });
