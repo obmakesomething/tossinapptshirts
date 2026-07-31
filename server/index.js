@@ -8,7 +8,6 @@ const nodemailer = require('nodemailer');
 const PDFDocument = require('pdfkit');
 const { isBlobConfigured, uploadToBlob } = require('./blobStorage');
 const OpenAI = require('openai');
-const { GoogleGenAI } = require('@google/genai');
 const fs = require('fs');
 const fsp = require('fs/promises');
 const path = require('path');
@@ -220,8 +219,6 @@ const IMAGE_PREFIX = process.env.BLOB_IMAGE_PREFIX || 'uploads';
 const PDF_PREFIX = process.env.BLOB_PDF_PREFIX || 'orders';
 const OPENAI_IMAGE_MODEL = process.env.OPENAI_IMAGE_MODEL || 'gpt-image-1';
 const OPENAI_IMAGE_QUALITY = process.env.OPENAI_IMAGE_QUALITY || 'medium';
-const IMAGEN_MODEL = process.env.IMAGEN_MODEL || 'imagen-4.0-generate-001';
-const IMAGEN_EDIT_MODEL = process.env.IMAGEN_EDIT_MODEL || 'imagen-3.0-capability-001';
 const ORDER_OUTPUT_DIR = process.env.ORDER_OUTPUT_DIR || path.join('/tmp', 'order-output');
 const KAKAO_WEBHOOK_URL = process.env.KAKAO_WEBHOOK_URL || '';
 const KAKAO_WEBHOOK_TOKEN = process.env.KAKAO_WEBHOOK_TOKEN || '';
@@ -287,17 +284,6 @@ function getOpenAIClient() {
   }
   openaiClient = new OpenAI({ apiKey });
   return openaiClient;
-}
-
-let imagenClient;
-function getImagenClient() {
-  if (imagenClient) return imagenClient;
-  const apiKey = process.env.GOOGLE_API_KEY;
-  if (!apiKey) {
-    throw new Error('GOOGLE_API_KEY is required for Imagen image generation.');
-  }
-  imagenClient = new GoogleGenAI({ apiKey });
-  return imagenClient;
 }
 
 
@@ -2912,8 +2898,6 @@ async function startServer() {
       pdfPrefix: PDF_PREFIX,
       openaiModel: OPENAI_IMAGE_MODEL,
       openaiQuality: OPENAI_IMAGE_QUALITY,
-      imagenModel: IMAGEN_MODEL,
-      imagenEnabled: Boolean(process.env.GOOGLE_API_KEY),
       databaseEnabled: Boolean(process.env.DATABASE_URL),
       rateLimitStore: rateLimitStoreKind(),
       kakaoApiEnabled: Boolean(process.env.KAKAO_REST_API_KEY),
