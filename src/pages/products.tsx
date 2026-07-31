@@ -2,6 +2,9 @@ import { createRoute } from '@granite-js/react-native';
 import React from 'react';
 import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import {
+  BOTTOM_TAB_HEIGHT,
+  BottomTabBar,
+  type BottomTabKey,
   Card,
   ColorSwatch,
   PageHeader,
@@ -83,7 +86,14 @@ function Page() {
     }
   };
 
+  const onSelectTab = (key: BottomTabKey) => {
+    if (key === 'products') return;
+    trackClick('bottom_tab_click', { tab: key, from: 'products' });
+    navigation.navigate((key === 'home' ? '/' : '/my') as never);
+  };
+
   return (
+    <>
     <Screen contentStyle={styles.screenContent}>
       <PageHeader title="상품 선택" onBack={() => navigation.goBack()} />
 
@@ -148,12 +158,15 @@ function Page() {
         ))}
       </View>
     </Screen>
+    <BottomTabBar active="products" onSelect={onSelectTab} />
+    </>
   );
 }
 
 const styles = StyleSheet.create({
   screenContent: {
     backgroundColor: '#FFFFFF',
+    paddingBottom: BOTTOM_TAB_HEIGHT + theme.spacing.xxl,
   },
   headerRow: {
     flexDirection: 'row',

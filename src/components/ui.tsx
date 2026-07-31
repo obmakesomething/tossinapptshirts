@@ -665,6 +665,194 @@ export function SegmentedControl({ tabs, activeIndex, onChangeIndex }: TabBarPro
   );
 }
 
+/* ── BottomTabBar ─────────────────────────────────────── */
+
+export type BottomTabKey = 'home' | 'products' | 'my';
+
+type BottomTabBarProps = {
+  active: BottomTabKey;
+  onSelect: (key: BottomTabKey) => void;
+};
+
+/** Height reserved so screen content is not hidden behind the fixed bar. */
+export const BOTTOM_TAB_HEIGHT = 64;
+
+const bottomTabs: { key: BottomTabKey; label: string }[] = [
+  { key: 'home', label: '홈' },
+  { key: 'products', label: '상품' },
+  { key: 'my', label: '마이' },
+];
+
+/**
+ * Fixed bottom navigation.
+ *
+ * Granite renders each route as its own screen with no persistent shell, so
+ * this is placed on the tab destinations themselves rather than wrapping them.
+ * Flow screens (editor, order, …) deliberately do not show it.
+ *
+ * The glyphs are drawn from views rather than an icon font so they render
+ * identically everywhere.
+ */
+export function BottomTabBar({ active, onSelect }: BottomTabBarProps) {
+  return (
+    <View style={bottomTabStyles.bar}>
+      {bottomTabs.map((tab) => {
+        const selected = tab.key === active;
+        const color = selected ? theme.colors.primary : theme.colors.textTertiary;
+        return (
+          <Pressable
+            key={tab.key}
+            onPress={() => onSelect(tab.key)}
+            accessibilityRole="tab"
+            accessibilityState={{ selected }}
+            accessibilityLabel={tab.label}
+            style={bottomTabStyles.item}
+          >
+            <View style={bottomTabStyles.glyphBox}>
+              <TabGlyph tabKey={tab.key} color={color} selected={selected} />
+            </View>
+            <Text style={[bottomTabStyles.label, { color }]}>{tab.label}</Text>
+          </Pressable>
+        );
+      })}
+    </View>
+  );
+}
+
+function TabGlyph({
+  tabKey,
+  color,
+  selected,
+}: {
+  tabKey: BottomTabKey;
+  color: string;
+  selected: boolean;
+}) {
+  const weight = selected ? 2.2 : 1.8;
+
+  if (tabKey === 'home') {
+    // A roof over a body.
+    return (
+      <View style={bottomTabStyles.glyph}>
+        <View
+          style={{
+            width: 13,
+            height: 13,
+            borderTopWidth: weight,
+            borderLeftWidth: weight,
+            borderColor: color,
+            transform: [{ rotate: '45deg' }],
+            marginBottom: -5,
+          }}
+        />
+        <View
+          style={{
+            width: 15,
+            height: 9,
+            borderWidth: weight,
+            borderTopWidth: 0,
+            borderColor: color,
+            borderBottomLeftRadius: 2,
+            borderBottomRightRadius: 2,
+          }}
+        />
+      </View>
+    );
+  }
+
+  if (tabKey === 'products') {
+    // A shirt: collar notch above a boxy body.
+    return (
+      <View style={bottomTabStyles.glyph}>
+        <View
+          style={{
+            width: 8,
+            height: 8,
+            borderBottomWidth: weight,
+            borderLeftWidth: weight,
+            borderRightWidth: weight,
+            borderColor: color,
+            borderBottomLeftRadius: 4,
+            borderBottomRightRadius: 4,
+            marginBottom: -1,
+          }}
+        />
+        <View
+          style={{
+            width: 16,
+            height: 12,
+            borderWidth: weight,
+            borderColor: color,
+            borderRadius: 3,
+          }}
+        />
+      </View>
+    );
+  }
+
+  // Person: head above shoulders.
+  return (
+    <View style={bottomTabStyles.glyph}>
+      <View
+        style={{
+          width: 9,
+          height: 9,
+          borderRadius: 5,
+          borderWidth: weight,
+          borderColor: color,
+          marginBottom: 2,
+        }}
+      />
+      <View
+        style={{
+          width: 16,
+          height: 8,
+          borderWidth: weight,
+          borderBottomWidth: 0,
+          borderColor: color,
+          borderTopLeftRadius: 8,
+          borderTopRightRadius: 8,
+        }}
+      />
+    </View>
+  );
+}
+
+const bottomTabStyles = StyleSheet.create({
+  bar: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    height: BOTTOM_TAB_HEIGHT,
+    flexDirection: 'row',
+    backgroundColor: theme.colors.surface,
+    borderTopWidth: 1,
+    borderTopColor: theme.colors.divider,
+    paddingBottom: 6,
+  },
+  item: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingTop: 8,
+  },
+  glyphBox: {
+    height: 22,
+    justifyContent: 'flex-end',
+  },
+  glyph: {
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+  },
+  label: {
+    fontSize: 11,
+    fontWeight: '600',
+    letterSpacing: -0.2,
+    marginTop: 4,
+  },
+});
+
 /* ── FullScreenLoader ─────────────────────────────────── */
 
 type FullScreenLoaderProps = {

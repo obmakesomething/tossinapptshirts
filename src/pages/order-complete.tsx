@@ -1,6 +1,7 @@
 import { createRoute } from '@granite-js/react-native';
-import React from 'react';
+import React, { useEffect } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
+import { trackClick, trackScreenView } from '../utils/analytics';
 import {
   Card,
   ListRow,
@@ -21,6 +22,15 @@ function Page() {
   const navigation = Route.useNavigation();
   const params = Route.useParams() as { orderNumber?: string };
   const orderNumber = params.orderNumber ?? 'ORD-00000000-000';
+
+  useEffect(() => {
+    trackScreenView('order_complete', { order_id: orderNumber });
+  }, [orderNumber]);
+
+  const goWithTracking = (target: string, action: string) => {
+    trackClick('order_complete_action_click', { action, order_id: orderNumber });
+    (navigation as any).navigate(target, target === '/order-detail' ? { orderId: orderNumber } : undefined);
+  };
 
   return (
     <Screen contentStyle={styles.screenContent}>
@@ -53,17 +63,15 @@ function Page() {
       <View style={styles.actions}>
         <PrimaryButton
           label="주문 상세 보기"
-          onPress={() =>
-            (navigation as any).navigate('/order-detail', { orderId: orderNumber })
-          }
+          onPress={() => goWithTracking('/order-detail', 'view_detail')}
         />
         <SecondaryButton
           label="홈으로 돌아가기"
-          onPress={() => navigation.navigate('/')}
+          onPress={() => goWithTracking('/', 'go_home')}
         />
         <SecondaryButton
           label="문의하기"
-          onPress={() => navigation.navigate('/inquiry' as never)}
+          onPress={() => goWithTracking('/inquiry', 'inquiry')}
         />
       </View>
     </Screen>

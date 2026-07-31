@@ -10,6 +10,7 @@ import {
 } from '../components/ui';
 import { API_BASE_URL } from '../config';
 import { useCatalog } from '../context/catalog';
+import { trackClick, trackScreenView } from '../utils/analytics';
 import { formatPrice } from '../utils/format';
 
 const PAGE_BG = '#F2F4F6';
@@ -71,6 +72,14 @@ function Page() {
     fetchOrders();
   }, [fetchOrders]);
 
+  useEffect(() => {
+    if (loading) return;
+    trackScreenView('order_list', {
+      order_count: orders.length,
+      is_logged_in: Boolean(userKey),
+    });
+  }, [loading, orders.length, userKey]);
+
   return (
     <Screen contentStyle={styles.screenContent}>
       <PageHeader title="주문 내역" onBack={() => navigation.goBack()} />
@@ -84,14 +93,19 @@ function Page() {
           <Text style={styles.emptyText}>아직 주문이 없어요</Text>
         </View>
       ) : (
-        orders.map((order) => (
+        orders.map((order, index) => (
           <Pressable
             key={order.id}
-            onPress={() =>
+            onPress={() => {
+              trackClick('order_list_item_click', {
+                order_id: order.id,
+                status: order.status,
+                position: index,
+              });
               (navigation as any).navigate('/order-detail', {
                 orderId: order.orderNumber,
-              })
-            }
+              });
+            }}
           >
             <Card style={styles.orderCard}>
               <Text style={styles.orderNumber}>{order.orderNumber}</Text>

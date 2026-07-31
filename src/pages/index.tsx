@@ -13,7 +13,10 @@ import {
 } from 'react-native';
 import { MockupCanvas } from '../components/MockupCanvas';
 import {
+  BOTTOM_TAB_HEIGHT,
   Badge,
+  BottomTabBar,
+  type BottomTabKey,
   Card,
   Chevron,
   PrimaryButton,
@@ -203,6 +206,12 @@ function Page() {
     });
     navigation.navigate('/products');
   };
+  const onSelectTab = (key: BottomTabKey) => {
+    if (key === 'home') return;
+    trackClick('bottom_tab_click', { tab: key, from: 'home' });
+    navigation.navigate((key === 'products' ? '/products' : '/my') as never);
+  };
+
   const openProductEditor = (category: string) => {
     const product = productByCategory[category];
     trackClick('home_product_card_click', {
@@ -214,6 +223,7 @@ function Page() {
   };
 
   return (
+    <>
     <Screen contentStyle={styles.screenContent}>
       <View style={styles.heroSection}>
         <View style={styles.heroBadgeRow}>
@@ -397,13 +407,15 @@ function Page() {
         </View>
       )}
     </Screen>
+    <BottomTabBar active="home" onSelect={onSelectTab} />
+    </>
   );
 }
 
 const styles = StyleSheet.create({
   screenContent: {
     backgroundColor: theme.colors.background,
-    paddingBottom: 42,
+    paddingBottom: BOTTOM_TAB_HEIGHT + theme.spacing.xxl,
   },
   /* Hero sits directly on the page — no card, so the product card below
      is the first thing that reads as elevated. */

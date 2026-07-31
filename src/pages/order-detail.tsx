@@ -1,3 +1,4 @@
+import { share, getTossShareLink } from '@apps-in-toss/framework';
 import { createRoute } from '@granite-js/react-native';
 import React, { useCallback, useEffect, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
@@ -13,6 +14,7 @@ import {
 import { API_BASE_URL } from '../config';
 import { useCatalog } from '../context/catalog';
 import { formatPrice } from '../utils/format';
+import { trackClick, trackEvent, trackScreenView } from '../utils/analytics';
 
 const PAGE_BG = '#F2F4F6';
 
@@ -76,6 +78,17 @@ function Page() {
     fetchOrder();
   }, [fetchOrder]);
 
+  useEffect(() => {
+    if (loading) return;
+    trackScreenView('order_detail', {
+      order_id: orderId,
+      found: Boolean(order),
+      completed_steps: order
+        ? order.timeline.filter((step) => step.completed).length
+        : 0,
+    });
+  }, [loading, order, orderId]);
+
   if (loading) {
     return (
       <Screen contentStyle={styles.screenContent}>
@@ -97,6 +110,26 @@ function Page() {
       </Screen>
     );
   }
+
+  const handleShare = async () => {
+    if (!order) return;
+    trackClick('order_share_click', {
+      order_id: order.orderNumber,
+      product_name: order.productName,
+      status: order.timeline.filter((step) => step.completed).length,
+    });
+    try {
+      const shareLink = await getTossShareLink('intoss://merchandisegpt');
+      // Only the product is shared. Recipient, address and phone stay out of
+      // the message — they are on this screen but they are not shareable.
+      await share({
+        message: `굿즈GPT에서 ${order.productName} ${order.color}을(를) 만들었어요!\n${shareLink}`,
+      });
+      trackEvent('order_share_success', { order_id: order.orderNumber });
+    } catch {
+      // User dismissed the sheet, or sharing is unavailable — nothing to do.
+    }
+  };
 
   return (
     <Screen contentStyle={styles.screenContent}>
@@ -159,6 +192,7 @@ function Page() {
       </Card>
 
       <View style={styles.bottomAction}>
+        <SecondaryButton label="내 굿즈 공유하기" onPress={handleShare} />
         <SecondaryButton
           label="문의하기"
           onPress={() => navigation.navigate('/inquiry' as never)}
@@ -238,5 +272,6 @@ const styles = StyleSheet.create({
   },
   bottomAction: {
     marginTop: theme.spacing.md,
+    gap: theme.spacing.sm,
   },
 });
