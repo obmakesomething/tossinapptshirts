@@ -216,7 +216,6 @@ app.use((req, res, next) => {
   next();
 });
 const IMAGE_PREFIX = process.env.BLOB_IMAGE_PREFIX || 'uploads';
-const PDF_PREFIX = process.env.BLOB_PDF_PREFIX || 'orders';
 const OPENAI_IMAGE_MODEL = process.env.OPENAI_IMAGE_MODEL || 'gpt-image-1';
 const OPENAI_IMAGE_QUALITY = process.env.OPENAI_IMAGE_QUALITY || 'medium';
 const ORDER_OUTPUT_DIR = process.env.ORDER_OUTPUT_DIR || path.join('/tmp', 'order-output');
@@ -292,24 +291,24 @@ function isStorageEnabled() {
 }
 
 /**
- * Order PDFs carry the customer's name, phone and address, so they are stored
- * privately. Everything else is design artwork the app has to render directly.
+ * Only design artwork reaches storage, and the app renders it directly, so the
+ * store is public.
+ *
+ * Order PDFs are deliberately not stored. They are delivered as email
+ * attachments and the order itself lives in the orders table, so keeping a copy
+ * of the customer's name, phone and address in object storage would be data at
+ * rest that nothing ever reads.
  */
-function resolveBlobAccess(kind) {
-  return kind === 'pdf' ? 'private' : 'public';
-}
-
-async function uploadToStorage({ kind, key, body, contentType }) {
+async function uploadToStorage({ key, body, contentType }) {
   if (!isStorageEnabled()) {
     throw new Error('Blob storage is not configured. Set BLOB_READ_WRITE_TOKEN.');
   }
 
-  const access = resolveBlobAccess(kind);
   try {
-    const { url } = await uploadToBlob({ key, body, contentType, access });
+    const { url } = await uploadToBlob({ key, body, contentType, access: 'public' });
     return url;
   } catch (error) {
-    logEvent('error', 'blob_upload_failed', { key, access, ...formatError(error) });
+    logEvent('error', 'blob_upload_failed', { key, ...formatError(error) });
     throw error;
   }
 }
@@ -376,7 +375,6 @@ async function persistPipelineArtifacts({ orderId, pipelineResult }) {
     const printReadyBuffer = await fsp.readFile(printReadyPath);
     const key = buildPipelineArtifactKey(orderId, 'print_ready.png');
     artifactUrls.print_ready_png = await uploadToStorage({
-      kind: 'image',
       key,
       body: printReadyBuffer,
       contentType: 'image/png',
@@ -388,7 +386,6 @@ async function persistPipelineArtifacts({ orderId, pipelineResult }) {
     const qcBuffer = await fsp.readFile(qcPath);
     const key = buildPipelineArtifactKey(orderId, 'qc_report.json');
     artifactUrls.qc_report_json = await uploadToStorage({
-      kind: 'image',
       key,
       body: qcBuffer,
       contentType: 'application/json',
@@ -794,7 +791,7 @@ app.post('/v1/images/upload', strictLimiter, async (req, res) => {
     const key = `${IMAGE_PREFIX}/${Date.now()}-${Math.random()
       .toString(36)
       .slice(2)}-${safeName || 'upload'}.${extension}`;
-    const url = await uploadToStorage({ kind: 'image', key, body: buffer, contentType: mimeType });
+    const url = await uploadToStorage({ key, body: buffer, contentType: mimeType });
     logEvent('info', 'image_upload_result', {
       requestId: req.requestId,
       url,
@@ -894,7 +891,7 @@ app.post('/v1/images/generate', strictLimiter, async (req, res) => {
 
       const mimeType = 'image/png';
       const key = `${IMAGE_PREFIX}/openai-${Date.now()}-${Math.random().toString(36).slice(2)}.png`;
-      const url = await uploadToStorage({ kind: 'image', key, body: buffer, contentType: mimeType });
+      const url = await uploadToStorage({ key, body: buffer, contentType: mimeType });
       const result = { url, mimeType };
       if (returnBase64) {
         result.dataUrl = `data:${mimeType};base64,${buffer.toString('base64')}`;
@@ -961,7 +958,7 @@ app.post('/v1/images/crop', strictLimiter, async (req, res) => {
 
     // Upload to storage
     const key = `${IMAGE_PREFIX}/${Date.now()}-${Math.random().toString(36).slice(2)}-cropped.png`;
-    const url = await uploadToStorage({ kind: 'image', key, body: croppedBuffer, contentType: 'image/png' });
+    const url = await uploadToStorage({ key, body: croppedBuffer, contentType: 'image/png' });
 
     logEvent('info', 'crop_result', {
       requestId: req.requestId,
@@ -1041,7 +1038,6 @@ app.post('/v1/images/style-transfer', strictLimiter, async (req, res) => {
 
     const key = `${IMAGE_PREFIX}/${Date.now()}-${Math.random().toString(36).slice(2)}-styled.png`;
     const url = await uploadToStorage({
-      kind: 'image',
       key,
       body: styledBuffer,
       contentType: 'image/png',
@@ -1217,12 +1213,6 @@ app.post('/v1/orders/submit', strictLimiter, async (req, res) => {
 
     const pdfBuffer = await buildOrderPdf(order);
     const pdfName = `order-${order.orderId || Date.now()}.pdf`;
-
-    let pdfUrl = '';
-    if (order.storePdf) {
-      const key = `${PDF_PREFIX}/${pdfName}`;
-      pdfUrl = await uploadToStorage({ kind: 'pdf', key, body: pdfBuffer, contentType: 'application/pdf' });
-    }
 
     const adminTo = process.env.ORDER_EMAIL_TO;
     if (!adminTo) return res.status(500).json({ error: 'ORDER_EMAIL_TO is required.' });
@@ -1425,7 +1415,6 @@ ${itemsSummary}
       });
     }
 
-    // pdfUrl is a private blob identifier — it stays server-side.
     res.json({ ok: true, pipeline: pipelineResult, requestId: req.requestId });
   } catch (error) {
     logEvent('error', 'order_submit_failed', {
@@ -2644,12 +2633,6 @@ app.post('/v1/payment/execute', strictLimiter, async (req, res) => {
           const pdfBuffer = await buildOrderPdf(orderData);
           const pdfName = `order-${orderData.orderId}.pdf`;
 
-          let pdfUrl = '';
-          if (orderData.storePdf !== false) {
-            const key = `${PDF_PREFIX}/${pdfName}`;
-            pdfUrl = await uploadToStorage({ kind: 'pdf', key, body: pdfBuffer, contentType: 'application/pdf' });
-          }
-
           const adminTo = process.env.ORDER_EMAIL_TO;
           const customerEmail = orderData.customer?.email || '';
           const customerName = orderData.customer?.name || '주문자';
@@ -2895,7 +2878,6 @@ async function startServer() {
       port: PORT,
       blobEnabled: isStorageEnabled(),
       imagePrefix: IMAGE_PREFIX,
-      pdfPrefix: PDF_PREFIX,
       openaiModel: OPENAI_IMAGE_MODEL,
       openaiQuality: OPENAI_IMAGE_QUALITY,
       databaseEnabled: Boolean(process.env.DATABASE_URL),
