@@ -33,3 +33,5 @@ __pycache__/
 .tmp_sim_success.png
 test-design*.png
 test-order-korean.pdf
+.vercel
+.env*

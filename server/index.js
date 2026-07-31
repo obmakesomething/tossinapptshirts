@@ -1961,10 +1961,20 @@ function verifyTossCallbackAuth(req, res, next) {
     password: TOSS_CALLBACK_PASSWORD,
   });
 
-  // If credentials not configured, skip auth check (for testing)
+  // Fail closed. This endpoint erases a user's orders and inquiries, so an
+  // unconfigured deployment must refuse the request rather than wave it
+  // through — otherwise anyone who can reach the URL can delete any user's
+  // data by guessing a userId.
   if (!TOSS_CALLBACK_USERNAME || !TOSS_CALLBACK_PASSWORD) {
-    console.warn('TOSS_CALLBACK_USERNAME/PASSWORD not set - skipping Basic Auth');
-    return next();
+    logEvent('error', 'toss_callback_credentials_missing', {
+      requestId: req.requestId,
+      method: req.method,
+      path: req.path,
+    });
+    return res.status(503).json({
+      error: 'Callback authentication is not configured.',
+      requestId: req.requestId,
+    });
   }
 
   const authHeader =

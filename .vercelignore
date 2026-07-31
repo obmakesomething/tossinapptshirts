@@ -1,0 +1,37 @@
+# The deployment only needs the Express API, its assets, and public/.
+# Everything below belongs to the React Native mini app or to local tooling.
+
+node_modules
+.git
+
+# React Native / Granite app
+src
+pages
+index.ts
+require.context.ts
+granite.config.ts
+tsconfig.json
+jest.config.js
+biome.json
+dist
+.granite
+*.ait
+
+# Local tooling and scratch
+scripts
+prototype
+.claude
+.venv-cutout
+coverage
+*.log
+
+# Docs and history
+docs
+*.md
+!package.json
+
+# Container / GCP deployment files, no longer used
+Dockerfile
+.dockerignore
+.gcloudignore
+cloudbuild.yaml
