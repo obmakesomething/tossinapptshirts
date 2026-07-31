@@ -168,12 +168,26 @@ const REQUEST_TIMEOUT_MS = Number(process.env.REQUEST_TIMEOUT_MS) || 120000; // 
  * initializeDatabase() is CREATE TABLE IF NOT EXISTS throughout, so running it
  * once per cold start is harmless.
  */
-const databaseReady = initializeDatabase().catch((error) => {
-  console.error('Database initialization failed, continuing without it:', error?.message);
-});
+let databaseReady = null;
+
+function ensureDatabaseReady() {
+  if (!databaseReady) {
+    databaseReady = initializeDatabase().catch((error) => {
+      console.error('Database initialization failed:', error?.message);
+      // Clear the memo so the next request retries. Initialisation is
+      // CREATE TABLE IF NOT EXISTS throughout, and a cold start that loses the
+      // race would otherwise serve 500s until the instance is recycled.
+      databaseReady = null;
+      throw error;
+    });
+  }
+  return databaseReady;
+}
+
+ensureDatabaseReady().catch(() => {});
 
 app.use((_req, _res, next) => {
-  databaseReady.then(() => next(), () => next());
+  ensureDatabaseReady().then(() => next(), () => next());
 });
 
 // Request timeout middleware
@@ -730,6 +744,9 @@ app.get('/health', async (_req, res) => {
     },
     services: {
       blob: Boolean(isStorageEnabled()),
+      pdfFonts: fs.existsSync(
+        path.join(__dirname, '..', 'assets', 'fonts', 'NotoSansKR-Regular.ttf'),
+      ),
       openai: Boolean(process.env.OPENAI_API_KEY),
       smtp: Boolean(process.env.SMTP_USER && process.env.SMTP_PASS),
       db: databaseConfigured ? databaseHealthy : true,
@@ -2880,7 +2897,7 @@ let serverInstance = null;
 let isShuttingDown = false;
 
 async function startServer() {
-  await databaseReady;
+  await ensureDatabaseReady().catch(() => {});
 
   serverInstance = app.listen(PORT, () => {
     logEvent('info', 'server_config', {
