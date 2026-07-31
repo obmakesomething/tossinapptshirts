@@ -1978,12 +1978,24 @@ function verifyTossCallbackAuth(req, res, next) {
     });
   }
 
-  const authHeader =
+  const rawAuthHeader =
     req.headers.authorization ||
     req.headers['x-authorization'] ||
     req.headers['x-basic-auth'] ||
     req.headers['basic-auth'] ||
     '';
+
+  // The console stores whatever is typed into its "Basic Auth 헤더" field and
+  // sends it as-is, so a value entered without the scheme arrives as a bare
+  // base64 blob. Treat that as Basic rather than rejecting it — it is the same
+  // secret either way, and the alternative is a callback that silently 401s.
+  const authHeader = (() => {
+    const value = String(rawAuthHeader).trim();
+    if (!value || /^\s*basic\s+/i.test(value)) return value;
+    const looksBase64 =
+      value.length >= 4 && value.length % 4 === 0 && /^[A-Za-z0-9+/=]+$/.test(value);
+    return looksBase64 ? `Basic ${value}` : value;
+  })();
 
   logEvent('info', 'toss_callback_auth_received', {
     requestId: req.requestId,
