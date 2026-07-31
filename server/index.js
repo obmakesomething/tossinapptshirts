@@ -2142,12 +2142,15 @@ async function handleTossDisconnect(req, res, source) {
     requestId: req.requestId,
   });
 
+  // The console's connectivity test posts without a userId. That is not a
+  // withdrawal event, so acknowledge it and erase nothing — answering 400 made
+  // the console report the callback as broken.
   if (!userId) {
-    logEvent('warn', 'toss_user_disconnect_missing_user', {
+    logEvent('info', 'toss_user_disconnect_verification', {
       source,
       requestId: req.requestId,
     });
-    return res.status(400).json({ error: 'userId is required.', requestId: req.requestId });
+    return res.json({ success: true, verified: true, requestId: req.requestId });
   }
 
   try {
