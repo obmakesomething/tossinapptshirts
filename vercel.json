@@ -4,6 +4,7 @@
   "buildCommand": "echo \"no build step: the API is served from api/index.js and public/ is static\"",
   "outputDirectory": "public",
   "installCommand": "npm install --omit=dev --no-audit --no-fund",
+  "regions": ["icn1"],
   "functions": {
     "api/index.js": {
       "maxDuration": 300,
