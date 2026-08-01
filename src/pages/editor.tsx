@@ -1330,6 +1330,10 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: '600',
     color: '#8B95A1',
+    // Unconstrained, this collided with the neighbouring caption; reserve the
+    // width the longest value ("300%") needs and centre it.
+    minWidth: 34,
+    textAlign: 'center',
   },
 
   /* ── Canvas Info ── */

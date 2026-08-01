@@ -383,6 +383,7 @@ function Page() {
                         onPress={() => toggleFAQ(item.id)}
                         accessibilityRole="button"
                         accessibilityState={{ expanded }}
+                        style={styles.faqPressable}
                       >
                         <View style={styles.faqRow}>
                           <Text style={styles.faqQ}>Q</Text>
@@ -637,7 +638,14 @@ const styles = StyleSheet.create({
   faqCard: {
     marginBottom: theme.spacing.sm,
     backgroundColor: theme.colors.surface,
+    // Padding lives on the Pressable below: on the Card it sat outside the
+    // touch target, leaving a 22px-tall tappable strip inside a roomy card.
+    padding: 0,
+  },
+  faqPressable: {
     padding: theme.spacing.lg,
+    minHeight: 44,
+    justifyContent: 'center',
   },
   faqRow: {
     flexDirection: 'row',

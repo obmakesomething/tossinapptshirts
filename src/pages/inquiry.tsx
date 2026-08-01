@@ -192,6 +192,7 @@ const styles = StyleSheet.create({
     marginBottom: theme.spacing.xs,
   },
   input: {
+    minHeight: 44,
     borderWidth: 1,
     borderColor: '#E5E8EB',
     borderRadius: theme.radius.md,
