@@ -230,10 +230,10 @@ function Page() {
           <Badge variant="info" label="토스 독점" dot={false} />
         </View>
         <Text style={styles.heroTitle}>
-          나만의 굿즈,{'\n'}AI로 바로 만들어보세요
+          내 사진으로{'\n'}나만의 굿즈 만들기
         </Text>
         <Text style={styles.heroSubtitle}>
-          티셔츠 · 후드 · 맨투맨 — 디자인부터 결제까지 한 번에
+          사진 한 장만 있으면 돼요. 티셔츠 · 후드 · 맨투맨
         </Text>
         <PrimaryButton
           label="지금 만들어보기"

@@ -57,7 +57,9 @@ const snapRotation = (angle: number) => {
 
 const MIN_SCALE = 0.03;
 const MAX_SCALE = 1.5; // Updated for Issue #5
-const MAX_OFFSET = 0.55;
+// Offsets are measured in print-area widths, which are ~a third of the stage,
+// so the artwork still reaches the edge of the garment.
+const MAX_OFFSET = 1.4;
 const HIT_SLOP = 12;
 const ROTATE_RANGE = 180;
 
@@ -84,11 +86,81 @@ export function DesignStage({
   imageControlFocused: imageControlFocusedProp,
   onImageControlFocusChange,
 }: DesignStageProps) {
+  const hemTrimRatio = getHemTrimInsetRatio(sizeLabel);
+  const templateUri =
+    typeof template.image === 'object' &&
+    template.image !== null &&
+    'uri' in template.image
+      ? (template.image as { uri?: string }).uri
+      : undefined;
+  const [templateNaturalSize, setTemplateNaturalSize] = useState<{
+    uri: string;
+    width: number;
+    height: number;
+  } | null>(null);
+
+  useEffect(() => {
+    if (!templateUri) return;
+    let cancelled = false;
+    Image.getSize(
+      templateUri,
+      (w, h) => {
+        if (!cancelled && w > 0 && h > 0) {
+          setTemplateNaturalSize({ uri: templateUri, width: w, height: h });
+        }
+      },
+      () => {
+        // Fall back to the stage box; the print area is approximate but drawn.
+      },
+    );
+    return () => {
+      cancelled = true;
+    };
+  }, [templateUri]);
+
+  /**
+   * Where the garment actually lands inside the stage.
+   *
+   * The mockup is drawn with resizeMode="contain" inside a box the stage picks,
+   * so it is letterboxed by whatever the aspect mismatch happens to be. Print
+   * areas are expressed against the image, so they have to be mapped onto that
+   * letterboxed rect — measuring them against the raw stage box stretched the
+   * print boundary over the collar and past the hem.
+   */
+  const garmentBoxHeight = height * (1 - hemTrimRatio);
+  const garmentRect = (() => {
+    const natural =
+      templateNaturalSize && templateNaturalSize.uri === templateUri
+        ? templateNaturalSize
+        : null;
+    if (!natural) {
+      return { left: 0, top: 0, width, height: garmentBoxHeight };
+    }
+    const boxAspect = width / garmentBoxHeight;
+    const imageAspect = natural.width / natural.height;
+    if (imageAspect > boxAspect) {
+      const drawnHeight = width / imageAspect;
+      return {
+        left: 0,
+        top: (garmentBoxHeight - drawnHeight) / 2,
+        width,
+        height: drawnHeight,
+      };
+    }
+    const drawnWidth = garmentBoxHeight * imageAspect;
+    return {
+      left: (width - drawnWidth) / 2,
+      top: 0,
+      width: drawnWidth,
+      height: garmentBoxHeight,
+    };
+  })();
+
   const templateArea = {
-    left: width * template.printArea.x,
-    top: height * template.printArea.y,
-    width: width * template.printArea.width,
-    height: height * template.printArea.height,
+    left: garmentRect.left + garmentRect.width * template.printArea.x,
+    top: garmentRect.top + garmentRect.height * template.printArea.y,
+    width: garmentRect.width * template.printArea.width,
+    height: garmentRect.height * template.printArea.height,
   };
   const freeArea = {
     // Figma-like free canvas: use the whole stage as editable area.
@@ -97,10 +169,19 @@ export function DesignStage({
     width,
     height,
   };
-  const area = interactionMode === 'free' ? freeArea : templateArea;
+  /**
+   * Artwork is laid out against the printable region, not the whole stage.
+   *
+   * Sizing against the stage made `scale: 1` mean "cover the entire canvas", so
+   * every freshly picked photo landed bigger than the garment and buried it.
+   * Against the print area, `scale: 1` means a full-size chest print — the
+   * largest thing that can actually be printed.
+   */
+  const area = templateArea;
+  /** Where a touch may grab the artwork — deliberately looser than the layout. */
+  const hitArea = interactionMode === 'free' ? freeArea : templateArea;
 
   const effectiveShowGuides = _showPrintArea && showGuides;
-  const hemTrimRatio = getHemTrimInsetRatio(sizeLabel);
   const stageBackgroundColor = getGarmentStageBackground(template.color, 'transparent');
   const stageImageStyle = useMemo(
     () => [styles.image, { bottom: height * hemTrimRatio }],
@@ -152,6 +233,7 @@ export function DesignStage({
   const activeTransformRef = useRef(activeTransform);
   const updateTransformRef = useRef(updateTransform);
   const areaRef = useRef(area);
+  const hitAreaRef = useRef(hitArea);
   const activeLayerRef = useRef(activeLayer);
   const imageUriRef = useRef(imageUri);
   const textLayerRef = useRef(textLayer);
@@ -170,6 +252,7 @@ export function DesignStage({
   activeTransformRef.current = activeTransform;
   updateTransformRef.current = updateTransform;
   areaRef.current = area;
+  hitAreaRef.current = hitArea;
   activeLayerRef.current = effectiveActiveLayer;
   imageUriRef.current = imageUri;
   textLayerRef.current = textLayer;
@@ -194,7 +277,7 @@ export function DesignStage({
   };
 
   const isWithinPrintArea = (x: number, y: number) => {
-    const currentArea = areaRef.current;
+    const currentArea = hitAreaRef.current;
     return (
       x >= currentArea.left - HIT_SLOP &&
       x <= currentArea.left + currentArea.width + HIT_SLOP &&
@@ -589,9 +672,13 @@ export function DesignStage({
             <View style={[styles.freeGridLine, styles.freeGridLineV, { left: '75%' }]} />
           </View>
         )}
-        {/* Print area border */}
-        {effectiveShowGuides && (
+        {/* Print area border — the one boundary the customer must be able to
+            see. It is tied to showPrintArea rather than showGuides so the
+            editor can drop the dimming mask without also hiding where the
+            design actually prints. */}
+        {_showPrintArea && (hasImageLayer || hasTextLayer || effectiveShowGuides) && (
           <View
+            pointerEvents="none"
             style={[
               styles.printArea,
               {
@@ -809,6 +896,10 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
     alignItems: 'center',
     justifyContent: 'center',
+    // The backdrop behind a light garment is a contrast surface, not a stray
+    // rectangle — round it so it reads as part of the product shot.
+    borderRadius: 16,
+    overflow: 'hidden',
   },
   image: {
     ...StyleSheet.absoluteFillObject,

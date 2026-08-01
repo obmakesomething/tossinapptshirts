@@ -29,11 +29,23 @@ export const TossPay = {
   requestPayment: async () => ({ success: false, reason: 'harness' }),
 };
 
-/** Album access is unavailable in a browser; screens handle the empty result. */
+/**
+ * There is no album in a browser, so the picker hands back a fixed sample
+ * design. Without it the editor can only ever be reviewed in its empty state,
+ * and the state that matters — artwork on the garment — is unreachable.
+ */
+const SAMPLE_DESIGN_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="600" height="600">
+  <circle cx="300" cy="300" r="230" fill="#1B64DA"/>
+  <circle cx="300" cy="300" r="150" fill="#FFFFFF"/>
+  <circle cx="300" cy="300" r="70" fill="#F04452"/>
+</svg>`;
+
+const SAMPLE_DESIGN_DATA_URI = `data:image/svg+xml;base64,${btoa(SAMPLE_DESIGN_SVG)}`;
+
 export const fetchAlbumPhotos = Object.assign(
-  async () => [] as { id?: string; dataUri?: string }[],
+  async () => [{ id: 'harness-sample', dataUri: SAMPLE_DESIGN_DATA_URI }],
   {
-    getPermission: async () => 'denied' as const,
-    openPermissionDialog: async () => 'denied' as const,
+    getPermission: async () => 'allowed' as const,
+    openPermissionDialog: async () => 'allowed' as const,
   },
 );

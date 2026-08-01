@@ -4,14 +4,34 @@
     {
       "name": "static-preview",
       "runtimeExecutable": "npx",
-      "runtimeArgs": ["http-server", ".", "-p", "8181", "-c-1"],
+      "runtimeArgs": [
+        "http-server",
+        ".",
+        "-p",
+        "8181",
+        "-c-1"
+      ],
       "port": 8181
     },
     {
       "name": "server",
       "runtimeExecutable": "node",
-      "runtimeArgs": ["-r", "dotenv/config", "server/index.js"],
+      "runtimeArgs": [
+        "-r",
+        "dotenv/config",
+        "server/index.js"
+      ],
       "port": 8080
+    },
+    {
+      "name": "harness",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": [
+        "vite",
+        "--config",
+        "harness/vite.config.mts"
+      ],
+      "port": 5188
     }
   ]
 }

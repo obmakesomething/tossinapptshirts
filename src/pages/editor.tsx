@@ -10,7 +10,6 @@ import {
   ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   useWindowDimensions,
   View,
 } from 'react-native';
@@ -36,12 +35,13 @@ import {
   trackPhotoSelectThumbnail,
   trackScreenView,
 } from '../utils/analytics';
+import { toImageDataUrl } from '../utils/imageMime';
 
 const ACCENT = '#1B64DA';
 const FILL_SOFT = '#F2F4F6';
 const PANEL_BG = '#FFFFFF';
 const EDITOR_HEADER_RESERVED = 100;
-const DEFAULT_STAGE_ZOOM = 1.3;
+const DEFAULT_STAGE_ZOOM = 1.0;
 const MIN_STAGE_ZOOM = 0.6;
 const MAX_STAGE_ZOOM = 3.0;
 const ZOOM_STEP = 0.2;
@@ -91,9 +91,6 @@ function Page() {
 
 
   const [editorTab, setEditorTab] = useState(0);
-  const [aiPrompt, setAiPrompt] = useState('');
-  const [showStartModal, setShowStartModal] = useState(false);
-  const [startModalDismissed, setStartModalDismissed] = useState(false);
 
   // Photo management state
   const [loadingPhoto, setLoadingPhoto] = useState(false);
@@ -102,7 +99,8 @@ function Page() {
   const [deletePhotoIndex, setDeletePhotoIndex] = useState<number | null>(null);
   const [stageZoom, setStageZoom] = useState(DEFAULT_STAGE_ZOOM);
   const [imageControlFocused, setImageControlFocused] = useState(false);
-  const [panelExpanded, setPanelExpanded] = useState(true);
+  // Rests collapsed: the first thing to see after adding a photo is the shirt.
+  const [panelExpanded, setPanelExpanded] = useState(false);
 
   // ── Undo/Redo history ──
   type EditorSnapshot = {
@@ -163,12 +161,35 @@ function Page() {
   }, [imageTransform, textTransform, textLayer]);
 
   const { width: screenWidth, height: screenHeight } = useWindowDimensions();
-  const panelHeightCollapsed = Math.max(320, Math.min(420, Math.round(screenHeight * 0.42)));
-  const panelHeightExpanded = Math.round(screenHeight * 0.65);
+
+  /**
+   * Nothing on the garment yet.
+   *
+   * The editor used to show its whole control surface — zoom, layers,
+   * front/back, reset, print area — over an empty shirt, and ask for a photo in
+   * three places at once. Until there is something to edit, the screen shows the
+   * garment and one way to add a photo.
+   */
+  const hasArtwork = currentPhotos.length > 0 || Boolean(designImageUri);
+  /**
+   * The garment keeps the majority of the screen.
+   *
+   * At 42/65% the controls took more room than the thing being designed, and
+   * the shirt shrank to a thumbnail the moment a photo landed on it. The
+   * expanded panel now stops at half the screen and the resting panel is just
+   * the tab strip plus one row of controls.
+   */
+  const panelHeightCollapsed = Math.max(352, Math.min(388, Math.round(screenHeight * 0.42)));
+  const panelHeightExpanded = Math.round(screenHeight * 0.5);
   const panelHeight = panelExpanded ? panelHeightExpanded : panelHeightCollapsed;
+  // With no artwork the panel is not rendered, so only the upload CTA below the
+  // garment is reserved — the rest goes to the garment.
+  const EMPTY_CTA_RESERVED = 132;
   const availableCanvasHeight = Math.max(
     240,
-    screenHeight - panelHeight - EDITOR_HEADER_RESERVED,
+    screenHeight -
+      (hasArtwork ? panelHeight : EMPTY_CTA_RESERVED) -
+      EDITOR_HEADER_RESERVED,
   );
   const canvasWidth = Math.max(
     220,
@@ -181,7 +202,7 @@ function Page() {
     Math.round(availableCanvasHeight - CANVAS_FRAME_VERTICAL_PADDING),
   );
 
-  const EDITOR_TABS = ['이미지', '텍스트', 'AI'];
+  const EDITOR_TABS = ['이미지', '텍스트'];
 
   const goPreview = () => {
     trackClick('editor_preview_click', {
@@ -208,17 +229,6 @@ function Page() {
       placement: selectedPlacement,
     });
   }, []);
-
-  useEffect(() => {
-    if (currentPhotos.length > 0) {
-      setShowStartModal(false);
-      setStartModalDismissed(false);
-      return;
-    }
-    if (!startModalDismissed) {
-      setShowStartModal(true);
-    }
-  }, [currentPhotos.length, startModalDismissed]);
 
   const imageTransformRef = useRef(imageTransform);
   const textTransformRef = useRef(textTransform);
@@ -262,9 +272,12 @@ function Page() {
           return null;
         }
       }
+      // This is the print source, not a thumbnail. 1024px across a 12-inch
+      // print is ~85 DPI; 2048 keeps a full-chest design inside the warning
+      // threshold in utils/printResolution.
       const photos = await fetchAlbumPhotos({
         maxCount: 1,
-        maxWidth: 1024,
+        maxWidth: 2048,
         base64: true,
       });
       const photo = photos[0];
@@ -273,9 +286,7 @@ function Page() {
         setLoadingPhoto(false);
         return null;
       }
-      const dataUrl = photo.dataUri.startsWith('data:')
-        ? photo.dataUri
-        : `data:image/jpeg;base64,${photo.dataUri}`;
+      const dataUrl = toImageDataUrl(photo.dataUri);
       setLoadingPhoto(false);
       return dataUrl;
     } catch (err) {
@@ -296,13 +307,6 @@ function Page() {
       addPhoto(dataUrl);
       setActiveLayer('image');
     }
-  };
-
-  const handleAddPhotoFromStartModal = async () => {
-    // Close first for snappy feedback in the first-time flow only.
-    setShowStartModal(false);
-    setStartModalDismissed(true);
-    await handleAddPhoto();
   };
 
   const handleReplacePhoto = async () => {
@@ -333,12 +337,6 @@ function Page() {
     trackPhotoSelectThumbnail(selectedPlacement, index);
     selectPhoto(index);
     setActiveLayer('image');
-  };
-
-  const handleStartModalClose = () => {
-    trackClick('editor_start_modal_dismiss_click');
-    setShowStartModal(false);
-    setStartModalDismissed(true);
   };
 
   const handlePlacementChange = (placement: 'front' | 'back') => {
@@ -398,6 +396,8 @@ function Page() {
           </Pressable>
           <Text style={styles.editorTopTitle}>이미지 편집</Text>
           <View style={styles.headerActions}>
+            {hasArtwork ? (
+            <>
             <Pressable
               style={[styles.headerIconButton, undoStack.length === 0 && styles.headerIconDisabled]}
               onPress={handleUndo}
@@ -412,12 +412,16 @@ function Page() {
             >
               <Text style={[styles.headerIconText, redoStack.length === 0 && styles.headerIconTextDisabled]}>↪</Text>
             </Pressable>
+            </>
+            ) : null}
+            {hasArtwork ? (
             <Pressable
               style={styles.orderMiniButton}
               onPress={goOrder}
             >
-              <Text style={styles.orderMiniButtonText}>🛒 주문</Text>
+              <Text style={styles.orderMiniButtonText}>주문</Text>
             </Pressable>
+            ) : null}
           </View>
         </View>
         <View style={styles.compactProduct}>
@@ -425,12 +429,11 @@ function Page() {
           <Text style={styles.compactName} numberOfLines={1}>
             {selectedProduct.name} · {selectedColor}
           </Text>
-          <Pressable
-            onPress={goPreview}
-            style={styles.compactPreview}
-          >
-            <Text style={styles.compactPreviewText}>완성 보기</Text>
-          </Pressable>
+          {hasArtwork ? (
+            <Pressable onPress={goPreview} style={styles.compactPreview}>
+              <Text style={styles.compactPreviewText}>완성 보기</Text>
+            </Pressable>
+          ) : null}
           <Pressable
             onPress={() => navigation.navigate('/products')}
             style={styles.compactChange}
@@ -438,7 +441,8 @@ function Page() {
             <Text style={styles.compactChangeText}>상품 변경</Text>
           </Pressable>
         </View>
-        {/* 앞/뒤면 세그먼트 */}
+        {/* 앞/뒤면 세그먼트 — 올릴 것이 있을 때만 */}
+        {hasArtwork ? (
         <View style={styles.placementSegment}>
           <Pressable
             style={[styles.segmentButton, selectedPlacement === 'front' && styles.segmentButtonActive]}
@@ -457,19 +461,12 @@ function Page() {
             </Text>
           </Pressable>
         </View>
+        ) : null}
       </View>
 
       {/* ── 캔버스 (최대화) ── */}
       <View style={[styles.canvasArea, imageControlFocused && styles.canvasAreaFocused]}>
         <View style={styles.canvasFrame}>
-          <View pointerEvents="none" style={styles.canvasWorkspaceGrid}>
-            <View style={[styles.canvasWorkspaceGridLineH, { top: '25%' }]} />
-            <View style={[styles.canvasWorkspaceGridLineH, { top: '50%' }]} />
-            <View style={[styles.canvasWorkspaceGridLineH, { top: '75%' }]} />
-            <View style={[styles.canvasWorkspaceGridLineV, { left: '25%' }]} />
-            <View style={[styles.canvasWorkspaceGridLineV, { left: '50%' }]} />
-            <View style={[styles.canvasWorkspaceGridLineV, { left: '75%' }]} />
-          </View>
           <View style={[styles.canvasClip, { width: canvasWidth, height: canvasHeight }]}>
             <DesignStage
               template={buildTemplate(selectedProduct, selectedColor, selectedPlacement)}
@@ -491,14 +488,8 @@ function Page() {
               onImageControlFocusChange={setImageControlFocused}
             />
           </View>
-          <View style={styles.canvasTopOverlay} pointerEvents="box-none">
-            <View style={styles.canvasStateChip}>
-              <Text style={styles.canvasStateText}>
-                선택 레이어: {activeLayer === 'text' ? '텍스트' : '이미지'}
-              </Text>
-            </View>
-          </View>
-          {/* ── 줌 컨트롤 ── */}
+          {/* ── 줌 컨트롤 — 편집할 것이 있을 때만 ── */}
+          {hasArtwork ? (
           <View style={styles.zoomControls} pointerEvents="box-none">
             <Pressable
               style={[styles.zoomButton, stageZoom >= MAX_STAGE_ZOOM && styles.zoomButtonDisabled]}
@@ -516,25 +507,51 @@ function Page() {
               <Text style={styles.zoomButtonText}>－</Text>
             </Pressable>
           </View>
-          <Pressable
-            style={[
-              styles.canvasAddButton,
-              (loadingPhoto || currentPhotos.length >= 3) && styles.canvasAddButtonDisabled,
-            ]}
-            onPress={() => {
-              void handleAddPhoto();
-            }}
-            disabled={loadingPhoto || currentPhotos.length >= 3}
-          >
-            <Text style={styles.canvasAddButtonPlus}>＋</Text>
-          </Pressable>
+          ) : null}
+          {hasArtwork ? (
+            <Pressable
+              style={[
+                styles.canvasAddButton,
+                (loadingPhoto || currentPhotos.length >= 3) && styles.canvasAddButtonDisabled,
+              ]}
+              onPress={() => {
+                void handleAddPhoto();
+              }}
+              disabled={loadingPhoto || currentPhotos.length >= 3}
+            >
+              <Text style={styles.canvasAddButtonPlus}>＋</Text>
+            </Pressable>
+          ) : null}
         </View>
+        {!hasArtwork ? (
+          // Below the garment, not over it — the shirt is what is being sold.
+          <View style={styles.emptyActions}>
+            <Pressable
+              style={[styles.emptyCta, loadingPhoto && styles.emptyCtaDisabled]}
+              onPress={() => {
+                void handleAddPhoto();
+              }}
+              disabled={loadingPhoto}
+              accessibilityRole="button"
+            >
+              <Text style={styles.emptyCtaText}>
+                {loadingPhoto ? '사진을 불러오는 중...' : '사진 올리기'}
+              </Text>
+            </Pressable>
+            <Text style={styles.emptyHint}>
+              배경이 투명한 PNG를 올리면 원하는 모양만 인쇄돼요
+            </Text>
+          </View>
+        ) : null}
+        {hasArtwork ? (
         <View style={styles.canvasOutsideActions}>
           <Pressable style={styles.stageResetButton} onPress={handleResetToInitial}>
             <Text style={styles.stageResetButtonText}>편집 내용 초기화</Text>
           </Pressable>
         </View>
-        {/* 출력 크기 + 해상도 안내 */}
+        ) : null}
+        {/* 출력 크기 + 해상도 안내 — 배치할 것이 있을 때만 */}
+        {hasArtwork ? (
         <View style={styles.canvasInfo}>
           <Text style={styles.canvasInfoText}>
             출력 영역 약 {printSizeByCategory[selectedProduct.category]?.widthCm ?? 28}×
@@ -546,6 +563,7 @@ function Page() {
             </Text>
           )}
         </View>
+        ) : null}
       </View>
       {imageControlFocused ? (
         <Pressable
@@ -554,7 +572,8 @@ function Page() {
         />
       ) : null}
 
-      {/* ── 하단 탭 패널 ── */}
+      {/* ── 하단 탭 패널 — 편집할 것이 있을 때만 ── */}
+      {hasArtwork ? (
       <View style={[styles.panel, { height: panelHeight }]}>
         <Pressable
           style={styles.editPanelHeader}
@@ -747,7 +766,6 @@ function Page() {
           {editorTab === 0 && (
             <View>
               <View style={styles.photoManagementSection}>
-                <Text style={styles.sectionTitle}>이미지 편집</Text>
                 {photoError ? (
                   <Text style={styles.photoError}>{photoError}</Text>
                 ) : null}
@@ -818,9 +836,6 @@ function Page() {
                   </View>
                 )}
               </View>
-              <Text style={styles.sectionHint}>
-                위치와 크기 슬라이더는 위 캔버스 카드에서 바로 조정할 수 있어요.
-              </Text>
               <View style={styles.sliderRow}>
                 <View style={styles.sliderHeadRow}>
                   <Text style={styles.sliderLabel}>회전</Text>
@@ -865,48 +880,9 @@ function Page() {
             </View>
           )}
 
-          {/* ── 탭 2: AI ── */}
-          {editorTab === 2 && (
-            <View style={styles.aiPanel}>
-              <Text style={styles.sectionTitle}>AI 이미지</Text>
-              <TextInput
-                style={styles.aiPromptInput}
-                placeholder="예) 오렌지 톤 플랫 아이콘 느낌의 볼드 로고"
-                placeholderTextColor="#8B95A1"
-                value={aiPrompt}
-                onChangeText={setAiPrompt}
-                multiline
-              />
-              <View style={styles.aiActionRow}>
-                <PrimaryButton
-                  label="정확히 만들기"
-                  onPress={() => {
-                    trackClick('editor_ai_open_generate_click', {
-                      prompt_length: aiPrompt.trim().length,
-                    });
-                    navigation.navigate('/generate');
-                  }}
-                  style={styles.aiActionButton}
-                />
-                <SecondaryButton
-                  label="현재 이미지 적용"
-                  onPress={() => {
-                    setEditorTab(0);
-                    setActiveLayer('image');
-                  }}
-                  disabled={!designImageUri}
-                  style={styles.aiActionButton}
-                />
-              </View>
-              <Text style={styles.aiStatusText}>
-                {designImageUri
-                  ? '생성/업로드된 이미지가 있어요. 적용 버튼으로 이미지 탭에서 바로 조정하세요.'
-                  : '아직 생성된 이미지가 없습니다.'}
-              </Text>
-            </View>
-          )}
         </ScrollView>
       </View>
+      ) : null}
 
       {/* Delete Photo Confirmation Modal */}
       <Modal
@@ -943,43 +919,6 @@ function Page() {
         </Pressable>
       </Modal>
 
-      <Modal
-        visible={showStartModal}
-        transparent
-        animationType="fade"
-        onRequestClose={handleStartModalClose}
-      >
-        <Pressable style={styles.modalOverlay} onPress={handleStartModalClose}>
-          <Pressable
-            style={styles.startModalContent}
-            onPress={(e) => e.stopPropagation()}
-          >
-            <Text style={styles.modalTitle}>사진 편집 시작</Text>
-            <Text style={styles.modalSubtitle}>
-              사진을 올려 바로 위치·크기 조정을 시작하거나, AI 이미지 생성으로 시작할 수 있어요.
-            </Text>
-            <PrimaryButton
-              label="사진 추가하기"
-              onPress={() => {
-                trackClick('editor_start_modal_upload_click');
-                void handleAddPhotoFromStartModal();
-              }}
-              style={styles.startModalPrimary}
-            />
-            <SecondaryButton
-              label="AI로 만들기"
-              onPress={() => {
-                trackClick('editor_start_modal_ai_click');
-                setShowStartModal(false);
-                navigation.navigate('/generate');
-              }}
-            />
-            <Pressable onPress={handleStartModalClose} style={styles.startModalClose}>
-              <Text style={styles.startModalCloseText}>나중에 할게요</Text>
-            </Pressable>
-          </Pressable>
-        </Pressable>
-      </Modal>
     </SafeAreaView>
   );
 }
@@ -1057,7 +996,9 @@ const styles = StyleSheet.create({
     height: 14,
     borderRadius: 7,
     borderWidth: 1,
-    borderColor: theme.colors.border,
+    // A white swatch on the light page disappears behind a #E5E8EB ring, and
+    // white is the default garment colour.
+    borderColor: theme.colors.textTertiary,
     marginRight: theme.spacing.sm,
   },
   compactName: {
@@ -1214,31 +1155,10 @@ const styles = StyleSheet.create({
     position: 'relative',
     width: '100%',
     borderRadius: 16,
-    borderWidth: 1,
-    borderColor: '#E5E8EB',
-    backgroundColor: '#F2F4F6',
     paddingVertical: 18,
     paddingHorizontal: 10,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  canvasWorkspaceGrid: {
-    ...StyleSheet.absoluteFillObject,
-    borderRadius: 16,
-  },
-  canvasWorkspaceGridLineH: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    height: 1,
-    backgroundColor: 'rgba(25, 31, 40, 0.06)',
-  },
-  canvasWorkspaceGridLineV: {
-    position: 'absolute',
-    top: 0,
-    bottom: 0,
-    width: 1,
-    backgroundColor: 'rgba(25, 31, 40, 0.06)',
   },
   canvasClip: {
     overflow: 'visible',
@@ -1333,6 +1253,37 @@ const styles = StyleSheet.create({
     // Unconstrained, this collided with the neighbouring caption; reserve the
     // width the longest value ("300%") needs and centre it.
     minWidth: 34,
+    textAlign: 'center',
+  },
+
+  /* ── Empty state ── */
+  emptyActions: {
+    alignItems: 'center',
+    paddingTop: theme.spacing.xl,
+    paddingHorizontal: theme.spacing.xl,
+  },
+  emptyCta: {
+    alignSelf: 'stretch',
+    minHeight: 56,
+    paddingHorizontal: 32,
+    borderRadius: theme.radius.lg,
+    backgroundColor: theme.colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  emptyCtaDisabled: {
+    backgroundColor: theme.colors.border,
+  },
+  emptyCtaText: {
+    color: '#FFFFFF',
+    fontSize: 17,
+    fontWeight: '700',
+    letterSpacing: -0.3,
+  },
+  emptyHint: {
+    marginTop: theme.spacing.md,
+    fontSize: 13,
+    color: theme.colors.textTertiary,
     textAlign: 'center',
   },
 
@@ -1523,29 +1474,6 @@ const styles = StyleSheet.create({
     marginTop: 0,
   },
 
-  aiPanel: {
-    gap: theme.spacing.sm,
-  },
-  aiPromptInput: {
-    minHeight: 68,
-    borderRadius: theme.radius.md,
-    borderWidth: 1,
-    borderColor: '#E5E8EB',
-    backgroundColor: '#F2F4F6',
-    paddingHorizontal: theme.spacing.md,
-    paddingVertical: theme.spacing.sm,
-    fontSize: 13,
-    lineHeight: 19,
-    color: '#191F28',
-    textAlignVertical: 'top',
-  },
-  aiActionRow: {
-    flexDirection: 'row',
-    gap: theme.spacing.sm,
-  },
-  aiActionButton: {
-    flex: 1,
-  },
   aiStatusText: {
     fontSize: 12,
     lineHeight: 18,
@@ -1812,25 +1740,5 @@ const styles = StyleSheet.create({
   modalDeleteButton: {
     flex: 1,
     backgroundColor: theme.colors.error,
-  },
-  startModalContent: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: theme.radius.lg,
-    padding: theme.spacing.xl,
-    width: '100%',
-    maxWidth: 400,
-  },
-  startModalPrimary: {
-    marginBottom: theme.spacing.sm,
-    backgroundColor: ACCENT,
-  },
-  startModalClose: {
-    marginTop: theme.spacing.md,
-    alignItems: 'center',
-  },
-  startModalCloseText: {
-    fontSize: 12,
-    color: '#4E5968',
-    fontWeight: '600',
   },
 });
