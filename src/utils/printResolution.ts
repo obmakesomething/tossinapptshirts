@@ -33,8 +33,13 @@ export type PrintResolutionInput = {
 };
 
 /**
- * Effective DPI is limited by whichever axis is most stretched, so the smaller
- * of the two ratios is the honest figure.
+ * Effective DPI of the artwork at the size it is printed.
+ *
+ * The artwork is contained inside the print area, keeping its own aspect — the
+ * same fit server/printLayout.js uses to compose the press file. Dividing by
+ * the print area's own dimensions instead assumes the image is stretched to
+ * fill it, and under-reports whenever the two aspects differ: a square photo
+ * on a 28x36cm tee came out 145 DPI against the 186 it actually prints at.
  */
 export function calculateEffectiveDpi({
   pixelWidth,
@@ -44,11 +49,22 @@ export function calculateEffectiveDpi({
 }: PrintResolutionInput): number | null {
   if (!pixelWidth || !pixelHeight || !printWidthCm || !printHeightCm) return null;
 
-  const widthInches = printWidthCm / CM_PER_INCH;
-  const heightInches = printHeightCm / CM_PER_INCH;
-  if (widthInches <= 0 || heightInches <= 0) return null;
+  const areaWidthInches = printWidthCm / CM_PER_INCH;
+  const areaHeightInches = printHeightCm / CM_PER_INCH;
+  if (areaWidthInches <= 0 || areaHeightInches <= 0) return null;
 
-  return Math.round(Math.min(pixelWidth / widthInches, pixelHeight / heightInches));
+  const imageAspect = pixelWidth / pixelHeight;
+  const areaAspect = areaWidthInches / areaHeightInches;
+  const printedWidthInches =
+    areaAspect > imageAspect ? areaHeightInches * imageAspect : areaWidthInches;
+  const printedHeightInches = printedWidthInches / imageAspect;
+
+  return Math.round(
+    Math.min(
+      pixelWidth / printedWidthInches,
+      pixelHeight / printedHeightInches,
+    ),
+  );
 }
 
 export function evaluatePrintResolution(
