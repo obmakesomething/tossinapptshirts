@@ -16,6 +16,7 @@ const fs = require('fs');
 const fsp = require('fs/promises');
 const path = require('path');
 const sharp = require('sharp');
+const { clipToCanvas, layoutLayer, normalizeTransform } = require('./printLayout');
 
 const ensureDir = async (dirPath) => {
   await fsp.mkdir(dirPath, { recursive: true });
@@ -45,7 +46,36 @@ function effectiveDpi({ width, height, targetWidth, targetHeight }) {
   return Math.round(REFERENCE_DPI * ratio);
 }
 
-function runQc({ data, info, targetWidth, targetHeight }) {
+/**
+ * How many source pixels land on each printed pixel of the artwork.
+ *
+ * The output raster is now always the full print area at REFERENCE_DPI, so
+ * measuring it tells us nothing. What matters is the artwork the customer
+ * supplied against the size they scaled it to: enlarging a small photo to fill
+ * the chest is exactly the case this has to catch.
+ */
+function artworkDpi({ sourceWidth, sourceHeight, targetWidth, targetHeight, imageTransform }) {
+  if (!sourceWidth || !sourceHeight || !targetWidth || !targetHeight) return null;
+  const rect = layoutLayer({
+    canvasWidth: targetWidth,
+    canvasHeight: targetHeight,
+    layerAspect: sourceWidth / sourceHeight,
+    transform: imageTransform,
+  });
+  if (!(rect.width > 0) || !(rect.height > 0)) return null;
+  const ratio = Math.min(sourceWidth / rect.width, sourceHeight / rect.height);
+  return Math.round(REFERENCE_DPI * ratio);
+}
+
+function runQc({
+  data,
+  info,
+  targetWidth,
+  targetHeight,
+  sourceWidth,
+  sourceHeight,
+  imageTransform,
+}) {
   const totalPixels = info.width * info.height;
   const hasAlpha = info.channels === 4;
   let transparentCount = 0;
@@ -76,12 +106,21 @@ function runQc({ data, info, targetWidth, targetHeight }) {
   const transparentRatio = totalPixels ? transparentCount / totalPixels : 0;
   const bandRatio = totalPixels ? bandPixelCount / totalPixels : 0;
   const fringeScore = bandPixelCount ? diffSum / bandPixelCount : 0;
-  const dpi = effectiveDpi({
-    width: info.width,
-    height: info.height,
-    targetWidth,
-    targetHeight,
-  });
+  const dpi =
+    sourceWidth && sourceHeight
+      ? artworkDpi({
+          sourceWidth,
+          sourceHeight,
+          targetWidth,
+          targetHeight,
+          imageTransform,
+        })
+      : effectiveDpi({
+          width: info.width,
+          height: info.height,
+          targetWidth,
+          targetHeight,
+        });
 
   const qc = {
     status: 'PASS',
@@ -150,34 +189,117 @@ function escapeXml(str) {
     .replace(/'/g, '&apos;');
 }
 
-async function compositeTextLayer(imagePath, textLayer, outputPath) {
-  if (!textLayer || !textLayer.text) return imagePath;
+/**
+ * Render the artwork onto the print canvas exactly where the customer put it.
+ *
+ * The canvas is the printable region itself, so the transform the editor
+ * produced maps onto it one to one. Rotation happens first, about the layer's
+ * own centre, and the rotated result is re-centred on the same point sharp
+ * would otherwise shift away from.
+ */
+async function renderArtworkLayer({
+  masterPath,
+  canvasWidth,
+  canvasHeight,
+  transform,
+}) {
+  const metadata = await sharp(masterPath).metadata();
+  const aspect =
+    metadata.width && metadata.height ? metadata.width / metadata.height : null;
 
-  const metadata = await sharp(imagePath).metadata();
-  const w = metadata.width;
-  const h = metadata.height;
+  const rect = layoutLayer({
+    canvasWidth,
+    canvasHeight,
+    layerAspect: aspect,
+    transform,
+  });
 
-  // Scale font size proportionally to image width
-  const baseFontSize = textLayer.fontSize || 24;
-  const fontSize = Math.round(baseFontSize * (w / 400));
-  const fontWeight = textLayer.fontWeight || 'bold';
+  const width = Math.max(1, Math.round(rect.width));
+  const height = Math.max(1, Math.round(rect.height));
+
+  let layer = sharp(masterPath).ensureAlpha().resize(width, height, {
+    fit: 'fill',
+  });
+
+  const rotation = ((rect.rotation % 360) + 360) % 360;
+  if (rotation !== 0) {
+    layer = layer.rotate(rotation, {
+      background: { r: 0, g: 0, b: 0, alpha: 0 },
+    });
+  }
+
+  const buffer = await layer.png().toBuffer();
+  const rotated = await sharp(buffer).metadata();
+
+  // Rotating grows the bounding box; keep the centre where the editor had it.
+  const centerX = rect.left + rect.width / 2;
+  const centerY = rect.top + rect.height / 2;
+  const placed = {
+    left: centerX - rotated.width / 2,
+    top: centerY - rotated.height / 2,
+    width: rotated.width,
+    height: rotated.height,
+  };
+
+  const clip = clipToCanvas({ rect: placed, canvasWidth, canvasHeight });
+  if (!clip) return null;
+
+  const visible =
+    clip.width === rotated.width && clip.height === rotated.height
+      ? buffer
+      : await sharp(buffer)
+          .extract({
+            left: clip.sourceLeft,
+            top: clip.sourceTop,
+            width: clip.width,
+            height: clip.height,
+          })
+          .png()
+          .toBuffer();
+
+  return {
+    input: visible,
+    left: clip.canvasLeft,
+    top: clip.canvasTop,
+    clipped:
+      clip.width !== rotated.width || clip.height !== rotated.height,
+  };
+}
+
+/**
+ * Render the text layer at the position and size the customer chose.
+ *
+ * Font size is expressed the same way the editor draws it: the text box is
+ * scale × the print area, and the glyphs are sized to that box rather than to
+ * a fixed fraction of the output, which used to pin every order's text to 85%
+ * down the page at whatever size the raster happened to be.
+ */
+function buildTextLayerSvg({ canvasWidth, canvasHeight, textLayer, transform }) {
+  if (!textLayer || !textLayer.text || !String(textLayer.text).trim()) {
+    return null;
+  }
+  const t = normalizeTransform(transform);
   const color = textLayer.color || '#000000';
+  const fontWeight = textLayer.fontWeight === 'regular' ? 'normal' : 'bold';
 
-  // Position text at bottom portion of the design area (85% from top)
-  const textY = Math.round(h * 0.85);
+  // The editor lays the text box over the full print area and scales it, so a
+  // scale of 1 means glyphs about a sixth of the print height.
+  const fontSize = Math.max(1, Math.round(canvasHeight * 0.16 * t.scale));
+  const centerX = canvasWidth / 2 + t.offsetX * canvasWidth;
+  const centerY = canvasHeight / 2 + t.offsetY * canvasHeight;
+  const rotation = t.rotation;
 
-  const svg = `<svg width="${w}" height="${h}" xmlns="http://www.w3.org/2000/svg">
-    <text x="50%" y="${textY}" text-anchor="middle"
-      font-size="${fontSize}" font-weight="${fontWeight}" fill="${escapeXml(color)}"
-      font-family="sans-serif">${escapeXml(textLayer.text)}</text>
-  </svg>`;
-
-  await sharp(imagePath)
-    .composite([{ input: Buffer.from(svg), top: 0, left: 0 }])
-    .png()
-    .toFile(outputPath);
-
-  return outputPath;
+  return Buffer.from(
+    `<svg width="${canvasWidth}" height="${canvasHeight}" xmlns="http://www.w3.org/2000/svg">
+      <g transform="rotate(${rotation} ${centerX} ${centerY})">
+        <text x="${centerX}" y="${centerY}" text-anchor="middle"
+          dominant-baseline="central"
+          font-size="${fontSize}" font-weight="${fontWeight}"
+          fill="${escapeXml(color)}"
+          font-family="sans-serif">${escapeXml(textLayer.text)}</text>
+      </g>
+    </svg>`,
+  );
 }
 
 async function runPrintPipeline(input) {
@@ -188,6 +310,8 @@ async function runPrintPipeline(input) {
     target_height_px,
     output_dir,
     text_layer,
+    image_transform,
+    text_transform,
   } = input;
 
   const baseOutput = {
@@ -240,18 +364,81 @@ async function runPrintPipeline(input) {
     const printReadyPath = path.join(workDir, 'print_ready.png');
     const qcPath = path.join(workDir, 'qc_report.json');
 
-    // Normalise to PNG at the supplied resolution, keeping any alpha intact.
-    await sharp(master_png_path).png().toFile(printReadyPath);
+    const composition = [];
+    let artworkClipped = false;
+    let artworkMissed = false;
 
-    if (text_layer && text_layer.text) {
-      const compositedPath = path.join(workDir, 'composited.png');
-      await compositeTextLayer(printReadyPath, text_layer, compositedPath);
-      await fsp.copyFile(compositedPath, printReadyPath);
-      await fsp.unlink(compositedPath);
+    if (targetWidth && targetHeight) {
+      // Compose onto the printable region so the file the press receives is
+      // the layout the customer approved, not the raw upload.
+      const artwork = await renderArtworkLayer({
+        masterPath: master_png_path,
+        canvasWidth: targetWidth,
+        canvasHeight: targetHeight,
+        transform: image_transform,
+      });
+      if (artwork) {
+        composition.push({ input: artwork.input, left: artwork.left, top: artwork.top });
+        artworkClipped = artwork.clipped;
+      } else {
+        artworkMissed = true;
+      }
+
+      const textSvg = buildTextLayerSvg({
+        canvasWidth: targetWidth,
+        canvasHeight: targetHeight,
+        textLayer: text_layer,
+        transform: text_transform,
+      });
+      if (textSvg) {
+        composition.push({ input: textSvg, left: 0, top: 0 });
+      }
+
+      await sharp({
+        create: {
+          width: targetWidth,
+          height: targetHeight,
+          channels: 4,
+          background: { r: 0, g: 0, b: 0, alpha: 0 },
+        },
+      })
+        .composite(composition)
+        .png()
+        .toFile(printReadyPath);
+    } else {
+      // No print size supplied: fall back to passing the artwork through, so a
+      // caller that has not been updated still gets a file rather than nothing.
+      await sharp(master_png_path).png().toFile(printReadyPath);
     }
 
     const { data, info } = await loadPixels(printReadyPath);
-    const qc = runQc({ data, info, targetWidth, targetHeight });
+    const master = await sharp(master_png_path).metadata();
+    const qc = runQc({
+      data,
+      info,
+      targetWidth,
+      targetHeight,
+      // DPI is a property of the artwork the customer supplied, not of the
+      // canvas we just rendered it onto — that canvas is always at 300 DPI.
+      sourceWidth: master.width,
+      sourceHeight: master.height,
+      imageTransform: image_transform,
+    });
+    if (artworkClipped) {
+      qc.reasons.push('artwork_clipped');
+      qc.recommendations.push(
+        '디자인 일부가 인쇄 영역 밖으로 나가 잘렸어요. 에디터에서 위치를 확인해 주세요',
+      );
+      qc.status = 'WARN';
+    }
+    if (artworkMissed) {
+      qc.reasons.push('artwork_outside_print_area');
+      qc.recommendations.push(
+        '디자인이 인쇄 영역 밖에 있어요. 에디터에서 인쇄 영역 안으로 옮겨 주세요',
+      );
+      qc.status = 'WARN';
+    }
+    qc.recommendations = qc.recommendations.slice(0, 3);
 
     await fsp.writeFile(qcPath, JSON.stringify(qc, null, 2));
 
@@ -281,4 +468,5 @@ module.exports = {
   runPrintPipeline,
   runQc,
   effectiveDpi,
+  artworkDpi,
 };

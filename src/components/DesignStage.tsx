@@ -11,6 +11,7 @@ import type { LayerTransform, TextLayer } from '../context/catalog';
 import type { MockupTemplate } from '../data/mockupTemplates';
 import { getGarmentStageBackground } from '../utils/garmentContrast';
 import { getHemTrimInsetRatio } from '../utils/hemTrim';
+import { useTemplatePrintArea } from '../utils/garmentLayout';
 import { ScaleSlider } from './ScaleSlider';
 import { theme } from './ui';
 
@@ -87,81 +88,15 @@ export function DesignStage({
   onImageControlFocusChange,
 }: DesignStageProps) {
   const hemTrimRatio = getHemTrimInsetRatio(sizeLabel);
-  const templateUri =
-    typeof template.image === 'object' &&
-    template.image !== null &&
-    'uri' in template.image
-      ? (template.image as { uri?: string }).uri
-      : undefined;
-  const [templateNaturalSize, setTemplateNaturalSize] = useState<{
-    uri: string;
-    width: number;
-    height: number;
-  } | null>(null);
+  // Print areas are image-relative, so they are mapped onto the drawn garment
+  // rather than the raw stage box — see utils/garmentLayout.
+  const { printArea: templateArea } = useTemplatePrintArea({
+    template,
+    width,
+    height,
+    hemTrimRatio,
+  });
 
-  useEffect(() => {
-    if (!templateUri) return;
-    let cancelled = false;
-    Image.getSize(
-      templateUri,
-      (w, h) => {
-        if (!cancelled && w > 0 && h > 0) {
-          setTemplateNaturalSize({ uri: templateUri, width: w, height: h });
-        }
-      },
-      () => {
-        // Fall back to the stage box; the print area is approximate but drawn.
-      },
-    );
-    return () => {
-      cancelled = true;
-    };
-  }, [templateUri]);
-
-  /**
-   * Where the garment actually lands inside the stage.
-   *
-   * The mockup is drawn with resizeMode="contain" inside a box the stage picks,
-   * so it is letterboxed by whatever the aspect mismatch happens to be. Print
-   * areas are expressed against the image, so they have to be mapped onto that
-   * letterboxed rect — measuring them against the raw stage box stretched the
-   * print boundary over the collar and past the hem.
-   */
-  const garmentBoxHeight = height * (1 - hemTrimRatio);
-  const garmentRect = (() => {
-    const natural =
-      templateNaturalSize && templateNaturalSize.uri === templateUri
-        ? templateNaturalSize
-        : null;
-    if (!natural) {
-      return { left: 0, top: 0, width, height: garmentBoxHeight };
-    }
-    const boxAspect = width / garmentBoxHeight;
-    const imageAspect = natural.width / natural.height;
-    if (imageAspect > boxAspect) {
-      const drawnHeight = width / imageAspect;
-      return {
-        left: 0,
-        top: (garmentBoxHeight - drawnHeight) / 2,
-        width,
-        height: drawnHeight,
-      };
-    }
-    const drawnWidth = garmentBoxHeight * imageAspect;
-    return {
-      left: (width - drawnWidth) / 2,
-      top: 0,
-      width: drawnWidth,
-      height: garmentBoxHeight,
-    };
-  })();
-
-  const templateArea = {
-    left: garmentRect.left + garmentRect.width * template.printArea.x,
-    top: garmentRect.top + garmentRect.height * template.printArea.y,
-    width: garmentRect.width * template.printArea.width,
-    height: garmentRect.height * template.printArea.height,
-  };
   const freeArea = {
     // Figma-like free canvas: use the whole stage as editable area.
     left: 0,

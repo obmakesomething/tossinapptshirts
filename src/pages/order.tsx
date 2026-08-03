@@ -17,6 +17,7 @@ import { API_BASE_URL } from '../config';
 import { useCatalog } from '../context/catalog';
 import { faqItems } from '../data/faq';
 import { calcPricing } from '../data/pricing';
+import { printSizeByCategory } from '../data/mockupTemplates';
 import { formatPrice } from '../utils/format';
 import {
   normalizeAitSessionEnvelope,
@@ -61,6 +62,8 @@ function Page() {
     designImageUri,
     imageTransform,
     textLayer,
+    textTransform,
+    selectedPlacement,
     setSelectedColor,
     addOrderLine,
     removeOrderLine,
@@ -189,13 +192,28 @@ function Page() {
     [],
   );
 
+  /**
+   * The print canvas is the printable region itself, at 300 DPI.
+   *
+   * The editor expresses every transform against that region, so the press
+   * file has to use the same frame or the composition means nothing. The print
+   * option's designScale is how large that file gets printed, which is an
+   * instruction to the press, not a change to the raster.
+   */
   const targetSize = useMemo(() => {
-    const baseWidth = 3600;
-    const baseHeight = 4800;
-    const width = Math.round(baseWidth * selectedPrint.designScale);
-    const height = Math.round(baseHeight * selectedPrint.designScale);
-    return { width, height };
-  }, [selectedPrint.designScale]);
+    const printCm = printSizeByCategory[selectedProduct.category] ?? {
+      widthCm: 28,
+      heightCm: 36,
+    };
+    const CM_PER_INCH = 2.54;
+    const PRINT_DPI = 300;
+    return {
+      width: Math.round((printCm.widthCm / CM_PER_INCH) * PRINT_DPI),
+      height: Math.round((printCm.heightCm / CM_PER_INCH) * PRINT_DPI),
+      widthCm: printCm.widthCm,
+      heightCm: printCm.heightCm,
+    };
+  }, [selectedProduct.category]);
 
   const toggleEditingOrder = () => {
     const nextEditing = !editingOrder;
@@ -385,8 +403,21 @@ function Page() {
           masterPngUrl: designImageUri,
           targetWidthPx: targetSize.width,
           targetHeightPx: targetSize.height,
+          printAreaCm: {
+            width: targetSize.widthCm,
+            height: targetSize.heightCm,
+          },
+          placement: selectedPlacement,
+          // Which print option was paid for. The size actually printed comes
+          // from imageTransform.scale, which the customer can change after
+          // picking an option — this records what they bought, not the layout.
+          printOptionId: selectedPrint.id,
+          printOptionScale: selectedPrint.designScale,
           textLayer: textLayer.enabled ? textLayer : null,
+          // The customer's own layout. The press file is composed from these,
+          // so they travel with the order and are stored alongside it.
           imageTransform,
+          textTransform,
         },
       };
 

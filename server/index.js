@@ -759,6 +759,9 @@ app.post('/v1/print-files/process', strictLimiter, async (req, res) => {
       target_width_px: payload.target_width_px,
       target_height_px: payload.target_height_px,
       output_dir: payload.output_dir || ORDER_OUTPUT_DIR,
+      text_layer: payload.text_layer || null,
+      image_transform: payload.image_transform || null,
+      text_transform: payload.text_transform || null,
     });
     const persisted = await persistPipelineArtifacts({ orderId, pipelineResult: result });
     workDirToCleanup = derivePipelineWorkDir(result);
@@ -857,9 +860,10 @@ app.post('/v1/orders/submit', strictLimiter, async (req, res) => {
 
       if (masterPath) {
         try {
-          // Default upscaling dimensions for apparel printing (A4-sized print)
-          const targetWidth = order.pipeline?.targetWidthPx || 2480; // A4 width at 300 DPI
-          const targetHeight = order.pipeline?.targetHeightPx || 3508; // A4 height at 300 DPI
+          // The print canvas is the garment's printable region at 300 DPI.
+          // A t-shirt's 28x36cm is the fallback when the client did not say.
+          const targetWidth = order.pipeline?.targetWidthPx || 3307;
+          const targetHeight = order.pipeline?.targetHeightPx || 4252;
 
           pipelineResult = await runPrintPipeline({
             master_png_path: masterPath,
@@ -869,6 +873,7 @@ app.post('/v1/orders/submit', strictLimiter, async (req, res) => {
             output_dir: ORDER_OUTPUT_DIR,
             text_layer: order.pipeline?.textLayer || order.items?.[0]?.text || null,
             image_transform: order.pipeline?.imageTransform || null,
+            text_transform: order.pipeline?.textTransform || null,
           });
           pipelineResult = await persistPipelineArtifacts({ orderId, pipelineResult });
 
