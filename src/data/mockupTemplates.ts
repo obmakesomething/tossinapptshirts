@@ -44,7 +44,7 @@ export const defaultPrintArea: PrintArea = {
  */
 export const printAreaByMockup: Record<string, PrintArea> = {
   'tshirt_white_front.png': { x: 0.348, y: 0.237, width: 0.308, height: 0.264 },
-  'tshirt_white_back.png': { x: 0.327, y: 0.079, width: 0.343, height: 0.407 },
+  'tshirt_white_back.png': { x: 0.348, y: 0.237, width: 0.308, height: 0.264 },
   'tshirt_black_front.png': { x: 0.327, y: 0.079, width: 0.343, height: 0.407 },
   'tshirt_black_back.png': { x: 0.327, y: 0.079, width: 0.343, height: 0.407 },
   'hoodie_grey_front.png': { x: 0.329, y: 0.349, width: 0.342, height: 0.456 },

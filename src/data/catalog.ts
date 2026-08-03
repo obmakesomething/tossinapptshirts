@@ -66,11 +66,8 @@ export const catalogProducts: CatalogProduct[] = [
       },
       화이트: {
         main: resolveMockup('tshirt_white_front.png'),
-        // tshirt_white_back.png is a photo of a BLACK shirt — designing the
-        // back of a white tee showed the wrong garment colour entirely. Until
-        // a real white-back photo exists, show the white front: the colour is
-        // right and the print area lands in the same place.
-        detail: resolveMockup('tshirt_white_front.png'),
+        // Derived from the black photo — see scripts/deriveWhiteBackMockup.js.
+        detail: resolveMockup('tshirt_white_back.png'),
       },
     },
     colors: ['화이트', '블랙'],

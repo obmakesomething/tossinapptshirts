@@ -123,7 +123,7 @@ function Page() {
       // Only the product is shared. Recipient, address and phone stay out of
       // the message — they are on this screen but they are not shareable.
       await share({
-        message: `굿즈GPT에서 ${order.productName} ${order.color}을(를) 만들었어요!\n${shareLink}`,
+        message: `굿즈 GPT에서 ${order.productName} ${order.color}을(를) 만들었어요!\n${shareLink}`,
       });
       trackEvent('order_share_success', { order_id: order.orderNumber });
     } catch {
