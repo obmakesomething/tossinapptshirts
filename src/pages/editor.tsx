@@ -25,7 +25,7 @@ import {
 } from '../components/ui';
 import { useCatalog } from '../context/catalog';
 import { resolveColorValue } from '../data/colorMap';
-import { buildTemplate, printSizeByCategory } from '../data/mockupTemplates';
+import { buildTemplate } from '../data/mockupTemplates';
 import {
   trackClick,
   trackPhotoAddClick,
@@ -463,14 +463,7 @@ function Page() {
             </Pressable>
             </>
             ) : null}
-            {hasArtwork ? (
-            <Pressable
-              style={styles.orderMiniButton}
-              onPress={goOrder}
-            >
-              <Text style={styles.orderMiniButtonText}>주문</Text>
-            </Pressable>
-            ) : null}
+
           </View>
         </View>
         <View style={styles.compactProduct}>
@@ -601,20 +594,13 @@ function Page() {
           <Pressable style={styles.stageResetButton} onPress={handleResetToInitial}>
             <Text style={styles.stageResetButtonText}>편집 내용 초기화</Text>
           </Pressable>
-        </View>
-        ) : null}
-        {/* 출력 크기 + 해상도 안내 — 배치할 것이 있을 때만 */}
-        {hasArtwork ? (
-        <View style={styles.canvasInfo}>
-          <Text style={styles.canvasInfoText}>
-            출력 영역 약 {printSizeByCategory[selectedProduct.category]?.widthCm ?? 28}×
-            {printSizeByCategory[selectedProduct.category]?.heightCm ?? 36}cm
-          </Text>
-          {designImageUri && (
-            <Text style={styles.canvasInfoWarn}>
-              해상도에 따라 인쇄 품질이 달라질 수 있어요
-            </Text>
-          )}
+          <Pressable
+            style={styles.orderCta}
+            onPress={goOrder}
+            accessibilityRole="button"
+          >
+            <Text style={styles.orderCtaText}>주문하기</Text>
+          </Pressable>
         </View>
         ) : null}
       </View>
@@ -1025,20 +1011,6 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: theme.colors.textPrimary,
   },
-  orderMiniButton: {
-    borderRadius: 12,
-    height: 34,
-    paddingHorizontal: 11,
-    backgroundColor: ACCENT,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  orderMiniButtonText: {
-    fontSize: 13,
-    lineHeight: 18,
-    color: '#FFFFFF',
-    fontWeight: '700',
-  },
   compactProduct: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1162,11 +1134,27 @@ const styles = StyleSheet.create({
   },
   canvasOutsideActions: {
     width: '100%',
-    alignItems: 'flex-end',
+    alignItems: 'stretch',
     marginTop: theme.spacing.xs,
     marginBottom: 2,
   },
+  /** The one thing to do once the design is placed. */
+  orderCta: {
+    marginTop: theme.spacing.sm,
+    minHeight: 52,
+    borderRadius: theme.radius.lg,
+    backgroundColor: theme.colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  orderCtaText: {
+    fontSize: 16,
+    lineHeight: 22,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
   stageResetButton: {
+    alignSelf: 'flex-end',
     minHeight: 34,
     borderRadius: 999,
     borderWidth: 1,
@@ -1351,22 +1339,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
 
-  /* ── Canvas Info ── */
-  canvasInfo: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: theme.spacing.sm,
-    paddingVertical: theme.spacing.xs,
-  },
-  canvasInfoText: {
-    fontSize: 11,
-    color: '#8B95A1',
-  },
-  canvasInfoWarn: {
-    fontSize: 11,
-    color: '#ffc06e',
-  },
   fullScreenFocusBackdrop: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: 'rgba(25, 31, 40, 0.5)',
