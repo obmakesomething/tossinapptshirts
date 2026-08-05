@@ -1,4 +1,4 @@
-import { Storage } from '@apps-in-toss/framework';
+import { Storage } from '@apps-in-toss/native-modules';
 import type React from 'react';
 import {
   createContext,

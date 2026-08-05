@@ -17,7 +17,7 @@ export default defineConfig(createAitReactNativeConfig({
     hermes(),
     appsInToss({
       brand: {
-        displayName: '굿즈 GPT',
+        displayName: '굿즈 Gpt',
         primaryColor: '#2A6ED4',
         icon: 'https://static.toss.im/appsintoss/14401/d0c0ede6-31b9-400d-b236-196c02293df1.png',
       },

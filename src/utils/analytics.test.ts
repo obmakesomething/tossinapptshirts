@@ -1,7 +1,7 @@
-import { eventLog } from '@apps-in-toss/framework';
+import { eventLog } from '@apps-in-toss/native-modules';
 import { trackClick, trackScreenView } from './analytics';
 
-jest.mock('@apps-in-toss/framework', () => ({
+jest.mock('@apps-in-toss/native-modules', () => ({
   eventLog: jest.fn().mockResolvedValue(undefined),
 }));
 

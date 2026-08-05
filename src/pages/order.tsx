@@ -1,5 +1,5 @@
 import { createRoute } from '@granite-js/react-native';
-import { TossPay, appLogin } from '@apps-in-toss/framework';
+import { TossPay, appLogin } from '@apps-in-toss/native-modules';
 import React, { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import {

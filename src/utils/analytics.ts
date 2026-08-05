@@ -1,4 +1,4 @@
-import { eventLog } from '@apps-in-toss/framework';
+import { eventLog } from '@apps-in-toss/native-modules';
 
 type LogType = 'event' | 'screen' | 'click' | 'impression';
 type AnalyticsParams = Record<string, unknown>;

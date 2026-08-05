@@ -1,4 +1,4 @@
-import { share, getTossShareLink } from '@apps-in-toss/framework';
+import { share, getTossShareLink } from '@apps-in-toss/native-modules';
 import { createRoute } from '@granite-js/react-native';
 import React, { useState } from 'react';
 import { Alert, Image, ScrollView, StyleSheet, Text, View } from 'react-native';

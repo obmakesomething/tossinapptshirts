@@ -2,7 +2,7 @@ import React from 'react';
 import { act, render } from '@testing-library/react-native';
 import { CatalogProvider, useCatalog } from './catalog';
 
-jest.mock('@apps-in-toss/framework', () => ({
+jest.mock('@apps-in-toss/native-modules', () => ({
   Storage: {
     getItem: jest.fn(async () => null),
     setItem: jest.fn(async () => undefined),
