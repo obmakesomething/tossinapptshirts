@@ -94,6 +94,8 @@ function Page() {
 
   // Photo management state
   const [loadingPhoto, setLoadingPhoto] = useState(false);
+  // Usable height inside the safe area, once the screen has laid out.
+  const [safeHeight, setSafeHeight] = useState(0);
   const [photoError, setPhotoError] = useState('');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deletePhotoIndex, setDeletePhotoIndex] = useState<number | null>(null);
@@ -179,17 +181,58 @@ function Page() {
    * expanded panel now stops at half the screen and the resting panel is just
    * the tab strip plus one row of controls.
    */
-  const panelHeightCollapsed = Math.max(352, Math.min(388, Math.round(screenHeight * 0.42)));
-  const panelHeightExpanded = Math.round(screenHeight * 0.5);
-  const panelHeight = panelExpanded ? panelHeightExpanded : panelHeightCollapsed;
   // With no artwork the panel is not rendered, so only the upload CTA below the
   // garment is reserved — the rest goes to the garment.
   const EMPTY_CTA_RESERVED = 132;
+  /** Reset button and the print-size caption, both below the canvas. */
+  const ARTWORK_CAPTION_RESERVED = 104;
+  /** Below this the garment stops reading as the thing being designed. */
+  const MIN_CANVAS_HEIGHT = 240;
+  const reservedBelowCanvas = hasArtwork
+    ? ARTWORK_CAPTION_RESERVED
+    : EMPTY_CTA_RESERVED;
+  /**
+   * Size the canvas against the height the screen actually has.
+   *
+   * Dimensions reports the whole window, including the status bar and the home
+   * indicator that SafeAreaView then takes back — on a notched phone that is
+   * ~80pt the layout never had. The shortfall lands on whatever sits last in
+   * the column, which with no artwork is the only button on the screen, and it
+   * went off the bottom edge. The root reports what it really got instead.
+   *
+   * This measures the root and not the canvas column: the column is sized by
+   * its own content, so feeding its height back in would settle on the content
+   * rather than on the space available for it.
+   */
+  const usableHeight = safeHeight > 0 ? safeHeight : screenHeight;
+  /**
+   * The panel gets a share of the screen, but never so much that the garment
+   * falls below MIN_CANVAS_HEIGHT. Fixed pixel heights tuned on a 844pt phone
+   * overflowed a 770pt one by the difference, pushing the panel's own controls
+   * off the bottom.
+   */
+  const panelCeiling = Math.max(
+    220,
+    usableHeight -
+      EDITOR_HEADER_RESERVED -
+      ARTWORK_CAPTION_RESERVED -
+      MIN_CANVAS_HEIGHT,
+  );
+  const panelHeightCollapsed = Math.min(
+    panelCeiling,
+    Math.max(300, Math.round(usableHeight * 0.42)),
+  );
+  const panelHeightExpanded = Math.min(
+    panelCeiling,
+    Math.round(usableHeight * 0.55),
+  );
+  const panelHeight = panelExpanded ? panelHeightExpanded : panelHeightCollapsed;
   const availableCanvasHeight = Math.max(
-    240,
-    screenHeight -
-      (hasArtwork ? panelHeight : EMPTY_CTA_RESERVED) -
-      EDITOR_HEADER_RESERVED,
+    MIN_CANVAS_HEIGHT,
+    usableHeight -
+      EDITOR_HEADER_RESERVED -
+      reservedBelowCanvas -
+      (hasArtwork ? panelHeight : 0),
   );
   const canvasWidth = Math.max(
     220,
@@ -198,7 +241,7 @@ function Page() {
     ),
   );
   const canvasHeight = Math.max(
-    260,
+    200,
     Math.round(availableCanvasHeight - CANVAS_FRAME_VERTICAL_PADDING),
   );
 
@@ -384,7 +427,13 @@ function Page() {
   };
 
   return (
-    <SafeAreaView style={styles.safe}>
+    <SafeAreaView
+      style={styles.safe}
+      onLayout={(event) => {
+        const { height } = event.nativeEvent.layout;
+        setSafeHeight((prev) => (Math.abs(prev - height) > 1 ? height : prev));
+      }}
+    >
       {/* ── 컴팩트 상단 ── */}
       <View style={styles.compactHeader}>
         <View style={styles.editorTopRow}>
@@ -538,9 +587,13 @@ function Page() {
                 {loadingPhoto ? '사진을 불러오는 중...' : '사진 올리기'}
               </Text>
             </Pressable>
-            <Text style={styles.emptyHint}>
-              배경이 투명한 PNG를 올리면 원하는 모양만 인쇄돼요
-            </Text>
+            {photoError ? (
+              <Text style={styles.emptyError}>{photoError}</Text>
+            ) : (
+              <Text style={styles.emptyHint}>
+                배경이 투명한 PNG를 올리면 원하는 모양만 인쇄돼요
+              </Text>
+            )}
           </View>
         ) : null}
         {hasArtwork ? (
@@ -1065,6 +1118,10 @@ const styles = StyleSheet.create({
 
   /* ── Canvas ── */
   canvasArea: {
+    // Takes the space between the header and the panel, and may shrink below
+    // its content so the row under the garment stays inside the safe area.
+    flex: 1,
+    minHeight: 0,
     width: '100%',
     alignItems: 'center',
     justifyContent: 'center',
@@ -1279,6 +1336,13 @@ const styles = StyleSheet.create({
     fontSize: 17,
     fontWeight: '700',
     letterSpacing: -0.3,
+  },
+  emptyError: {
+    marginTop: theme.spacing.md,
+    fontSize: 13,
+    lineHeight: 20,
+    color: theme.colors.error,
+    textAlign: 'center',
   },
   emptyHint: {
     marginTop: theme.spacing.md,

@@ -624,10 +624,7 @@ export function DesignStage({
                 borderColor,
               },
             ]}
-          >
-            {/* 프린트 영역 label */}
-            <Text style={[styles.printAreaLabel, { color: borderColor }]}>프린트 영역</Text>
-          </View>
+          />
         )}
 
         {/* Corner L-guides */}
@@ -873,13 +870,6 @@ const styles = StyleSheet.create({
     borderStyle: 'dashed',
     borderRadius: 6,
     alignItems: 'center',
-  },
-  printAreaLabel: {
-    position: 'absolute',
-    top: -18,
-    fontSize: 10,
-    fontWeight: '600',
-    letterSpacing: 0.5,
   },
   cornerGuide: {
     position: 'absolute',
