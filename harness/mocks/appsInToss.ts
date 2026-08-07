@@ -25,6 +25,9 @@ export const appLogin = async () => ({
   referrer: 'harness',
 });
 
+/** The sandbox stands in as an integrated service so login can be walked through. */
+export const getIsTossLoginIntegratedService = async () => true;
+
 export const TossPay = {
   requestPayment: async () => ({ success: false, reason: 'harness' }),
 };

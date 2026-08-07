@@ -1,5 +1,9 @@
 import { createRoute } from '@granite-js/react-native';
-import { TossPay, appLogin } from '@apps-in-toss/native-modules';
+import {
+  TossPay,
+  appLogin,
+  getIsTossLoginIntegratedService,
+} from '@apps-in-toss/native-modules';
 import React, { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import {
@@ -30,6 +34,31 @@ import {
   trackPaymentSuccess,
   trackScreenView,
 } from '../utils/analytics';
+
+/** A stuck native bridge should not hold the screen hostage. */
+const SDK_CALL_TIMEOUT_MS = 8000;
+const LOGIN_TIMEOUT_MS = 60000;
+
+function withTimeout<T>(
+  promise: Promise<T>,
+  ms: number,
+  label: string,
+): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<T>((_, reject) =>
+      setTimeout(
+        () =>
+          reject(
+            new Error(
+              `토스 ${label === 'appLogin' ? '로그인' : '연동 확인'}이 응답하지 않아요. 토스 앱에서 다시 시도해 주세요.`,
+            ),
+          ),
+        ms,
+      ),
+    ),
+  ]);
+}
 
 const ACCENT = '#1B64DA';
 const PAGE_BG = '#F2F4F6';
@@ -115,9 +144,30 @@ function Page() {
     setError('');
 
     try {
-      // Step 1: Call Toss SDK appLogin to get authorizationCode
-      console.log('[Order] Starting Toss login...');
-      const { authorizationCode, referrer } = await appLogin();
+      /**
+       * appLogin only works for a mini app registered as a Toss-login
+       * integrated service. When it is not, the call can sit there without
+       * resolving or throwing, and the button stays on 로그인 중... forever
+       * with nothing to tell the customer why. Ask first, and put a ceiling on
+       * the call so a stuck bridge becomes a sentence instead of a spinner.
+       */
+      const integrated = await withTimeout(
+        getIsTossLoginIntegratedService(),
+        SDK_CALL_TIMEOUT_MS,
+        'integration-check',
+      ).catch(() => undefined);
+      if (integrated === false) {
+        throw new Error(
+          '이 미니앱은 아직 토스 로그인 연동 서비스로 등록되어 있지 않아요. 콘솔에서 연동을 신청한 뒤 다시 시도해 주세요.',
+        );
+      }
+
+      console.log('[Order] Starting Toss login...', { integrated });
+      const { authorizationCode, referrer } = await withTimeout(
+        appLogin(),
+        LOGIN_TIMEOUT_MS,
+        'appLogin',
+      );
       console.log('[Order] Got authorization code, referrer:', referrer);
 
       // Step 2: Send to server to exchange for userKey

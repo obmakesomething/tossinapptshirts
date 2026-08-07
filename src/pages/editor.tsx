@@ -42,9 +42,6 @@ const FILL_SOFT = '#F2F4F6';
 const PANEL_BG = '#FFFFFF';
 const EDITOR_HEADER_RESERVED = 100;
 const DEFAULT_STAGE_ZOOM = 1.0;
-const MIN_STAGE_ZOOM = 0.6;
-const MAX_STAGE_ZOOM = 3.0;
-const ZOOM_STEP = 0.2;
 const CANVAS_AREA_HORIZONTAL_PADDING = 16 * 2;
 const CANVAS_FRAME_HORIZONTAL_PADDING = 8 * 2;
 const CANVAS_FRAME_VERTICAL_PADDING = 12 * 2;
@@ -96,10 +93,10 @@ function Page() {
   const [loadingPhoto, setLoadingPhoto] = useState(false);
   // Usable height inside the safe area, once the screen has laid out.
   const [safeHeight, setSafeHeight] = useState(0);
+  const [headerHeight, setHeaderHeight] = useState(0);
   const [photoError, setPhotoError] = useState('');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deletePhotoIndex, setDeletePhotoIndex] = useState<number | null>(null);
-  const [stageZoom, setStageZoom] = useState(DEFAULT_STAGE_ZOOM);
   const [imageControlFocused, setImageControlFocused] = useState(false);
   // Rests collapsed: the first thing to see after adding a photo is the shirt.
   const [panelExpanded, setPanelExpanded] = useState(false);
@@ -185,7 +182,7 @@ function Page() {
   // garment is reserved — the rest goes to the garment.
   const EMPTY_CTA_RESERVED = 132;
   /** Reset button and the print-size caption, both below the canvas. */
-  const ARTWORK_CAPTION_RESERVED = 104;
+  const ARTWORK_CAPTION_RESERVED = 116;
   /** Below this the garment stops reading as the thing being designed. */
   const MIN_CANVAS_HEIGHT = 240;
   const reservedBelowCanvas = hasArtwork
@@ -211,17 +208,24 @@ function Page() {
    * overflowed a 770pt one by the difference, pushing the panel's own controls
    * off the bottom.
    */
+  const headerReserved =
+    headerHeight > 0 ? headerHeight : EDITOR_HEADER_RESERVED;
   const panelCeiling = Math.max(
     220,
     usableHeight -
-      EDITOR_HEADER_RESERVED -
+      headerReserved -
       ARTWORK_CAPTION_RESERVED -
       MIN_CANVAS_HEIGHT,
   );
-  const panelHeightCollapsed = Math.min(
-    panelCeiling,
-    Math.max(300, Math.round(usableHeight * 0.42)),
-  );
+  /**
+   * At rest the panel is its own title bar and nothing more.
+   *
+   * A resting drawer of ~300pt took 40% of a 770pt phone; between it, the
+   * header and the order button the shirt was left a couple of hundred points
+   * — a thumbnail of the thing being bought. Tapping 편집하기 opens it.
+   */
+  const PANEL_HANDLE_HEIGHT = 56;
+  const panelHeightCollapsed = PANEL_HANDLE_HEIGHT;
   const panelHeightExpanded = Math.min(
     panelCeiling,
     Math.round(usableHeight * 0.55),
@@ -230,7 +234,7 @@ function Page() {
   const availableCanvasHeight = Math.max(
     MIN_CANVAS_HEIGHT,
     usableHeight -
-      EDITOR_HEADER_RESERVED -
+      headerReserved -
       reservedBelowCanvas -
       (hasArtwork ? panelHeight : 0),
   );
@@ -240,9 +244,16 @@ function Page() {
       screenWidth - CANVAS_AREA_HORIZONTAL_PADDING - CANVAS_FRAME_HORIZONTAL_PADDING,
     ),
   );
-  const canvasHeight = Math.max(
-    200,
-    Math.round(availableCanvasHeight - CANVAS_FRAME_VERTICAL_PADDING),
+  /**
+   * No second floor here.
+   *
+   * availableCanvasHeight already refuses to go below MIN_CANVAS_HEIGHT, and
+   * panelCeiling reserves exactly that much. A separate, larger floor on top of
+   * it overrode both and pushed the column past the bottom of the screen the
+   * moment the panel opened.
+   */
+  const canvasHeight = Math.round(
+    availableCanvasHeight - CANVAS_FRAME_VERTICAL_PADDING,
   );
 
   const EDITOR_TABS = ['이미지', '텍스트'];
@@ -410,7 +421,6 @@ function Page() {
 
   const handleResetToInitial = () => {
     pushSnapshot();
-    setStageZoom(DEFAULT_STAGE_ZOOM);
     setImageTransform({
       offsetX: 0,
       offsetY: 0,
@@ -435,7 +445,13 @@ function Page() {
       }}
     >
       {/* ── 컴팩트 상단 ── */}
-      <View style={styles.compactHeader}>
+      <View
+        style={styles.compactHeader}
+        onLayout={(event) => {
+          const { height } = event.nativeEvent.layout;
+          setHeaderHeight((prev) => (Math.abs(prev - height) > 1 ? height : prev));
+        }}
+      >
         <View style={styles.editorTopRow}>
           <Pressable
             style={styles.headerIconButton}
@@ -515,10 +531,10 @@ function Page() {
               width={canvasWidth}
               height={canvasHeight}
               sizeLabel={orderLines[0]?.sizeLabel ?? selectedProduct.sizes[0]?.label}
-              showPrintArea
+              showPrintArea={false}
               showGuides={false}
               interactionMode="free"
-              cameraScale={stageZoom}
+              cameraScale={DEFAULT_STAGE_ZOOM}
               imageUri={designImageUri}
               imageTransform={imageTransform}
               textLayer={textLayer}
@@ -530,40 +546,6 @@ function Page() {
               onImageControlFocusChange={setImageControlFocused}
             />
           </View>
-          {/* ── 줌 컨트롤 — 편집할 것이 있을 때만 ── */}
-          {hasArtwork ? (
-          <View style={styles.zoomControls} pointerEvents="box-none">
-            <Pressable
-              style={[styles.zoomButton, stageZoom >= MAX_STAGE_ZOOM && styles.zoomButtonDisabled]}
-              onPress={() => setStageZoom((z) => Math.min(MAX_STAGE_ZOOM, +(z + ZOOM_STEP).toFixed(1)))}
-              disabled={stageZoom >= MAX_STAGE_ZOOM}
-            >
-              <Text style={styles.zoomButtonText}>＋</Text>
-            </Pressable>
-            <Text style={styles.zoomLabel}>{Math.round(stageZoom * 100)}%</Text>
-            <Pressable
-              style={[styles.zoomButton, stageZoom <= MIN_STAGE_ZOOM && styles.zoomButtonDisabled]}
-              onPress={() => setStageZoom((z) => Math.max(MIN_STAGE_ZOOM, +(z - ZOOM_STEP).toFixed(1)))}
-              disabled={stageZoom <= MIN_STAGE_ZOOM}
-            >
-              <Text style={styles.zoomButtonText}>－</Text>
-            </Pressable>
-          </View>
-          ) : null}
-          {hasArtwork ? (
-            <Pressable
-              style={[
-                styles.canvasAddButton,
-                (loadingPhoto || currentPhotos.length >= 3) && styles.canvasAddButtonDisabled,
-              ]}
-              onPress={() => {
-                void handleAddPhoto();
-              }}
-              disabled={loadingPhoto || currentPhotos.length >= 3}
-            >
-              <Text style={styles.canvasAddButtonPlus}>＋</Text>
-            </Pressable>
-          ) : null}
         </View>
         {!hasArtwork ? (
           // Below the garment, not over it — the shirt is what is being sold.
@@ -591,9 +573,6 @@ function Page() {
         ) : null}
         {hasArtwork ? (
         <View style={styles.canvasOutsideActions}>
-          <Pressable style={styles.stageResetButton} onPress={handleResetToInitial}>
-            <Text style={styles.stageResetButtonText}>편집 내용 초기화</Text>
-          </Pressable>
           <Pressable
             style={styles.orderCta}
             onPress={goOrder}
@@ -621,6 +600,8 @@ function Page() {
           <Text style={styles.editPanelTitle}>편집하기</Text>
           <Chevron direction={panelExpanded ? 'down' : 'up'} size={9} />
         </Pressable>
+        {panelExpanded ? (
+        <>
         <TabBar
           tabs={EDITOR_TABS}
           activeIndex={editorTab}
@@ -905,14 +886,7 @@ function Page() {
                 />
                 <SecondaryButton
                   label="초기화"
-                  onPress={() =>
-                    setImageTransform({
-                      offsetX: 0,
-                      offsetY: 0,
-                      scale: selectedPrint.designScale,
-                      rotation: 0,
-                    })
-                  }
+                  onPress={handleResetToInitial}
                   style={styles.resetButton}
                 />
               </View>
@@ -920,6 +894,8 @@ function Page() {
           )}
 
         </ScrollView>
+        </>
+        ) : null}
       </View>
       ) : null}
 
@@ -1153,23 +1129,6 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#FFFFFF',
   },
-  stageResetButton: {
-    alignSelf: 'flex-end',
-    minHeight: 34,
-    borderRadius: 999,
-    borderWidth: 1,
-    borderColor: '#E5E8EB',
-    backgroundColor: '#FFFFFF',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 12,
-  },
-  stageResetButtonText: {
-    fontSize: 12,
-    lineHeight: 17,
-    color: ACCENT,
-    fontWeight: '700',
-  },
   canvasToolbar: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -1213,30 +1172,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  canvasAddButton: {
-    position: 'absolute',
-    right: 14,
-    top: 14,
-    zIndex: 3,
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: '#F2F4F6',
-    borderWidth: 1,
-    borderColor: '#E5E8EB',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  canvasAddButtonDisabled: {
-    opacity: 0.45,
-  },
-  canvasAddButtonPlus: {
-    color: ACCENT,
-    fontSize: 19,
-    lineHeight: 19,
-    fontWeight: '500',
-    marginTop: -1,
-  },
   focusButton: {
     paddingHorizontal: theme.spacing.md,
     paddingVertical: theme.spacing.xs,
@@ -1259,47 +1194,6 @@ const styles = StyleSheet.create({
   },
 
   /* ── Zoom Controls ── */
-  zoomControls: {
-    position: 'absolute',
-    right: 10,
-    bottom: 10,
-    zIndex: 5,
-    alignItems: 'center',
-    gap: 4,
-  },
-  zoomButton: {
-    width: 34,
-    height: 34,
-    borderRadius: 16,
-    backgroundColor: 'rgba(255,255,255,0.95)',
-    borderWidth: 1,
-    borderColor: '#E5E8EB',
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOpacity: 0.08,
-    shadowRadius: 4,
-    shadowOffset: { width: 0, height: 1 },
-    elevation: 2,
-  },
-  zoomButtonDisabled: {
-    opacity: 0.35,
-  },
-  zoomButtonText: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#4E5968',
-    lineHeight: 20,
-  },
-  zoomLabel: {
-    fontSize: 10,
-    fontWeight: '600',
-    color: '#8B95A1',
-    // Unconstrained, this collided with the neighbouring caption; reserve the
-    // width the longest value ("300%") needs and centre it.
-    minWidth: 34,
-    textAlign: 'center',
-  },
 
   /* ── Empty state ── */
   emptyActions: {
