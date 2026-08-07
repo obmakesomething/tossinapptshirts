@@ -8,14 +8,11 @@ import React, { useEffect, useMemo, useRef, useState, useCallback } from 'react'
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import {
   Card,
-  Chip,
-  ColorSwatch,
   PrimaryButton,
   Screen,
   SecondaryButton,
   theme,
 } from '../components/ui';
-import { resolveColorValue } from '../data/colorMap';
 import { DaumPostcodeModal, type AddressData } from '../components/DaumPostcodeModal';
 import { API_BASE_URL } from '../config';
 import { useCatalog } from '../context/catalog';
@@ -93,10 +90,6 @@ function Page() {
     textLayer,
     textTransform,
     selectedPlacement,
-    setSelectedColor,
-    addOrderLine,
-    removeOrderLine,
-    setOrderLineQuantity,
     userKey,
     setAitSession,
   } = useCatalog();
@@ -116,7 +109,6 @@ function Page() {
   const [postcodeModalVisible, setPostcodeModalVisible] = useState(false);
   const [loginLoading, setLoginLoading] = useState(false);
   const address2InputRef = useRef<TextInput>(null);
-  const [editingOrder, setEditingOrder] = useState(false);
   const [agreedPrivacy, setAgreedPrivacy] = useState(false);
   const [agreedTerms, setAgreedTerms] = useState(false);
   const [agreedCustom, setAgreedCustom] = useState(false);
@@ -265,105 +257,28 @@ function Page() {
     };
   }, [selectedProduct.category]);
 
-  const toggleEditingOrder = () => {
-    const nextEditing = !editingOrder;
-    trackClick('order_option_edit_toggle_click', {
-      next_editing: nextEditing,
-      has_user_key: Boolean(userKey),
-    });
-    setEditingOrder(nextEditing);
-  };
-
   const renderOrderSummaryCard = () => (
     <Card style={styles.summaryCard}>
       <View style={styles.summaryHeader}>
         <Text style={styles.summaryTitle}>{selectedProduct.name}</Text>
-        {editingOrder ? (
-          <View style={styles.editingBadge}>
-            <Text style={styles.editingBadgeText}>수정 중</Text>
-          </View>
-        ) : null}
       </View>
 
-      {editingOrder ? (
-        <View style={styles.editSection}>
-          <Text style={styles.editHint}>
-            버튼으로 색상, 사이즈, 수량을 바로 수정할 수 있어요.
-          </Text>
-          <Text style={styles.editSectionTitle}>색상</Text>
-          <View style={styles.colorOptions}>
-            {selectedProduct.colors.map((color) => (
-              <ColorSwatch
-                key={color}
-                label={color}
-                color={resolveColorValue(color)}
-                selected={selectedColor === color}
-                onPress={() => setSelectedColor(color)}
-              />
-            ))}
-          </View>
-
-          <Text style={styles.editSectionTitle}>사이즈 & 수량</Text>
-          {orderLines.map((line) => (
-            <View key={line.id} style={styles.orderLineRow}>
-              <Text style={styles.orderLineSize}>{line.sizeLabel}</Text>
-              <View style={styles.quantityControl}>
-                <Pressable
-                  onPress={() => {
-                    if (line.quantity > 1) {
-                      setOrderLineQuantity(line.id, line.quantity - 1);
-                    } else if (orderLines.length > 1) {
-                      removeOrderLine(line.id);
-                    }
-                  }}
-                  style={styles.quantityButton}
-                >
-                  <Text style={styles.quantityButtonText}>−</Text>
-                </Pressable>
-                <Text style={styles.quantityValue}>{line.quantity}</Text>
-                <Pressable
-                  onPress={() => setOrderLineQuantity(line.id, line.quantity + 1)}
-                  style={styles.quantityButton}
-                >
-                  <Text style={styles.quantityButtonText}>+</Text>
-                </Pressable>
-              </View>
-            </View>
-          ))}
-
-          <Text style={styles.editSectionTitle}>사이즈 추가</Text>
-          <View style={styles.chipRow}>
-            {selectedProduct.sizes
-              .filter((size) => !orderLines.some((line) => line.sizeLabel === size.label))
-              .map((size) => (
-                <Chip
-                  key={size.label}
-                  label={size.label}
-                  onPress={() => addOrderLine(size.label, 1)}
-                  style={styles.chipSpacing}
-                />
-              ))}
-          </View>
-
-          <PrimaryButton
-            label="옵션 수정 완료"
-            onPress={toggleEditingOrder}
-            style={styles.optionDoneButton}
-          />
-        </View>
-      ) : (
-        <>
-          <Text style={styles.summaryMeta}>
-            {selectedColor} · {sizeSummary || `${totalQuantity}개`}
-            {printBackEnabled ? ' · 뒷면도 프린팅' : ''}
-          </Text>
-          <SecondaryButton
-            label="옵션 수정하기"
-            onPress={toggleEditingOrder}
-            style={styles.optionEditButton}
-          />
-        </>
-      )}
+      {/* Colour, size and quantity are chosen in the editor, beside the design
+          and with the running total in view. This screen shows what was chosen
+          and sends the customer back to change it, rather than carrying a
+          second copy of the same controls. */}
+      <Text style={styles.summaryMeta}>
+        {selectedColor} · {sizeSummary || `${totalQuantity}개`}
+        {printBackEnabled ? ' · 뒷면도 프린팅' : ''}
+      </Text>
+      <SecondaryButton
+        label="옵션 바꾸기"
+        onPress={() => {
+          trackClick('order_change_options_click');
+          navigation.navigate('/editor');
+        }}
+        style={styles.optionEditButton}
+      />
 
       <Text style={styles.summaryMeta}>
         예상 결제 {formatPrice(pricing.total)} (배송비{' '}

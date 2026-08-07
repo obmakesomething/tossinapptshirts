@@ -36,6 +36,9 @@ import {
   trackScreenView,
 } from '../utils/analytics';
 import { toImageDataUrl } from '../utils/imageMime';
+import { OptionSheet } from '../components/OptionSheet';
+import { calcPricing } from '../data/pricing';
+import { formatPrice } from '../utils/format';
 
 const ACCENT = '#1B64DA';
 const FILL_SOFT = '#F2F4F6';
@@ -78,6 +81,11 @@ function Page() {
     replacePhoto,
     deletePhoto,
     selectPhoto,
+    printBackEnabled,
+    setSelectedColor,
+    addOrderLine,
+    removeOrderLine,
+    setOrderLineQuantity,
   } = useCatalog();
 
   const currentPhotos = selectedPlacement === 'front' ? frontPhotos : backPhotos;
@@ -98,6 +106,7 @@ function Page() {
   const [imageControlFocused, setImageControlFocused] = useState(false);
   // Rests collapsed: the first thing to see after adding a photo is the shirt.
   const [panelExpanded, setPanelExpanded] = useState(false);
+  const [optionsOpen, setOptionsOpen] = useState(false);
 
   // ── Undo/Redo history ──
   type EditorSnapshot = {
@@ -182,7 +191,7 @@ function Page() {
   /** Reset button and the print-size caption, both below the canvas. */
   const ARTWORK_CAPTION_RESERVED = 116;
   /** Below this the garment stops reading as the thing being designed. */
-  const MIN_CANVAS_HEIGHT = 240;
+  const MIN_CANVAS_HEIGHT = 200;
   const reservedBelowCanvas = hasArtwork
     ? ARTWORK_CAPTION_RESERVED
     : EMPTY_CTA_RESERVED;
@@ -253,6 +262,21 @@ function Page() {
   const canvasHeight = Math.round(
     availableCanvasHeight - CANVAS_FRAME_VERTICAL_PADDING,
   );
+
+  const pricing = calcPricing({
+    product: selectedProduct,
+    orderLines,
+    printOption: selectedPrint,
+    printBackEnabled,
+  });
+
+  const optionSummary = [
+    selectedProduct.name,
+    selectedColor,
+    orderLines.length > 0
+      ? orderLines.map((line) => `${line.sizeLabel} ${line.quantity}개`).join(', ')
+      : '사이즈 미선택',
+  ].join(' · ');
 
   const EDITOR_TABS = ['이미지', '텍스트'];
 
@@ -455,7 +479,9 @@ function Page() {
           >
             <Text style={styles.headerIconText}>←</Text>
           </Pressable>
-          <Text style={styles.editorTopTitle} accessibilityRole="header">이미지 편집</Text>
+          <Text style={styles.editorTopTitle} accessibilityRole="header">
+            {hasArtwork ? '디자인 확인' : '사진 올리기'}
+          </Text>
           <View style={styles.headerActions}>
             {hasArtwork ? (
             <>
@@ -478,21 +504,27 @@ function Page() {
 
           </View>
         </View>
-        <View style={styles.compactProduct}>
+        <Text style={styles.leadCopy}>
+          {hasArtwork
+            ? '금액은 배송비 3,000원 별도, 6만원 이상 무료예요.'
+            : '사진을 올리면 옷에 얹어 보여드려요.'}
+        </Text>
+        <View style={styles.optionRow}>
           <View style={[styles.compactDot, { backgroundColor: resolveColorValue(selectedColor) }]} />
           <Text style={styles.compactName} numberOfLines={1}>
-            {selectedProduct.name} · {selectedColor}
+            {optionSummary}
           </Text>
-          {hasArtwork ? (
-            <Pressable onPress={goPreview} style={styles.compactPreview}>
-              <Text style={styles.compactPreviewText}>완성 보기</Text>
-            </Pressable>
-          ) : null}
           <Pressable
-            onPress={() => navigation.navigate('/products')}
-            style={styles.compactChange}
+            style={styles.optionChangeButton}
+            onPress={() => {
+              trackClick('editor_options_open');
+              setOptionsOpen(true);
+            }}
+            accessibilityRole="button"
+            accessibilityLabel="옵션 바꾸기"
           >
-            <Text style={styles.compactChangeText}>상품 변경</Text>
+            <Text style={styles.optionRowAction}>변경</Text>
+            <Chevron direction="right" size={9} />
           </Pressable>
         </View>
         {/* 앞/뒤면 세그먼트 — 올릴 것이 있을 때만 */}
@@ -574,8 +606,15 @@ function Page() {
             onPress={goOrder}
             accessibilityRole="button"
           >
-            <Text style={styles.orderCtaText}>주문하기</Text>
+            <Text style={styles.orderCtaText}>
+              {formatPrice(pricing.total)} · 주문하기
+            </Text>
           </Pressable>
+          {hasArtwork ? (
+            <Pressable onPress={goPreview} style={styles.previewLink}>
+              <Text style={styles.previewLinkText}>완성 보기</Text>
+            </Pressable>
+          ) : null}
         </View>
         ) : null}
       </View>
@@ -895,6 +934,19 @@ function Page() {
       </View>
       ) : null}
 
+      <OptionSheet
+        visible={optionsOpen}
+        onClose={() => setOptionsOpen(false)}
+        product={selectedProduct}
+        selectedColor={selectedColor}
+        orderLines={orderLines}
+        total={pricing.total}
+        onSelectColor={setSelectedColor}
+        onAddSize={(label) => addOrderLine(label, 1)}
+        onChangeQuantity={setOrderLineQuantity}
+        onRemoveLine={removeOrderLine}
+      />
+
       {/* Delete Photo Confirmation Modal */}
       <Modal
         visible={showDeleteConfirm}
@@ -982,6 +1034,41 @@ const styles = StyleSheet.create({
     lineHeight: 28,
     fontWeight: '700',
     color: theme.colors.textPrimary,
+  },
+  leadCopy: {
+    ...theme.typography.body,
+    color: theme.colors.textSecondary,
+    marginBottom: theme.spacing.sm,
+  },
+  optionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    minHeight: 48,
+    gap: theme.spacing.sm,
+    // Kept clear of the garment below so the summary reads as its own band
+    // rather than collapsing into the canvas as one block.
+    marginBottom: theme.spacing.md,
+  },
+  optionChangeButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.xs,
+    minHeight: 44,
+    paddingLeft: theme.spacing.md,
+  },
+  optionRowAction: {
+    ...theme.typography.label,
+    color: theme.colors.primary,
+  },
+  previewLink: {
+    alignSelf: 'center',
+    minHeight: 44,
+    justifyContent: 'center',
+    paddingHorizontal: theme.spacing.lg,
+  },
+  previewLinkText: {
+    ...theme.typography.label,
+    color: theme.colors.textSecondary,
   },
   compactProduct: {
     flexDirection: 'row',

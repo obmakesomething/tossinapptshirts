@@ -22,7 +22,8 @@ export type OrderLine = {
 export type PricingInput = {
   product: CatalogProduct;
   orderLines: OrderLine[];
-  printOption: PrintOption;
+  /** Kept on the input so callers need no change; nothing is priced off it. */
+  printOption?: PrintOption;
   printBackEnabled: boolean;
 };
 
@@ -32,11 +33,10 @@ export type PricingResult = {
   total: number;
   // 추가 비용 표시용
   backPrintingFee: number;
-  largePrintFee: number;
 };
 
 export function calcPricing(input: PricingInput): PricingResult {
-  const { product, orderLines, printOption, printBackEnabled } = input;
+  const { product, orderLines, printBackEnabled } = input;
 
   // 기본 단가 (카테고리별)
   const basePrice = BASE_PRICES[product.category] ?? 19000;
@@ -57,10 +57,9 @@ export function calcPricing(input: PricingInput): PricingResult {
 
   // 추가 옵션 계산
   const backPrintingFee = printBackEnabled ? 6000 * totalQuantity : 0;
-  const largePrintFee = printOption.id === 'large' ? 2000 * totalQuantity : 0;
 
   // 소계
-  const subtotal = itemsTotal + backPrintingFee + largePrintFee;
+  const subtotal = itemsTotal + backPrintingFee;
 
   // 배송비 (60,000원 이상 무료)
   const shippingFee = subtotal >= FREE_SHIPPING_THRESHOLD ? 0 : SHIPPING_FEE;
@@ -73,6 +72,5 @@ export function calcPricing(input: PricingInput): PricingResult {
     shippingFee,
     total,
     backPrintingFee,
-    largePrintFee,
   };
 }
