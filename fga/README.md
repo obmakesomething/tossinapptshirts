@@ -70,22 +70,47 @@ what keeps a payment button unclicked.
 Worth sending upstream: any Korean storefront whose buttons do not happen to say
 `시작하기` gets a silently empty graph.
 
-## What the first audit found
+## What the pack declares
 
-`BLOCK 0` on every screen. Of the REVIEW findings, these are the ones worth acting on:
+`stage-rules.json` maps route to journey stage (table above).
+`audit-logic.config.json` lists those stages as required — the generic pack
+ships that list empty, which is why every screen came back "mapped stage is not
+in the required stage list".
+`action-contracts.json` says what each control on the design-to-order path is
+supposed to do. The engine watches what a click actually did; without a
+declaration it has an observation and nothing to check it against.
 
-- **`hierarchy`** — home's body/lead text measures 30px against a 20px page
-  title. `heroTitle` really is `fontSize: 30`, and because it carries no heading
-  role the classifier reads it as body.
-- **`page-title-role`** — no heading semantics on the editor title. `ui.tsx` sets
-  `accessibilityRole="header"` in three places, but `editor`, `index` and `order`
-  each build their own header and none of them got it.
-- **`missing-lead-copy`**, **`why-next-action`** — no copy saying why the step
-  exists, what happens next, or what it costs.
+Contracts are declared for controls the crawl cannot currently reach, on
+purpose. The engine then reports them as NOT EVALUATED with a reason, which is
+the point: an unchecked checkout should be a stated gap rather than a silence.
 
-One fix — heading roles on the three custom headers — plausibly clears
-`page-title-role`, `hierarchy`, and the `graph-*` findings that depend on type
-hierarchy to build an attention order.
+## Where the audit stands
+
+Run against `/` with the pack and `--interactive on`:
+
+| | count |
+|---|---|
+| BLOCK | 0 |
+| REVIEW | 11 |
+| NOT EVALUATED | 4 |
+
+Of the 11 REVIEW findings, four are the react-native-web false positive
+(`primary-action-missing`, `action-clarity` — see below) and the remaining seven
+are one problem wearing three names: no screen has lead copy saying why the step
+exists or what it costs (`missing-lead-copy`, `why-next-action`, and the three
+`graph-*` findings on home that depend on a critical question being answered).
+
+The four NOT EVALUATED are coverage, not defects: three declared contracts the
+crawl never reached (`주문하기`, `완성 보기`, `상품 변경`) and the partial crawl
+itself. Checkout and everything behind the Toss login are still unobserved.
+
+### Fixed since the first run
+
+Adding `accessibilityRole="header"` to the eight custom screen titles took the
+audit from FAIL/27 to REVIEW/17. It cleared `page-title-role`, `hierarchy` — home
+rendered a 30px `heroTitle` that classified as body text against a 20px title —
+and seven `graph-*` findings that cannot build an attention order without a type
+hierarchy to read. Completing the pack then closed the remaining four.
 
 ### Do not act on these
 
@@ -101,13 +126,3 @@ contradict it:
 
 A report that clicks a button and then says the screen has no detectable action
 is describing its own DOM reader, not the product.
-
-## Not evaluated yet
-
-- `action-outcome-consistency` — the crawler observed where each button went, but
-  the pack declares no expected outcome to check it against. Declaring those
-  (sequence contracts) is the next layer.
-- `required-stage` — inherited from the generic pack's audit logic, which lists
-  required stages for a payment-review flow. This pack has not declared its own.
-- Coverage is `partial`: 2 of 2 discovered screens. Checkout and everything
-  behind the Toss login were never reached.

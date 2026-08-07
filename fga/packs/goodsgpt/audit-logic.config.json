@@ -1,0 +1,96 @@
+{
+  "schema": "fga-generic-audit-logic-v1",
+  "status": "guessed",
+  "note": "Thresholds for 굿즈 Gpt. Inherited from the generic pack and not yet calibrated against this app, except serviceBlueprintAudit.requiredStages, which lists the stages declared in stage-rules.json.",
+  "viewport": {
+    "width": 390,
+    "height": 844,
+    "isMobile": true
+  },
+  "mentalModelAudit": {
+    "whyNextPattern": "(왜|이유|다음|계속|확인|시작|선택|why|because|next|continue|confirm|start|choose|select|learn more|get started|sign up|try|book|buy|order|subscribe|contact)"
+  },
+  "headingTitleAudit": {
+    "hardFailPatterns": [
+      "\\bTODO\\b",
+      "[Ll]orem [Ii]psum",
+      "\\bundefined\\b",
+      "\\bnull\\b",
+      "\\bNaN\\b",
+      "\\\\{\\\\{"
+    ]
+  },
+  "audienceBoundaryAudit": {
+    "hardFailPatterns": [
+      "console\\\\.log",
+      "stacktrace",
+      "internal use only",
+      "DO NOT SHIP"
+    ]
+  },
+  "serviceBlueprintAudit": {
+    "requiredStages": [
+      "Entry",
+      "Browse Garments",
+      "Design",
+      "Review Design",
+      "Checkout / Payment",
+      "Confirmation",
+      "Post-purchase",
+      "Saved Designs",
+      "Account",
+      "Support / Contact",
+      "Legal"
+    ]
+  },
+  "spacingGridRhythmAudit": {
+    "thresholds": {
+      "failScrollScreens": 8
+    }
+  },
+  "typographyAudit": {
+    "minBodyFontPx": 12,
+    "minTouchTargetPx": 40
+  },
+  "pageChrome": {
+    "legalFooterTextPatterns": []
+  },
+  "sourceProvenance": {
+    "repo": "obmakesomething/tossinapptshirts",
+    "commit": "775db365",
+    "ref": "feat/drop-ai-and-print-the-approved-layout",
+    "extractedAt": "2026-08-07T00:00:00+09:00"
+  },
+  "packExtraction": {
+    "schema": "fga-pack-extraction-metadata-v1",
+    "status": "INFERRED",
+    "requiresHumanConfirm": true,
+    "role": "auditLogic",
+    "finalVerifierEligible": false,
+    "canClaimVerifiedFixed": false
+  },
+  "requiresHumanConfirm": true,
+  "finalVerifierEligible": false,
+  "canClaimVerifiedFixed": false,
+  "graphFindings": {
+    "gateMode": "review"
+  },
+  "findingPolicy": {
+    "suppressReason": "Cosmetic or internal-signal rule with low conversion relevance for a generic commerce audit.",
+    "suppress": [
+      "typographyAudit.negative-letter-spacing",
+      "typographyAudit.low-confidence-role",
+      "componentGrammarAudit.R_HARD_GATE_NOT_REGISTERED",
+      "componentGrammarAudit.R_RENDER_GATE_EVIDENCE_INCOMPLETE",
+      "componentGrammarAudit.R_COMPONENT_TREE_NOT_CAPTURED",
+      "visualHierarchyAudit.asset-center-drift",
+      "informationOrderAudit.price-after-payment-action",
+      "informationOrderAudit.price-missing-before-payment",
+      "informationOrderAudit.recurring-commit-without-terms"
+    ],
+    "demoteToReview": [
+      "typographyAudit.line-height"
+    ],
+    "supersededReason": "Replaced by the commitment.disclosure_ordering claim, which evaluates the same ordering against a versioned contract and reports the geometry it used."
+  }
+}

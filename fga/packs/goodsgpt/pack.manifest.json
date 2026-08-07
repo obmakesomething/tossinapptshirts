@@ -11,7 +11,8 @@
     "interGraphConstraints": "inter-graph-constraints.payment-review.json",
     "semanticTokenRules": "semantic-token-rules.json",
     "sequenceContracts": "sequence-contracts.payment-review.json",
-    "stageRules": "stage-rules.json"
+    "stageRules": "stage-rules.json",
+    "actionContracts": "action-contracts.json"
   },
   "locales": [
     "ko"
