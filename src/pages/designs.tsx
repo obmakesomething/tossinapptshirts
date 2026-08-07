@@ -89,7 +89,7 @@ function Page() {
     <Screen contentStyle={styles.screenContent}>
       <PageHeader title="내 디자인" onBack={() => navigation.goBack()} />
 
-      <Text style={styles.title}>
+      <Text style={styles.title} accessibilityRole="header">
         저장한 디자인이에요. 다시 편집하거나 공유할 수 있어요.
       </Text>
 

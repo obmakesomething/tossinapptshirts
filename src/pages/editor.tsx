@@ -58,7 +58,6 @@ function Page() {
     selectedColor,
     orderLines,
     totalQuantity,
-    printBackEnabled,
     selectedPrint,
     selectedPlacement,
     designImageUri,
@@ -71,7 +70,6 @@ function Page() {
     frontPhotoIndex,
     backPhotoIndex,
     setSelectedPlacement,
-    setPrintBackEnabled,
     setImageTransform,
     setTextTransform,
     setActiveLayer,
@@ -400,10 +398,8 @@ function Page() {
         to: placement,
       });
     }
+    // Viewing the back does not order a back print; putting artwork on it does.
     setSelectedPlacement(placement);
-    if (placement === 'back' && !printBackEnabled) {
-      setPrintBackEnabled(true);
-    }
   };
 
   const handleTabChange = (nextIndex: number) => {
@@ -459,7 +455,7 @@ function Page() {
           >
             <Text style={styles.headerIconText}>←</Text>
           </Pressable>
-          <Text style={styles.editorTopTitle}>이미지 편집</Text>
+          <Text style={styles.editorTopTitle} accessibilityRole="header">이미지 편집</Text>
           <View style={styles.headerActions}>
             {hasArtwork ? (
             <>

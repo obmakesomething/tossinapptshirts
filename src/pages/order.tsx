@@ -554,7 +554,7 @@ function Page() {
     return (
       <Screen contentStyle={styles.screenContent}>
         <View style={styles.headerRow}>
-          <Text style={styles.headerTitle}>주문하기</Text>
+          <Text style={styles.headerTitle} accessibilityRole="header">주문하기</Text>
           <Pressable onPress={() => navigation.goBack()} style={styles.headerBack}>
             <Text style={styles.headerBackText}>이전</Text>
           </Pressable>
@@ -588,7 +588,7 @@ function Page() {
   return (
     <Screen contentStyle={styles.screenContent}>
       <View style={styles.headerRow}>
-        <Text style={styles.headerTitle}>주문하기</Text>
+        <Text style={styles.headerTitle} accessibilityRole="header">주문하기</Text>
         <Pressable onPress={() => navigation.goBack()} style={styles.headerBack}>
           <Text style={styles.headerBackText}>이전</Text>
         </Pressable>

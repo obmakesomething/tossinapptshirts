@@ -229,7 +229,7 @@ function Page() {
         <View style={styles.heroBadgeRow}>
           <Badge variant="info" label="토스 독점" dot={false} />
         </View>
-        <Text style={styles.heroTitle}>
+        <Text style={styles.heroTitle} accessibilityRole="header">
           내 사진으로{'\n'}나만의 굿즈 만들기
         </Text>
         <Text style={styles.heroSubtitle}>

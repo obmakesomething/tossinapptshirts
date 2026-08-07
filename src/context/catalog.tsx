@@ -100,7 +100,6 @@ type CatalogContextValue = {
   setOrderLineQuantity: (lineId: string, quantity: number) => void;
   setSelectedPlacement: (placement: Placement) => void;
   setFrontPrintEnabled: (enabled: boolean) => void;
-  setPrintBackEnabled: (enabled: boolean) => void;
   setDesignImageUri: (uri: string | null) => void;
   setDesignPrompt: (prompt: string) => void;
   setImageTransform: (transform: LayerTransform) => void;
@@ -165,7 +164,6 @@ export function CatalogProvider({ children }: { children: React.ReactNode }) {
   const [selectedPlacement, setSelectedPlacementState] =
     useState<Placement>('front');
   const [frontPrintEnabled, setFrontPrintEnabled] = useState(true);
-  const [printBackEnabled, setPrintBackEnabledState] = useState(false);
   const [selectedPrintId, setSelectedPrintId] = useState<PrintOption['id']>(
     resolveAutoPrint(fallbackProduct).id,
   );
@@ -337,12 +335,19 @@ export function CatalogProvider({ children }: { children: React.ReactNode }) {
     });
   }, []);
 
-  const setPrintBackEnabled = (enabled: boolean) => {
-    setPrintBackEnabledState(enabled);
-    if (!enabled) {
-      setSelectedPlacement('front');
-    }
-  };
+  /**
+   * Back printing is charged when the back is printed, not when it is looked at.
+   *
+   * This was a flag the editor set to true the moment you tapped 뒷면 — merely
+   * turning the shirt around added ₩6,000 per item, nothing ever set it back,
+   * and the editor shows no price, so the first sight of the charge was the
+   * order summary. Deriving it from the back's own contents means the customer
+   * pays for a back print exactly when they have put something on the back.
+   */
+  const printBackEnabled =
+    backPhotos.length > 0 ||
+    Boolean(backDesignImageUri) ||
+    Boolean(backTextLayer.enabled && backTextLayer.text.trim());
 
   const handleSetDesignImageUri = (uri: string | null) => {
     if (selectedPlacement === 'front') {
@@ -570,7 +575,6 @@ export function CatalogProvider({ children }: { children: React.ReactNode }) {
     setOrderLineQuantity,
     setSelectedPlacement,
     setFrontPrintEnabled,
-    setPrintBackEnabled,
     setDesignImageUri: handleSetDesignImageUri,
     setDesignPrompt,
     setImageTransform,
