@@ -12,7 +12,7 @@ const fsp = require('fs/promises');
 const path = require('path');
 const https = require('https');
 const axios = require('axios');
-const { runPrintPipeline } = require('./printPipeline');
+const { runPrintPipeline, summarizeQcForOperator } = require('./printPipeline');
 const {
   createAitSessionEnvelope,
   createDisconnectAuthVerifier,
@@ -2349,11 +2349,18 @@ app.post('/v1/payment/execute', strictLimiter, async (req, res) => {
           }
 
           if (adminTo) {
+            const qcSummary = summarizeQcForOperator(pipelineResult);
             await mailer.sendMail({
               from: process.env.SMTP_FROM || process.env.SMTP_USER,
               to: adminTo,
-              subject: `🎽 결제 완료: ${orderData.orderId} - ${customerName}`,
-              text: `주문번호: ${orderData.orderId}\n결제금액: ${data.success?.paidAmount}원\n결제수단: ${data.success?.payMethod}`,
+              subject: `${qcSummary.subjectTag}🎽 결제 완료: ${orderData.orderId} - ${customerName}`,
+              text: [
+                `주문번호: ${orderData.orderId}`,
+                `결제금액: ${data.success?.paidAmount}원`,
+                `결제수단: ${data.success?.payMethod}`,
+                '',
+                qcSummary.body,
+              ].join('\n'),
               attachments,
             });
           }

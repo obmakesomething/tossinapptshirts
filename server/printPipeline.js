@@ -464,8 +464,53 @@ async function runPrintPipeline(input) {
   }
 }
 
+/**
+ * The QC verdict as the person preparing the file needs to read it.
+ *
+ * Upscaling happens after the order, by hand, for orders that need it — so the
+ * one thing that must not stay buried in a JSON file on blob storage is which
+ * orders those are. This goes in the fulfilment email.
+ */
+function summarizeQcForOperator(pipelineResult) {
+  const qc = pipelineResult?.qc;
+  if (!qc) {
+    return { needsAttention: false, subjectTag: '', body: '인쇄 파일: 생성되지 않음 (QC 없음)' };
+  }
+  const metrics = qc.metrics || {};
+  const dpi = metrics.effective_dpi;
+  const needsUpscale = dpi !== null && dpi !== undefined && dpi < DPI_WARN;
+  const clipped = (qc.reasons || []).some((reason) =>
+    reason === 'artwork_clipped' || reason === 'artwork_outside_print_area',
+  );
+
+  const lines = [
+    '── 인쇄 파일 QC ──',
+    `해상도: ${dpi == null ? '측정 불가' : `약 ${dpi} DPI`}` +
+      (needsUpscale ? `  ⚠️ 업스케일 필요 (기준 ${DPI_WARN})` : '  (그대로 인쇄 가능)'),
+    `출력 캔버스: ${metrics.target_width || '?'} × ${metrics.target_height || '?'} px`,
+    `투명 배경: ${metrics.has_alpha ? '있음' : '없음 — 사진 배경까지 인쇄됨'}`,
+  ];
+  if (clipped) {
+    lines.push('⚠️ 디자인이 인쇄 영역을 벗어나 잘렸습니다. 배치 확인 필요.');
+  }
+  if ((qc.recommendations || []).length > 0) {
+    lines.push('', ...qc.recommendations.map((text) => `· ${text}`));
+  }
+
+  const tags = [];
+  if (needsUpscale) tags.push('업스케일 필요');
+  if (clipped) tags.push('배치 확인');
+
+  return {
+    needsAttention: needsUpscale || clipped,
+    subjectTag: tags.length > 0 ? `[${tags.join(' · ')}] ` : '',
+    body: lines.join('\n'),
+  };
+}
+
 module.exports = {
   runPrintPipeline,
+  summarizeQcForOperator,
   runQc,
   effectiveDpi,
   artworkDpi,

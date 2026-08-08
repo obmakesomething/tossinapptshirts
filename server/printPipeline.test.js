@@ -281,3 +281,55 @@ describe('runPrintPipeline composition', () => {
     expect(result.qc.reasons).not.toContain('resolution_poor');
   });
 });
+
+describe('summarizeQcForOperator', () => {
+  const { summarizeQcForOperator } = require('./printPipeline');
+
+  const qcWith = (overrides = {}) => ({
+    qc: {
+      status: 'WARN',
+      metrics: {
+        effective_dpi: 300,
+        target_width: 3307,
+        target_height: 4252,
+        has_alpha: true,
+        ...(overrides.metrics || {}),
+      },
+      reasons: overrides.reasons || [],
+      recommendations: overrides.recommendations || [],
+    },
+  });
+
+  it('flags the orders a person has to upscale by hand', () => {
+    const summary = summarizeQcForOperator(qcWith({ metrics: { effective_dpi: 120 } }));
+    expect(summary.needsAttention).toBe(true);
+    expect(summary.subjectTag).toContain('업스케일 필요');
+    expect(summary.body).toContain('120 DPI');
+  });
+
+  it('says nothing needs doing when the artwork is already sharp', () => {
+    const summary = summarizeQcForOperator(qcWith());
+    expect(summary.needsAttention).toBe(false);
+    expect(summary.subjectTag).toBe('');
+    expect(summary.body).toContain('그대로 인쇄 가능');
+  });
+
+  it('calls out artwork that was cropped at the print boundary', () => {
+    const summary = summarizeQcForOperator(
+      qcWith({ reasons: ['artwork_clipped'] }),
+    );
+    expect(summary.needsAttention).toBe(true);
+    expect(summary.subjectTag).toContain('배치 확인');
+  });
+
+  it('reports a missing print file rather than pretending it passed', () => {
+    const summary = summarizeQcForOperator(null);
+    expect(summary.needsAttention).toBe(false);
+    expect(summary.body).toContain('생성되지 않음');
+  });
+
+  it('warns that an opaque upload prints its own background', () => {
+    const summary = summarizeQcForOperator(qcWith({ metrics: { has_alpha: false } }));
+    expect(summary.body).toContain('사진 배경까지 인쇄됨');
+  });
+});
