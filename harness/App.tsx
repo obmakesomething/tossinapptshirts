@@ -50,7 +50,18 @@ export default function App() {
 
   // ?bare=1 drops the review chrome and fills the viewport with the screen
   // alone, so an audit measures the app rather than the harness around it.
-  const bare = new URLSearchParams(window.location.search).get('bare') === '1';
+  //
+  // It sticks for the session. An audit crawler navigates by clicking, and the
+  // pushState that follows carries no query string — so the second screen and
+  // every screen after it came back with the review rail counted as part of the
+  // product. That put fourteen rail links into the editor's element list.
+  const bare = (() => {
+    if (new URLSearchParams(window.location.search).get('bare') === '1') {
+      window.sessionStorage?.setItem('harness-bare', '1');
+      return true;
+    }
+    return window.sessionStorage?.getItem('harness-bare') === '1';
+  })();
 
   if (bare) {
     return (

@@ -36,6 +36,7 @@ import {
   trackScreenView,
 } from '../utils/analytics';
 import { toImageDataUrl } from '../utils/imageMime';
+import { textRole } from '../utils/textRole';
 import { OptionSheet } from '../components/OptionSheet';
 import { calcPricing } from '../data/pricing';
 import { formatPrice } from '../utils/format';
@@ -504,7 +505,7 @@ function Page() {
 
           </View>
         </View>
-        <Text style={styles.leadCopy}>
+        <Text style={styles.leadCopy} {...textRole('lead')}>
           {hasArtwork
             ? '금액은 배송비 3,000원 별도, 6만원 이상 무료예요.'
             : '사진을 올리면 옷에 얹어 보여드려요.'}
@@ -1038,7 +1039,8 @@ const styles = StyleSheet.create({
   leadCopy: {
     ...theme.typography.body,
     color: theme.colors.textSecondary,
-    marginBottom: theme.spacing.sm,
+    marginTop: theme.spacing.sm,
+    marginBottom: theme.spacing.md,
   },
   optionRow: {
     flexDirection: 'row',

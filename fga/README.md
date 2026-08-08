@@ -14,7 +14,7 @@ npx vite --config harness/vite.config.mts
 git clone https://github.com/obmakesomething/fga-engine
 cd fga-engine && npm install && npx playwright install chromium
 cp -r ../fga/packs/goodsgpt packs/
-git apply ../fga/fga-engine-korean-cta.patch
+git apply ../fga/fga-engine.patch
 
 npm run audit:url -- \
   --url "http://localhost:5188/?bare=1" \
@@ -59,16 +59,27 @@ One gotcha worth writing down: the matcher substring-tests
 its route key. And `/order` swallows `/order-complete`, `/order-detail` and
 `/orders` unless those are declared first. Rules are order-sensitive.
 
-## The engine patch
+## The engine patches
 
-`fga-engine-korean-cta.patch` adds this product's CTAs to the crawler's
-progression lexicon. The engine knows `계속|다음|시작하기|선택|둘러보기|요금제`;
-ours are `지금 만들어보기`, `사진 올리기`, `주문하기`, so it found zero controls
-to click. Navigation verbs only — the commit-form guard, not the word list, is
-what keeps a payment button unclicked.
+`fga-engine.patch` carries two changes, both worth sending upstream.
 
-Worth sending upstream: any Korean storefront whose buttons do not happen to say
-`시작하기` gets a silently empty graph.
+**The progression lexicon knows no Korean commerce verbs.** The crawler matches
+`계속|다음|시작하기|선택|둘러보기|요금제`; this app's buttons say
+`사진 올리고 시작하기`, `사진 올리기`, `주문하기`. It found zero controls to
+click, so the crawl never left the first screen. The patch adds navigation verbs
+only — the commit-form guard, not the word list, is what keeps a payment button
+unclicked. Any Korean storefront whose buttons do not happen to say `시작하기`
+gets a silently empty graph.
+
+**The URL capture dropped the engine's own explicit role channel.**
+`inferTextRole` reads `data-fga-role` at confidence 1.0 — it is the declared way
+for an app to name a text role — but `audit-url` collected only
+`aria-label, role, type, placeholder, alt, href`, so the attribute never reached
+the rule and every text fell back to the heuristic. That matters most for React
+Native Web, where there is no `<h1>` and no `<p>`: every `Text` is a `div` with
+generated class names, so a declaration is the *only* way to say "this is lead
+copy". Adding it cleared `missing-lead-copy` on both screens and
+`why-next-action` on home.
 
 ## What the pack declares
 
@@ -86,38 +97,45 @@ the point: an unchecked checkout should be a stated gap rather than a silence.
 
 ## Where the audit stands
 
-Run against `/` with the pack and `--interactive on`:
+Run against `/` with the pack, both patches and `--interactive on`:
 
-| | count |
+| | first run | now |
+|---|---|---|
+| BLOCK | 0 | 0 |
+| REVIEW | 27 | 9 |
+
+What is left:
+
+- **3 are the react-native-web false positive** — `primary-action-missing` ×2
+  and `action-clarity` (see below).
+- **3 are home's critical-question findings** — `graph-critical-answer-type-priority`,
+  `graph-weak-critical-answer`, `graph-unresolved-user-question`. Home now states
+  price and lead time before the CTA, which cleared `why-next-action`, but the
+  graph still reads the question as weakly attended. Needs judgement, not another
+  patch.
+- **1 `spacing-matrix` on the editor** — `content-end -> cta gap 10px` against the
+  option row, where 변경 sits inline beside the summary rather than stacked below
+  it. Arguably the rule reading a row as a stacked CTA.
+- **1 `why-next-action` on the editor.**
+- **1 `action-outcome-consistency`** — an artifact of the crawl clicking controls
+  in sequence without closing what the previous click opened, so the second click
+  lands on an overlay.
+
+### Cleared, and what did it
+
+| change | cleared |
 |---|---|
-| BLOCK | 0 |
-| REVIEW | 11 |
-| NOT EVALUATED | 4 |
-
-Of the 11 REVIEW findings, four are the react-native-web false positive
-(`primary-action-missing`, `action-clarity` — see below) and the remaining seven
-are one problem wearing three names: no screen has lead copy saying why the step
-exists or what it costs (`missing-lead-copy`, `why-next-action`, and the three
-`graph-*` findings on home that depend on a critical question being answered).
-
-The four NOT EVALUATED are coverage, not defects: three declared contracts the
-crawl never reached (`주문하기`, `완성 보기`, `상품 변경`) and the partial crawl
-itself. Checkout and everything behind the Toss login are still unobserved.
-
-### Fixed since the first run
-
-Adding `accessibilityRole="header"` to the eight custom screen titles took the
-audit from FAIL/27 to REVIEW/17. It cleared `page-title-role`, `hierarchy` — home
-rendered a 30px `heroTitle` that classified as body text against a 20px title —
-and seven `graph-*` findings that cannot build an attention order without a type
-hierarchy to read. Completing the pack then closed the remaining four.
+| `accessibilityRole="header"` on eight custom titles | `page-title-role`, `hierarchy`, 7 × `graph-*` |
+| completing the pack (required stages + action contracts) | `required-stage` ×2, `action-outcome-consistency` ×2 |
+| `data-fga-role` on lead copy + the capture patch | `missing-lead-copy` ×2, `why-next-action` on home |
+| title→lead gap raised past 16px | `spacing-matrix` ×2 |
+| making only 변경 a button, not the whole row | `cta-height`, `cta-placement`, `viewport-role-band` |
 
 ### Do not act on these
 
-`primary-action-missing` and `action-clarity` fire on every screen and are wrong.
-react-native-web puts the button on an ancestor and the label in a `div` with no
-role, so the DOM pass sees no action. Two things in the engine's own output
-contradict it:
+`primary-action-missing` and `action-clarity` are wrong. react-native-web puts
+the button on an ancestor and the label in a `div` with no role, so the DOM pass
+sees no action. Two things in the engine's own output contradict it:
 
 - `visionAnalysis.primaryCta` — `present: true`, `"사진 올리기"`, 25px, 5.44
   contrast.
@@ -126,3 +144,10 @@ contradict it:
 
 A report that clicks a button and then says the screen has no detectable action
 is describing its own DOM reader, not the product.
+
+## Not evaluated
+
+- Three declared contracts the crawl never reaches — `주문하기`, `완성 보기`,
+  `상품 변경`. Declared on purpose so the gap is stated rather than silent.
+- Coverage is `partial`: 2 of 2 discovered screens. Checkout and everything
+  behind the Toss login are still unobserved.

@@ -1,0 +1,34 @@
+diff --git a/scripts/audit-url.mjs b/scripts/audit-url.mjs
+index c9de796..df48899 100644
+--- a/scripts/audit-url.mjs
++++ b/scripts/audit-url.mjs
+@@ -973,7 +973,12 @@ function extractElementsInPage({ unstablePatterns } = {}) {
+     if (text && seenTexts.has(textKey)) continue;
+     if (text) seenTexts.add(textKey);
+     const attributes = {};
+-    for (const name of ["aria-label", "role", "type", "placeholder", "alt", "href"]) {
++    // data-fga-role is the engine's own explicit text-role channel — inferTextRole
++    // reads attrs["data-fga-role"] at confidence 1.0 — but the URL capture was
++    // dropping it, so the declaration could never arrive and every screen fell
++    // back to the heuristic. It is the only way a React Native Web app can say
++    // "this is lead copy": there is no <p>, and class names are generated.
++    for (const name of ["aria-label", "role", "type", "placeholder", "alt", "href", "data-fga-role"]) {
+       const value = el.getAttribute(name);
+       if (value) attributes[name] = String(value).slice(0, 200);
+     }
+diff --git a/scripts/lib/crawl-interaction.mjs b/scripts/lib/crawl-interaction.mjs
+index 52620a8..eae4da2 100644
+--- a/scripts/lib/crawl-interaction.mjs
++++ b/scripts/lib/crawl-interaction.mjs
+@@ -26,6 +26,11 @@ export const PROGRESSION_PATTERNS = [
+   /\b(view|see|show|explore|compare)\s+(plans?|options?|pricing|details)\b/i,
+   /\b(shop|browse)\b/i,
+   /계속|다음|시작하기|선택|둘러보기|요금제/,
++  // Korean commerce CTAs this engine did not yet cover. Without them the
++  // interaction crawl finds no candidates on a Korean storefront and every
++  // graph rule runs on a single-node graph. Navigation verbs only — the
++  // commit-form guard, not this list, is what keeps a payment button unclicked.
++  /만들어보기|만들기|올리기|주문하기|완성 보기|상품 변경|편집하기|담기/,
+ ];
+ 
+ // Fields whose presence means the surrounding form takes a commitment.
