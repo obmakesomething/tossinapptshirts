@@ -58,6 +58,7 @@ function Page() {
   const navigation = Route.useNavigation();
   const {
 
+    products,
     selectedProduct,
     selectedColor,
     orderLines,
@@ -83,6 +84,7 @@ function Page() {
     deletePhoto,
     selectPhoto,
     printBackEnabled,
+    setSelectedProductId,
     setSelectedColor,
     addOrderLine,
     removeOrderLine,
@@ -938,10 +940,12 @@ function Page() {
       <OptionSheet
         visible={optionsOpen}
         onClose={() => setOptionsOpen(false)}
+        products={products}
         product={selectedProduct}
         selectedColor={selectedColor}
         orderLines={orderLines}
         total={pricing.total}
+        onSelectProduct={setSelectedProductId}
         onSelectColor={setSelectedColor}
         onAddSize={(label) => addOrderLine(label, 1)}
         onChangeQuantity={setOrderLineQuantity}

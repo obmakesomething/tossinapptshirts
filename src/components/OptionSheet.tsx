@@ -15,10 +15,12 @@ import { formatPrice } from '../utils/format';
 type OptionSheetProps = {
   visible: boolean;
   onClose: () => void;
+  products: CatalogProduct[];
   product: CatalogProduct;
   selectedColor: string;
   orderLines: OrderLine[];
   total: number;
+  onSelectProduct: (productId: string) => void;
   onSelectColor: (color: string) => void;
   onAddSize: (sizeLabel: string) => void;
   onChangeQuantity: (lineId: string, quantity: number) => void;
@@ -36,10 +38,12 @@ type OptionSheetProps = {
 export function OptionSheet({
   visible,
   onClose,
+  products,
   product,
   selectedColor,
   orderLines,
   total,
+  onSelectProduct,
   onSelectColor,
   onAddSize,
   onChangeQuantity,
@@ -51,6 +55,19 @@ export function OptionSheet({
 
   return (
     <BottomSheet visible={visible} onClose={onClose} title="옵션 선택">
+      <Text style={styles.sectionTitle}>상품</Text>
+      <View style={styles.productRow}>
+        {products.map((item) => (
+          <Chip
+            key={item.id}
+            label={`${item.name} ${formatPrice(item.price ?? 0)}`}
+            selected={item.id === product.id}
+            onPress={() => onSelectProduct(item.id)}
+            style={styles.productChip}
+          />
+        ))}
+      </View>
+
       <Text style={styles.sectionTitle}>색상</Text>
       <View style={styles.colorRow}>
         {product.colors.map((color) => (
@@ -139,6 +156,14 @@ const styles = StyleSheet.create({
     color: theme.colors.textTertiary,
     marginBottom: theme.spacing.sm,
     marginTop: theme.spacing.md,
+  },
+  productRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: theme.spacing.sm,
+  },
+  productChip: {
+    marginRight: 0,
   },
   colorRow: {
     flexDirection: 'row',
