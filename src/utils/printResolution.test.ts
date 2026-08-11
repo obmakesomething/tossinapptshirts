@@ -57,7 +57,7 @@ describe('evaluatePrintResolution', () => {
     expect(result.description).toContain('2480×3508px');
   });
 
-  it('warns without blocking between the poor and good thresholds', () => {
+  it('keeps its own level between the poor and good thresholds', () => {
     const result = evaluatePrintResolution({
       pixelWidth: 1400,
       pixelHeight: 1980,
@@ -66,11 +66,9 @@ describe('evaluatePrintResolution', () => {
     expect(result.level).toBe('low');
     expect(result.dpi).toBeGreaterThanOrEqual(DPI_POOR);
     expect(result.dpi).toBeLessThan(DPI_GOOD);
-    // The customer is told they may still proceed.
-    expect(result.description).toContain('그대로 진행해도');
   });
 
-  it('flags artwork below the poor threshold as likely to break up', () => {
+  it('still separates the poor band, even though the copy is gentle', () => {
     const result = evaluatePrintResolution({
       pixelWidth: 600,
       pixelHeight: 850,
@@ -78,7 +76,30 @@ describe('evaluatePrintResolution', () => {
     });
     expect(result.level).toBe('poor');
     expect(result.dpi).toBeLessThan(DPI_POOR);
-    expect(result.title).toContain('깨져');
+  });
+
+  /**
+   * Low-resolution work is upscaled by hand after the order, so this screen
+   * exists to help someone pick a better photo — not to make them doubt the
+   * purchase. These pin the tone: the DPI figure is always stated, because the
+   * operator acts on that same number, and nothing predicts a bad outcome.
+   */
+  it('states the measured DPI at every level', () => {
+    const cases: Array<[number, number]> = [[600, 850], [1400, 1980], [2480, 3508]];
+    for (const [w, h] of cases) {
+      const result = evaluatePrintResolution({ pixelWidth: w, pixelHeight: h, ...A4 });
+      expect(`${result.title} ${result.description}`).toContain(String(result.dpi));
+    }
+  });
+
+  it('never tells the customer their print will break', () => {
+    const alarming = ['깨져', '실패', '불가', '못 해', '안 돼'];
+    const cases: Array<[number, number]> = [[300, 420], [600, 850], [1400, 1980]];
+    for (const [w, h] of cases) {
+      const result = evaluatePrintResolution({ pixelWidth: w, pixelHeight: h, ...A4 });
+      const copy = `${result.title} ${result.description}`;
+      for (const word of alarming) expect(copy).not.toContain(word);
+    }
   });
 
   it('reports unknown rather than guessing when size is unreadable', () => {

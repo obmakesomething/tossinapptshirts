@@ -1,12 +1,16 @@
 /**
  * Print resolution assessment.
  *
- * The pipeline no longer upscales artwork, so the file the customer supplies is
- * what gets printed. This tells them, before they pay, whether that file has
- * enough pixels for the print size they picked.
+ * Low-resolution artwork is upscaled by hand after the order — the fulfilment
+ * mail tags which orders need it. So this exists to help a customer pick a
+ * better photo while they still have the album open, not to warn them off the
+ * purchase. A softer, larger photo still prints; it just prints better if they
+ * have a bigger one.
  *
- * Thresholds match server/printPipeline.js so the preview and the QC report
- * never disagree.
+ * The thresholds still match server/printPipeline.js, so the figure a customer
+ * sees and the figure the operator acts on are the same number. Only the tone
+ * differs, because they are different decisions: one is "which photo", the
+ * other is "does this need work before it goes to the press".
  */
 
 const CM_PER_INCH = 2.54;
@@ -85,8 +89,8 @@ export function evaluatePrintResolution(
     return {
       dpi,
       level: 'poor',
-      title: '해상도가 낮아 깨져 보일 수 있어요',
-      description: `약 ${dpi}DPI예요. 더 큰 이미지를 쓰거나 인쇄 크기를 줄이면 선명해져요.`,
+      title: '더 큰 사진이 있으면 좋아요',
+      description: `지금 사진은 약 ${dpi}DPI예요. 더 큰 사진으로 바꾸거나 인쇄 크기를 줄이면 훨씬 또렷해져요.`,
     };
   }
 
@@ -94,8 +98,8 @@ export function evaluatePrintResolution(
     return {
       dpi,
       level: 'low',
-      title: '인쇄하면 조금 흐릴 수 있어요',
-      description: `약 ${dpi}DPI예요. 그대로 진행해도 되지만 더 큰 이미지를 쓰면 또렷해져요.`,
+      title: '이대로도 괜찮아요',
+      description: `약 ${dpi}DPI예요. 더 큰 사진이 있다면 조금 더 또렷하게 나와요.`,
     };
   }
 

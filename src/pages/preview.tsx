@@ -213,20 +213,14 @@ function Page() {
       {/* 인쇄 품질 — 올린 이미지의 실제 해상도 기준 */}
       {printQuality ? (
         <Card style={styles.qualityCard}>
+          {/* Nothing here is an error. A soft photo still prints, and low
+              resolution is upscaled by hand before it reaches the press — so
+              this reads as a suggestion about which photo to use, not a fault
+              in the order the customer is about to place. */}
           <Badge
-            variant={
-              printQuality.level === 'good'
-                ? 'success'
-                : printQuality.level === 'low'
-                  ? 'warning'
-                  : 'error'
-            }
+            variant={printQuality.level === 'good' ? 'success' : 'info'}
             label={
-              printQuality.level === 'good'
-                ? '인쇄 품질 양호'
-                : printQuality.level === 'low'
-                  ? '인쇄 품질 주의'
-                  : '해상도 부족'
+              printQuality.level === 'good' ? '인쇄 품질 양호' : '사진 해상도 안내'
             }
           />
           <Text style={styles.qualityBadgeTitle}>{printQuality.title}</Text>
