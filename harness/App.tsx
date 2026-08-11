@@ -112,7 +112,9 @@ export default function App() {
 
 const styles = StyleSheet.create({
   page: { flexDirection: 'row', minHeight: '100%', backgroundColor: '#E5E8EB' },
-  bare: { flex: 1, minHeight: '100%', backgroundColor: '#F2F4F6' },
+  // Height-constrained like a phone screen, not free to grow with content —
+  // otherwise a screen that measures its own root gets a runaway answer.
+  bare: { height: '100%', overflow: 'hidden', backgroundColor: '#F2F4F6' },
   rail: {
     width: 132,
     paddingVertical: 16,

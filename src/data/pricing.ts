@@ -1,17 +1,22 @@
-import type { CatalogProduct } from './catalog';
+import { catalogProducts, type CatalogProduct } from './catalog';
 import type { PrintOption } from './printOptions';
 
 // 가격 정책
 export const SHIPPING_FEE = 3000;
 export const FREE_SHIPPING_THRESHOLD = 60000;
 
-// 카테고리별 기본 가격 (프린팅 포함)
-export const BASE_PRICES: Record<string, number> = {
-  티셔츠: 30000,
-  맨투맨: 40000,
-  후드: 45000,
-  에코백: 15000,
-};
+/**
+ * Charge what the screen says. Not a second opinion about it.
+ *
+ * This was a hand-written table beside the catalogue's own prices, and the two
+ * had drifted: a hoodie showed ₩55,000 and charged ₩45,000, a sweatshirt showed
+ * ₩45,000 and charged ₩40,000. Only the t-shirt agreed. Deriving the table from
+ * the catalogue means a price can only be wrong in one place, and the number a
+ * customer reads is the number they pay.
+ */
+export const BASE_PRICES: Record<string, number> = Object.fromEntries(
+  catalogProducts.map((product) => [product.category, product.price ?? 0]),
+);
 
 export type OrderLine = {
   id: string;

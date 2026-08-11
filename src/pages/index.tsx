@@ -157,10 +157,16 @@ function Page() {
   }, [activeCategoryIndex, carouselInterval]);
 
   const goToEditor = () => {
+    // Home follows its own carousel category, so it has to hand the editor the
+    // garment as well as the colour. Sending only the colour left the two
+    // disagreeing whenever the catalogue already held a different garment.
     const editorColor = resolveCategoryPreviewColor(
       selectedCategoryProduct,
       selectedColorByCategory,
     );
+    if (selectedCategoryProduct.id !== selectedProduct.id) {
+      setSelectedProductId(selectedCategoryProduct.id);
+    }
     if (editorColor && editorColor !== selectedColor) {
       setSelectedColor(editorColor);
     }

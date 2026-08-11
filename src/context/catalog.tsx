@@ -249,9 +249,23 @@ export function CatalogProvider({ children }: { children: React.ReactNode }) {
     quantity: quantityValue,
   });
 
+  /**
+   * A colour and a size only mean anything against a garment.
+   *
+   * Home tracks its own category and writes that category's colour without
+   * changing the product, so a customer who had picked a hoodie could end up
+   * on 후드 · 화이트 — a combination the hoodie does not come in and nobody can
+   * be sent. Rather than trust every caller to keep the pair consistent, the
+   * catalogue refuses to hold an invalid one: a colour the new garment offers
+   * survives the switch, anything else falls back to its first colour.
+   */
   useEffect(() => {
     if (!selectedProduct) return;
-    setSelectedColor(selectedProduct.colors[0] ?? '');
+    setSelectedColor((current) =>
+      selectedProduct.colors.includes(current)
+        ? current
+        : (selectedProduct.colors[0] ?? ''),
+    );
     const firstSize = selectedProduct.sizes[0]?.label ?? '';
     setOrderLines([createOrderLine(firstSize, 1)]);
     const autoPrint = resolveAutoPrint(selectedProduct);

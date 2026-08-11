@@ -106,3 +106,58 @@ describe('back printing is charged for artwork, not for looking', () => {
     expect(actuallyPrinted.total - justLooking.total).toBe(12000);
   });
 });
+
+/**
+ * Home follows its own carousel category and used to write that category's
+ * colour without changing the garment, so the catalogue could end up holding
+ * 후드 · 화이트 — a hoodie in a colour hoodies do not come in. The order would
+ * have gone to the press that way.
+ */
+describe('the selected colour always belongs to the selected garment', () => {
+  it.each(catalogProducts.map((p) => [p.name, p.id] as const))(
+    'gives %s one of its own colours',
+    (_name, productId) => {
+      const catalog = renderCatalog();
+      act(() => {
+        catalog.setSelectedProductId(productId);
+      });
+      const product = catalogProducts.find((p) => p.id === productId)!;
+      expect(product.colors).toContain(latestCatalog?.selectedColor);
+    },
+  );
+
+  it('keeps a colour the next garment also offers', () => {
+    const catalog = renderCatalog();
+    const black = catalogProducts.find((p) => p.colors.includes('블랙'))!;
+    act(() => {
+      catalog.setSelectedProductId(black.id);
+    });
+    act(() => {
+      latestCatalog?.setSelectedColor('블랙');
+    });
+    const otherBlack = catalogProducts.find(
+      (p) => p.id !== black.id && p.colors.includes('블랙'),
+    )!;
+    act(() => {
+      latestCatalog?.setSelectedProductId(otherBlack.id);
+    });
+    expect(latestCatalog?.selectedColor).toBe('블랙');
+  });
+
+  it('drops a colour the next garment does not carry', () => {
+    const catalog = renderCatalog();
+    const tee = catalogProducts.find((p) => p.colors.includes('화이트'))!;
+    act(() => {
+      catalog.setSelectedProductId(tee.id);
+    });
+    act(() => {
+      latestCatalog?.setSelectedColor('화이트');
+    });
+    const hoodie = catalogProducts.find((p) => !p.colors.includes('화이트'))!;
+    act(() => {
+      latestCatalog?.setSelectedProductId(hoodie.id);
+    });
+    expect(latestCatalog?.selectedColor).not.toBe('화이트');
+    expect(hoodie.colors).toContain(latestCatalog?.selectedColor);
+  });
+});

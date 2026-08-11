@@ -211,7 +211,19 @@ function Page() {
    * its own content, so feeding its height back in would settle on the content
    * rather than on the space available for it.
    */
-  const usableHeight = safeHeight > 0 ? safeHeight : screenHeight;
+  /**
+   * Never larger than the window.
+   *
+   * The root reports what it was laid out at, and a root that is not itself
+   * height-constrained grows with its content — so the canvas asked for the
+   * space it had already taken, got a bigger answer, and grew again. Clamping
+   * keeps the safe-area inset (which only ever makes it smaller) and refuses
+   * the feedback.
+   */
+  const usableHeight = Math.min(
+    safeHeight > 0 ? safeHeight : screenHeight,
+    screenHeight,
+  );
   /**
    * The panel gets a share of the screen, but never so much that the garment
    * falls below MIN_CANVAS_HEIGHT. Fixed pixel heights tuned on a 844pt phone
@@ -479,6 +491,9 @@ function Page() {
           <Pressable
             style={styles.headerIconButton}
             onPress={() => navigation.navigate('/')}
+            accessibilityRole="button"
+            accessibilityLabel="홈으로"
+            hitSlop={5}
           >
             <Text style={styles.headerIconText}>←</Text>
           </Pressable>
@@ -492,6 +507,9 @@ function Page() {
               style={[styles.headerIconButton, undoStack.length === 0 && styles.headerIconDisabled]}
               onPress={handleUndo}
               disabled={undoStack.length === 0}
+              accessibilityRole="button"
+              accessibilityLabel="되돌리기"
+              hitSlop={5}
             >
               <Text style={[styles.headerIconText, undoStack.length === 0 && styles.headerIconTextDisabled]}>↩</Text>
             </Pressable>
@@ -499,6 +517,9 @@ function Page() {
               style={[styles.headerIconButton, redoStack.length === 0 && styles.headerIconDisabled]}
               onPress={handleRedo}
               disabled={redoStack.length === 0}
+              accessibilityRole="button"
+              accessibilityLabel="다시 실행"
+              hitSlop={5}
             >
               <Text style={[styles.headerIconText, redoStack.length === 0 && styles.headerIconTextDisabled]}>↪</Text>
             </Pressable>
@@ -536,6 +557,9 @@ function Page() {
           <Pressable
             style={[styles.segmentButton, selectedPlacement === 'front' && styles.segmentButtonActive]}
             onPress={() => handlePlacementChange('front')}
+            accessibilityRole="button"
+            accessibilityLabel="앞면"
+            accessibilityState={{ selected: selectedPlacement === 'front' }}
           >
             <Text style={[styles.segmentButtonText, selectedPlacement === 'front' && styles.segmentButtonTextActive]}>
               앞면
@@ -544,6 +568,9 @@ function Page() {
           <Pressable
             style={[styles.segmentButton, selectedPlacement === 'back' && styles.segmentButtonActive]}
             onPress={() => handlePlacementChange('back')}
+            accessibilityRole="button"
+            accessibilityLabel="뒷면"
+            accessibilityState={{ selected: selectedPlacement === 'back' }}
           >
             <Text style={[styles.segmentButtonText, selectedPlacement === 'back' && styles.segmentButtonTextActive]}>
               뒷면
@@ -614,7 +641,12 @@ function Page() {
             </Text>
           </Pressable>
           {hasArtwork ? (
-            <Pressable onPress={goPreview} style={styles.previewLink}>
+            <Pressable
+              onPress={goPreview}
+              style={styles.previewLink}
+              accessibilityRole="button"
+              accessibilityLabel="완성 보기"
+            >
               <Text style={styles.previewLinkText}>완성 보기</Text>
             </Pressable>
           ) : null}
@@ -634,6 +666,8 @@ function Page() {
         <Pressable
           style={styles.editPanelHeader}
           onPress={() => setPanelExpanded((v) => !v)}
+          accessibilityRole="button"
+          accessibilityLabel={panelExpanded ? '편집 도구 접기' : '편집 도구 펼치기'}
         >
           <Text style={styles.editPanelTitle}>편집하기</Text>
           <Chevron direction={panelExpanded ? 'down' : 'up'} size={9} />
@@ -1138,7 +1172,8 @@ const styles = StyleSheet.create({
   segmentButton: {
     flex: 1,
     alignItems: 'center',
-    paddingVertical: theme.spacing.xs,
+    justifyContent: 'center',
+    minHeight: 44,
     borderRadius: 999,
   },
   segmentButtonActive: {
@@ -1342,8 +1377,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingTop: theme.spacing.sm,
-    paddingBottom: theme.spacing.xs,
+    minHeight: 44,
     paddingHorizontal: theme.spacing.md,
     borderBottomWidth: 1,
     borderBottomColor: '#E5E8EB',
