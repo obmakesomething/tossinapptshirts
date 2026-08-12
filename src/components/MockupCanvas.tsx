@@ -4,6 +4,7 @@ import type { LayerTransform, TextLayer } from '../context/catalog';
 import type { MockupTemplate } from '../data/mockupTemplates';
 import { getGarmentStageBackground } from '../utils/garmentContrast';
 import { getHemTrimInsetRatio } from '../utils/hemTrim';
+import { useTemplatePrintArea } from '../utils/garmentLayout';
 import { theme } from './ui';
 
 type MockupCanvasProps = {
@@ -38,12 +39,14 @@ export function MockupCanvas({
   style,
 }: MockupCanvasProps) {
   const effectiveShowGuides = showGuides || showPrintArea;
-  const area = {
-    left: width * template.printArea.x,
-    top: height * template.printArea.y,
-    width: width * template.printArea.width,
-    height: height * template.printArea.height,
-  };
+  const hemTrimRatio = getHemTrimInsetRatio(sizeLabel);
+  // Measured against the drawn garment, not the box — see garmentLayout.
+  const { printArea: area } = useTemplatePrintArea({
+    template,
+    width,
+    height,
+    hemTrimRatio,
+  });
 
   const scale = imageTransform?.scale ?? designScale;
   const offsetX = imageTransform?.offsetX ?? 0;
@@ -67,8 +70,11 @@ export function MockupCanvas({
   const textTop =
     area.top + area.height / 2 + textOffsetY * area.height - textHeight / 2;
 
+  const hasDesign = Boolean(
+    designImageUri || (textLayer?.enabled && textLayer.text?.trim()),
+  );
+
   const [imageLoaded, setImageLoaded] = useState(false);
-  const hemTrimRatio = getHemTrimInsetRatio(sizeLabel);
   const stageBackgroundColor = getGarmentStageBackground(
     template.color,
     theme.colors.surface,
@@ -107,7 +113,7 @@ export function MockupCanvas({
       {!imageLoaded && (
         <View style={styles.skeleton} />
       )}
-      {effectiveShowGuides && (
+      {effectiveShowGuides && hasDesign && (
         <View
           style={[
             styles.printArea,
@@ -120,8 +126,7 @@ export function MockupCanvas({
           ]}
         />
       )}
-      {showDesign &&
-        (designImageUri ? (
+      {showDesign && designImageUri ? (
           <Image
             source={typeof designImageUri === 'string' ? { uri: designImageUri } : designImageUri}
             style={[
@@ -136,19 +141,7 @@ export function MockupCanvas({
             ]}
             resizeMode="contain"
           />
-        ) : (
-          <View
-            style={[
-              styles.designPlaceholder,
-              {
-                left: designLeft,
-                top: designTop,
-                width: designWidth,
-                height: designHeight,
-              },
-            ]}
-          />
-        ))}
+      ) : null}
       {showDesign && textLayer?.enabled && textLayer.text ? (
         <View
           style={[
@@ -190,6 +183,10 @@ const styles = StyleSheet.create({
   container: {
     borderRadius: 16,
     overflow: 'hidden',
+    // react-native-web paints an Image's bitmap on a z-index:-1 layer, which
+    // slips behind this card's own background unless the card is its own
+    // stacking context. Without it the garment silently stops rendering on web.
+    zIndex: 0,
     backgroundColor: theme.colors.surface,
     borderWidth: 1,
     borderColor: theme.colors.border,
@@ -212,11 +209,6 @@ const styles = StyleSheet.create({
     borderColor: theme.colors.primary,
     borderStyle: 'dashed',
     borderRadius: 10,
-  },
-  designPlaceholder: {
-    position: 'absolute',
-    borderRadius: 10,
-    backgroundColor: theme.colors.primarySoft,
   },
   designImage: {
     position: 'absolute',

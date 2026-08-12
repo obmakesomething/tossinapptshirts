@@ -1,22 +1,24 @@
 import { createRoute } from '@granite-js/react-native';
-import { TossPay, appLogin } from '@apps-in-toss/framework';
+import {
+  TossPay,
+  appLogin,
+  getIsTossLoginIntegratedService,
+} from '@apps-in-toss/native-modules';
 import React, { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import {
   Card,
-  Chip,
-  ColorSwatch,
   PrimaryButton,
   Screen,
   SecondaryButton,
   theme,
 } from '../components/ui';
-import { resolveColorValue } from '../data/colorMap';
 import { DaumPostcodeModal, type AddressData } from '../components/DaumPostcodeModal';
 import { API_BASE_URL } from '../config';
 import { useCatalog } from '../context/catalog';
 import { faqItems } from '../data/faq';
 import { calcPricing } from '../data/pricing';
+import { printSizeByCategory } from '../data/mockupTemplates';
 import { formatPrice } from '../utils/format';
 import {
   normalizeAitSessionEnvelope,
@@ -29,6 +31,31 @@ import {
   trackPaymentSuccess,
   trackScreenView,
 } from '../utils/analytics';
+
+/** A stuck native bridge should not hold the screen hostage. */
+const SDK_CALL_TIMEOUT_MS = 8000;
+const LOGIN_TIMEOUT_MS = 60000;
+
+function withTimeout<T>(
+  promise: Promise<T>,
+  ms: number,
+  label: string,
+): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<T>((_, reject) =>
+      setTimeout(
+        () =>
+          reject(
+            new Error(
+              `토스 ${label === 'appLogin' ? '로그인' : '연동 확인'}이 응답하지 않아요. 토스 앱에서 다시 시도해 주세요.`,
+            ),
+          ),
+        ms,
+      ),
+    ),
+  ]);
+}
 
 const ACCENT = '#1B64DA';
 const PAGE_BG = '#F2F4F6';
@@ -61,10 +88,8 @@ function Page() {
     designImageUri,
     imageTransform,
     textLayer,
-    setSelectedColor,
-    addOrderLine,
-    removeOrderLine,
-    setOrderLineQuantity,
+    textTransform,
+    selectedPlacement,
     userKey,
     setAitSession,
   } = useCatalog();
@@ -84,7 +109,6 @@ function Page() {
   const [postcodeModalVisible, setPostcodeModalVisible] = useState(false);
   const [loginLoading, setLoginLoading] = useState(false);
   const address2InputRef = useRef<TextInput>(null);
-  const [editingOrder, setEditingOrder] = useState(false);
   const [agreedPrivacy, setAgreedPrivacy] = useState(false);
   const [agreedTerms, setAgreedTerms] = useState(false);
   const [agreedCustom, setAgreedCustom] = useState(false);
@@ -112,9 +136,30 @@ function Page() {
     setError('');
 
     try {
-      // Step 1: Call Toss SDK appLogin to get authorizationCode
-      console.log('[Order] Starting Toss login...');
-      const { authorizationCode, referrer } = await appLogin();
+      /**
+       * appLogin only works for a mini app registered as a Toss-login
+       * integrated service. When it is not, the call can sit there without
+       * resolving or throwing, and the button stays on 로그인 중... forever
+       * with nothing to tell the customer why. Ask first, and put a ceiling on
+       * the call so a stuck bridge becomes a sentence instead of a spinner.
+       */
+      const integrated = await withTimeout(
+        getIsTossLoginIntegratedService(),
+        SDK_CALL_TIMEOUT_MS,
+        'integration-check',
+      ).catch(() => undefined);
+      if (integrated === false) {
+        throw new Error(
+          '이 미니앱은 아직 토스 로그인 연동 서비스로 등록되어 있지 않아요. 콘솔에서 연동을 신청한 뒤 다시 시도해 주세요.',
+        );
+      }
+
+      console.log('[Order] Starting Toss login...', { integrated });
+      const { authorizationCode, referrer } = await withTimeout(
+        appLogin(),
+        LOGIN_TIMEOUT_MS,
+        'appLogin',
+      );
       console.log('[Order] Got authorization code, referrer:', referrer);
 
       // Step 2: Send to server to exchange for userKey
@@ -189,113 +234,51 @@ function Page() {
     [],
   );
 
+  /**
+   * The print canvas is the printable region itself, at 300 DPI.
+   *
+   * The editor expresses every transform against that region, so the press
+   * file has to use the same frame or the composition means nothing. The print
+   * option's designScale is how large that file gets printed, which is an
+   * instruction to the press, not a change to the raster.
+   */
   const targetSize = useMemo(() => {
-    const baseWidth = 3600;
-    const baseHeight = 4800;
-    const width = Math.round(baseWidth * selectedPrint.designScale);
-    const height = Math.round(baseHeight * selectedPrint.designScale);
-    return { width, height };
-  }, [selectedPrint.designScale]);
-
-  const toggleEditingOrder = () => {
-    const nextEditing = !editingOrder;
-    trackClick('order_option_edit_toggle_click', {
-      next_editing: nextEditing,
-      has_user_key: Boolean(userKey),
-    });
-    setEditingOrder(nextEditing);
-  };
+    const printCm = printSizeByCategory[selectedProduct.category] ?? {
+      widthCm: 28,
+      heightCm: 36,
+    };
+    const CM_PER_INCH = 2.54;
+    const PRINT_DPI = 300;
+    return {
+      width: Math.round((printCm.widthCm / CM_PER_INCH) * PRINT_DPI),
+      height: Math.round((printCm.heightCm / CM_PER_INCH) * PRINT_DPI),
+      widthCm: printCm.widthCm,
+      heightCm: printCm.heightCm,
+    };
+  }, [selectedProduct.category]);
 
   const renderOrderSummaryCard = () => (
     <Card style={styles.summaryCard}>
       <View style={styles.summaryHeader}>
         <Text style={styles.summaryTitle}>{selectedProduct.name}</Text>
-        {editingOrder ? (
-          <View style={styles.editingBadge}>
-            <Text style={styles.editingBadgeText}>수정 중</Text>
-          </View>
-        ) : null}
       </View>
 
-      {editingOrder ? (
-        <View style={styles.editSection}>
-          <Text style={styles.editHint}>
-            버튼으로 색상, 사이즈, 수량을 바로 수정할 수 있어요.
-          </Text>
-          <Text style={styles.editSectionTitle}>색상</Text>
-          <View style={styles.colorOptions}>
-            {selectedProduct.colors.map((color) => (
-              <ColorSwatch
-                key={color}
-                label={color}
-                color={resolveColorValue(color)}
-                selected={selectedColor === color}
-                onPress={() => setSelectedColor(color)}
-              />
-            ))}
-          </View>
-
-          <Text style={styles.editSectionTitle}>사이즈 & 수량</Text>
-          {orderLines.map((line) => (
-            <View key={line.id} style={styles.orderLineRow}>
-              <Text style={styles.orderLineSize}>{line.sizeLabel}</Text>
-              <View style={styles.quantityControl}>
-                <Pressable
-                  onPress={() => {
-                    if (line.quantity > 1) {
-                      setOrderLineQuantity(line.id, line.quantity - 1);
-                    } else if (orderLines.length > 1) {
-                      removeOrderLine(line.id);
-                    }
-                  }}
-                  style={styles.quantityButton}
-                >
-                  <Text style={styles.quantityButtonText}>−</Text>
-                </Pressable>
-                <Text style={styles.quantityValue}>{line.quantity}</Text>
-                <Pressable
-                  onPress={() => setOrderLineQuantity(line.id, line.quantity + 1)}
-                  style={styles.quantityButton}
-                >
-                  <Text style={styles.quantityButtonText}>+</Text>
-                </Pressable>
-              </View>
-            </View>
-          ))}
-
-          <Text style={styles.editSectionTitle}>사이즈 추가</Text>
-          <View style={styles.chipRow}>
-            {selectedProduct.sizes
-              .filter((size) => !orderLines.some((line) => line.sizeLabel === size.label))
-              .map((size) => (
-                <Chip
-                  key={size.label}
-                  label={size.label}
-                  onPress={() => addOrderLine(size.label, 1)}
-                  style={styles.chipSpacing}
-                />
-              ))}
-          </View>
-
-          <PrimaryButton
-            label="옵션 수정 완료"
-            onPress={toggleEditingOrder}
-            style={styles.optionDoneButton}
-          />
-        </View>
-      ) : (
-        <>
-          <Text style={styles.summaryMeta}>
-            {selectedColor} · {sizeSummary || `${totalQuantity}개`}
-            {printBackEnabled ? ' · 뒷면도 프린팅' : ''}
-          </Text>
-          <SecondaryButton
-            label="옵션 수정하기"
-            onPress={toggleEditingOrder}
-            style={styles.optionEditButton}
-          />
-        </>
-      )}
+      {/* Colour, size and quantity are chosen in the editor, beside the design
+          and with the running total in view. This screen shows what was chosen
+          and sends the customer back to change it, rather than carrying a
+          second copy of the same controls. */}
+      <Text style={styles.summaryMeta}>
+        {selectedColor} · {sizeSummary || `${totalQuantity}개`}
+        {printBackEnabled ? ' · 뒷면도 프린팅' : ''}
+      </Text>
+      <SecondaryButton
+        label="옵션 바꾸기"
+        onPress={() => {
+          trackClick('order_change_options_click');
+          navigation.navigate('/editor');
+        }}
+        style={styles.optionEditButton}
+      />
 
       <Text style={styles.summaryMeta}>
         예상 결제 {formatPrice(pricing.total)} (배송비{' '}
@@ -385,8 +368,21 @@ function Page() {
           masterPngUrl: designImageUri,
           targetWidthPx: targetSize.width,
           targetHeightPx: targetSize.height,
+          printAreaCm: {
+            width: targetSize.widthCm,
+            height: targetSize.heightCm,
+          },
+          placement: selectedPlacement,
+          // Which print option was paid for. The size actually printed comes
+          // from imageTransform.scale, which the customer can change after
+          // picking an option — this records what they bought, not the layout.
+          printOptionId: selectedPrint.id,
+          printOptionScale: selectedPrint.designScale,
           textLayer: textLayer.enabled ? textLayer : null,
+          // The customer's own layout. The press file is composed from these,
+          // so they travel with the order and are stored alongside it.
           imageTransform,
+          textTransform,
         },
       };
 
@@ -473,7 +469,7 @@ function Page() {
     return (
       <Screen contentStyle={styles.screenContent}>
         <View style={styles.headerRow}>
-          <Text style={styles.headerTitle}>주문하기</Text>
+          <Text style={styles.headerTitle} accessibilityRole="header">주문하기</Text>
           <Pressable onPress={() => navigation.goBack()} style={styles.headerBack}>
             <Text style={styles.headerBackText}>이전</Text>
           </Pressable>
@@ -507,7 +503,7 @@ function Page() {
   return (
     <Screen contentStyle={styles.screenContent}>
       <View style={styles.headerRow}>
-        <Text style={styles.headerTitle}>주문하기</Text>
+        <Text style={styles.headerTitle} accessibilityRole="header">주문하기</Text>
         <Pressable onPress={() => navigation.goBack()} style={styles.headerBack}>
           <Text style={styles.headerBackText}>이전</Text>
         </Pressable>

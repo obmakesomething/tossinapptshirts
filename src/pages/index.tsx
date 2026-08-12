@@ -28,6 +28,7 @@ import { useCatalog } from '../context/catalog';
 import { faqCategories, faqItems } from '../data/faq';
 import { buildTemplate } from '../data/mockupTemplates';
 import { API_BASE_URL } from '../config';
+import { textRole } from '../utils/textRole';
 import {
   resolveCategoryPreviewColor,
   syncCategoryColorMap,
@@ -156,10 +157,16 @@ function Page() {
   }, [activeCategoryIndex, carouselInterval]);
 
   const goToEditor = () => {
+    // Home follows its own carousel category, so it has to hand the editor the
+    // garment as well as the colour. Sending only the colour left the two
+    // disagreeing whenever the catalogue already held a different garment.
     const editorColor = resolveCategoryPreviewColor(
       selectedCategoryProduct,
       selectedColorByCategory,
     );
+    if (selectedCategoryProduct.id !== selectedProduct.id) {
+      setSelectedProductId(selectedCategoryProduct.id);
+    }
     if (editorColor && editorColor !== selectedColor) {
       setSelectedColor(editorColor);
     }
@@ -229,17 +236,26 @@ function Page() {
         <View style={styles.heroBadgeRow}>
           <Badge variant="info" label="토스 독점" dot={false} />
         </View>
-        <Text style={styles.heroTitle}>
-          나만의 굿즈,{'\n'}AI로 바로 만들어보세요
+        <Text style={styles.heroTitle} accessibilityRole="header">
+          내 사진으로{'\n'}나만의 굿즈 만들기
         </Text>
-        <Text style={styles.heroSubtitle}>
-          티셔츠 · 후드 · 맨투맨 — 디자인부터 결제까지 한 번에
+        <Text style={styles.heroSubtitle} {...textRole('lead')}>
+          사진 한 장만 올리면 옷에 얹어 보여드려요. 마음에 들면 그대로 주문하면
+          돼요.
         </Text>
+        <View style={styles.heroFacts}>
+          <Text style={styles.heroFact}>티셔츠 ₩30,000부터</Text>
+          <Text style={styles.heroFactDivider}>·</Text>
+          <Text style={styles.heroFact}>제작·배송 7~14일</Text>
+        </View>
         <PrimaryButton
-          label="지금 만들어보기"
+          label="사진 올리고 시작하기"
           onPress={goToEditor}
           style={styles.heroCtaButton}
         />
+        <Text style={styles.heroFinePrint}>
+          배송비 3,000원 · 6만원 이상 무료
+        </Text>
       </View>
 
       <View style={styles.homeCard}>
@@ -383,6 +399,7 @@ function Page() {
                         onPress={() => toggleFAQ(item.id)}
                         accessibilityRole="button"
                         accessibilityState={{ expanded }}
+                        style={styles.faqPressable}
                       >
                         <View style={styles.faqRow}>
                           <Text style={styles.faqQ}>Q</Text>
@@ -428,6 +445,26 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: theme.spacing.lg,
   },
+  heroFacts: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.sm,
+    marginBottom: theme.spacing.lg,
+  },
+  heroFact: {
+    ...theme.typography.bodyStrong,
+    color: theme.colors.textPrimary,
+  },
+  heroFactDivider: {
+    ...theme.typography.body,
+    color: theme.colors.textTertiary,
+  },
+  heroFinePrint: {
+    ...theme.typography.caption,
+    color: theme.colors.textTertiary,
+    marginTop: theme.spacing.sm,
+    textAlign: 'center',
+  },
   heroTitle: {
     fontSize: 30,
     lineHeight: 40,
@@ -438,7 +475,7 @@ const styles = StyleSheet.create({
   heroSubtitle: {
     ...theme.typography.body,
     color: theme.colors.textSecondary,
-    marginTop: theme.spacing.md,
+    marginTop: theme.spacing.lg,
     marginBottom: theme.spacing.xl,
   },
   heroCtaButton: {
@@ -637,7 +674,14 @@ const styles = StyleSheet.create({
   faqCard: {
     marginBottom: theme.spacing.sm,
     backgroundColor: theme.colors.surface,
+    // Padding lives on the Pressable below: on the Card it sat outside the
+    // touch target, leaving a 22px-tall tappable strip inside a roomy card.
+    padding: 0,
+  },
+  faqPressable: {
     padding: theme.spacing.lg,
+    minHeight: 44,
+    justifyContent: 'center',
   },
   faqRow: {
     flexDirection: 'row',

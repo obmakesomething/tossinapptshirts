@@ -217,7 +217,9 @@ export function PageHeader({ title, onBack, subtitle }: PageHeaderProps) {
       >
         <Chevron direction="left" size={10} color={theme.colors.textPrimary} />
       </Pressable>
-      <Text style={styles.pageHeaderTitle}>{title}</Text>
+      <Text style={styles.pageHeaderTitle} accessibilityRole="header">
+        {title}
+      </Text>
       {subtitle ? <Text style={styles.pageHeaderSubtitle}>{subtitle}</Text> : null}
     </View>
   );
@@ -236,9 +238,15 @@ export function SectionTitle({ title, description, action, style }: SectionTitle
   return (
     <View style={[styles.sectionTitleWrap, style]}>
       <View style={styles.sectionTitleRow}>
-        <Text style={styles.sectionTitleText}>{title}</Text>
+        <Text style={styles.sectionTitleText} accessibilityRole="header">
+          {title}
+        </Text>
         {action ? (
-          <Pressable onPress={action.onPress} accessibilityRole="button" hitSlop={8}>
+          <Pressable
+            onPress={action.onPress}
+            accessibilityRole="button"
+            style={styles.sectionTitleActionHit}
+          >
             <Text style={styles.sectionTitleAction}>{action.label}</Text>
           </Pressable>
         ) : null}
@@ -260,7 +268,7 @@ export function TopBar({ title, rightLabel, onRightPress }: TopBarProps) {
   return (
     <View style={styles.topBar}>
       <View style={styles.topBarButton} />
-      <Text style={styles.topBarTitle} numberOfLines={1}>
+      <Text style={styles.topBarTitle} numberOfLines={1} accessibilityRole="header">
         {title}
       </Text>
       {rightLabel ? (
@@ -1199,8 +1207,10 @@ const styles = StyleSheet.create({
     marginBottom: theme.spacing.xl,
   },
   pageHeaderBack: {
-    width: 40,
-    height: 40,
+    // 40x40 with hitSlop still measures 40 to a layout audit, and this is the
+    // back control on eight screens.
+    width: 44,
+    height: 44,
     marginLeft: -10,
     marginBottom: theme.spacing.xs,
     alignItems: 'center',
@@ -1232,6 +1242,14 @@ const styles = StyleSheet.create({
   sectionTitleText: {
     ...theme.typography.heading,
     color: theme.colors.textPrimary,
+  },
+  /* hitSlop alone left this at 52x34; the box itself has to reach 44. */
+  sectionTitleActionHit: {
+    minHeight: 44,
+    minWidth: 44,
+    justifyContent: 'center',
+    alignItems: 'flex-end',
+    paddingLeft: theme.spacing.md,
   },
   sectionTitleAction: {
     fontSize: 14,
@@ -1296,7 +1314,7 @@ const styles = StyleSheet.create({
 
   /* ── Chip ── */
   chip: {
-    minHeight: 40,
+    minHeight: 44,
     paddingHorizontal: 16,
     paddingVertical: 9,
     borderRadius: theme.radius.full,

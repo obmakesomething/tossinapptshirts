@@ -66,6 +66,7 @@ export const catalogProducts: CatalogProduct[] = [
       },
       화이트: {
         main: resolveMockup('tshirt_white_front.png'),
+        // Derived from the black photo — see scripts/deriveWhiteBackMockup.js.
         detail: resolveMockup('tshirt_white_back.png'),
       },
     },

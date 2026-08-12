@@ -3,7 +3,6 @@
 import { Route as _DesignsRoute } from '../pages/designs';
 import { Route as _EditorRoute } from '../pages/editor';
 import { Route as _FaqRoute } from '../pages/faq';
-import { Route as _GenerateRoute } from '../pages/generate';
 import { Route as _IndexRoute } from '../pages/';
 import { Route as _InquiryRoute } from '../pages/inquiry';
 import { Route as _MyRoute } from '../pages/my';
@@ -16,14 +15,12 @@ import { Route as _PreviewRoute } from '../pages/preview';
 import { Route as _PrivacyRoute } from '../pages/privacy';
 import { Route as _ProductsRoute } from '../pages/products';
 import { Route as _TermsRoute } from '../pages/terms';
-import { Route as _UploadRoute } from '../pages/upload';
 
 declare module '@granite-js/react-native' {
   interface RegisterScreenInput {
     '/designs': (typeof _DesignsRoute)['_inputType'];
     '/editor': (typeof _EditorRoute)['_inputType'];
     '/faq': (typeof _FaqRoute)['_inputType'];
-    '/generate': (typeof _GenerateRoute)['_inputType'];
     '/': (typeof _IndexRoute)['_inputType'];
     '/inquiry': (typeof _InquiryRoute)['_inputType'];
     '/my': (typeof _MyRoute)['_inputType'];
@@ -36,14 +33,12 @@ declare module '@granite-js/react-native' {
     '/privacy': (typeof _PrivacyRoute)['_inputType'];
     '/products': (typeof _ProductsRoute)['_inputType'];
     '/terms': (typeof _TermsRoute)['_inputType'];
-    '/upload': (typeof _UploadRoute)['_inputType'];
   }
 
   interface RegisterScreen {
     '/designs': (typeof _DesignsRoute)['_outputType'];
     '/editor': (typeof _EditorRoute)['_outputType'];
     '/faq': (typeof _FaqRoute)['_outputType'];
-    '/generate': (typeof _GenerateRoute)['_outputType'];
     '/': (typeof _IndexRoute)['_outputType'];
     '/inquiry': (typeof _InquiryRoute)['_outputType'];
     '/my': (typeof _MyRoute)['_outputType'];
@@ -56,6 +51,5 @@ declare module '@granite-js/react-native' {
     '/privacy': (typeof _PrivacyRoute)['_outputType'];
     '/products': (typeof _ProductsRoute)['_outputType'];
     '/terms': (typeof _TermsRoute)['_outputType'];
-    '/upload': (typeof _UploadRoute)['_outputType'];
   }
 }

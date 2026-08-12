@@ -71,7 +71,9 @@ function Page() {
   return (
     <>
       <Screen contentStyle={styles.screenContent}>
-        <Text style={styles.title}>마이</Text>
+        <Text style={styles.title} accessibilityRole="header">
+          마이
+        </Text>
 
         <Card style={styles.statusCard}>
           {userKey ? (

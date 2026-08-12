@@ -1,12 +1,16 @@
 /**
  * Print resolution assessment.
  *
- * The pipeline no longer upscales artwork, so the file the customer supplies is
- * what gets printed. This tells them, before they pay, whether that file has
- * enough pixels for the print size they picked.
+ * Low-resolution artwork is upscaled by hand after the order — the fulfilment
+ * mail tags which orders need it. So this exists to help a customer pick a
+ * better photo while they still have the album open, not to warn them off the
+ * purchase. A softer, larger photo still prints; it just prints better if they
+ * have a bigger one.
  *
- * Thresholds match server/printPipeline.js so the preview and the QC report
- * never disagree.
+ * The thresholds still match server/printPipeline.js, so the figure a customer
+ * sees and the figure the operator acts on are the same number. Only the tone
+ * differs, because they are different decisions: one is "which photo", the
+ * other is "does this need work before it goes to the press".
  */
 
 const CM_PER_INCH = 2.54;
@@ -33,8 +37,13 @@ export type PrintResolutionInput = {
 };
 
 /**
- * Effective DPI is limited by whichever axis is most stretched, so the smaller
- * of the two ratios is the honest figure.
+ * Effective DPI of the artwork at the size it is printed.
+ *
+ * The artwork is contained inside the print area, keeping its own aspect — the
+ * same fit server/printLayout.js uses to compose the press file. Dividing by
+ * the print area's own dimensions instead assumes the image is stretched to
+ * fill it, and under-reports whenever the two aspects differ: a square photo
+ * on a 28x36cm tee came out 145 DPI against the 186 it actually prints at.
  */
 export function calculateEffectiveDpi({
   pixelWidth,
@@ -44,11 +53,22 @@ export function calculateEffectiveDpi({
 }: PrintResolutionInput): number | null {
   if (!pixelWidth || !pixelHeight || !printWidthCm || !printHeightCm) return null;
 
-  const widthInches = printWidthCm / CM_PER_INCH;
-  const heightInches = printHeightCm / CM_PER_INCH;
-  if (widthInches <= 0 || heightInches <= 0) return null;
+  const areaWidthInches = printWidthCm / CM_PER_INCH;
+  const areaHeightInches = printHeightCm / CM_PER_INCH;
+  if (areaWidthInches <= 0 || areaHeightInches <= 0) return null;
 
-  return Math.round(Math.min(pixelWidth / widthInches, pixelHeight / heightInches));
+  const imageAspect = pixelWidth / pixelHeight;
+  const areaAspect = areaWidthInches / areaHeightInches;
+  const printedWidthInches =
+    areaAspect > imageAspect ? areaHeightInches * imageAspect : areaWidthInches;
+  const printedHeightInches = printedWidthInches / imageAspect;
+
+  return Math.round(
+    Math.min(
+      pixelWidth / printedWidthInches,
+      pixelHeight / printedHeightInches,
+    ),
+  );
 }
 
 export function evaluatePrintResolution(
@@ -69,8 +89,8 @@ export function evaluatePrintResolution(
     return {
       dpi,
       level: 'poor',
-      title: '해상도가 낮아 깨져 보일 수 있어요',
-      description: `약 ${dpi}DPI예요. 더 큰 이미지를 쓰거나 인쇄 크기를 줄이면 선명해져요.`,
+      title: '더 큰 사진이 있으면 좋아요',
+      description: `지금 사진은 약 ${dpi}DPI예요. 더 큰 사진으로 바꾸거나 인쇄 크기를 줄이면 훨씬 또렷해져요.`,
     };
   }
 
@@ -78,8 +98,8 @@ export function evaluatePrintResolution(
     return {
       dpi,
       level: 'low',
-      title: '인쇄하면 조금 흐릴 수 있어요',
-      description: `약 ${dpi}DPI예요. 그대로 진행해도 되지만 더 큰 이미지를 쓰면 또렷해져요.`,
+      title: '이대로도 괜찮아요',
+      description: `약 ${dpi}DPI예요. 더 큰 사진이 있다면 조금 더 또렷하게 나와요.`,
     };
   }
 

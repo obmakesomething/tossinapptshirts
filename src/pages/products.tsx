@@ -1,23 +1,21 @@
 import { createRoute } from '@granite-js/react-native';
 import React from 'react';
-import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Image, StyleSheet, Text, View } from 'react-native';
 import {
   BOTTOM_TAB_HEIGHT,
   BottomTabBar,
   type BottomTabKey,
   Card,
-  ColorSwatch,
   PageHeader,
   PrimaryButton,
   Screen,
   theme,
 } from '../components/ui';
 import { useCatalog } from '../context/catalog';
-import { resolveColorValue } from '../data/colorMap';
+import { printSizeByCategory } from '../data/mockupTemplates';
+import { textRole } from '../utils/textRole';
 import { trackClick, trackScreenView } from '../utils/analytics';
 
-const ACCENT = '#1B64DA';
-const FILL_SOFT = '#F2F4F6';
 
 export const Route = createRoute('/products', {
   component: Page,
@@ -31,10 +29,6 @@ function Page() {
     setSelectedProductId,
     setSelectedColor,
   } = useCatalog();
-  const [expandedProductId, setExpandedProductId] = React.useState<
-    string | null
-  >(null);
-  const [tempColor, setTempColor] = React.useState<string>('');
   const categoryOrder = ['티셔츠', '후드', '맨투맨', '에코백'];
   const grouped = products.reduce<Record<string, typeof products>>(
     (acc, product) => {
@@ -59,31 +53,14 @@ function Page() {
     });
   }, []);
 
-  const handleProductClick = (product: (typeof products)[0]) => {
-    const nextAction = expandedProductId === product.id ? 'collapse' : 'expand';
-    trackClick('products_product_card_click', {
+  const handleStartWith = (product: (typeof products)[0]) => {
+    trackClick('products_start_with_product_click', {
       product_id: product.id,
       category: product.category,
-      action: nextAction,
     });
-    if (expandedProductId === product.id) {
-      setExpandedProductId(null);
-    } else {
-      setExpandedProductId(product.id);
-      setTempColor(product.colors[0] ?? '');
-    }
-  };
-
-  const handleConfirm = () => {
-    if (expandedProductId && tempColor) {
-      trackClick('products_confirm_selection_click', {
-        product_id: expandedProductId,
-        color: tempColor,
-      });
-      setSelectedProductId(expandedProductId);
-      setSelectedColor(tempColor);
-      navigation.goBack();
-    }
+    setSelectedProductId(product.id);
+    setSelectedColor(product.colors[0] ?? '');
+    navigation.navigate('/editor');
   };
 
   const onSelectTab = (key: BottomTabKey) => {
@@ -95,62 +72,47 @@ function Page() {
   return (
     <>
     <Screen contentStyle={styles.screenContent}>
-      <PageHeader title="상품 선택" onBack={() => navigation.goBack()} />
+      <PageHeader title="상품" onBack={() => navigation.goBack()} />
 
-      <Text style={styles.subtitle}>어떤 제품으로 만들어 볼까요?</Text>
+      <Text style={styles.subtitle} {...textRole('lead')}>
+        모두 Printstar 제품이에요. 색상과 사이즈는 사진을 올린 뒤 고르면 돼요.
+      </Text>
 
       <View style={styles.list}>
         {categories.map((category) => (
           <View key={category} style={styles.categorySection}>
             <Text style={styles.categoryTitle}>{category}</Text>
             {(grouped[category] ?? []).map((product) => {
-              const isExpanded = expandedProductId === product.id;
               return (
                 <View key={product.id} style={styles.cardPressable}>
-                  <Pressable onPress={() => handleProductClick(product)}>
-                    <Card style={[styles.card, selectedProduct.id === product.id && styles.cardSelected, isExpanded && styles.cardExpanded]}>
+                  <Card style={styles.card}>
+                    <View style={styles.cardTop}>
                       <Image
                         source={product.mainImage}
                         style={styles.thumbnail}
                         resizeMode="contain"
                       />
                       <View style={styles.cardBody}>
-                        <Text style={styles.cardTitle}>{product.name}</Text>
+                        <Text style={styles.cardTitle}>
+                          {product.name} {product.priceText}
+                        </Text>
+                        <Text style={styles.cardMeta}>{product.modelName}</Text>
                         <Text style={styles.cardMeta}>
-                          색상 {product.colors.length} · 사이즈{' '}
-                          {product.sizes.length}
+                          {product.colors.join('·')} · {product.sizes[0]?.label}~
+                          {product.sizes[product.sizes.length - 1]?.label}
+                        </Text>
+                        <Text style={styles.cardMeta}>
+                          인쇄 영역 약 {printSizeByCategory[product.category]?.widthCm ?? 28}×
+                          {printSizeByCategory[product.category]?.heightCm ?? 36}cm
                         </Text>
                       </View>
-                    </Card>
-                  </Pressable>
-                  {isExpanded && (
-                    <View style={styles.colorSection}>
-                      <Text style={styles.colorTitle}>어떤 색상으로 할까요?</Text>
-                      <View style={styles.colorRow}>
-                        {product.colors.map((color) => (
-                          <ColorSwatch
-                            key={color}
-                            label={color}
-                            color={resolveColorValue(color)}
-                            selected={tempColor === color}
-                            onPress={() => {
-                              trackClick('products_color_swatch_click', {
-                                product_id: product.id,
-                                color,
-                              });
-                              setTempColor(color);
-                            }}
-                          />
-                        ))}
-                      </View>
-                      <PrimaryButton
-                        label="이 제품으로 할게요"
-                        onPress={handleConfirm}
-                        disabled={!tempColor}
-                        style={styles.confirmButton}
-                      />
                     </View>
-                  )}
+                    <PrimaryButton
+                      label="이 옷으로 만들기"
+                      onPress={() => handleStartWith(product)}
+                      style={styles.startButton}
+                    />
+                  </Card>
                 </View>
               );
             })}
@@ -210,21 +172,12 @@ const styles = StyleSheet.create({
     marginBottom: theme.spacing.md,
   },
   card: {
-    flexDirection: 'row',
-    alignItems: 'center',
     backgroundColor: '#FFFFFF',
     shadowColor: '#191F28',
     shadowOpacity: 0.05,
     shadowRadius: 12,
     shadowOffset: { width: 0, height: 3 },
     elevation: 6,
-  },
-  cardSelected: {
-    borderColor: ACCENT,
-    backgroundColor: FILL_SOFT,
-  },
-  cardExpanded: {
-    borderColor: ACCENT,
   },
   thumbnail: {
     width: 72,
@@ -238,29 +191,9 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 6 },
     elevation: 8,
   },
-  colorSection: {
-    padding: theme.spacing.md,
-    backgroundColor: FILL_SOFT,
-    borderRadius: theme.radius.md,
-    marginTop: theme.spacing.sm,
-    borderWidth: 1,
-    borderColor: '#E5E8EB',
-  },
-  colorTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#191F28',
-    lineHeight: 20,
-    marginBottom: theme.spacing.sm,
-  },
-  colorRow: {
+  cardTop: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    marginBottom: theme.spacing.md,
-  },
-  confirmButton: {
-    marginTop: theme.spacing.xs,
-    backgroundColor: ACCENT,
+    alignItems: 'center',
   },
   cardBody: {
     flex: 1,
@@ -273,5 +206,8 @@ const styles = StyleSheet.create({
   cardMeta: {
     ...theme.typography.caption,
     color: '#4E5968',
+  },
+  startButton: {
+    marginTop: theme.spacing.md,
   },
 });

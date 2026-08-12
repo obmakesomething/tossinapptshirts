@@ -1,0 +1,104 @@
+{
+  "schema": "fga-stage-rules-v1",
+  "status": "guessed",
+  "note": "Stages for the 굿즈 Gpt Apps-in-Toss mini app: a print-on-demand journey that runs photo -> garment -> review -> pay -> fulfilment. Routes were read off src/router.gen.ts, so the route list is app truth; the stage each route belongs to is authored judgement and has not been confirmed by the product owner. The matcher substring-tests `route + \" \" + routeKey`, so every rule is anyOf — an exact \"/\" never fires — and order is what keeps /order-complete, /order-detail and /orders from being swallowed by /order.",
+  "rules": [
+    {
+      "anyOf": [
+        "order-complete"
+      ],
+      "stage": "Confirmation"
+    },
+    {
+      "anyOf": [
+        "order-detail"
+      ],
+      "stage": "Post-purchase"
+    },
+    {
+      "anyOf": [
+        "orders"
+      ],
+      "stage": "Post-purchase"
+    },
+    {
+      "anyOf": [
+        "order"
+      ],
+      "stage": "Checkout / Payment"
+    },
+    {
+      "anyOf": [
+        "preview"
+      ],
+      "stage": "Review Design"
+    },
+    {
+      "anyOf": [
+        "editor"
+      ],
+      "stage": "Design"
+    },
+    {
+      "anyOf": [
+        "products"
+      ],
+      "stage": "Browse Garments"
+    },
+    {
+      "anyOf": [
+        "designs"
+      ],
+      "stage": "Saved Designs"
+    },
+    {
+      "anyOf": [
+        "inquiry",
+        "faq"
+      ],
+      "stage": "Support / Contact"
+    },
+    {
+      "anyOf": [
+        "terms",
+        "privacy"
+      ],
+      "stage": "Legal"
+    },
+    {
+      "anyOf": [
+        "/my"
+      ],
+      "stage": "Account"
+    },
+    {
+      "anyOf": [
+        "home"
+      ],
+      "stage": "Entry"
+    },
+    {
+      "anyOf": [
+        "open"
+      ],
+      "stage": "Entry"
+    }
+  ],
+  "sourceProvenance": {
+    "repo": "obmakesomething/tossinapptshirts",
+    "commit": "e6ae64bd",
+    "ref": "feat/drop-ai-and-print-the-approved-layout",
+    "extractedAt": "2026-08-07T00:00:00+09:00"
+  },
+  "packExtraction": {
+    "schema": "fga-pack-extraction-metadata-v1",
+    "status": "INFERRED",
+    "requiresHumanConfirm": true,
+    "role": "stageRules",
+    "finalVerifierEligible": false,
+    "canClaimVerifiedFixed": false
+  },
+  "requiresHumanConfirm": true,
+  "finalVerifierEligible": false,
+  "canClaimVerifiedFixed": false
+}

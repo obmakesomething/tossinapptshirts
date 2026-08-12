@@ -7,24 +7,16 @@ const rateLimit = require('express-rate-limit');
 const nodemailer = require('nodemailer');
 const PDFDocument = require('pdfkit');
 const { isBlobConfigured, uploadToBlob } = require('./blobStorage');
-const OpenAI = require('openai');
 const fs = require('fs');
 const fsp = require('fs/promises');
 const path = require('path');
 const https = require('https');
 const axios = require('axios');
-const { runPrintPipeline } = require('./printPipeline');
-const generationsRouter = require('./generations');
+const { runPrintPipeline, summarizeQcForOperator } = require('./printPipeline');
 const {
   createAitSessionEnvelope,
   createDisconnectAuthVerifier,
 } = require('./lib/aitPlatform');
-const { buildPromptDraft } = require('./promptDraftBuilder');
-const {
-  mapGenerationRequestToDraftInput,
-  buildGenerationModelPrompt,
-  buildBlockedGenerationError,
-} = require('./generationPolicyBridge');
 const {
   getPool,
   initializeDatabase,
@@ -235,8 +227,6 @@ app.use((req, res, next) => {
   next();
 });
 const IMAGE_PREFIX = process.env.BLOB_IMAGE_PREFIX || 'uploads';
-const OPENAI_IMAGE_MODEL = process.env.OPENAI_IMAGE_MODEL || 'gpt-image-1';
-const OPENAI_IMAGE_QUALITY = process.env.OPENAI_IMAGE_QUALITY || 'medium';
 const ORDER_OUTPUT_DIR = process.env.ORDER_OUTPUT_DIR || path.join('/tmp', 'order-output');
 const KAKAO_WEBHOOK_URL = process.env.KAKAO_WEBHOOK_URL || '';
 const KAKAO_WEBHOOK_TOKEN = process.env.KAKAO_WEBHOOK_TOKEN || '';
@@ -291,17 +281,6 @@ function getHttpsAgent() {
     console.error('[mTLS] Error stack:', error.stack);
     return null;
   }
-}
-
-let openaiClient;
-function getOpenAIClient() {
-  if (openaiClient) return openaiClient;
-  const apiKey = process.env.OPENAI_API_KEY;
-  if (!apiKey) {
-    throw new Error('OPENAI_API_KEY is required for image generation.');
-  }
-  openaiClient = new OpenAI({ apiKey });
-  return openaiClient;
 }
 
 
@@ -747,7 +726,6 @@ app.get('/health', async (_req, res) => {
       pdfFonts: fs.existsSync(
         path.join(__dirname, '..', 'assets', 'fonts', 'NotoSansKR-Regular.ttf'),
       ),
-      openai: Boolean(process.env.OPENAI_API_KEY),
       smtp: Boolean(process.env.SMTP_USER && process.env.SMTP_PASS),
       db: databaseConfigured ? databaseHealthy : true,
       databaseConfigured,
@@ -763,333 +741,6 @@ app.get('/health', async (_req, res) => {
   res.status(health.ok ? 200 : 503).json(health);
 });
 
-// Job-based generation API
-app.use('/api/generations', strictLimiter, generationsRouter);
-
-app.post('/v1/prompts/build-draft', strictLimiter, async (req, res) => {
-  try {
-    const draft = buildPromptDraft(req.body || {});
-    logEvent('info', 'prompt_draft_built', {
-      requestId: req.requestId,
-      decision: draft.decision,
-      reasonCode: draft.reason_code,
-      reviewLane: draft.review_lane,
-      riskScore: draft.risk_score,
-      templateId: draft.template_id,
-    });
-    res.json(draft);
-  } catch (error) {
-    logEvent('error', 'prompt_draft_build_failed', {
-      requestId: req.requestId,
-      ...formatError(error),
-    });
-    res
-      .status(500)
-      .json({ error: error.message || 'Failed to build prompt draft.', requestId: req.requestId });
-  }
-});
-
-app.post('/v1/images/upload', strictLimiter, async (req, res) => {
-  try {
-    const { filename, dataUrl, base64, contentType, returnBase64 } = req.body || {};
-    let buffer = null;
-    let mimeType = contentType || 'image/jpeg';
-
-    if (dataUrl) {
-      const decoded = decodeDataUrl(dataUrl);
-      if (!decoded) return res.status(400).json({ error: 'Invalid dataUrl.' });
-      buffer = decoded.buffer;
-      mimeType = decoded.mimeType || mimeType;
-    } else if (base64) {
-      buffer = Buffer.from(base64, 'base64');
-    } else {
-      return res.status(400).json({ error: 'No image payload provided.' });
-    }
-
-    const safeName = path
-      .parse(filename || 'upload')
-      .name.replace(/[^a-zA-Z0-9-_]/g, '');
-    const extension = mimeType.includes('png')
-      ? 'png'
-      : mimeType.includes('webp')
-        ? 'webp'
-        : 'jpg';
-    const key = `${IMAGE_PREFIX}/${Date.now()}-${Math.random()
-      .toString(36)
-      .slice(2)}-${safeName || 'upload'}.${extension}`;
-    const url = await uploadToStorage({ key, body: buffer, contentType: mimeType });
-    logEvent('info', 'image_upload_result', {
-      requestId: req.requestId,
-      url,
-      bytes: buffer.length,
-      mimeType,
-      returnBase64: !!returnBase64,
-    });
-
-    const result = { url, requestId: req.requestId };
-    if (returnBase64) {
-      result.dataUrl = `data:${mimeType};base64,${buffer.toString('base64')}`;
-    }
-    res.json(result);
-  } catch (error) {
-    logEvent('error', 'image_upload_failed', {
-      requestId: req.requestId,
-      ...formatError(error),
-    });
-    res.status(500).json({ error: error.message || 'Upload failed.', requestId: req.requestId });
-  }
-});
-
-app.post('/v1/images/generate', strictLimiter, async (req, res) => {
-  try {
-    const {
-      prompt,
-      numberOfImages = 1,
-      aspectRatio = '1:1',
-      returnBase64,
-      style_preset = 'minimal',
-    } = req.body || {};
-    if (!prompt) return res.status(400).json({ error: 'Prompt is required.' });
-    const count = Math.max(1, Math.min(4, Number(numberOfImages) || 1));
-
-    const draftInput = mapGenerationRequestToDraftInput({
-      ...req.body,
-      prompt,
-      style_preset,
-      aspectRatio,
-    });
-    const policyDraft = buildPromptDraft(draftInput);
-    if (policyDraft.decision === 'BLOCK') {
-      return res.status(400).json(buildBlockedGenerationError(policyDraft));
-    }
-    const enhancedPrompt = buildGenerationModelPrompt({
-      policyPrompt: policyDraft.imagen_prompt,
-      stylePreset: style_preset,
-    });
-    const size =
-      aspectRatio === '3:4'
-        ? '1024x1536'
-        : aspectRatio === '4:3'
-          ? '1536x1024'
-          : '1024x1024';
-
-    const client = getOpenAIClient();
-    logEvent('info', 'image_generate_request', {
-      requestId: req.requestId,
-      provider: 'openai',
-      model: OPENAI_IMAGE_MODEL,
-      quality: OPENAI_IMAGE_QUALITY,
-      aspectRatio,
-      size,
-      count,
-      originalPrompt: prompt,
-      enhancedPrompt: enhancedPrompt,
-      reasonCode: policyDraft.reason_code,
-      reviewLane: policyDraft.review_lane,
-      riskScore: policyDraft.risk_score,
-      promptLength: enhancedPrompt.length,
-      promptSnippet: enhancedPrompt.slice(0, 120),
-      returnBase64: !!returnBase64,
-    });
-
-    const response = await client.images.generate({
-      model: OPENAI_IMAGE_MODEL,
-      prompt: enhancedPrompt,
-      n: count,
-      size,
-      quality: OPENAI_IMAGE_QUALITY,
-      background: 'opaque',
-      output_format: 'png',
-    });
-
-    const results = [];
-    const generated = response?.data || [];
-    for (const item of generated) {
-      let buffer = null;
-      if (item?.b64_json) {
-        buffer = Buffer.from(item.b64_json, 'base64');
-      } else if (item?.url) {
-        const imgRes = await fetch(item.url);
-        if (!imgRes.ok) continue;
-        buffer = Buffer.from(await imgRes.arrayBuffer());
-      }
-      if (!buffer) continue;
-
-      const mimeType = 'image/png';
-      const key = `${IMAGE_PREFIX}/openai-${Date.now()}-${Math.random().toString(36).slice(2)}.png`;
-      const url = await uploadToStorage({ key, body: buffer, contentType: mimeType });
-      const result = { url, mimeType };
-      if (returnBase64) {
-        result.dataUrl = `data:${mimeType};base64,${buffer.toString('base64')}`;
-      }
-      results.push(result);
-    }
-    if (!results.length) {
-      throw new Error('image_generate_empty');
-    }
-
-    logEvent('info', 'image_generate_result', {
-      requestId: req.requestId,
-      imageCount: results.length,
-      firstUrl: results[0]?.url || '',
-    });
-    res.json({ images: results, aspectRatio, requestId: req.requestId });
-  } catch (error) {
-    logEvent('error', 'image_generate_failed', {
-      requestId: req.requestId,
-      status: error.status,
-      ...formatError(error),
-    });
-    res.status(500).json({ error: error.message || 'Image generation failed.', requestId: req.requestId });
-  }
-});
-
-
-// Image crop endpoint
-app.post('/v1/images/crop', strictLimiter, async (req, res) => {
-  try {
-    const { dataUrl, crop, returnBase64 } = req.body || {};
-
-    if (!dataUrl) {
-      return res.status(400).json({ error: 'dataUrl is required.' });
-    }
-    if (!crop || typeof crop.x !== 'number' || typeof crop.y !== 'number' ||
-      typeof crop.width !== 'number' || typeof crop.height !== 'number') {
-      return res.status(400).json({ error: 'crop object with x, y, width, height is required.' });
-    }
-
-    logEvent('info', 'crop_request', {
-      requestId: req.requestId,
-      crop,
-      returnBase64: !!returnBase64,
-    });
-
-    const decoded = decodeDataUrl(dataUrl);
-    if (!decoded) {
-      return res.status(400).json({ error: 'Invalid dataUrl.' });
-    }
-
-    const sharp = require('sharp');
-
-    // Crop the image
-    const croppedBuffer = await sharp(decoded.buffer)
-      .extract({
-        left: Math.round(crop.x),
-        top: Math.round(crop.y),
-        width: Math.round(crop.width),
-        height: Math.round(crop.height),
-      })
-      .png()
-      .toBuffer();
-
-    // Upload to storage
-    const key = `${IMAGE_PREFIX}/${Date.now()}-${Math.random().toString(36).slice(2)}-cropped.png`;
-    const url = await uploadToStorage({ key, body: croppedBuffer, contentType: 'image/png' });
-
-    logEvent('info', 'crop_result', {
-      requestId: req.requestId,
-      url,
-      bytes: croppedBuffer.length,
-    });
-
-    const result = { url, requestId: req.requestId };
-    if (returnBase64) {
-      result.dataUrl = `data:image/png;base64,${croppedBuffer.toString('base64')}`;
-    }
-    res.json(result);
-  } catch (error) {
-    logEvent('error', 'crop_failed', {
-      requestId: req.requestId,
-      ...formatError(error),
-    });
-    res.status(500).json({ error: error.message || 'Crop failed.', requestId: req.requestId });
-  }
-});
-
-// Style transfer endpoint using OpenAI DALL-E
-app.post('/v1/images/style-transfer', strictLimiter, async (req, res) => {
-  try {
-    const { dataUrl, style, returnBase64 } = req.body || {};
-
-    if (!dataUrl) {
-      return res.status(400).json({ error: 'dataUrl is required.' });
-    }
-    if (!style) {
-      return res.status(400).json({ error: 'style is required.' });
-    }
-    const decoded = decodeDataUrl(dataUrl);
-    if (!decoded) {
-      return res.status(400).json({ error: 'Invalid dataUrl.' });
-    }
-
-    logEvent('info', 'style_transfer_request', {
-      requestId: req.requestId,
-      style,
-      returnBase64: !!returnBase64,
-      dataUrlLength: dataUrl.length,
-    });
-
-    const stylePrompts = {
-      'watercolor': 'watercolor painting style, soft and flowing watercolor textures, gentle color blending, artistic brush strokes, on white background',
-      'sketch': 'pencil sketch style, hand-drawn lines, black and white illustration, artistic sketching, on white background',
-      'cartoon': 'cartoon illustration style, bold outlines, vibrant colors, comic book art style, on white background',
-      'pixel': '8-bit pixel art style, retro video game graphics, pixelated design, digital pixel aesthetic, on white background',
-      'oil': 'oil painting style, thick paint texture, visible brush strokes, classical painting technique, on white background',
-      'minimal': 'minimal line art style, simple clean lines, minimalist design, elegant simplicity, on white background',
-    };
-
-    const styleDescription = stylePrompts[style] || stylePrompts['watercolor'];
-    const enhancedPrompt = `Transform this image into ${styleDescription}. IMPORTANT: Keep the exact same subject, shape, composition, and layout as the original image. Only change the artistic style and rendering technique. Do not add, remove, or modify any elements from the original image.`;
-
-    const client = getOpenAIClient();
-    const inputFile = await OpenAI.toFile(decoded.buffer, 'input.png', {
-      type: decoded.mimeType || 'image/png',
-    });
-    const response = await client.images.edit({
-      model: OPENAI_IMAGE_MODEL,
-      image: inputFile,
-      prompt: enhancedPrompt,
-      n: 1,
-      size: '1024x1024',
-      quality: OPENAI_IMAGE_QUALITY,
-      background: 'opaque',
-    });
-
-    const b64 = response?.data?.[0]?.b64_json;
-    if (!b64) {
-      throw new Error('style_transfer_empty');
-    }
-
-    const styledBuffer = Buffer.from(b64, 'base64');
-
-    const key = `${IMAGE_PREFIX}/${Date.now()}-${Math.random().toString(36).slice(2)}-styled.png`;
-    const url = await uploadToStorage({
-      key,
-      body: styledBuffer,
-      contentType: 'image/png',
-    });
-
-    logEvent('info', 'style_transfer_result', {
-      requestId: req.requestId,
-      style,
-      url,
-      bytes: styledBuffer.length,
-    });
-
-    const result = { url, requestId: req.requestId };
-    if (returnBase64) {
-      result.dataUrl = `data:image/png;base64,${styledBuffer.toString('base64')}`;
-    }
-
-    res.json(result);
-  } catch (error) {
-    logEvent('error', 'style_transfer_failed', {
-      requestId: req.requestId,
-      ...formatError(error),
-    });
-    res.status(500).json({ error: error.message || 'Style transfer failed.', requestId: req.requestId });
-  }
-});
 
 app.post('/v1/print-files/process', strictLimiter, async (req, res) => {
   let workDirToCleanup = null;
@@ -1108,6 +759,9 @@ app.post('/v1/print-files/process', strictLimiter, async (req, res) => {
       target_width_px: payload.target_width_px,
       target_height_px: payload.target_height_px,
       output_dir: payload.output_dir || ORDER_OUTPUT_DIR,
+      text_layer: payload.text_layer || null,
+      image_transform: payload.image_transform || null,
+      text_transform: payload.text_transform || null,
     });
     const persisted = await persistPipelineArtifacts({ orderId, pipelineResult: result });
     workDirToCleanup = derivePipelineWorkDir(result);
@@ -1206,9 +860,10 @@ app.post('/v1/orders/submit', strictLimiter, async (req, res) => {
 
       if (masterPath) {
         try {
-          // Default upscaling dimensions for apparel printing (A4-sized print)
-          const targetWidth = order.pipeline?.targetWidthPx || 2480; // A4 width at 300 DPI
-          const targetHeight = order.pipeline?.targetHeightPx || 3508; // A4 height at 300 DPI
+          // The print canvas is the garment's printable region at 300 DPI.
+          // A t-shirt's 28x36cm is the fallback when the client did not say.
+          const targetWidth = order.pipeline?.targetWidthPx || 3307;
+          const targetHeight = order.pipeline?.targetHeightPx || 4252;
 
           pipelineResult = await runPrintPipeline({
             master_png_path: masterPath,
@@ -1218,6 +873,7 @@ app.post('/v1/orders/submit', strictLimiter, async (req, res) => {
             output_dir: ORDER_OUTPUT_DIR,
             text_layer: order.pipeline?.textLayer || order.items?.[0]?.text || null,
             image_transform: order.pipeline?.imageTransform || null,
+            text_transform: order.pipeline?.textTransform || null,
           });
           pipelineResult = await persistPipelineArtifacts({ orderId, pipelineResult });
 
@@ -2693,11 +2349,18 @@ app.post('/v1/payment/execute', strictLimiter, async (req, res) => {
           }
 
           if (adminTo) {
+            const qcSummary = summarizeQcForOperator(pipelineResult);
             await mailer.sendMail({
               from: process.env.SMTP_FROM || process.env.SMTP_USER,
               to: adminTo,
-              subject: `🎽 결제 완료: ${orderData.orderId} - ${customerName}`,
-              text: `주문번호: ${orderData.orderId}\n결제금액: ${data.success?.paidAmount}원\n결제수단: ${data.success?.payMethod}`,
+              subject: `${qcSummary.subjectTag}🎽 결제 완료: ${orderData.orderId} - ${customerName}`,
+              text: [
+                `주문번호: ${orderData.orderId}`,
+                `결제금액: ${data.success?.paidAmount}원`,
+                `결제수단: ${data.success?.payMethod}`,
+                '',
+                qcSummary.body,
+              ].join('\n'),
               attachments,
             });
           }
@@ -2919,8 +2582,6 @@ async function startServer() {
       port: PORT,
       blobEnabled: isStorageEnabled(),
       imagePrefix: IMAGE_PREFIX,
-      openaiModel: OPENAI_IMAGE_MODEL,
-      openaiQuality: OPENAI_IMAGE_QUALITY,
       databaseEnabled: Boolean(process.env.DATABASE_URL),
       rateLimitStore: rateLimitStoreKind(),
       kakaoApiEnabled: Boolean(process.env.KAKAO_REST_API_KEY),

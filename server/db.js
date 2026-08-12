@@ -161,11 +161,17 @@ async function initializeDatabase() {
         memo TEXT,
         items JSONB NOT NULL DEFAULT '[]'::jsonb,
         pricing JSONB NOT NULL DEFAULT '{}'::jsonb,
+        design JSONB NOT NULL DEFAULT '{}'::jsonb,
         tracking_carrier VARCHAR(64),
         tracking_number VARCHAR(64),
         created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
         updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
       )
+    `);
+    // The table predates the design column, so an existing deployment needs it
+    // added rather than only declared in CREATE TABLE.
+    await pool.query(`
+      ALTER TABLE orders ADD COLUMN IF NOT EXISTS design JSONB NOT NULL DEFAULT '{}'::jsonb
     `);
     await pool.query(`
       CREATE INDEX IF NOT EXISTS idx_orders_user_id ON orders(user_id)

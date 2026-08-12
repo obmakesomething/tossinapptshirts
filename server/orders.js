@@ -59,6 +59,29 @@ function resolvePrintSides(items = []) {
 }
 
 /**
+ * The composition the press file is built from.
+ *
+ * Position, size and rotation are the customer's own edits, expressed against
+ * the printable region. They are stored with the order so the print file can
+ * be rebuilt exactly — for a reprint, a claim, or a change of printer.
+ */
+function buildDesignSpec(order) {
+  const pipeline = order.pipeline || {};
+  return {
+    master_png_url: pipeline.masterPngUrl || null,
+    placement: pipeline.placement || 'front',
+    print_area_cm: pipeline.printAreaCm || null,
+    target_width_px: pipeline.targetWidthPx || null,
+    target_height_px: pipeline.targetHeightPx || null,
+    print_option_id: pipeline.printOptionId || null,
+    print_option_scale: pipeline.printOptionScale ?? null,
+    image_transform: pipeline.imageTransform || null,
+    text_layer: pipeline.textLayer || null,
+    text_transform: pipeline.textTransform || null,
+  };
+}
+
+/**
  * Persist a submitted order.
  *
  * Upserts on order_id so a client retry of the same order does not duplicate.
@@ -79,11 +102,11 @@ async function saveOrder({ order, userId }) {
     `INSERT INTO orders (
        order_id, user_id, status, product_name, color, lines, print_sides,
        total_amount, quantity, recipient, phone, email, address, memo,
-       items, pricing, created_at, updated_at
+       items, pricing, design, created_at, updated_at
      ) VALUES (
        $1, $2, $3, $4, $5, $6, $7,
        $8, $9, $10, $11, $12, $13, $14,
-       $15, $16, NOW(), NOW()
+       $15, $16, $17, NOW(), NOW()
      )
      ON CONFLICT (order_id) DO UPDATE SET
        user_id = COALESCE(EXCLUDED.user_id, orders.user_id),
@@ -100,6 +123,7 @@ async function saveOrder({ order, userId }) {
        memo = EXCLUDED.memo,
        items = EXCLUDED.items,
        pricing = EXCLUDED.pricing,
+       design = EXCLUDED.design,
        updated_at = NOW()
      RETURNING order_id, created_at`,
     [
@@ -119,6 +143,9 @@ async function saveOrder({ order, userId }) {
       shipping.memo || null,
       JSON.stringify(items),
       JSON.stringify(order.pricing || {}),
+      // The layout the customer approved. Without it a reprint would have to
+      // guess where the design went, and the press file could not be rebuilt.
+      JSON.stringify(buildDesignSpec(order)),
     ],
   );
 

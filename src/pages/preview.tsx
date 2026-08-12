@@ -1,4 +1,4 @@
-import { share, getTossShareLink } from '@apps-in-toss/framework';
+import { share, getTossShareLink } from '@apps-in-toss/native-modules';
 import { createRoute } from '@granite-js/react-native';
 import React, { useState } from 'react';
 import { Alert, Image, ScrollView, StyleSheet, Text, View } from 'react-native';
@@ -16,15 +16,13 @@ import {
 } from '../components/ui';
 import { useCatalog } from '../context/catalog';
 import { resolveColorValue } from '../data/colorMap';
-import { buildTemplate } from '../data/mockupTemplates';
+import { buildTemplate, printSizeByCategory } from '../data/mockupTemplates';
 import { calcPricing } from '../data/pricing';
 import { formatPrice } from '../utils/format';
 import {
   type PrintResolutionResult,
   evaluatePrintResolution,
 } from '../utils/printResolution';
-import { getGarmentCategory, getGarmentMeasurements } from '../data/garmentSizes';
-import { calculatePrintSize } from '../utils/printSizeCalculator';
 
 const ACCENT = '#1B64DA';
 const PAGE_BG = '#F2F4F6';
@@ -69,7 +67,6 @@ function Page() {
   });
 
   const designUri = frontDesignImageUri ?? backDesignImageUri;
-  const sizeLabel = orderLines[0]?.sizeLabel ?? selectedProduct.sizes[0]?.label ?? '';
 
   React.useEffect(() => {
     if (!designUri) {
@@ -77,15 +74,28 @@ function Page() {
       return;
     }
     let cancelled = false;
-    const measurements = getGarmentMeasurements(
-      getGarmentCategory(selectedProduct.name),
-      sizeLabel,
-    );
-    if (!measurements) {
-      setPrintQuality(null);
-      return;
-    }
-    const printSize = calculatePrintSize(measurements, selectedPrint, 'front');
+    /**
+     * Judge the artwork at the size it will actually be printed.
+     *
+     * This used to measure against garmentSizes x the print option, which is a
+     * different figure from the one the editor quotes and from the canvas the
+     * press file is composed onto — for a tee it read 22.4x28cm against a real
+     * 28x36cm, so the verdict came out about 28% optimistic and artwork rated
+     * "선명하게 인쇄돼요" could still print soft.
+     *
+     * imageTransform.scale is a fraction of the print area, so the printed size
+     * is the print area times that scale. Same arithmetic as artworkDpi in
+     * server/printPipeline.js.
+     */
+    const printArea = printSizeByCategory[selectedProduct.category] ?? {
+      widthCm: 28,
+      heightCm: 36,
+    };
+    const designScale = Math.max(frontImageTransform.scale, 0.01);
+    const printSize = {
+      widthCm: printArea.widthCm * designScale,
+      heightCm: printArea.heightCm * designScale,
+    };
     Image.getSize(
       designUri,
       (pixelWidth, pixelHeight) => {
@@ -107,7 +117,7 @@ function Page() {
     return () => {
       cancelled = true;
     };
-  }, [designUri, selectedProduct.name, sizeLabel, selectedPrint]);
+  }, [designUri, selectedProduct.category, frontImageTransform.scale]);
 
   const handleSave = async () => {
     if (saving) return;
@@ -203,20 +213,14 @@ function Page() {
       {/* 인쇄 품질 — 올린 이미지의 실제 해상도 기준 */}
       {printQuality ? (
         <Card style={styles.qualityCard}>
+          {/* Nothing here is an error. A soft photo still prints, and low
+              resolution is upscaled by hand before it reaches the press — so
+              this reads as a suggestion about which photo to use, not a fault
+              in the order the customer is about to place. */}
           <Badge
-            variant={
-              printQuality.level === 'good'
-                ? 'success'
-                : printQuality.level === 'low'
-                  ? 'warning'
-                  : 'error'
-            }
+            variant={printQuality.level === 'good' ? 'success' : 'info'}
             label={
-              printQuality.level === 'good'
-                ? '인쇄 품질 양호'
-                : printQuality.level === 'low'
-                  ? '인쇄 품질 주의'
-                  : '해상도 부족'
+              printQuality.level === 'good' ? '인쇄 품질 양호' : '사진 해상도 안내'
             }
           />
           <Text style={styles.qualityBadgeTitle}>{printQuality.title}</Text>

@@ -75,7 +75,7 @@ function Page() {
   return (
     <Screen contentStyle={styles.screenContent}>
       <View style={styles.headerRow}>
-        <Text style={styles.headerTitle}>1대1 문의</Text>
+        <Text style={styles.headerTitle} accessibilityRole="header">1대1 문의</Text>
         <Pressable onPress={() => navigation.goBack()} style={styles.headerBack}>
           <Text style={styles.headerBackText}>이전</Text>
         </Pressable>
@@ -192,6 +192,7 @@ const styles = StyleSheet.create({
     marginBottom: theme.spacing.xs,
   },
   input: {
+    minHeight: 44,
     borderWidth: 1,
     borderColor: '#E5E8EB',
     borderRadius: theme.radius.md,

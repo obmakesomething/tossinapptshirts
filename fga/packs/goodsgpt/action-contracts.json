@@ -1,0 +1,58 @@
+{
+  "schema": "fga-action-contracts-v1",
+  "status": "guessed",
+  "note": "What each control on the design-to-order path is supposed to do. The engine observes what a click actually did; without these it has an observation and nothing to check it against, and reports NOT EVALUATED. Outcome types come from the engine's own vocabulary: NAVIGATION, DIALOG, IN_PLACE_UPDATE, NETWORK_ONLY_NO_VISIBLE_CHANGE, NO_OBSERVED_CHANGE. Contracts for controls the crawl cannot reach are declared on purpose — an unreachable checkout should be a stated gap rather than a silence.",
+  "contracts": [
+    {
+      "label": "지금 만들어보기",
+      "outcome": {
+        "type": "NAVIGATION",
+        "target": "/editor"
+      }
+    },
+    {
+      "label": "사진 올리기",
+      "outcome": {
+        "type": "IN_PLACE_UPDATE"
+      }
+    },
+    {
+      "label": "주문하기",
+      "outcome": {
+        "type": "NAVIGATION",
+        "target": "/order"
+      }
+    },
+    {
+      "label": "완성 보기",
+      "outcome": {
+        "type": "NAVIGATION",
+        "target": "/preview"
+      }
+    },
+    {
+      "label": "상품 변경",
+      "outcome": {
+        "type": "NAVIGATION",
+        "target": "/products"
+      }
+    }
+  ],
+  "sourceProvenance": {
+    "repo": "obmakesomething/tossinapptshirts",
+    "commit": "775db365",
+    "ref": "feat/drop-ai-and-print-the-approved-layout",
+    "extractedAt": "2026-08-07T00:00:00+09:00"
+  },
+  "packExtraction": {
+    "schema": "fga-pack-extraction-metadata-v1",
+    "status": "INFERRED",
+    "requiresHumanConfirm": true,
+    "role": "actionContracts",
+    "finalVerifierEligible": false,
+    "canClaimVerifiedFixed": false
+  },
+  "requiresHumanConfirm": true,
+  "finalVerifierEligible": false,
+  "canClaimVerifiedFixed": false
+}

@@ -1,4 +1,4 @@
-import { share, getTossShareLink } from '@apps-in-toss/framework';
+import { share, getTossShareLink } from '@apps-in-toss/native-modules';
 import { createRoute } from '@granite-js/react-native';
 import React, { useCallback, useEffect, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
@@ -123,7 +123,7 @@ function Page() {
       // Only the product is shared. Recipient, address and phone stay out of
       // the message — they are on this screen but they are not shareable.
       await share({
-        message: `굿즈GPT에서 ${order.productName} ${order.color}을(를) 만들었어요!\n${shareLink}`,
+        message: `굿즈 Gpt에서 ${order.productName} ${order.color}을(를) 만들었어요!\n${shareLink}`,
       });
       trackEvent('order_share_success', { order_id: order.orderNumber });
     } catch {

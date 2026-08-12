@@ -1,0 +1,48 @@
+{
+  "appName": "굿즈 Gpt",
+  "appToken": [
+    "goodsgpt",
+    "merchandisegpt"
+  ],
+  "defaultViewportProfile": "mobile-390x844",
+  "files": {
+    "auditLogic": "audit-logic.config.json",
+    "informationOrderLexicon": "information-order-lexicon.json",
+    "interGraphConstraints": "inter-graph-constraints.payment-review.json",
+    "semanticTokenRules": "semantic-token-rules.json",
+    "sequenceContracts": "sequence-contracts.payment-review.json",
+    "stageRules": "stage-rules.json",
+    "actionContracts": "action-contracts.json"
+  },
+  "locales": [
+    "ko"
+  ],
+  "packId": "goodsgpt",
+  "requiredRouteStateCount": 1,
+  "schema": "fga-pack-manifest-v1",
+  "sourceProvenance": {
+    "commit": "e6ae64bd",
+    "extractedAt": "2026-08-07T00:00:00+09:00",
+    "ref": "feat/drop-ai-and-print-the-approved-layout",
+    "repo": "obmakesomething/tossinapptshirts"
+  },
+  "status": "extracted",
+  "version": "0.1.0",
+  "viewportProfiles": {
+    "desktop-1280x800": {
+      "height": 800,
+      "isMobile": false,
+      "width": 1280
+    },
+    "mobile-390x844": {
+      "height": 844,
+      "isMobile": true,
+      "width": 390
+    },
+    "mobile-390x770": {
+      "height": 770,
+      "isMobile": true,
+      "width": 390
+    }
+  }
+}

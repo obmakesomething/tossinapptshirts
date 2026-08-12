@@ -35,3 +35,6 @@ Dockerfile
 .dockerignore
 .gcloudignore
 cloudbuild.yaml
+
+# Web harness — review/audit tooling, never deployed
+harness
