@@ -650,6 +650,10 @@ function Page() {
               }}
               disabled={loadingPhoto}
               accessibilityRole="button"
+              accessibilityLabel={
+                loadingPhoto ? '사진을 불러오는 중' : '사진 올리기'
+              }
+              accessibilityState={{ disabled: loadingPhoto }}
             >
               <Text style={styles.emptyCtaText}>
                 {loadingPhoto ? '사진을 불러오는 중...' : '사진 올리기'}
@@ -716,6 +720,11 @@ function Page() {
             onPress={goOrder}
             disabled={!hasSize}
             accessibilityRole="button"
+            accessibilityLabel={
+              hasSize
+                ? `${formatPrice(pricing.total)} 주문하기`
+                : '사이즈를 골라주세요'
+            }
             accessibilityState={{ disabled: !hasSize }}
           >
             {/*

@@ -368,6 +368,7 @@ function Page() {
           onPress={goToProducts}
           style={({ pressed }) => [styles.detailLinkButton, pressed && styles.detailLinkPressed]}
           accessibilityRole="button"
+          accessibilityLabel="사이즈·소재·인쇄 정보"
         >
           <Text style={styles.detailLinkText}>사이즈·소재·인쇄 정보</Text>
           <Chevron direction="right" size={7} color={theme.colors.primary} />
@@ -398,6 +399,7 @@ function Page() {
                       <Pressable
                         onPress={() => toggleFAQ(item.id)}
                         accessibilityRole="button"
+                        accessibilityLabel={item.question}
                         accessibilityState={{ expanded }}
                         style={styles.faqPressable}
                       >
