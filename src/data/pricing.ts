@@ -1,9 +1,23 @@
+import { formatPrice } from '../utils/format';
 import { catalogProducts, type CatalogProduct } from './catalog';
 import type { PrintOption } from './printOptions';
 
 // 가격 정책
 export const SHIPPING_FEE = 3000;
 export const FREE_SHIPPING_THRESHOLD = 60000;
+
+/**
+ * One rendering of the shipping rule, for every screen that states it.
+ *
+ * The threshold was one constant and five hand-written sentences: 6만원 이상
+ * 무료 on home and in the editor, ₩60,000 이상 무료배송 on the preview and
+ * again on home, 60,000원 이상 무료 in the terms. The same rule in three
+ * formats reads like three rules, and changing the threshold meant finding
+ * five strings — the same drift that once had a hoodie showing one price and
+ * charging another.
+ */
+export const FREE_SHIPPING_TEXT = `${formatPrice(FREE_SHIPPING_THRESHOLD)} 이상 무료배송`;
+export const SHIPPING_SUMMARY_TEXT = `배송비 ${formatPrice(SHIPPING_FEE)} · ${FREE_SHIPPING_TEXT}`;
 
 /**
  * Charge what the screen says. Not a second opinion about it.

@@ -39,7 +39,11 @@ import {
 import { toImageDataUrl } from '../utils/imageMime';
 import { textRole } from '../utils/textRole';
 import { OptionSheet } from '../components/OptionSheet';
-import { calcPricing } from '../data/pricing';
+import {
+  calcPricing,
+  FREE_SHIPPING_THRESHOLD,
+  SHIPPING_FEE,
+} from '../data/pricing';
 import { formatPrice } from '../utils/format';
 
 const ACCENT = '#1B64DA';
@@ -565,7 +569,7 @@ function Page() {
         </View>
         <Text style={styles.leadCopy} {...textRole('lead')}>
           {hasArtwork
-            ? '금액은 배송비 3,000원 별도, 6만원 이상 무료예요.'
+            ? `금액은 배송비 ${formatPrice(SHIPPING_FEE)} 별도, ${formatPrice(FREE_SHIPPING_THRESHOLD)} 이상 무료예요.`
             : '사진을 올리면 옷에 얹어 보여드려요.'}
         </Text>
         <View style={styles.optionRow}>
