@@ -28,6 +28,7 @@ import { useCatalog } from '../context/catalog';
 import { faqCategories, faqItems } from '../data/faq';
 import { buildTemplate } from '../data/mockupTemplates';
 import { API_BASE_URL } from '../config';
+import { SHIPPING_SUMMARY_TEXT } from '../data/pricing';
 import { textRole } from '../utils/textRole';
 import {
   resolveCategoryPreviewColor,
@@ -253,9 +254,7 @@ function Page() {
           onPress={goToEditor}
           style={styles.heroCtaButton}
         />
-        <Text style={styles.heroFinePrint}>
-          배송비 3,000원 · 6만원 이상 무료
-        </Text>
+        <Text style={styles.heroFinePrint}>{SHIPPING_SUMMARY_TEXT}</Text>
       </View>
 
       <View style={styles.homeCard}>
@@ -368,6 +367,7 @@ function Page() {
           onPress={goToProducts}
           style={({ pressed }) => [styles.detailLinkButton, pressed && styles.detailLinkPressed]}
           accessibilityRole="button"
+          accessibilityLabel="사이즈·소재·인쇄 정보"
         >
           <Text style={styles.detailLinkText}>사이즈·소재·인쇄 정보</Text>
           <Chevron direction="right" size={7} color={theme.colors.primary} />
@@ -375,7 +375,12 @@ function Page() {
       </View>
 
       <Text style={styles.noticeText}>
-        제작 주문 특성상 배송까지 보통 7~14일 소요될 수 있어요. (₩60,000 이상 무료배송)
+        {/*
+          The shipping rule is already stated under the call to action; saying
+          it twice on one screen, in two different formats, read as two rules.
+          What this line adds is the reason for the wait, so that is all it says.
+        */}
+        제작 주문 특성상 배송까지 보통 7~14일 소요될 수 있어요.
       </Text>
 
       {/* FAQ 섹션 - 인터랙션 완료 후 렌더 */}
@@ -398,6 +403,7 @@ function Page() {
                       <Pressable
                         onPress={() => toggleFAQ(item.id)}
                         accessibilityRole="button"
+                        accessibilityLabel={item.question}
                         accessibilityState={{ expanded }}
                         style={styles.faqPressable}
                       >

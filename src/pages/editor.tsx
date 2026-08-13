@@ -17,6 +17,7 @@ import { DesignStage } from '../components/DesignStage';
 import { ScaleSlider } from '../components/ScaleSlider';
 import {
   Chevron,
+  Chip,
   CloseIcon,
   PrimaryButton,
   SecondaryButton,
@@ -38,13 +39,28 @@ import {
 import { toImageDataUrl } from '../utils/imageMime';
 import { textRole } from '../utils/textRole';
 import { OptionSheet } from '../components/OptionSheet';
-import { calcPricing } from '../data/pricing';
+import {
+  calcPricing,
+  FREE_SHIPPING_THRESHOLD,
+  SHIPPING_FEE,
+} from '../data/pricing';
 import { formatPrice } from '../utils/format';
 
 const ACCENT = '#1B64DA';
 const FILL_SOFT = '#F2F4F6';
 const PANEL_BG = '#FFFFFF';
-const EDITOR_HEADER_RESERVED = 100;
+/**
+ * Fallback for the header block — title row, lead copy, option row and the
+ * 앞면/뒷면 segment — until onLayout reports the real thing.
+ *
+ * 100 was two thirds of what that block actually occupies (163pt at 375pt
+ * wide), so wherever the measurement does not arrive the canvas is handed
+ * ~60pt it does not have and the bottom of the column slides under the edit
+ * drawer. The web harness is exactly that case: onLayout never fires there, so
+ * every screen it renders runs on these constants alone — which is also why
+ * the harness cannot be trusted to verify this screen's proportions.
+ */
+const EDITOR_HEADER_RESERVED = 164;
 const DEFAULT_STAGE_ZOOM = 1.0;
 const CANVAS_AREA_HORIZONTAL_PADDING = 16 * 2;
 const CANVAS_FRAME_HORIZONTAL_PADDING = 8 * 2;
@@ -103,6 +119,8 @@ function Page() {
   // Usable height inside the safe area, once the screen has laid out.
   const [safeHeight, setSafeHeight] = useState(0);
   const [headerHeight, setHeaderHeight] = useState(0);
+  /** Measured height of the size row, order button and 완성 보기 together. */
+  const [actionsHeight, setActionsHeight] = useState(0);
   const [photoError, setPhotoError] = useState('');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deletePhotoIndex, setDeletePhotoIndex] = useState<number | null>(null);
@@ -191,12 +209,30 @@ function Page() {
   // With no artwork the panel is not rendered, so only the upload CTA below the
   // garment is reserved — the rest goes to the garment.
   const EMPTY_CTA_RESERVED = 132;
-  /** Reset button and the print-size caption, both below the canvas. */
-  const ARTWORK_CAPTION_RESERVED = 116;
+  /**
+   * Fallback for the first frame only — the block below the canvas is measured.
+   *
+   * A constant cannot describe it: the size chips wrap onto one line or two
+   * depending on how many sizes the garment has and how wide the phone is, and
+   * a guess that comes up short does not overflow the column, it slides 완성
+   * 보기 under the edit drawer where nobody sees it. Measuring is safe here
+   * because nothing in this block is sized from the canvas, so feeding its
+   * height back into the canvas budget cannot oscillate.
+   */
+  const ARTWORK_CAPTION_RESERVED = 268;
+  /**
+   * Reset button and print-size caption, between the canvas and that block,
+   * plus room so 완성 보기 ends above the drawer rather than against it. The
+   * slack is deliberate: the drawer is drawn over the column, so coming up a
+   * point short hides the last control instead of scrolling to it.
+   */
+  const RESET_CAPTION_RESERVED = 46;
   /** Below this the garment stops reading as the thing being designed. */
   const MIN_CANVAS_HEIGHT = 200;
   const reservedBelowCanvas = hasArtwork
-    ? ARTWORK_CAPTION_RESERVED
+    ? (actionsHeight > 0
+        ? actionsHeight + RESET_CAPTION_RESERVED
+        : ARTWORK_CAPTION_RESERVED)
     : EMPTY_CTA_RESERVED;
   /**
    * Size the canvas against the height the screen actually has.
@@ -236,7 +272,7 @@ function Page() {
     220,
     usableHeight -
       headerReserved -
-      ARTWORK_CAPTION_RESERVED -
+      reservedBelowCanvas -
       MIN_CANVAS_HEIGHT,
   );
   /**
@@ -284,6 +320,9 @@ function Page() {
     printOption: selectedPrint,
     printBackEnabled,
   });
+
+  /** Nothing is ordered until the customer says what size they wear. */
+  const hasSize = orderLines.length > 0;
 
   const optionSummary = [
     selectedProduct.name,
@@ -530,7 +569,7 @@ function Page() {
         </View>
         <Text style={styles.leadCopy} {...textRole('lead')}>
           {hasArtwork
-            ? '금액은 배송비 3,000원 별도, 6만원 이상 무료예요.'
+            ? `금액은 배송비 ${formatPrice(SHIPPING_FEE)} 별도, ${formatPrice(FREE_SHIPPING_THRESHOLD)} 이상 무료예요.`
             : '사진을 올리면 옷에 얹어 보여드려요.'}
         </Text>
         <View style={styles.optionRow}>
@@ -615,6 +654,10 @@ function Page() {
               }}
               disabled={loadingPhoto}
               accessibilityRole="button"
+              accessibilityLabel={
+                loadingPhoto ? '사진을 불러오는 중' : '사진 올리기'
+              }
+              accessibilityState={{ disabled: loadingPhoto }}
             >
               <Text style={styles.emptyCtaText}>
                 {loadingPhoto ? '사진을 불러오는 중...' : '사진 올리기'}
@@ -630,14 +673,77 @@ function Page() {
           </View>
         ) : null}
         {hasArtwork ? (
-        <View style={styles.canvasOutsideActions}>
+        <View
+          style={styles.canvasOutsideActions}
+          onLayout={(event) => {
+            const { height } = event.nativeEvent.layout;
+            setActionsHeight((prev) =>
+              Math.abs(prev - height) > 1 ? height : prev,
+            );
+          }}
+        >
+          {/*
+            Size is chosen here, beside the design, not behind 변경.
+
+            Nothing is preselected any more, so this is where the customer
+            says what they are actually buying. Putting it next to the price
+            keeps the whole order on one screen — the option sheet is still
+            there for several sizes at once or for quantity.
+          */}
+          <View style={styles.sizeRow}>
+            <Text style={styles.sizeRowLabel}>사이즈</Text>
+            <View style={styles.sizeChips}>
+              {selectedProduct.sizes.map((size) => {
+                const line = orderLines.find(
+                  (l) => l.sizeLabel === size.label,
+                );
+                return (
+                  <Chip
+                    key={size.label}
+                    label={size.label}
+                    selected={Boolean(line)}
+                    onPress={() => {
+                      trackClick('editor_size_chip_click', {
+                        size: size.label,
+                        selecting: !line,
+                      });
+                      if (line) {
+                        removeOrderLine(line.id);
+                      } else {
+                        addOrderLine(size.label, 1);
+                      }
+                    }}
+                    style={styles.sizeChip}
+                  />
+                );
+              })}
+            </View>
+          </View>
           <Pressable
-            style={styles.orderCta}
+            style={[styles.orderCta, !hasSize && styles.orderCtaBlocked]}
             onPress={goOrder}
+            disabled={!hasSize}
             accessibilityRole="button"
+            accessibilityLabel={
+              hasSize
+                ? `${formatPrice(pricing.total)} 주문하기`
+                : '사이즈를 골라주세요'
+            }
+            accessibilityState={{ disabled: !hasSize }}
           >
-            <Text style={styles.orderCtaText}>
-              {formatPrice(pricing.total)} · 주문하기
+            {/*
+              A blocked button that says why beats a grey one that says
+              nothing — the reason and the fix are the row directly above.
+            */}
+            <Text
+              style={[
+                styles.orderCtaText,
+                !hasSize && styles.orderCtaTextBlocked,
+              ]}
+            >
+              {hasSize
+                ? `${formatPrice(pricing.total)} · 주문하기`
+                : '사이즈를 골라주세요'}
             </Text>
           </Pressable>
           {hasArtwork ? (
@@ -1238,6 +1344,22 @@ const styles = StyleSheet.create({
     marginTop: theme.spacing.xs,
     marginBottom: 2,
   },
+  sizeRow: {
+    marginTop: theme.spacing.xs,
+  },
+  sizeRowLabel: {
+    ...theme.typography.label,
+    color: theme.colors.textTertiary,
+    marginBottom: theme.spacing.xs,
+  },
+  sizeChips: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: theme.spacing.xs,
+  },
+  sizeChip: {
+    marginRight: 0,
+  },
   /** The one thing to do once the design is placed. */
   orderCta: {
     marginTop: theme.spacing.sm,
@@ -1246,6 +1368,12 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  orderCtaBlocked: {
+    backgroundColor: theme.colors.surfaceSecondary,
+  },
+  orderCtaTextBlocked: {
+    color: theme.colors.textTertiary,
   },
   orderCtaText: {
     fontSize: 16,

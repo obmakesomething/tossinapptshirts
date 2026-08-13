@@ -245,6 +245,7 @@ export function SectionTitle({ title, description, action, style }: SectionTitle
           <Pressable
             onPress={action.onPress}
             accessibilityRole="button"
+            accessibilityLabel={action.label}
             style={styles.sectionTitleActionHit}
           >
             <Text style={styles.sectionTitleAction}>{action.label}</Text>
@@ -319,6 +320,14 @@ export function PrimaryButton({
   return (
     <Pressable
       accessibilityRole="button"
+      /**
+       * The name has to be on the button, not only in the Text inside it.
+       * react-native-web renders that Text as a plain div with no role, so
+       * without this the app's main call to action reaches the accessibility
+       * tree as an unnamed button — audits reported the screen as having no
+       * primary action, and they were reading it correctly.
+       */
+      accessibilityLabel={label}
       accessibilityState={{ disabled: Boolean(disabled) }}
       onPress={onPress}
       disabled={disabled || loading}
@@ -360,6 +369,7 @@ export function SecondaryButton({
   return (
     <Pressable
       accessibilityRole="button"
+      accessibilityLabel={label}
       accessibilityState={{ disabled: Boolean(disabled) }}
       onPress={onPress}
       disabled={disabled || loading}
@@ -394,6 +404,7 @@ export function DangerButton({ label, onPress, disabled, size = 'lg', style }: B
   return (
     <Pressable
       accessibilityRole="button"
+      accessibilityLabel={label}
       accessibilityState={{ disabled: Boolean(disabled) }}
       onPress={onPress}
       disabled={disabled}
@@ -506,6 +517,9 @@ export function ListRow({ label, value, onPress, last, valueStyle }: ListRowProp
     <Pressable
       onPress={onPress}
       accessibilityRole="button"
+      // The value carries the state the row is about — 배송지, 미설정 — so a
+      // row announced as its label alone would drop half of what it says.
+      accessibilityLabel={value ? `${label} ${value}` : label}
       style={({ pressed }) => pressed && styles.listRowPressed}
     >
       {content}
@@ -1047,6 +1061,7 @@ export function ConfirmDialog({
               ]}
               onPress={onConfirm}
               accessibilityRole="button"
+              accessibilityLabel={confirmLabel}
             >
               <Text style={confirmStyles.confirmText}>{confirmLabel}</Text>
             </Pressable>

@@ -17,7 +17,7 @@ import {
 import { useCatalog } from '../context/catalog';
 import { resolveColorValue } from '../data/colorMap';
 import { buildTemplate, printSizeByCategory } from '../data/mockupTemplates';
-import { calcPricing } from '../data/pricing';
+import { calcPricing, FREE_SHIPPING_TEXT } from '../data/pricing';
 import { formatPrice } from '../utils/format';
 import {
   type PrintResolutionResult,
@@ -250,7 +250,7 @@ function Page() {
           </Text>
         </View>
         {pricing.shippingFee === 0 && (
-          <Text style={styles.priceSubDetail}>₩60,000 이상 무료배송</Text>
+          <Text style={styles.priceSubDetail}>{FREE_SHIPPING_TEXT}</Text>
         )}
         <View style={styles.priceDivider} />
         <View style={styles.priceRow}>

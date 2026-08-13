@@ -315,6 +315,18 @@ function Page() {
       setError('디자인 이미지나 텍스트를 먼저 추가해 주세요.');
       return;
     }
+    /**
+     * A garment order with no size is not an order.
+     *
+     * The screen checked the address and the design but never the thing being
+     * worn, which was safe only because the catalogue used to preselect a
+     * size. It no longer does, so this is the guard that used to be implicit.
+     */
+    if (orderLines.length === 0) {
+      trackEvent('order_validation_failed', { missing_size: true });
+      setError('사이즈를 골라주세요.');
+      return;
+    }
     setSubmitting(true);
     try {
       const orderId = `MG-${Date.now()}`;
@@ -640,12 +652,13 @@ function Page() {
                 : '토스페이로 결제하기'
           }
           onPress={handleSubmit}
-          disabled={submitting || success || !agreedPrivacy || !agreedTerms || !agreedCustom || !name || !phone || !email || !address1}
+          disabled={submitting || success || !agreedPrivacy || !agreedTerms || !agreedCustom || !name || !phone || !email || !address1 || orderLines.length === 0}
           style={styles.primaryCta}
         />
-        {!success && !submitting && (!name || !phone || !email || !address1 || !agreedPrivacy || !agreedTerms || !agreedCustom) && (
+        {!success && !submitting && (orderLines.length === 0 || !name || !phone || !email || !address1 || !agreedPrivacy || !agreedTerms || !agreedCustom) && (
           <Text style={styles.disabledReason}>
-            {!name ? '※ 이름을 입력해주세요' :
+            {orderLines.length === 0 ? '※ 사이즈를 골라주세요' :
+             !name ? '※ 이름을 입력해주세요' :
              !phone ? '※ 연락처를 입력해주세요' :
              !email ? '※ 이메일을 입력해주세요' :
              !address1 ? '※ 주소를 입력해주세요' :
