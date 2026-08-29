@@ -43,6 +43,7 @@ import {
 } from '../utils/analytics';
 import { toImageDataUrl } from '../utils/imageMime';
 import { textRole } from '../utils/textRole';
+import { computeEditorLayout } from '../utils/editorLayout';
 import {
   type PrintResolutionResult,
   evaluatePrintResolution,
@@ -57,18 +58,6 @@ import { formatPrice } from '../utils/format';
 const ACCENT = '#1B64DA';
 const FILL_SOFT = '#F2F4F6';
 const PANEL_BG = '#FFFFFF';
-/**
- * Fallback for the header block — title row, lead copy, option row and the
- * 앞면/뒷면 segment — until onLayout reports the real thing.
- *
- * 100 was two thirds of what that block actually occupies (163pt at 375pt
- * wide), so wherever the measurement does not arrive the canvas is handed
- * ~60pt it does not have and the bottom of the column slides under the edit
- * drawer. The web harness is exactly that case: onLayout never fires there, so
- * every screen it renders runs on these constants alone — which is also why
- * the harness cannot be trusted to verify this screen's proportions.
- */
-const EDITOR_HEADER_RESERVED = 164;
 const DEFAULT_STAGE_ZOOM = 1.0;
 const CANVAS_AREA_HORIZONTAL_PADDING = 16 * 2;
 const CANVAS_FRAME_HORIZONTAL_PADDING = 8 * 2;
@@ -262,94 +251,14 @@ function Page() {
    */
   // With no artwork the panel is not rendered, so only the upload CTA below the
   // garment is reserved — the rest goes to the garment.
-  const EMPTY_CTA_RESERVED = 132;
-  /**
-   * Fallback for the first frame only — the block below the canvas is measured.
-   *
-   * A constant cannot describe it: the size chips wrap onto one line or two
-   * depending on how many sizes the garment has and how wide the phone is, and
-   * a guess that comes up short does not overflow the column, it slides 완성
-   * 보기 under the edit drawer where nobody sees it. Measuring is safe here
-   * because nothing in this block is sized from the canvas, so feeding its
-   * height back into the canvas budget cannot oscillate.
-   */
-  const ARTWORK_CAPTION_RESERVED = 268;
-  /**
-   * Reset button and print-size caption, between the canvas and that block,
-   * plus room so 완성 보기 ends above the drawer rather than against it. The
-   * slack is deliberate: the drawer is drawn over the column, so coming up a
-   * point short hides the last control instead of scrolling to it.
-   */
-  const RESET_CAPTION_RESERVED = 46;
-  /** Below this the garment stops reading as the thing being designed. */
-  const MIN_CANVAS_HEIGHT = 200;
-  const reservedBelowCanvas = hasArtwork
-    ? (actionsHeight > 0
-        ? actionsHeight + RESET_CAPTION_RESERVED
-        : ARTWORK_CAPTION_RESERVED)
-    : EMPTY_CTA_RESERVED;
-  /**
-   * Size the canvas against the height the screen actually has.
-   *
-   * Dimensions reports the whole window, including the status bar and the home
-   * indicator that SafeAreaView then takes back — on a notched phone that is
-   * ~80pt the layout never had. The shortfall lands on whatever sits last in
-   * the column, which with no artwork is the only button on the screen, and it
-   * went off the bottom edge. The root reports what it really got instead.
-   *
-   * This measures the root and not the canvas column: the column is sized by
-   * its own content, so feeding its height back in would settle on the content
-   * rather than on the space available for it.
-   */
-  /**
-   * Never larger than the window.
-   *
-   * The root reports what it was laid out at, and a root that is not itself
-   * height-constrained grows with its content — so the canvas asked for the
-   * space it had already taken, got a bigger answer, and grew again. Clamping
-   * keeps the safe-area inset (which only ever makes it smaller) and refuses
-   * the feedback.
-   */
-  const usableHeight = Math.min(
-    safeHeight > 0 ? safeHeight : screenHeight,
+  const { panelHeight, canvasHeight: budgetedCanvasHeight } = computeEditorLayout({
+    safeHeight,
     screenHeight,
-  );
-  /**
-   * The panel gets a share of the screen, but never so much that the garment
-   * falls below MIN_CANVAS_HEIGHT. Fixed pixel heights tuned on a 844pt phone
-   * overflowed a 770pt one by the difference, pushing the panel's own controls
-   * off the bottom.
-   */
-  const headerReserved =
-    headerHeight > 0 ? headerHeight : EDITOR_HEADER_RESERVED;
-  const panelCeiling = Math.max(
-    220,
-    usableHeight -
-      headerReserved -
-      reservedBelowCanvas -
-      MIN_CANVAS_HEIGHT,
-  );
-  /**
-   * At rest the panel is its own title bar and nothing more.
-   *
-   * A resting drawer of ~300pt took 40% of a 770pt phone; between it, the
-   * header and the order button the shirt was left a couple of hundred points
-   * — a thumbnail of the thing being bought. Tapping 편집하기 opens it.
-   */
-  const PANEL_HANDLE_HEIGHT = 56;
-  const panelHeightCollapsed = PANEL_HANDLE_HEIGHT;
-  const panelHeightExpanded = Math.min(
-    panelCeiling,
-    Math.round(usableHeight * 0.55),
-  );
-  const panelHeight = panelExpanded ? panelHeightExpanded : panelHeightCollapsed;
-  const availableCanvasHeight = Math.max(
-    MIN_CANVAS_HEIGHT,
-    usableHeight -
-      headerReserved -
-      reservedBelowCanvas -
-      (hasArtwork ? panelHeight : 0),
-  );
+    headerHeight,
+    actionsHeight,
+    hasArtwork,
+    panelExpanded,
+  });
   const canvasWidth = Math.max(
     220,
     Math.round(
@@ -365,7 +274,7 @@ function Page() {
    * moment the panel opened.
    */
   const canvasHeight = Math.round(
-    availableCanvasHeight - CANVAS_FRAME_VERTICAL_PADDING,
+    budgetedCanvasHeight - CANVAS_FRAME_VERTICAL_PADDING,
   );
 
   const pricing = calcPricing({
