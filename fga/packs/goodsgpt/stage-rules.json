@@ -29,12 +29,6 @@
     },
     {
       "anyOf": [
-        "preview"
-      ],
-      "stage": "Review Design"
-    },
-    {
-      "anyOf": [
         "editor"
       ],
       "stage": "Design"
@@ -86,9 +80,9 @@
   ],
   "sourceProvenance": {
     "repo": "obmakesomething/tossinapptshirts",
-    "commit": "e6ae64bd",
-    "ref": "feat/drop-ai-and-print-the-approved-layout",
-    "extractedAt": "2026-08-07T00:00:00+09:00"
+    "commit": "d89bc4d4",
+    "ref": "feat/one-screen",
+    "extractedAt": "2026-08-29T00:00:00+09:00"
   },
   "packExtraction": {
     "schema": "fga-pack-extraction-metadata-v1",

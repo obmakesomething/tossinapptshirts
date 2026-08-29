@@ -40,12 +40,17 @@ The route list is app truth, read off `src/router.gen.ts`. **Which stage each
 route belongs to is authored judgement and has not been confirmed by the product
 owner** — `status: extracted`, `requiresHumanConfirm: true`.
 
+The journey lost a stage. `/preview` was a screen whose job was to show the
+design bigger and judge the photo's resolution; the editor's canvas is already
+the design at the size being judged, so the screen was deleted and Review
+Design went with it. Reviewing now happens inside Design, which is what was
+actually true even before the screen was removed.
+
 | stage | routes |
 |---|---|
 | Entry | `/`, `/open` |
 | Browse Garments | `/products` |
 | Design | `/editor` |
-| Review Design | `/preview` |
 | Checkout / Payment | `/order` |
 | Confirmation | `/order-complete` |
 | Post-purchase | `/orders`, `/order-detail` |
@@ -113,9 +118,9 @@ What is left:
   price and lead time before the CTA, which cleared `why-next-action`, but the
   graph still reads the question as weakly attended. Needs judgement, not another
   patch.
-- **1 `spacing-matrix` on the editor** — `content-end -> cta gap 10px` against the
-  option row, where 변경 sits inline beside the summary rather than stacked below
-  it. Arguably the rule reading a row as a stacked CTA.
+- **1 `spacing-matrix` on the editor** — measured against the option row, which
+  no longer exists: 변경 and its summary were replaced by garment chips and
+  colour swatches in place. Needs a re-run to say whether it survived.
 - **1 `why-next-action` on the editor.**
 - **1 `action-outcome-consistency`** — an artifact of the crawl clicking controls
   in sequence without closing what the previous click opened, so the second click
@@ -147,7 +152,38 @@ is describing its own DOM reader, not the product.
 
 ## Not evaluated
 
-- Three declared contracts the crawl never reaches — `주문하기`, `완성 보기`,
-  `상품 변경`. Declared on purpose so the gap is stated rather than silent.
+- One declared contract the crawl never reaches — `주문하기`. Declared on
+  purpose so the gap is stated rather than silent.
+- `완성 보기` and `상품 변경` were deleted along with the preview screen and the
+  garment picker that moved inline. A contract for a control that no longer
+  exists is not a stated gap, it is a false one.
 - Coverage is `partial`: 2 of 2 discovered screens. Checkout and everything
   behind the Toss login are still unobserved.
+
+## What the one-screen change did to this
+
+The audit numbers above were measured against a four-screen flow: home picked a
+category, the editor placed the photo, a sheet over the design picked colour and
+size, and 완성 보기 opened a fourth screen. That is now one screen, so the
+findings above are stale in a specific way — they describe screens and controls
+that are gone.
+
+What changed that this pack cares about:
+
+- `/preview` is deleted, and with it the Review Design stage.
+- `OptionSheet` is deleted. Garment and colour are chips and swatches on the
+  editor itself, so `상품 변경` and the 변경 entry point no longer exist.
+- Size and quantity are on the editor beside the price, not behind a sheet.
+- The order screen asks Toss for the delivery details rather than showing nine
+  input fields, so its DOM is a summary and two inputs where it used to be a
+  form. `토스에서 배송지 가져오기` only appears after a refusal.
+
+The crawl also could not previously reach anything behind the Toss login —
+`appLogin` is mocked in the harness but the code it returns is exchanged against
+the production API, which localhost cannot call. `?session=1` seeds a stub
+envelope and `?consent=decline|old|unconfigured` picks a fallback path, so
+checkout is now reachable for the first time. The coverage line in the last run
+said `partial: 2 of 2 discovered screens`; a re-run should discover more.
+
+**These findings have not been re-measured against the new flow.** The pack is
+updated; the report is not.
