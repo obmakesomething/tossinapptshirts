@@ -20,7 +20,6 @@ import {
   type ConsentedContactResult,
   requestConsentedContact,
 } from '../utils/consentedContact';
-import { faqItems } from '../data/faq';
 import { calcPricing } from '../data/pricing';
 import { printSizeByCategory } from '../data/mockupTemplates';
 import { formatPrice } from '../utils/format';
@@ -241,13 +240,6 @@ function Page() {
   const sizeSummary = orderLines
     .map((line) => `${line.sizeLabel} ${line.quantity}개`)
     .join(' · ');
-  const orderFaqs = useMemo(
-    () =>
-      ['delivery-1', 'order-1', 'refund-1']
-        .map((id) => faqItems.find((item) => item.id === id))
-        .filter((item): item is (typeof faqItems)[number] => !!item),
-    [],
-  );
 
   /**
    * The print canvas is the printable region itself, at 300 DPI.
@@ -276,6 +268,24 @@ function Page() {
     <Card style={styles.summaryCard}>
       <View style={styles.summaryHeader}>
         <Text style={styles.summaryTitle}>{selectedProduct.name}</Text>
+        {/*
+          A link, not a full-width button.
+
+          It goes where the header's 이전 already goes, so it does not need the
+          weight of a second button — and the room it was taking is what put
+          the consents and the pay button below the fold.
+        */}
+        <Pressable
+          onPress={() => {
+            trackClick('order_change_options_click');
+            navigation.navigate('/editor');
+          }}
+          accessibilityRole="button"
+          accessibilityLabel="옵션 바꾸기"
+          hitSlop={8}
+        >
+          <Text style={styles.summaryEditLink}>옵션 바꾸기</Text>
+        </Pressable>
       </View>
 
       {/* Colour, size and quantity are chosen in the editor, beside the design
@@ -286,15 +296,6 @@ function Page() {
         {selectedColor} · {sizeSummary || `${totalQuantity}개`}
         {printBackEnabled ? ' · 뒷면도 프린팅' : ''}
       </Text>
-      <SecondaryButton
-        label="옵션 바꾸기"
-        onPress={() => {
-          trackClick('order_change_options_click');
-          navigation.navigate('/editor');
-        }}
-        style={styles.optionEditButton}
-      />
-
       <Text style={styles.summaryMeta}>
         예상 결제 {formatPrice(pricing.total)} (배송비{' '}
         {pricing.shippingFee === 0
@@ -724,18 +725,18 @@ function Page() {
         </>
       )}
 
-      <Card style={styles.quickFaqCard}>
-        <Text style={styles.quickFaqTitle}>주문 전에 확인해 주세요</Text>
-        {orderFaqs.map((item) => (
-          <View key={item.id} style={styles.quickFaqRow}>
-            <Text style={styles.quickFaqQ}>Q.</Text>
-            <View style={styles.quickFaqBody}>
-              <Text style={styles.quickFaqQuestion}>{item.question}</Text>
-              <Text style={styles.quickFaqAnswer}>{item.answer}</Text>
-            </View>
-          </View>
-        ))}
-      </Card>
+      {/*
+        Two things worth knowing at the till, in one line.
+
+        This was a card of question-and-answer pairs restating the FAQ from
+        home, and it cost more than a fifth of the screen — enough that the
+        consents and the pay button fell below the fold. Both facts still
+        appear: the wait is here, and the refund limit is the consent directly
+        below, which is where a customer has to read it anyway.
+      */}
+      <Text style={styles.checkoutNotice}>
+        제작·배송 7~14일 · 주문 제작이라 단순 변심 교환·환불은 어려워요
+      </Text>
 
       {/* 동의 체크박스 */}
       <View style={styles.agreementSection}>
@@ -784,7 +785,7 @@ function Page() {
              '※ 필수 동의 항목을 확인해주세요'}
           </Text>
         )}
-        <SecondaryButton label="돌아가기" onPress={() => navigation.goBack()} />
+        {/* 헤더의 '이전'과 같은 동작이라, 결제 화면 아래에는 두지 않는다. */}
       </View>
 
       <DaumPostcodeModal
@@ -989,6 +990,17 @@ const styles = StyleSheet.create({
   },
   consentedFetchText: {
     fontSize: 15,
+    fontWeight: '700',
+    color: '#1B64DA',
+  },
+  checkoutNotice: {
+    fontSize: 13,
+    lineHeight: 18,
+    color: '#8B95A1',
+    marginBottom: 12,
+  },
+  summaryEditLink: {
+    fontSize: 13,
     fontWeight: '700',
     color: '#1B64DA',
   },
