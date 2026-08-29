@@ -52,3 +52,23 @@ export const fetchAlbumPhotos = Object.assign(
     openPermissionDialog: async () => 'allowed' as const,
   },
 );
+
+/**
+ * Stands in for Toss's consent sheet.
+ *
+ * `?consent=decline` on the harness URL exercises the fallback form, and
+ * `?consent=old` the pre-5.264.0 Toss app that resolves with undefined —
+ * both of which the order screen has to handle without losing the customer.
+ */
+export const getConsentedUserData = async () => {
+  const mode = new URLSearchParams(window.location.search).get('consent');
+  if (mode === 'decline') throw { code: 'USER_DECLINED' };
+  if (mode === 'unconfigured') throw { code: 'TERMS_NOT_SET' };
+  if (mode === 'old') return undefined;
+  return {
+    USER_NAME: '이대영',
+    USER_PHONE: '010-1234-5678',
+    USER_EMAIL: 'daepop98@gmail.com',
+    USER_ADDRESS: '서울특별시 강남구 테헤란로 1',
+  };
+};

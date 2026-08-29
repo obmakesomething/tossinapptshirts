@@ -7,7 +7,7 @@
 import React from 'react';
 import { View, StyleSheet, Text, Pressable } from 'react-native';
 import { useHarnessLocation, navigateTo } from './mocks/granite';
-import { CatalogProvider } from '../src/context/catalog';
+import { CatalogProvider, useCatalog } from '../src/context/catalog';
 import { ToastProvider } from '../src/context/toastContext';
 import { ToastContainer } from '../src/components/toast';
 
@@ -41,6 +41,29 @@ export const HARNESS_ROUTES: { path: string; label: string; Component: React.Com
   { path: '/privacy', label: '개인정보', Component: Privacy.component },
 ];
 
+/**
+ * Stands a session up without the login round trip.
+ *
+ * Everything behind the Toss login — the order form, consent, payment — was
+ * unreachable here: appLogin is mocked, but the code it returns is exchanged
+ * against the production API, which localhost cannot reach. `?session=1`
+ * seeds a stub envelope so those screens can be reviewed at all.
+ */
+function HarnessSession({ children }: { children: React.ReactNode }) {
+  const { setAitSession, userKey } = useCatalog();
+  React.useEffect(() => {
+    if (userKey) return;
+    if (new URLSearchParams(window.location.search).get('session') !== '1') return;
+    setAitSession({
+      sessionToken: 'harness-session',
+      user: { id: 'harness-user' },
+      identity: { provider: 'toss', userKey: 'harness-user-key' },
+      mode: 'stub',
+    });
+  }, [userKey]);
+  return <>{children}</>;
+}
+
 export default function App() {
   const path = useHarnessLocation();
   const match = HARNESS_ROUTES.find((r) => r.path === path) ?? HARNESS_ROUTES[0];
@@ -66,7 +89,9 @@ export default function App() {
       <View style={styles.bare}>
         <ToastProvider>
           <CatalogProvider>
-            <Screen />
+            <HarnessSession>
+              <Screen />
+            </HarnessSession>
             <ToastContainer />
           </CatalogProvider>
         </ToastProvider>

@@ -16,6 +16,10 @@ import {
 import { DaumPostcodeModal, type AddressData } from '../components/DaumPostcodeModal';
 import { API_BASE_URL } from '../config';
 import { useCatalog } from '../context/catalog';
+import {
+  type ConsentedContactResult,
+  requestConsentedContact,
+} from '../utils/consentedContact';
 import { faqItems } from '../data/faq';
 import { calcPricing } from '../data/pricing';
 import { printSizeByCategory } from '../data/mockupTemplates';
@@ -108,6 +112,17 @@ function Page() {
   const [success, setSuccess] = useState(false);
   const [postcodeModalVisible, setPostcodeModalVisible] = useState(false);
   const [loginLoading, setLoginLoading] = useState(false);
+  /**
+   * Where the delivery details came from.
+   *
+   * `toss` means the customer agreed on Toss's consent sheet and we filled the
+   * fields from what it returned; the form collapses to a summary. Everything
+   * else means they type it, which is what always used to happen.
+   */
+  const [contactSource, setContactSource] = useState<'unknown' | 'toss' | 'manual'>(
+    'unknown',
+  );
+  const [contactLoading, setContactLoading] = useState(false);
   const address2InputRef = useRef<TextInput>(null);
   const [agreedPrivacy, setAgreedPrivacy] = useState(false);
   const [agreedTerms, setAgreedTerms] = useState(false);
@@ -289,6 +304,56 @@ function Page() {
       </Text>
     </Card>
   );
+
+  /**
+   * Ask Toss for the delivery details instead of asking the customer.
+   *
+   * Runs once as soon as there is a session, and again if they tap the button
+   * after declining — that second call is the only one allowed to re-open the
+   * consent sheet, because re-prompting somebody who already said no is
+   * something they have to ask for.
+   */
+  const loadConsentedContact = useCallback(
+    async (retryAfterDecline: boolean) => {
+      if (contactLoading) return;
+      setContactLoading(true);
+      try {
+        const result: ConsentedContactResult = await requestConsentedContact({
+          retryAfterDecline,
+        });
+        trackEvent('order_consented_contact_result', { status: result.status });
+
+        if (result.status === 'provided') {
+          const { contact } = result;
+          if (contact.name) setName(contact.name);
+          if (contact.phone) setPhone(contact.phone);
+          if (contact.email) setEmail(contact.email);
+          if (contact.address) setAddress1(contact.address);
+          setContactSource('toss');
+          return;
+        }
+
+        if (result.status === 'unconfigured') {
+          // Ours to fix, not the customer's: the console is missing the
+          // 사용자 데이터 제공 동의문 this key points at.
+          console.error(
+            '[Order] consented user data is not set up in the console:',
+            result.code,
+          );
+        }
+        setContactSource('manual');
+      } finally {
+        setContactLoading(false);
+      }
+    },
+    [contactLoading],
+  );
+
+  useEffect(() => {
+    if (!userKey) return;
+    if (contactSource !== 'unknown') return;
+    void loadConsentedContact(false);
+  }, [userKey, contactSource]);
 
   const handleSubmit = async () => {
     trackClick('order_submit_click', {
@@ -523,6 +588,58 @@ function Page() {
 
       {renderOrderSummaryCard()}
 
+      {/*
+        Toss already knows where to send it.
+
+        These fields were nine boxes the customer typed while their design sat
+        on another screen. getConsentedUserData asks them once, on Toss's own
+        consent sheet, and hands back the same four answers. The form is still
+        here — an old Toss app, a refusal, or a console without a consent
+        document all land on it — but it is the fallback now, not the way in.
+      */}
+      {contactSource === 'toss' ? (
+        <Card style={styles.formCard}>
+          <Text style={styles.sectionTitle}>어디로 보내드릴까요?</Text>
+          <Text style={styles.consentedName}>{name}</Text>
+          <Text style={styles.consentedLine}>{phone}</Text>
+          <Text style={styles.consentedLine}>{address1}</Text>
+          {email ? <Text style={styles.consentedLine}>{email}</Text> : null}
+          <TextInput
+            style={styles.input}
+            placeholder="상세 주소 (동/호수 등)"
+            value={address2}
+            onChangeText={setAddress2}
+          />
+          <TextInput
+            style={styles.input}
+            placeholder="배송 시 요청사항이 있으면 알려주세요"
+            value={memo}
+            onChangeText={setMemo}
+          />
+          <Pressable
+            onPress={() => setContactSource('manual')}
+            accessibilityRole="button"
+            accessibilityLabel="배송지 직접 입력하기"
+            style={styles.consentedSwitch}
+          >
+            <Text style={styles.consentedSwitchText}>직접 입력할게요</Text>
+          </Pressable>
+        </Card>
+      ) : (
+        <>
+        {contactSource === 'manual' ? (
+          <Pressable
+            onPress={() => void loadConsentedContact(true)}
+            disabled={contactLoading}
+            accessibilityRole="button"
+            accessibilityLabel="토스에서 배송지 가져오기"
+            style={styles.consentedFetch}
+          >
+            <Text style={styles.consentedFetchText}>
+              {contactLoading ? '가져오는 중...' : '토스에서 배송지 가져오기'}
+            </Text>
+          </Pressable>
+        ) : null}
       <Card style={styles.formCard}>
         <Text style={styles.sectionTitle}>주문하시는 분</Text>
         <TextInput
@@ -604,6 +721,8 @@ function Page() {
           multiline
         />
       </Card>
+        </>
+      )}
 
       <Card style={styles.quickFaqCard}>
         <Text style={styles.quickFaqTitle}>주문 전에 확인해 주세요</Text>
@@ -837,6 +956,41 @@ const styles = StyleSheet.create({
   chipSpacing: {
     marginRight: theme.spacing.sm,
     marginBottom: theme.spacing.sm,
+  },
+  consentedName: {
+    fontSize: 16,
+    lineHeight: 22,
+    fontWeight: '700',
+    color: '#191F28',
+    marginBottom: 2,
+  },
+  consentedLine: {
+    fontSize: 14,
+    lineHeight: 20,
+    color: '#4E5968',
+  },
+  consentedSwitch: {
+    alignSelf: 'flex-start',
+    paddingVertical: 8,
+  },
+  consentedSwitchText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#1B64DA',
+  },
+  consentedFetch: {
+    minHeight: 48,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#1B64DA',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 12,
+  },
+  consentedFetchText: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#1B64DA',
   },
   formCard: {
     marginBottom: theme.spacing.lg,
