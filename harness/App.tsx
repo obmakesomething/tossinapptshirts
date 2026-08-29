@@ -13,7 +13,6 @@ import { ToastContainer } from '../src/components/toast';
 
 import { Route as Home } from '../src/pages/index';
 import { Route as Editor } from '../src/pages/editor';
-import { Route as Preview } from '../src/pages/preview';
 import { Route as Order } from '../src/pages/order';
 import { Route as OrderComplete } from '../src/pages/order-complete';
 import { Route as OrderDetail } from '../src/pages/order-detail';
@@ -31,7 +30,6 @@ export const HARNESS_ROUTES: { path: string; label: string; Component: React.Com
   { path: '/products', label: '상품', Component: Products.component },
   { path: '/my', label: '마이', Component: My.component },
   { path: '/editor', label: '에디터', Component: Editor.component },
-  { path: '/preview', label: '미리보기', Component: Preview.component },
   { path: '/order', label: '주문', Component: Order.component },
   { path: '/order-complete', label: '주문완료', Component: OrderComplete.component },
   { path: '/orders', label: '주문내역', Component: Orders.component },

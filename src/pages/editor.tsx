@@ -1,4 +1,8 @@
-import { fetchAlbumPhotos } from '@apps-in-toss/native-modules';
+import {
+  fetchAlbumPhotos,
+  getTossShareLink,
+  share,
+} from '@apps-in-toss/native-modules';
 import { createRoute } from '@granite-js/react-native';
 import { TextField } from '@toss/tds-react-native';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
@@ -25,8 +29,9 @@ import {
   theme,
 } from '../components/ui';
 import { useCatalog } from '../context/catalog';
+import { useToast } from '../context/toastContext';
 import { resolveColorValue } from '../data/colorMap';
-import { buildTemplate } from '../data/mockupTemplates';
+import { buildTemplate, printSizeByCategory } from '../data/mockupTemplates';
 import {
   trackClick,
   trackPhotoAddClick,
@@ -38,7 +43,10 @@ import {
 } from '../utils/analytics';
 import { toImageDataUrl } from '../utils/imageMime';
 import { textRole } from '../utils/textRole';
-import { OptionSheet } from '../components/OptionSheet';
+import {
+  type PrintResolutionResult,
+  evaluatePrintResolution,
+} from '../utils/printResolution';
 import {
   calcPricing,
   FREE_SHIPPING_THRESHOLD,
@@ -72,6 +80,7 @@ export const Route = createRoute('/editor', {
 
 function Page() {
   const navigation = Route.useNavigation();
+  const { showToast } = useToast();
   const {
 
     products,
@@ -105,6 +114,7 @@ function Page() {
     addOrderLine,
     removeOrderLine,
     setOrderLineQuantity,
+    saveCurrentDesign,
   } = useCatalog();
 
   const currentPhotos = selectedPlacement === 'front' ? frontPhotos : backPhotos;
@@ -127,7 +137,9 @@ function Page() {
   const [imageControlFocused, setImageControlFocused] = useState(false);
   // Rests collapsed: the first thing to see after adding a photo is the shirt.
   const [panelExpanded, setPanelExpanded] = useState(false);
-  const [optionsOpen, setOptionsOpen] = useState(false);
+  const [printQuality, setPrintQuality] = useState<PrintResolutionResult | null>(
+    null,
+  );
 
   // ── Undo/Redo history ──
   type EditorSnapshot = {
@@ -188,6 +200,48 @@ function Page() {
   }, [imageTransform, textTransform, textLayer]);
 
   const { width: screenWidth, height: screenHeight } = useWindowDimensions();
+
+  /**
+   * Judge the artwork at the size it will actually be printed.
+   *
+   * Same arithmetic as the preview screen used, and as artworkDpi in
+   * server/printPipeline.js: imageTransform.scale is a fraction of the print
+   * area, so the printed size is the print area times that scale.
+   */
+  useEffect(() => {
+    if (!designImageUri) {
+      setPrintQuality(null);
+      return;
+    }
+    let cancelled = false;
+    const printArea = printSizeByCategory[selectedProduct.category] ?? {
+      widthCm: 28,
+      heightCm: 36,
+    };
+    const designScale = Math.max(imageTransform.scale, 0.01);
+    Image.getSize(
+      designImageUri,
+      (pixelWidth, pixelHeight) => {
+        if (cancelled) return;
+        setPrintQuality(
+          evaluatePrintResolution({
+            pixelWidth,
+            pixelHeight,
+            printWidthCm: printArea.widthCm * designScale,
+            printHeightCm: printArea.heightCm * designScale,
+          }),
+        );
+      },
+      // Size is unreadable for some URIs; stay silent rather than claim a level.
+      () => {
+        if (!cancelled) setPrintQuality(null);
+      },
+    );
+    return () => {
+      cancelled = true;
+    };
+  }, [designImageUri, selectedProduct.category, imageTransform.scale]);
+
 
   /**
    * Nothing on the garment yet.
@@ -324,22 +378,26 @@ function Page() {
   /** Nothing is ordered until the customer says what size they wear. */
   const hasSize = orderLines.length > 0;
 
-  const optionSummary = [
-    selectedProduct.name,
-    selectedColor,
-    orderLines.length > 0
-      ? orderLines.map((line) => `${line.sizeLabel} ${line.quantity}개`).join(', ')
-      : '사이즈 미선택',
-  ].join(' · ');
-
   const EDITOR_TABS = ['이미지', '텍스트'];
 
-  const goPreview = () => {
-    trackClick('editor_preview_click', {
-      product_id: selectedProduct.id,
-      placement: selectedPlacement,
-    });
-    navigation.navigate('/preview');
+  const handleSaveDesign = async () => {
+    try {
+      await saveCurrentDesign(`${selectedProduct.name} - ${selectedColor}`);
+      showToast({ type: 'success', message: '디자인을 저장했어요' });
+    } catch {
+      showToast({ type: 'error', message: '저장하지 못했어요' });
+    }
+  };
+
+  const handleShareDesign = async () => {
+    try {
+      const link = await getTossShareLink('intoss://merchandisegpt/editor');
+      await share({
+        message: `${selectedProduct.name} 디자인을 확인해보세요! 🎨\n${link}`,
+      });
+    } catch {
+      // 사용자가 취소했거나 공유가 실패한 경우 — 조용히 넘어간다.
+    }
   };
 
   const goOrder = () => {
@@ -572,23 +630,45 @@ function Page() {
             ? `금액은 배송비 ${formatPrice(SHIPPING_FEE)} 별도, ${formatPrice(FREE_SHIPPING_THRESHOLD)} 이상 무료예요.`
             : '사진을 올리면 옷에 얹어 보여드려요.'}
         </Text>
-        <View style={styles.optionRow}>
-          <View style={[styles.compactDot, { backgroundColor: resolveColorValue(selectedColor) }]} />
-          <Text style={styles.compactName} numberOfLines={1}>
-            {optionSummary}
-          </Text>
-          <Pressable
-            style={styles.optionChangeButton}
-            onPress={() => {
-              trackClick('editor_options_open');
-              setOptionsOpen(true);
-            }}
-            accessibilityRole="button"
-            accessibilityLabel="옵션 바꾸기"
-          >
-            <Text style={styles.optionRowAction}>변경</Text>
-            <Chevron direction="right" size={9} />
-          </Pressable>
+        {/*
+          Garment and colour, chosen in place.
+
+          These used to live behind 변경, which opened a sheet over the design
+          the customer was choosing them for. There are three garments and two
+          colours each — the whole choice fits on one line, so it is on one
+          line, and the sheet is gone.
+        */}
+        <View style={styles.pickerRow}>
+          {products.map((item) => (
+            <Chip
+              key={item.id}
+              label={item.name}
+              selected={item.id === selectedProduct.id}
+              onPress={() => {
+                trackClick('editor_product_chip_click', { product_id: item.id });
+                setSelectedProductId(item.id);
+              }}
+              style={styles.pickerChip}
+            />
+          ))}
+          <View style={styles.pickerDivider} />
+          {selectedProduct.colors.map((color) => (
+            <Pressable
+              key={color}
+              onPress={() => {
+                trackClick('editor_color_click', { color });
+                setSelectedColor(color);
+              }}
+              accessibilityRole="button"
+              accessibilityLabel={`${color} 색상`}
+              accessibilityState={{ selected: selectedColor === color }}
+              style={[
+                styles.colorDot,
+                { backgroundColor: resolveColorValue(color) },
+                selectedColor === color && styles.colorDotSelected,
+              ]}
+            />
+          ))}
         </View>
         {/* 앞/뒤면 세그먼트 — 올릴 것이 있을 때만 */}
         {hasArtwork ? (
@@ -718,6 +798,51 @@ function Page() {
                 );
               })}
             </View>
+            {/*
+              Quantity lives on the size that was chosen, not in a sheet.
+
+              This scrolls sideways instead of stacking, so picking a third
+              size cannot push the order button off the screen.
+            */}
+            {orderLines.length > 0 ? (
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                style={styles.qtyStrip}
+                contentContainerStyle={styles.qtyStripContent}
+              >
+                {orderLines.map((line) => (
+                  <View key={line.id} style={styles.qtyPill}>
+                    <Text style={styles.qtyPillSize}>{line.sizeLabel}</Text>
+                    <Pressable
+                      onPress={() => {
+                        if (line.quantity > 1) {
+                          setOrderLineQuantity(line.id, line.quantity - 1);
+                        } else {
+                          removeOrderLine(line.id);
+                        }
+                      }}
+                      accessibilityRole="button"
+                      accessibilityLabel={`${line.sizeLabel} 수량 줄이기`}
+                      hitSlop={6}
+                      style={styles.qtyStep}
+                    >
+                      <Text style={styles.qtyStepText}>−</Text>
+                    </Pressable>
+                    <Text style={styles.qtyValue}>{line.quantity}</Text>
+                    <Pressable
+                      onPress={() => setOrderLineQuantity(line.id, line.quantity + 1)}
+                      accessibilityRole="button"
+                      accessibilityLabel={`${line.sizeLabel} 수량 늘리기`}
+                      hitSlop={6}
+                      style={styles.qtyStep}
+                    >
+                      <Text style={styles.qtyStepText}>+</Text>
+                    </Pressable>
+                  </View>
+                ))}
+              </ScrollView>
+            ) : null}
           </View>
           <Pressable
             style={[styles.orderCta, !hasSize && styles.orderCtaBlocked]}
@@ -746,15 +871,16 @@ function Page() {
                 : '사이즈를 골라주세요'}
             </Text>
           </Pressable>
-          {hasArtwork ? (
-            <Pressable
-              onPress={goPreview}
-              style={styles.previewLink}
-              accessibilityRole="button"
-              accessibilityLabel="완성 보기"
-            >
-              <Text style={styles.previewLinkText}>완성 보기</Text>
-            </Pressable>
+          {/*
+            What the preview screen was actually for.
+
+            That screen existed to show the design bigger and say whether the
+            photo was sharp enough. The canvas above is already the design at
+            the size it is being judged at, so only the sentence was missing —
+            it is here now, and the screen is gone.
+          */}
+          {printQuality && printQuality.level !== 'good' ? (
+            <Text style={styles.qualityLine}>{printQuality.description}</Text>
           ) : null}
         </View>
         ) : null}
@@ -769,15 +895,38 @@ function Page() {
       {/* ── 하단 탭 패널 — 편집할 것이 있을 때만 ── */}
       {hasArtwork ? (
       <View style={[styles.panel, { height: panelHeight }]}>
-        <Pressable
-          style={styles.editPanelHeader}
-          onPress={() => setPanelExpanded((v) => !v)}
-          accessibilityRole="button"
-          accessibilityLabel={panelExpanded ? '편집 도구 접기' : '편집 도구 펼치기'}
-        >
-          <Text style={styles.editPanelTitle}>편집하기</Text>
-          <Chevron direction={panelExpanded ? 'down' : 'up'} size={9} />
-        </Pressable>
+        <View style={styles.editPanelHeader}>
+          <Pressable
+            style={styles.editPanelToggleRow}
+            onPress={() => setPanelExpanded((v) => !v)}
+            accessibilityRole="button"
+            accessibilityLabel={panelExpanded ? '편집 도구 접기' : '편집 도구 펼치기'}
+          >
+            <Text style={styles.editPanelTitle}>편집하기</Text>
+            <Chevron direction={panelExpanded ? 'down' : 'up'} size={9} />
+          </Pressable>
+          {/* 저장·공유는 미리보기 화면이 가져가 있던 기능이다. */}
+          <View style={styles.editPanelActions}>
+            <Pressable
+              onPress={() => void handleSaveDesign()}
+              accessibilityRole="button"
+              accessibilityLabel="디자인 저장"
+              hitSlop={8}
+              style={styles.editPanelAction}
+            >
+              <Text style={styles.editPanelActionText}>저장</Text>
+            </Pressable>
+            <Pressable
+              onPress={() => void handleShareDesign()}
+              accessibilityRole="button"
+              accessibilityLabel="디자인 공유"
+              hitSlop={8}
+              style={styles.editPanelAction}
+            >
+              <Text style={styles.editPanelActionText}>공유</Text>
+            </Pressable>
+          </View>
+        </View>
         {panelExpanded ? (
         <>
         <TabBar
@@ -1077,21 +1226,6 @@ function Page() {
       </View>
       ) : null}
 
-      <OptionSheet
-        visible={optionsOpen}
-        onClose={() => setOptionsOpen(false)}
-        products={products}
-        product={selectedProduct}
-        selectedColor={selectedColor}
-        orderLines={orderLines}
-        total={pricing.total}
-        onSelectProduct={setSelectedProductId}
-        onSelectColor={setSelectedColor}
-        onAddSize={(label) => addOrderLine(label, 1)}
-        onChangeQuantity={setOrderLineQuantity}
-        onRemoveLine={removeOrderLine}
-      />
-
       {/* Delete Photo Confirmation Modal */}
       <Modal
         visible={showDeleteConfirm}
@@ -1359,6 +1493,101 @@ const styles = StyleSheet.create({
   },
   sizeChip: {
     marginRight: 0,
+  },
+  pickerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: theme.spacing.xs,
+    marginTop: theme.spacing.xs,
+  },
+  pickerChip: {
+    marginRight: 0,
+  },
+  /** Separates the garment from its colours without a second row. */
+  pickerDivider: {
+    width: 1,
+    height: 20,
+    backgroundColor: theme.colors.border,
+    marginHorizontal: theme.spacing.xs,
+  },
+  colorDot: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    borderWidth: 1,
+    // A white garment on a light page needs the ring to be visible at all.
+    borderColor: theme.colors.textTertiary,
+  },
+  colorDotSelected: {
+    borderWidth: 3,
+    borderColor: theme.colors.primary,
+  },
+  qtyStrip: {
+    marginTop: theme.spacing.xs,
+    maxHeight: 40,
+  },
+  qtyStripContent: {
+    gap: theme.spacing.xs,
+    alignItems: 'center',
+  },
+  qtyPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
+    paddingHorizontal: theme.spacing.sm,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: theme.colors.surfaceSecondary,
+  },
+  qtyPillSize: {
+    ...theme.typography.caption,
+    fontWeight: '700',
+    color: theme.colors.textPrimary,
+    marginRight: 2,
+  },
+  qtyStep: {
+    width: 26,
+    height: 26,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  qtyStepText: {
+    fontSize: 16,
+    lineHeight: 18,
+    fontWeight: '700',
+    color: theme.colors.textSecondary,
+  },
+  qtyValue: {
+    ...theme.typography.caption,
+    fontWeight: '700',
+    color: theme.colors.textPrimary,
+    minWidth: 14,
+    textAlign: 'center',
+  },
+  qualityLine: {
+    ...theme.typography.caption,
+    color: theme.colors.textTertiary,
+    textAlign: 'center',
+    marginTop: theme.spacing.xs,
+  },
+  editPanelToggleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.xs,
+    flex: 1,
+  },
+  editPanelActions: {
+    flexDirection: 'row',
+    gap: theme.spacing.md,
+  },
+  editPanelAction: {
+    paddingVertical: 4,
+  },
+  editPanelActionText: {
+    ...theme.typography.caption,
+    fontWeight: '700',
+    color: theme.colors.primary,
   },
   /** The one thing to do once the design is placed. */
   orderCta: {
