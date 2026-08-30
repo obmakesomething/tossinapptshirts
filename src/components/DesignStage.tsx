@@ -83,7 +83,7 @@ export function DesignStage({
   const hemTrimRatio = getHemTrimInsetRatio(sizeLabel);
   // Print areas are image-relative, so they are mapped onto the drawn garment
   // rather than the raw stage box — see utils/garmentLayout.
-  const { printArea: templateArea } = useTemplatePrintArea({
+  const { garment: garmentRect, printArea: templateArea } = useTemplatePrintArea({
     template,
     width,
     height,
@@ -111,9 +111,28 @@ export function DesignStage({
 
   const effectiveShowGuides = _showPrintArea && showGuides;
   const stageBackgroundColor = getGarmentStageBackground(template.color, 'transparent');
+  /**
+   * The garment is placed, not just contained.
+   *
+   * garmentFitRect sizes the photograph so the shirt inside it fills the
+   * stage, which means the image itself usually spills past the edges and is
+   * clipped. resizeMode is "stretch" because the rect already carries the
+   * image's own aspect — "contain" would letterbox it a second time inside
+   * dimensions that were computed to avoid exactly that.
+   */
   const stageImageStyle = useMemo(
-    () => [styles.image, { bottom: height * hemTrimRatio }],
-    [height, hemTrimRatio],
+    () => [
+      styles.image,
+      {
+        left: garmentRect.left,
+        top: garmentRect.top,
+        width: garmentRect.width,
+        height: garmentRect.height,
+        bottom: undefined,
+        right: undefined,
+      },
+    ],
+    [garmentRect.left, garmentRect.top, garmentRect.width, garmentRect.height],
   );
   const [imageNaturalSize, setImageNaturalSize] = useState<{
     uri: string;
@@ -557,7 +576,7 @@ export function DesignStage({
         <Image
           source={template.image}
           style={stageImageStyle}
-          resizeMode="contain"
+          resizeMode="stretch"
           onError={(e) =>
             console.error(
               '[DesignStage] Image load error:',

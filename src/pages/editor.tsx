@@ -38,6 +38,7 @@ import {
 import { pickAlbumPhoto } from '../utils/pickAlbumPhoto';
 import { textRole } from '../utils/textRole';
 import { computeEditorLayout } from '../utils/editorLayout';
+import { useGarmentAspect } from '../utils/garmentLayout';
 import {
   type PrintResolutionResult,
   evaluatePrintResolution,
@@ -48,8 +49,12 @@ const ACCENT = '#1B64DA';
 const FILL_SOFT = '#F2F4F6';
 const PANEL_BG = '#FFFFFF';
 const DEFAULT_STAGE_ZOOM = 1.0;
-const CANVAS_AREA_HORIZONTAL_PADDING = 16 * 2;
-const CANVAS_FRAME_HORIZONTAL_PADDING = 8 * 2;
+/**
+ * Kept in step with canvasArea's own paddingHorizontal below — they were 16
+ * and 24, so the width the stage was sized against was not the width it got.
+ */
+const CANVAS_AREA_HORIZONTAL_PADDING = 12 * 2;
+const CANVAS_FRAME_HORIZONTAL_PADDING = 6 * 2;
 const CANVAS_FRAME_VERTICAL_PADDING = 12 * 2;
 
 export const Route = createRoute('/editor', {
@@ -255,8 +260,21 @@ function Page() {
    * it overrode both and pushed the column past the bottom of the screen the
    * moment the panel opened.
    */
+  /**
+   * The stage is the garment's shape, not the leftover space.
+   *
+   * Given all the height the column could spare, a wide-shouldered tee filled
+   * the width and left the rest as background — the shirt was as large as the
+   * screen allows and still looked small, because it was centred in empty
+   * grey. Capping the stage at the garment's own aspect removes the dead
+   * space rather than trying to zoom past it.
+   */
+  const garmentAspect = useGarmentAspect(
+    buildTemplate(selectedProduct, selectedColor, selectedPlacement),
+  );
+  const budgetedHeight = budgetedCanvasHeight - CANVAS_FRAME_VERTICAL_PADDING;
   const canvasHeight = Math.round(
-    budgetedCanvasHeight - CANVAS_FRAME_VERTICAL_PADDING,
+    garmentAspect ? Math.min(budgetedHeight, canvasWidth / garmentAspect) : budgetedHeight,
   );
 
 
@@ -1208,7 +1226,9 @@ const styles = StyleSheet.create({
     width: '100%',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 24,
+    // Matches CANVAS_AREA_HORIZONTAL_PADDING; the garment is the content, and
+    // margin around it is margin taken off the thing being sold.
+    paddingHorizontal: 12,
     marginBottom: theme.spacing.xs,
   },
   canvasAreaFocused: {
@@ -1341,7 +1361,8 @@ const styles = StyleSheet.create({
     width: '100%',
     borderRadius: 16,
     paddingVertical: 18,
-    paddingHorizontal: 10,
+    // Matches CANVAS_FRAME_HORIZONTAL_PADDING.
+    paddingHorizontal: 6,
     alignItems: 'center',
     justifyContent: 'center',
   },

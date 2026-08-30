@@ -1,6 +1,10 @@
 import { useEffect, useState } from 'react';
 import { Image, type ImageSourcePropType } from 'react-native';
-import type { MockupTemplate, PrintArea } from '../data/mockupTemplates';
+import type {
+  GarmentBox,
+  MockupTemplate,
+  PrintArea,
+} from '../data/mockupTemplates';
 
 export type Rect = {
   left: number;
@@ -52,6 +56,60 @@ export function containRect({
     top: 0,
     width: drawnWidth,
     height: boxHeight,
+  };
+}
+
+/**
+ * Where the mockup lands when the garment, not the photograph, is what fits.
+ *
+ * The eight mockups were shot and cropped separately and disagree wildly: the
+ * white tee is 1040x1560 with the shirt filling 63% of the height, the black
+ * one 421x457 filling all of it, the hoodie 400x400 filling 74% of the width.
+ * Fitting the photograph meant the garment changed size whenever the customer
+ * switched colour — and the default, the white tee, came out the smallest of
+ * the set, sitting in a third of a screen of empty background.
+ *
+ * This fits the garment's own box instead and lets the surrounding photograph
+ * fall outside the canvas, which clips it. The returned rect is still the
+ * whole image, so printAreaRect keeps mapping onto it unchanged: the print
+ * area zooms with the shirt because it is measured against the same rect.
+ */
+export function garmentFitRect({
+  boxWidth,
+  boxHeight,
+  imageAspect,
+  garmentBox,
+}: {
+  boxWidth: number;
+  boxHeight: number;
+  imageAspect: number | null;
+  garmentBox: GarmentBox | null | undefined;
+}): Rect {
+  if (
+    !garmentBox ||
+    !(garmentBox.width > 0) ||
+    !(garmentBox.height > 0) ||
+    !imageAspect ||
+    !(imageAspect > 0) ||
+    boxHeight <= 0
+  ) {
+    return containRect({ boxWidth, boxHeight, imageAspect });
+  }
+
+  // Work in units where the image is 1 wide; its height is then 1 / aspect.
+  const imageHeightUnits = 1 / imageAspect;
+  const scale = Math.min(
+    boxWidth / garmentBox.width,
+    boxHeight / (garmentBox.height * imageHeightUnits),
+  );
+  const width = scale;
+  const height = scale * imageHeightUnits;
+
+  return {
+    width,
+    height,
+    left: boxWidth / 2 - (garmentBox.x + garmentBox.width / 2) * width,
+    top: boxHeight / 2 - (garmentBox.y + garmentBox.height / 2) * height,
   };
 }
 
@@ -115,10 +173,29 @@ export function useTemplatePrintArea({
   hemTrimRatio?: number;
 }): { garment: Rect; printArea: Rect } {
   const aspect = useImageAspect(template.image);
-  const garment = containRect({
+  const garment = garmentFitRect({
     boxWidth: width,
     boxHeight: height * (1 - hemTrimRatio),
     imageAspect: aspect,
+    garmentBox: template.garmentBox,
   });
   return { garment, printArea: printAreaRect(garment, template.printArea) };
+}
+
+/**
+ * The garment's own aspect, for sizing the stage to it.
+ *
+ * A stage taller than the shirt fills the difference with background, and a
+ * shirt centred in a third of a screen of empty grey reads as small however
+ * large it actually is. Shaping the stage to the garment removes the dead
+ * space instead of trying to zoom past it.
+ *
+ * Null until the image reports its size, so callers keep their existing box
+ * for a frame rather than snapping.
+ */
+export function useGarmentAspect(template: MockupTemplate): number | null {
+  const imageAspect = useImageAspect(template.image);
+  const box = template.garmentBox;
+  if (!imageAspect || !box || !(box.width > 0) || !(box.height > 0)) return null;
+  return imageAspect * (box.width / box.height);
 }
