@@ -7,6 +7,7 @@ import {
 import React, { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import {
+  Chip,
   Card,
   PrimaryButton,
   Screen,
@@ -86,6 +87,9 @@ function Page() {
     selectedColor,
     orderLines,
     totalQuantity,
+    addOrderLine,
+    removeOrderLine,
+    setOrderLineQuantity,
     printBackEnabled,
     selectedPrint,
     designImageUri,
@@ -237,9 +241,6 @@ function Page() {
     printOption: selectedPrint,
     printBackEnabled,
   });
-  const sizeSummary = orderLines
-    .map((line) => `${line.sizeLabel} ${line.quantity}개`)
-    .join(' · ');
 
   /**
    * The print canvas is the printable region itself, at 300 DPI.
@@ -281,28 +282,88 @@ function Page() {
             navigation.navigate('/editor');
           }}
           accessibilityRole="button"
-          accessibilityLabel="옵션 바꾸기"
+          accessibilityLabel="옷 바꾸기"
           hitSlop={8}
         >
-          <Text style={styles.summaryEditLink}>옵션 바꾸기</Text>
+          <Text style={styles.summaryEditLink}>옷 바꾸기</Text>
         </Pressable>
       </View>
 
-      {/* Colour, size and quantity are chosen in the editor, beside the design
-          and with the running total in view. This screen shows what was chosen
-          and sends the customer back to change it, rather than carrying a
-          second copy of the same controls. */}
       <Text style={styles.summaryMeta}>
-        {selectedColor} · {sizeSummary || `${totalQuantity}개`}
+        {selectedColor} · 제작·배송 7~14일
         {printBackEnabled ? ' · 뒷면도 프린팅' : ''}
       </Text>
-      <Text style={styles.summaryMeta}>
-        예상 결제 {formatPrice(pricing.total)} (배송비{' '}
-        {pricing.shippingFee === 0
-          ? '무료'
-          : formatPrice(pricing.shippingFee)}
-        )
-      </Text>
+
+      {/*
+        Size is asked once, here.
+
+        It used to be chips on the editor, beside a mockup that cannot show a
+        size — twelve controls competing for attention on a screen whose only job was
+        to show the customer their shirt. Nothing is preselected, because the
+        smallest size was going out to people who never opened the options.
+      */}
+      <Text style={styles.sizeLabel}>사이즈</Text>
+      <View style={styles.sizeChips}>
+        {selectedProduct.sizes.map((size) => {
+          const line = orderLines.find((l) => l.sizeLabel === size.label);
+          return (
+            <Chip
+              key={size.label}
+              label={size.label}
+              selected={Boolean(line)}
+              onPress={() => {
+                trackClick('order_size_chip_click', {
+                  size: size.label,
+                  selecting: !line,
+                });
+                if (line) removeOrderLine(line.id);
+                else addOrderLine(size.label, 1);
+              }}
+              style={styles.sizeChip}
+            />
+          );
+        })}
+      </View>
+      {orderLines.length > 0 ? (
+        <View style={styles.qtyRow}>
+          {orderLines.map((line) => (
+            <View key={line.id} style={styles.qtyPill}>
+              <Text style={styles.qtyPillSize}>{line.sizeLabel}</Text>
+              <Pressable
+                onPress={() =>
+                  line.quantity > 1
+                    ? setOrderLineQuantity(line.id, line.quantity - 1)
+                    : removeOrderLine(line.id)
+                }
+                accessibilityRole="button"
+                accessibilityLabel={`${line.sizeLabel} 수량 줄이기`}
+                hitSlop={6}
+                style={styles.qtyStep}
+              >
+                <Text style={styles.qtyStepText}>−</Text>
+              </Pressable>
+              <Text style={styles.qtyValue}>{line.quantity}</Text>
+              <Pressable
+                onPress={() => setOrderLineQuantity(line.id, line.quantity + 1)}
+                accessibilityRole="button"
+                accessibilityLabel={`${line.sizeLabel} 수량 늘리기`}
+                hitSlop={6}
+                style={styles.qtyStep}
+              >
+                <Text style={styles.qtyStepText}>+</Text>
+              </Pressable>
+            </View>
+          ))}
+        </View>
+      ) : null}
+      {/* Before a size there is no order, and ₩3,000 of shipping is not a price. */}
+      {orderLines.length > 0 ? (
+        <Text style={styles.summaryMeta}>
+          예상 결제 {formatPrice(pricing.total)} (배송비{' '}
+          {pricing.shippingFee === 0 ? '무료' : formatPrice(pricing.shippingFee)}
+          )
+        </Text>
+      ) : null}
     </Card>
   );
 
@@ -725,18 +786,6 @@ function Page() {
         </>
       )}
 
-      {/*
-        Two things worth knowing at the till, in one line.
-
-        This was a card of question-and-answer pairs restating the FAQ from
-        home, and it cost more than a fifth of the screen — enough that the
-        consents and the pay button fell below the fold. Both facts still
-        appear: the wait is here, and the refund limit is the consent directly
-        below, which is where a customer has to read it anyway.
-      */}
-      <Text style={styles.checkoutNotice}>
-        제작·배송 7~14일 · 주문 제작이라 단순 변심 교환·환불은 어려워요
-      </Text>
 
       {/* 동의 체크박스 */}
       <View style={styles.agreementSection}>
@@ -998,6 +1047,61 @@ const styles = StyleSheet.create({
     lineHeight: 18,
     color: '#8B95A1',
     marginBottom: 12,
+  },
+  sizeLabel: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#8B95A1',
+    marginTop: 12,
+    marginBottom: 8,
+  },
+  sizeChips: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  sizeChip: {
+    marginRight: 0,
+  },
+  qtyRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 10,
+  },
+  qtyPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
+    paddingHorizontal: 10,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#F2F4F6',
+  },
+  qtyPillSize: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#191F28',
+    marginRight: 2,
+  },
+  qtyStep: {
+    width: 26,
+    height: 26,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  qtyStepText: {
+    fontSize: 16,
+    lineHeight: 18,
+    fontWeight: '700',
+    color: '#4E5968',
+  },
+  qtyValue: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#191F28',
+    minWidth: 14,
+    textAlign: 'center',
   },
   summaryEditLink: {
     fontSize: 13,
