@@ -28,6 +28,8 @@ import { useCatalog } from '../context/catalog';
 import { faqCategories, faqItems } from '../data/faq';
 import { buildTemplate } from '../data/mockupTemplates';
 import { API_BASE_URL } from '../config';
+import { pickAlbumPhoto } from '../utils/pickAlbumPhoto';
+import { useToast } from '../context/toastContext';
 import { SHIPPING_SUMMARY_TEXT } from '../data/pricing';
 import { textRole } from '../utils/textRole';
 import {
@@ -56,6 +58,8 @@ export const Route = createRoute('/', {
 
 function Page() {
   const navigation = Route.useNavigation();
+  const { showToast } = useToast();
+  const [pickingPhoto, setPickingPhoto] = useState(false);
   const { width: screenWidth } = Dimensions.get('window');
   const carouselRef = React.useRef<FlatList<string> | null>(null);
   const {
@@ -64,6 +68,7 @@ function Page() {
     selectedColor,
     setSelectedProductId,
     setSelectedColor,
+    addPhoto,
   } = useCatalog();
   const [selectedCategory, setSelectedCategory] =
     React.useState<string>('티셔츠');
@@ -157,9 +162,9 @@ function Page() {
     });
   }, [activeCategoryIndex, carouselInterval]);
 
-  const goToEditor = () => {
-    // Home follows its own carousel category, so it has to hand the editor the
-    // garment as well as the colour. Sending only the colour left the two
+  const syncGarmentFromCarousel = () => {
+    // Home follows its own carousel category, so it has to hand the catalogue
+    // the garment as well as the colour. Sending only the colour left the two
     // disagreeing whenever the catalogue already held a different garment.
     const editorColor = resolveCategoryPreviewColor(
       selectedCategoryProduct,
@@ -176,7 +181,45 @@ function Page() {
       category: selectedCategory,
       product_id: selectedCategoryProduct.id,
     });
-    navigation.navigate('/editor');
+    return { editorColor };
+  };
+
+  /**
+   * 사진 올리고 시작하기 does both halves.
+   *
+   * It used to do only the 시작하기 half — move to the editor and leave a
+   * second 사진 올리기 waiting on an empty shirt. Two taps for one intent, and
+   * the button had already promised one. The album opens here, and the editor
+   * is reached with the design already on the garment.
+   *
+   * Nothing happens if the customer closes the picker: they are still on the
+   * screen they chose the garment on, which is where they were.
+   */
+  const startWithPhoto = async () => {
+    if (pickingPhoto) return;
+    syncGarmentFromCarousel();
+    setPickingPhoto(true);
+    const result = await pickAlbumPhoto();
+    setPickingPhoto(false);
+
+    if (result.status === 'picked') {
+      addPhoto(result.dataUrl);
+      navigation.navigate('/editor');
+      return;
+    }
+    if (result.status === 'denied') {
+      showToast({
+        type: 'error',
+        message: '사진 앨범에 접근하려면 권한이 필요해요.',
+      });
+      return;
+    }
+    if (result.status === 'failed') {
+      showToast({
+        type: 'error',
+        message: '앨범을 불러오지 못했어요. 잠시 후 다시 시도해 주세요.',
+      });
+    }
   };
 
   const goToFAQ = () => {
@@ -251,7 +294,7 @@ function Page() {
         </View>
         <PrimaryButton
           label="사진 올리고 시작하기"
-          onPress={goToEditor}
+          onPress={() => void startWithPhoto()}
           style={styles.heroCtaButton}
         />
         <Text style={styles.heroFinePrint}>{SHIPPING_SUMMARY_TEXT}</Text>

@@ -1,8 +1,4 @@
-import {
-  fetchAlbumPhotos,
-  getTossShareLink,
-  share,
-} from '@apps-in-toss/native-modules';
+import { getTossShareLink, share } from '@apps-in-toss/native-modules';
 import { createRoute } from '@granite-js/react-native';
 import { TextField } from '@toss/tds-react-native';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
@@ -39,7 +35,7 @@ import {
   trackPhotoSelectThumbnail,
   trackScreenView,
 } from '../utils/analytics';
-import { toImageDataUrl } from '../utils/imageMime';
+import { pickAlbumPhoto } from '../utils/pickAlbumPhoto';
 import { textRole } from '../utils/textRole';
 import { computeEditorLayout } from '../utils/editorLayout';
 import {
@@ -336,37 +332,20 @@ function Page() {
   const pickPhoto = async () => {
     setPhotoError('');
     setLoadingPhoto(true);
-    try {
-      const permission = await fetchAlbumPhotos.getPermission();
-      if (permission !== 'allowed') {
-        const next = await fetchAlbumPhotos.openPermissionDialog();
-        if (next !== 'allowed') {
-          setPhotoError('사진 앨범에 접근하려면 권한이 필요해요.');
-          setLoadingPhoto(false);
-          return null;
-        }
-      }
-      // This is the print source, not a thumbnail. 1024px across a 12-inch
-      // print is ~85 DPI; 2048 keeps a full-chest design inside the warning
-      // threshold in utils/printResolution.
-      const photos = await fetchAlbumPhotos({
-        maxCount: 1,
-        maxWidth: 2048,
-        base64: true,
-      });
-      const photo = photos[0];
-      if (!photo || !photo.dataUri) {
-        setPhotoError('사진을 불러오지 못했어요. 다시 시도해 주세요.');
-        setLoadingPhoto(false);
+    const result = await pickAlbumPhoto();
+    setLoadingPhoto(false);
+    switch (result.status) {
+      case 'picked':
+        return result.dataUrl;
+      case 'denied':
+        setPhotoError('사진 앨범에 접근하려면 권한이 필요해요.');
         return null;
-      }
-      const dataUrl = toImageDataUrl(photo.dataUri);
-      setLoadingPhoto(false);
-      return dataUrl;
-    } catch (err) {
-      setPhotoError('앨범을 불러오지 못했어요. 잠시 후 다시 시도해 주세요.');
-      setLoadingPhoto(false);
-      return null;
+      // Closing the picker is a decision, not something to apologise for.
+      case 'empty':
+        return null;
+      default:
+        setPhotoError('앨범을 불러오지 못했어요. 잠시 후 다시 시도해 주세요.');
+        return null;
     }
   };
 
