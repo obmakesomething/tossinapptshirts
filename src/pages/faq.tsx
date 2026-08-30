@@ -92,6 +92,7 @@ function Page() {
                     onPress={() => toggleExpand(item.id)}
                     style={({ pressed }) => [styles.faqItem, pressed && styles.faqItemPressed]}
                     accessibilityRole="button"
+                    accessibilityLabel={item.question}
                     accessibilityState={{ expanded: isExpanded }}
                   >
                     <View style={styles.questionRow}>

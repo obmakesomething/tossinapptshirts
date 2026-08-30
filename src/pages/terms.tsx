@@ -2,6 +2,8 @@ import { createRoute } from '@granite-js/react-native';
 import React from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Screen, theme } from '../components/ui';
+import { FREE_SHIPPING_THRESHOLD, SHIPPING_FEE } from '../data/pricing';
+import { formatPrice } from '../utils/format';
 
 const PAGE_BG = '#F2F4F6';
 const PANEL = '#FFFFFF';
@@ -70,7 +72,8 @@ function Page() {
             1. 제작 기간은 주문 확정 후 약 7-10일이 소요됩니다.{'\n'}
             2. 배송은 제작 완료 후 2-3일 이내에 이루어집니다.{'\n'}
             3. 천재지변, 물량 폭주 등 불가항력적인 사유가 발생한 경우 배송이 지연될 수 있습니다.{'\n'}
-            4. 배송비는 기본 3,000원이며, 60,000원 이상 구매 시 무료입니다.
+            4. 배송비는 기본 {formatPrice(SHIPPING_FEE)}이며,{' '}
+            {formatPrice(FREE_SHIPPING_THRESHOLD)} 이상 구매 시 무료입니다.
           </Text>
 
           <Text style={styles.sectionTitle}>제 7 조 (환불 및 교환)</Text>

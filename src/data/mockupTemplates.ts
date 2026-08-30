@@ -10,6 +10,21 @@ export type PrintArea = {
   height: number;
 };
 
+/**
+ * Where the garment sits inside its photograph, as fractions of the image.
+ *
+ * Measured by scripts/measureGarmentBoxes.js, because the eight shots were
+ * cropped separately and disagree: some fill their frame, the white tee fills
+ * 63% of its height. Rendering the photograph rather than the garment made the
+ * shirt change size whenever the colour changed.
+ */
+export type GarmentBox = {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+};
+
 export type MockupTemplate = {
   id: string;
   productId: string;
@@ -18,6 +33,7 @@ export type MockupTemplate = {
   placement: Placement;
   image: ImageSourcePropType;
   printArea: PrintArea;
+  garmentBox?: GarmentBox;
 };
 
 export const defaultPrintArea: PrintArea = {
@@ -54,6 +70,33 @@ export const defaultPrintArea: PrintArea = {
  * These place the artwork correctly on the garment. The centimetre figures in
  * printSizeByCategory are still the vendor's to confirm.
  */
+/** Measured by scripts/measureGarmentBoxes.js. Re-run it if a shot changes. */
+export const garmentBoxByMockup: Record<string, GarmentBox> = {
+  'tshirt_white_front.png': { x: 0, y: 0.1846, width: 1, height: 0.6308 },
+  'tshirt_white_back.png': { x: 0.0548, y: 0.1853, width: 0.8962, height: 0.6474 },
+  'tshirt_black_front.png': { x: 0, y: 0, width: 1, height: 1 },
+  'tshirt_black_back.png': { x: 0, y: 0, width: 1, height: 1 },
+  'hoodie_black_front.png': { x: 0.135, y: 0.0525, width: 0.745, height: 0.8925 },
+  'hoodie_grey_front.png': { x: 0.155, y: 0.0675, width: 0.6975, height: 0.8612 },
+  'sweatshirt_black_front.png': { x: 0.0825, y: 0.0775, width: 0.84, height: 0.8375 },
+  'sweatshirt_grey_front.png': { x: 0.0925, y: 0.1325, width: 0.8287, height: 0.745 },
+};
+
+function mockupFilename(image: ImageSourcePropType): string | undefined {
+  const uri =
+    typeof image === 'object' && image !== null && 'uri' in image
+      ? (image as { uri?: string }).uri
+      : undefined;
+  return uri ? uri.split('/').pop() : undefined;
+}
+
+export function resolveGarmentBox(
+  image: ImageSourcePropType,
+): GarmentBox | undefined {
+  const filename = mockupFilename(image);
+  return filename ? garmentBoxByMockup[filename] : undefined;
+}
+
 export const printAreaByMockup: Record<string, PrintArea> = {
   'tshirt_white_front.png': { x: 0.348, y: 0.237, width: 0.308, height: 0.264 },
   'tshirt_white_back.png': { x: 0.348, y: 0.237, width: 0.308, height: 0.264 },
@@ -117,5 +160,6 @@ export function buildTemplate(
     placement,
     image,
     printArea: resolvePrintArea(image),
+    garmentBox: resolveGarmentBox(image),
   };
 }

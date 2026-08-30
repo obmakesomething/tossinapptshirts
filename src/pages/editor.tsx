@@ -1,4 +1,4 @@
-import { fetchAlbumPhotos } from '@apps-in-toss/native-modules';
+import { getTossShareLink, share } from '@apps-in-toss/native-modules';
 import { createRoute } from '@granite-js/react-native';
 import { TextField } from '@toss/tds-react-native';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
@@ -24,8 +24,8 @@ import {
   theme,
 } from '../components/ui';
 import { useCatalog } from '../context/catalog';
-import { resolveColorValue } from '../data/colorMap';
-import { buildTemplate } from '../data/mockupTemplates';
+import { useToast } from '../context/toastContext';
+import { buildTemplate, printSizeByCategory } from '../data/mockupTemplates';
 import {
   trackClick,
   trackPhotoAddClick,
@@ -35,19 +35,30 @@ import {
   trackPhotoSelectThumbnail,
   trackScreenView,
 } from '../utils/analytics';
-import { toImageDataUrl } from '../utils/imageMime';
+import { pickAlbumPhoto } from '../utils/pickAlbumPhoto';
 import { textRole } from '../utils/textRole';
-import { OptionSheet } from '../components/OptionSheet';
-import { calcPricing } from '../data/pricing';
+import { computeEditorLayout } from '../utils/editorLayout';
+import { useGarmentAspect } from '../utils/garmentLayout';
+import {
+  type PrintResolutionResult,
+  evaluatePrintResolution,
+} from '../utils/printResolution';
 import { formatPrice } from '../utils/format';
 
 const ACCENT = '#1B64DA';
 const FILL_SOFT = '#F2F4F6';
 const PANEL_BG = '#FFFFFF';
-const EDITOR_HEADER_RESERVED = 100;
 const DEFAULT_STAGE_ZOOM = 1.0;
-const CANVAS_AREA_HORIZONTAL_PADDING = 16 * 2;
-const CANVAS_FRAME_HORIZONTAL_PADDING = 8 * 2;
+/**
+ * None. The garment goes edge to edge.
+ *
+ * The mockups are transparent PNGs, so something has to sit behind a white
+ * tee or it vanishes into a white page — but that backdrop was a rounded card
+ * inset from both margins, which put the thing being sold inside a box and
+ * took the width off it. It is a full-bleed band now: same contrast, no box.
+ */
+const CANVAS_AREA_HORIZONTAL_PADDING = 0;
+const CANVAS_FRAME_HORIZONTAL_PADDING = 0;
 const CANVAS_FRAME_VERTICAL_PADDING = 12 * 2;
 
 export const Route = createRoute('/editor', {
@@ -56,9 +67,9 @@ export const Route = createRoute('/editor', {
 
 function Page() {
   const navigation = Route.useNavigation();
+  const { showToast } = useToast();
   const {
 
-    products,
     selectedProduct,
     selectedColor,
     orderLines,
@@ -83,12 +94,7 @@ function Page() {
     replacePhoto,
     deletePhoto,
     selectPhoto,
-    printBackEnabled,
-    setSelectedProductId,
-    setSelectedColor,
-    addOrderLine,
-    removeOrderLine,
-    setOrderLineQuantity,
+    saveCurrentDesign,
   } = useCatalog();
 
   const currentPhotos = selectedPlacement === 'front' ? frontPhotos : backPhotos;
@@ -103,13 +109,17 @@ function Page() {
   // Usable height inside the safe area, once the screen has laid out.
   const [safeHeight, setSafeHeight] = useState(0);
   const [headerHeight, setHeaderHeight] = useState(0);
+  /** Measured height of the size row, order button and 완성 보기 together. */
+  const [actionsHeight, setActionsHeight] = useState(0);
   const [photoError, setPhotoError] = useState('');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deletePhotoIndex, setDeletePhotoIndex] = useState<number | null>(null);
   const [imageControlFocused, setImageControlFocused] = useState(false);
   // Rests collapsed: the first thing to see after adding a photo is the shirt.
   const [panelExpanded, setPanelExpanded] = useState(false);
-  const [optionsOpen, setOptionsOpen] = useState(false);
+  const [printQuality, setPrintQuality] = useState<PrintResolutionResult | null>(
+    null,
+  );
 
   // ── Undo/Redo history ──
   type EditorSnapshot = {
@@ -172,6 +182,48 @@ function Page() {
   const { width: screenWidth, height: screenHeight } = useWindowDimensions();
 
   /**
+   * Judge the artwork at the size it will actually be printed.
+   *
+   * Same arithmetic as the preview screen used, and as artworkDpi in
+   * server/printPipeline.js: imageTransform.scale is a fraction of the print
+   * area, so the printed size is the print area times that scale.
+   */
+  useEffect(() => {
+    if (!designImageUri) {
+      setPrintQuality(null);
+      return;
+    }
+    let cancelled = false;
+    const printArea = printSizeByCategory[selectedProduct.category] ?? {
+      widthCm: 28,
+      heightCm: 36,
+    };
+    const designScale = Math.max(imageTransform.scale, 0.01);
+    Image.getSize(
+      designImageUri,
+      (pixelWidth, pixelHeight) => {
+        if (cancelled) return;
+        setPrintQuality(
+          evaluatePrintResolution({
+            pixelWidth,
+            pixelHeight,
+            printWidthCm: printArea.widthCm * designScale,
+            printHeightCm: printArea.heightCm * designScale,
+          }),
+        );
+      },
+      // Size is unreadable for some URIs; stay silent rather than claim a level.
+      () => {
+        if (!cancelled) setPrintQuality(null);
+      },
+    );
+    return () => {
+      cancelled = true;
+    };
+  }, [designImageUri, selectedProduct.category, imageTransform.scale]);
+
+
+  /**
    * Nothing on the garment yet.
    *
    * The editor used to show its whole control surface — zoom, layers,
@@ -190,76 +242,14 @@ function Page() {
    */
   // With no artwork the panel is not rendered, so only the upload CTA below the
   // garment is reserved — the rest goes to the garment.
-  const EMPTY_CTA_RESERVED = 132;
-  /** Reset button and the print-size caption, both below the canvas. */
-  const ARTWORK_CAPTION_RESERVED = 116;
-  /** Below this the garment stops reading as the thing being designed. */
-  const MIN_CANVAS_HEIGHT = 200;
-  const reservedBelowCanvas = hasArtwork
-    ? ARTWORK_CAPTION_RESERVED
-    : EMPTY_CTA_RESERVED;
-  /**
-   * Size the canvas against the height the screen actually has.
-   *
-   * Dimensions reports the whole window, including the status bar and the home
-   * indicator that SafeAreaView then takes back — on a notched phone that is
-   * ~80pt the layout never had. The shortfall lands on whatever sits last in
-   * the column, which with no artwork is the only button on the screen, and it
-   * went off the bottom edge. The root reports what it really got instead.
-   *
-   * This measures the root and not the canvas column: the column is sized by
-   * its own content, so feeding its height back in would settle on the content
-   * rather than on the space available for it.
-   */
-  /**
-   * Never larger than the window.
-   *
-   * The root reports what it was laid out at, and a root that is not itself
-   * height-constrained grows with its content — so the canvas asked for the
-   * space it had already taken, got a bigger answer, and grew again. Clamping
-   * keeps the safe-area inset (which only ever makes it smaller) and refuses
-   * the feedback.
-   */
-  const usableHeight = Math.min(
-    safeHeight > 0 ? safeHeight : screenHeight,
+  const { panelHeight, canvasHeight: budgetedCanvasHeight } = computeEditorLayout({
+    safeHeight,
     screenHeight,
-  );
-  /**
-   * The panel gets a share of the screen, but never so much that the garment
-   * falls below MIN_CANVAS_HEIGHT. Fixed pixel heights tuned on a 844pt phone
-   * overflowed a 770pt one by the difference, pushing the panel's own controls
-   * off the bottom.
-   */
-  const headerReserved =
-    headerHeight > 0 ? headerHeight : EDITOR_HEADER_RESERVED;
-  const panelCeiling = Math.max(
-    220,
-    usableHeight -
-      headerReserved -
-      ARTWORK_CAPTION_RESERVED -
-      MIN_CANVAS_HEIGHT,
-  );
-  /**
-   * At rest the panel is its own title bar and nothing more.
-   *
-   * A resting drawer of ~300pt took 40% of a 770pt phone; between it, the
-   * header and the order button the shirt was left a couple of hundred points
-   * — a thumbnail of the thing being bought. Tapping 편집하기 opens it.
-   */
-  const PANEL_HANDLE_HEIGHT = 56;
-  const panelHeightCollapsed = PANEL_HANDLE_HEIGHT;
-  const panelHeightExpanded = Math.min(
-    panelCeiling,
-    Math.round(usableHeight * 0.55),
-  );
-  const panelHeight = panelExpanded ? panelHeightExpanded : panelHeightCollapsed;
-  const availableCanvasHeight = Math.max(
-    MIN_CANVAS_HEIGHT,
-    usableHeight -
-      headerReserved -
-      reservedBelowCanvas -
-      (hasArtwork ? panelHeight : 0),
-  );
+    headerHeight,
+    actionsHeight,
+    hasArtwork,
+    panelExpanded,
+  });
   const canvasWidth = Math.max(
     220,
     Math.round(
@@ -274,33 +264,44 @@ function Page() {
    * it overrode both and pushed the column past the bottom of the screen the
    * moment the panel opened.
    */
+  /**
+   * The stage is the garment's shape, not the leftover space.
+   *
+   * Given all the height the column could spare, a wide-shouldered tee filled
+   * the width and left the rest as background — the shirt was as large as the
+   * screen allows and still looked small, because it was centred in empty
+   * grey. Capping the stage at the garment's own aspect removes the dead
+   * space rather than trying to zoom past it.
+   */
+  const garmentAspect = useGarmentAspect(
+    buildTemplate(selectedProduct, selectedColor, selectedPlacement),
+  );
+  const budgetedHeight = budgetedCanvasHeight - CANVAS_FRAME_VERTICAL_PADDING;
   const canvasHeight = Math.round(
-    availableCanvasHeight - CANVAS_FRAME_VERTICAL_PADDING,
+    garmentAspect ? Math.min(budgetedHeight, canvasWidth / garmentAspect) : budgetedHeight,
   );
 
-  const pricing = calcPricing({
-    product: selectedProduct,
-    orderLines,
-    printOption: selectedPrint,
-    printBackEnabled,
-  });
-
-  const optionSummary = [
-    selectedProduct.name,
-    selectedColor,
-    orderLines.length > 0
-      ? orderLines.map((line) => `${line.sizeLabel} ${line.quantity}개`).join(', ')
-      : '사이즈 미선택',
-  ].join(' · ');
 
   const EDITOR_TABS = ['이미지', '텍스트'];
 
-  const goPreview = () => {
-    trackClick('editor_preview_click', {
-      product_id: selectedProduct.id,
-      placement: selectedPlacement,
-    });
-    navigation.navigate('/preview');
+  const handleSaveDesign = async () => {
+    try {
+      await saveCurrentDesign(`${selectedProduct.name} - ${selectedColor}`);
+      showToast({ type: 'success', message: '디자인을 저장했어요' });
+    } catch {
+      showToast({ type: 'error', message: '저장하지 못했어요' });
+    }
+  };
+
+  const handleShareDesign = async () => {
+    try {
+      const link = await getTossShareLink('intoss://merchandisegpt/editor');
+      await share({
+        message: `${selectedProduct.name} 디자인을 확인해보세요! 🎨\n${link}`,
+      });
+    } catch {
+      // 사용자가 취소했거나 공유가 실패한 경우 — 조용히 넘어간다.
+    }
   };
 
   const goOrder = () => {
@@ -353,37 +354,20 @@ function Page() {
   const pickPhoto = async () => {
     setPhotoError('');
     setLoadingPhoto(true);
-    try {
-      const permission = await fetchAlbumPhotos.getPermission();
-      if (permission !== 'allowed') {
-        const next = await fetchAlbumPhotos.openPermissionDialog();
-        if (next !== 'allowed') {
-          setPhotoError('사진 앨범에 접근하려면 권한이 필요해요.');
-          setLoadingPhoto(false);
-          return null;
-        }
-      }
-      // This is the print source, not a thumbnail. 1024px across a 12-inch
-      // print is ~85 DPI; 2048 keeps a full-chest design inside the warning
-      // threshold in utils/printResolution.
-      const photos = await fetchAlbumPhotos({
-        maxCount: 1,
-        maxWidth: 2048,
-        base64: true,
-      });
-      const photo = photos[0];
-      if (!photo || !photo.dataUri) {
-        setPhotoError('사진을 불러오지 못했어요. 다시 시도해 주세요.');
-        setLoadingPhoto(false);
+    const result = await pickAlbumPhoto();
+    setLoadingPhoto(false);
+    switch (result.status) {
+      case 'picked':
+        return result.dataUrl;
+      case 'denied':
+        setPhotoError('사진 앨범에 접근하려면 권한이 필요해요.');
         return null;
-      }
-      const dataUrl = toImageDataUrl(photo.dataUri);
-      setLoadingPhoto(false);
-      return dataUrl;
-    } catch (err) {
-      setPhotoError('앨범을 불러오지 못했어요. 잠시 후 다시 시도해 주세요.');
-      setLoadingPhoto(false);
-      return null;
+      // Closing the picker is a decision, not something to apologise for.
+      case 'empty':
+        return null;
+      default:
+        setPhotoError('앨범을 불러오지 못했어요. 잠시 후 다시 시도해 주세요.');
+        return null;
     }
   };
 
@@ -500,84 +484,32 @@ function Page() {
           <Text style={styles.editorTopTitle} accessibilityRole="header">
             {hasArtwork ? '디자인 확인' : '사진 올리기'}
           </Text>
-          <View style={styles.headerActions}>
-            {hasArtwork ? (
-            <>
-            <Pressable
-              style={[styles.headerIconButton, undoStack.length === 0 && styles.headerIconDisabled]}
-              onPress={handleUndo}
-              disabled={undoStack.length === 0}
-              accessibilityRole="button"
-              accessibilityLabel="되돌리기"
-              hitSlop={5}
-            >
-              <Text style={[styles.headerIconText, undoStack.length === 0 && styles.headerIconTextDisabled]}>↩</Text>
-            </Pressable>
-            <Pressable
-              style={[styles.headerIconButton, redoStack.length === 0 && styles.headerIconDisabled]}
-              onPress={handleRedo}
-              disabled={redoStack.length === 0}
-              accessibilityRole="button"
-              accessibilityLabel="다시 실행"
-              hitSlop={5}
-            >
-              <Text style={[styles.headerIconText, redoStack.length === 0 && styles.headerIconTextDisabled]}>↪</Text>
-            </Pressable>
-            </>
-            ) : null}
+          {/*
+            The only other way out of this screen, and it is not on the bottom.
 
-          </View>
+            Everything that is not "order this" is an edit tool, and edit tools
+            open from here. The bottom of the screen is left to the one action
+            the customer came to take.
+          */}
+          {hasArtwork ? (
+            <Pressable
+              style={styles.headerIconButton}
+              onPress={() => setPanelExpanded((v) => !v)}
+              accessibilityRole="button"
+              accessibilityLabel={panelExpanded ? '편집 도구 접기' : '편집하기'}
+              hitSlop={5}
+            >
+              <Text style={styles.headerIconText}>✎</Text>
+            </Pressable>
+          ) : (
+            <View style={styles.headerIconButtonPlaceholder} />
+          )}
         </View>
-        <Text style={styles.leadCopy} {...textRole('lead')}>
-          {hasArtwork
-            ? '금액은 배송비 3,000원 별도, 6만원 이상 무료예요.'
-            : '사진을 올리면 옷에 얹어 보여드려요.'}
-        </Text>
-        <View style={styles.optionRow}>
-          <View style={[styles.compactDot, { backgroundColor: resolveColorValue(selectedColor) }]} />
-          <Text style={styles.compactName} numberOfLines={1}>
-            {optionSummary}
+        {hasArtwork ? null : (
+          <Text style={styles.leadCopy} {...textRole('lead')}>
+            사진을 올리면 옷에 얹어 보여드려요.
           </Text>
-          <Pressable
-            style={styles.optionChangeButton}
-            onPress={() => {
-              trackClick('editor_options_open');
-              setOptionsOpen(true);
-            }}
-            accessibilityRole="button"
-            accessibilityLabel="옵션 바꾸기"
-          >
-            <Text style={styles.optionRowAction}>변경</Text>
-            <Chevron direction="right" size={9} />
-          </Pressable>
-        </View>
-        {/* 앞/뒤면 세그먼트 — 올릴 것이 있을 때만 */}
-        {hasArtwork ? (
-        <View style={styles.placementSegment}>
-          <Pressable
-            style={[styles.segmentButton, selectedPlacement === 'front' && styles.segmentButtonActive]}
-            onPress={() => handlePlacementChange('front')}
-            accessibilityRole="button"
-            accessibilityLabel="앞면"
-            accessibilityState={{ selected: selectedPlacement === 'front' }}
-          >
-            <Text style={[styles.segmentButtonText, selectedPlacement === 'front' && styles.segmentButtonTextActive]}>
-              앞면
-            </Text>
-          </Pressable>
-          <Pressable
-            style={[styles.segmentButton, selectedPlacement === 'back' && styles.segmentButtonActive]}
-            onPress={() => handlePlacementChange('back')}
-            accessibilityRole="button"
-            accessibilityLabel="뒷면"
-            accessibilityState={{ selected: selectedPlacement === 'back' }}
-          >
-            <Text style={[styles.segmentButtonText, selectedPlacement === 'back' && styles.segmentButtonTextActive]}>
-              뒷면
-            </Text>
-          </Pressable>
-        </View>
-        ) : null}
+        )}
       </View>
 
       {/* ── 캔버스 (최대화) ── */}
@@ -615,6 +547,10 @@ function Page() {
               }}
               disabled={loadingPhoto}
               accessibilityRole="button"
+              accessibilityLabel={
+                loadingPhoto ? '사진을 불러오는 중' : '사진 올리기'
+              }
+              accessibilityState={{ disabled: loadingPhoto }}
             >
               <Text style={styles.emptyCtaText}>
                 {loadingPhoto ? '사진을 불러오는 중...' : '사진 올리기'}
@@ -630,25 +566,43 @@ function Page() {
           </View>
         ) : null}
         {hasArtwork ? (
-        <View style={styles.canvasOutsideActions}>
+        <View
+          style={styles.canvasOutsideActions}
+          onLayout={(event) => {
+            const { height } = event.nativeEvent.layout;
+            setActionsHeight((prev) =>
+              Math.abs(prev - height) > 1 ? height : prev,
+            );
+          }}
+        >
+          {/*
+            The price is the garment's, not the order's.
+
+            Quantity is not known here any more — size is asked once at the
+            order screen — so this says what one costs rather than inventing a
+            total. The order screen shows the real one as soon as a size makes
+            it real.
+          */}
           <Pressable
             style={styles.orderCta}
             onPress={goOrder}
             accessibilityRole="button"
+            accessibilityLabel={`${formatPrice(selectedProduct.price ?? 0)}부터 주문하기`}
           >
             <Text style={styles.orderCtaText}>
-              {formatPrice(pricing.total)} · 주문하기
+              {formatPrice(selectedProduct.price ?? 0)}부터 · 주문하기
             </Text>
           </Pressable>
-          {hasArtwork ? (
-            <Pressable
-              onPress={goPreview}
-              style={styles.previewLink}
-              accessibilityRole="button"
-              accessibilityLabel="완성 보기"
-            >
-              <Text style={styles.previewLinkText}>완성 보기</Text>
-            </Pressable>
+          {/*
+            What the preview screen was actually for.
+
+            That screen existed to show the design bigger and say whether the
+            photo was sharp enough. The canvas above is already the design at
+            the size it is being judged at, so only the sentence was missing —
+            it is here now, and the screen is gone.
+          */}
+          {printQuality && printQuality.level !== 'good' ? (
+            <Text style={styles.qualityLine}>{printQuality.description}</Text>
           ) : null}
         </View>
         ) : null}
@@ -661,19 +615,111 @@ function Page() {
       ) : null}
 
       {/* ── 하단 탭 패널 — 편집할 것이 있을 때만 ── */}
-      {hasArtwork ? (
+      {hasArtwork && panelExpanded ? (
       <View style={[styles.panel, { height: panelHeight }]}>
-        <Pressable
-          style={styles.editPanelHeader}
-          onPress={() => setPanelExpanded((v) => !v)}
-          accessibilityRole="button"
-          accessibilityLabel={panelExpanded ? '편집 도구 접기' : '편집 도구 펼치기'}
-        >
+        {/*
+          No resting handle along the bottom.
+
+          A collapsed drawer is still a bar competing with the order button for
+          the edge of the screen the thumb reaches first. The drawer opens from
+          the header now and closes from its own 닫기, so when it is shut the
+          bottom of the screen holds one thing.
+        */}
+        <View style={styles.editPanelHeader}>
           <Text style={styles.editPanelTitle}>편집하기</Text>
-          <Chevron direction={panelExpanded ? 'down' : 'up'} size={9} />
-        </Pressable>
-        {panelExpanded ? (
+          <Pressable
+            onPress={() => setPanelExpanded(false)}
+            accessibilityRole="button"
+            accessibilityLabel="편집 도구 닫기"
+            hitSlop={8}
+          >
+            <Chevron direction="down" size={9} />
+          </Pressable>
+        </View>
         <>
+        {/* Edit tools, in the place called 편집하기. */}
+        {/* 앞면·뒷면은 디자인 행위라, 편집 도구와 함께 둔다. */}
+        <View style={styles.placementSegment}>
+          <Pressable
+            style={[styles.segmentButton, selectedPlacement === 'front' && styles.segmentButtonActive]}
+            onPress={() => handlePlacementChange('front')}
+            accessibilityRole="button"
+            accessibilityLabel="앞면"
+            accessibilityState={{ selected: selectedPlacement === 'front' }}
+          >
+            <Text style={[styles.segmentButtonText, selectedPlacement === 'front' && styles.segmentButtonTextActive]}>
+              앞면
+            </Text>
+          </Pressable>
+          <Pressable
+            style={[styles.segmentButton, selectedPlacement === 'back' && styles.segmentButtonActive]}
+            onPress={() => handlePlacementChange('back')}
+            accessibilityRole="button"
+            accessibilityLabel="뒷면"
+            accessibilityState={{ selected: selectedPlacement === 'back' }}
+          >
+            <Text style={[styles.segmentButtonText, selectedPlacement === 'back' && styles.segmentButtonTextActive]}>
+              뒷면
+            </Text>
+          </Pressable>
+        </View>
+        <View style={styles.panelToolRow}>
+          <Pressable
+            onPress={handleUndo}
+            disabled={undoStack.length === 0}
+            accessibilityRole="button"
+            accessibilityLabel="되돌리기"
+            accessibilityState={{ disabled: undoStack.length === 0 }}
+            hitSlop={6}
+            style={styles.panelTool}
+          >
+            <Text
+              style={[
+                styles.panelToolText,
+                undoStack.length === 0 && styles.panelToolDisabled,
+              ]}
+            >
+              ↩ 되돌리기
+            </Text>
+          </Pressable>
+          <Pressable
+            onPress={handleRedo}
+            disabled={redoStack.length === 0}
+            accessibilityRole="button"
+            accessibilityLabel="다시 실행"
+            accessibilityState={{ disabled: redoStack.length === 0 }}
+            hitSlop={6}
+            style={styles.panelTool}
+          >
+            <Text
+              style={[
+                styles.panelToolText,
+                redoStack.length === 0 && styles.panelToolDisabled,
+              ]}
+            >
+              ↪ 다시 실행
+            </Text>
+          </Pressable>
+          <View style={styles.panelToolSpacer} />
+          <Pressable
+            onPress={() => void handleSaveDesign()}
+            accessibilityRole="button"
+            accessibilityLabel="디자인 저장"
+            hitSlop={6}
+            style={styles.panelTool}
+          >
+            <Text style={styles.panelToolText}>저장</Text>
+          </Pressable>
+          <Pressable
+            onPress={() => void handleShareDesign()}
+            accessibilityRole="button"
+            accessibilityLabel="디자인 공유"
+            hitSlop={6}
+            style={styles.panelTool}
+          >
+            <Text style={styles.panelToolText}>공유</Text>
+          </Pressable>
+        </View>
         <TabBar
           tabs={EDITOR_TABS}
           activeIndex={editorTab}
@@ -967,24 +1013,8 @@ function Page() {
 
         </ScrollView>
         </>
-        ) : null}
       </View>
       ) : null}
-
-      <OptionSheet
-        visible={optionsOpen}
-        onClose={() => setOptionsOpen(false)}
-        products={products}
-        product={selectedProduct}
-        selectedColor={selectedColor}
-        orderLines={orderLines}
-        total={pricing.total}
-        onSelectProduct={setSelectedProductId}
-        onSelectColor={setSelectedColor}
-        onAddSize={(label) => addOrderLine(label, 1)}
-        onChangeQuantity={setOrderLineQuantity}
-        onRemoveLine={removeOrderLine}
-      />
 
       {/* Delete Photo Confirmation Modal */}
       <Modal
@@ -1041,6 +1071,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     marginBottom: theme.spacing.sm,
+  },
+  headerIconButtonPlaceholder: {
+    width: 34,
   },
   headerIconButton: {
     width: 34,
@@ -1197,7 +1230,8 @@ const styles = StyleSheet.create({
     width: '100%',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 24,
+    // Matches CANVAS_AREA_HORIZONTAL_PADDING.
+    paddingHorizontal: 0,
     marginBottom: theme.spacing.xs,
   },
   canvasAreaFocused: {
@@ -1234,9 +1268,58 @@ const styles = StyleSheet.create({
   },
   canvasOutsideActions: {
     width: '100%',
+    // The garment is full-bleed; the button is not. Zeroing the area's padding
+    // for the shirt had taken the margins off this too.
+    paddingHorizontal: 20,
     alignItems: 'stretch',
     marginTop: theme.spacing.xs,
     marginBottom: 2,
+  },
+  /** Separates the garment from its colours without a second row. */
+  qualityLine: {
+    ...theme.typography.caption,
+    color: theme.colors.textTertiary,
+    textAlign: 'center',
+    marginTop: theme.spacing.xs,
+  },
+  panelToolRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.md,
+    paddingHorizontal: theme.spacing.lg,
+    paddingBottom: theme.spacing.sm,
+  },
+  panelTool: {
+    paddingVertical: 4,
+  },
+  panelToolText: {
+    ...theme.typography.caption,
+    fontWeight: '700',
+    color: theme.colors.primary,
+  },
+  panelToolDisabled: {
+    color: theme.colors.textTertiary,
+  },
+  panelToolSpacer: {
+    flex: 1,
+  },
+  editPanelToggleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.xs,
+    flex: 1,
+  },
+  editPanelActions: {
+    flexDirection: 'row',
+    gap: theme.spacing.md,
+  },
+  editPanelAction: {
+    paddingVertical: 4,
+  },
+  editPanelActionText: {
+    ...theme.typography.caption,
+    fontWeight: '700',
+    color: theme.colors.primary,
   },
   /** The one thing to do once the design is placed. */
   orderCta: {
@@ -1282,9 +1365,11 @@ const styles = StyleSheet.create({
   canvasFrame: {
     position: 'relative',
     width: '100%',
-    borderRadius: 16,
-    paddingVertical: 18,
-    paddingHorizontal: 10,
+    // No radius and no inset: the backdrop is a band the garment sits on,
+    // not a card the garment sits in.
+    borderRadius: 0,
+    paddingVertical: 0,
+    paddingHorizontal: 0,
     alignItems: 'center',
     justifyContent: 'center',
   },

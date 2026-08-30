@@ -41,26 +41,19 @@ type DesignStageProps = {
 
 
 
+import {
+  MAX_SCALE,
+  MIN_SCALE,
+  clampPlacement,
+  snapRotation,
+} from '../utils/designBounds';
+
 const clamp = (value: number, min: number, max: number) =>
   Math.min(Math.max(value, min), max);
 
-const snapRotation = (angle: number) => {
-  const SNAP_THRESHOLD = 5;
-  const mod = ((angle % 360) + 360) % 360;
-  const snapPoints = [0, 90, 180, 270, 360];
-  for (const snap of snapPoints) {
-    if (Math.abs(mod - snap) < SNAP_THRESHOLD) {
-      return angle - mod + (snap === 360 ? 0 : snap);
-    }
-  }
-  return angle;
-};
 
-const MIN_SCALE = 0.03;
-const MAX_SCALE = 1.5; // Updated for Issue #5
 // Offsets are measured in print-area widths, which are ~a third of the stage,
 // so the artwork still reaches the edge of the garment.
-const MAX_OFFSET = 1.4;
 const HIT_SLOP = 12;
 const ROTATE_RANGE = 180;
 
@@ -90,7 +83,7 @@ export function DesignStage({
   const hemTrimRatio = getHemTrimInsetRatio(sizeLabel);
   // Print areas are image-relative, so they are mapped onto the drawn garment
   // rather than the raw stage box — see utils/garmentLayout.
-  const { printArea: templateArea } = useTemplatePrintArea({
+  const { garment: garmentRect, printArea: templateArea } = useTemplatePrintArea({
     template,
     width,
     height,
@@ -118,9 +111,28 @@ export function DesignStage({
 
   const effectiveShowGuides = _showPrintArea && showGuides;
   const stageBackgroundColor = getGarmentStageBackground(template.color, 'transparent');
+  /**
+   * The garment is placed, not just contained.
+   *
+   * garmentFitRect sizes the photograph so the shirt inside it fills the
+   * stage, which means the image itself usually spills past the edges and is
+   * clipped. resizeMode is "stretch" because the rect already carries the
+   * image's own aspect — "contain" would letterbox it a second time inside
+   * dimensions that were computed to avoid exactly that.
+   */
   const stageImageStyle = useMemo(
-    () => [styles.image, { bottom: height * hemTrimRatio }],
-    [height, hemTrimRatio],
+    () => [
+      styles.image,
+      {
+        left: garmentRect.left,
+        top: garmentRect.top,
+        width: garmentRect.width,
+        height: garmentRect.height,
+        bottom: undefined,
+        right: undefined,
+      },
+    ],
+    [garmentRect.left, garmentRect.top, garmentRect.width, garmentRect.height],
   );
   const [imageNaturalSize, setImageNaturalSize] = useState<{
     uri: string;
@@ -313,9 +325,13 @@ export function DesignStage({
             MAX_SCALE,
           );
           updateFn({
-            offsetX: startRef.current.offsetX,
-            offsetY: startRef.current.offsetY,
-            scale: nextScale,
+            // Growing the artwork shrinks how far it may sit off centre, so
+            // the two are clamped together or a pinch can push an edge out.
+            ...clampPlacement({
+              offsetX: startRef.current.offsetX,
+              offsetY: startRef.current.offsetY,
+              scale: nextScale,
+            }),
             rotation: startRef.current.rotation + rotationDelta,
           });
           session.lastTouchCount = touches.length;
@@ -337,21 +353,15 @@ export function DesignStage({
           const adjustedDx = gestureState.dx - session.dxAnchor;
           const adjustedDy = gestureState.dy - session.dyAnchor;
           const cs = cameraScaleRef.current;
-          const nextOffsetX = clamp(
-            startRef.current.offsetX + adjustedDx / (currentArea.width * cs),
-            -MAX_OFFSET,
-            MAX_OFFSET,
-          );
-          const nextOffsetY = clamp(
-            startRef.current.offsetY + adjustedDy / (currentArea.height * cs),
-            -MAX_OFFSET,
-            MAX_OFFSET,
-          );
           updateFn({
-            scale: startRef.current.scale,
+            ...clampPlacement({
+              offsetX:
+                startRef.current.offsetX + adjustedDx / (currentArea.width * cs),
+              offsetY:
+                startRef.current.offsetY + adjustedDy / (currentArea.height * cs),
+              scale: startRef.current.scale,
+            }),
             rotation: startRef.current.rotation,
-            offsetX: nextOffsetX,
-            offsetY: nextOffsetY,
           });
         }
       },
@@ -484,11 +494,18 @@ export function DesignStage({
     selectedImageRect && effectiveActiveLayer === 'image',
   );
   const rotateButtonSize = 30;
+  /**
+   * Just outside the corner, not centred on it.
+   *
+   * Centring put half the handle over the artwork, so the control for
+   * adjusting the photo covered the part of the photo you were judging.
+   */
+  const ROTATE_HANDLE_GAP = 6;
   const rotateButtonTop =
     selectedImageRect == null
       ? 8
       : clamp(
-          selectedImageRect.top - rotateButtonSize / 2,
+          selectedImageRect.top - rotateButtonSize - ROTATE_HANDLE_GAP,
           8,
           height - rotateButtonSize - 8,
         );
@@ -496,7 +513,7 @@ export function DesignStage({
     selectedImageRect == null
       ? 8
       : clamp(
-          selectedImageRect.left + selectedImageRect.width - rotateButtonSize / 2,
+          selectedImageRect.left + selectedImageRect.width + ROTATE_HANDLE_GAP,
           8,
           width - rotateButtonSize - 8,
         );
@@ -559,7 +576,7 @@ export function DesignStage({
         <Image
           source={template.image}
           style={stageImageStyle}
-          resizeMode="contain"
+          resizeMode="stretch"
           onError={(e) =>
             console.error(
               '[DesignStage] Image load error:',

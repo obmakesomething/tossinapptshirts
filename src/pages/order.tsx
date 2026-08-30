@@ -8,6 +8,8 @@ import React, { useEffect, useMemo, useRef, useState, useCallback } from 'react'
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import {
   Card,
+  Chip,
+  ColorSwatch,
   PrimaryButton,
   Screen,
   SecondaryButton,
@@ -16,7 +18,11 @@ import {
 import { DaumPostcodeModal, type AddressData } from '../components/DaumPostcodeModal';
 import { API_BASE_URL } from '../config';
 import { useCatalog } from '../context/catalog';
-import { faqItems } from '../data/faq';
+import { resolveColorValue } from '../data/colorMap';
+import {
+  type ConsentedContactResult,
+  requestConsentedContact,
+} from '../utils/consentedContact';
 import { calcPricing } from '../data/pricing';
 import { printSizeByCategory } from '../data/mockupTemplates';
 import { formatPrice } from '../utils/format';
@@ -83,6 +89,12 @@ function Page() {
     selectedColor,
     orderLines,
     totalQuantity,
+    products,
+    setSelectedProductId,
+    setSelectedColor,
+    addOrderLine,
+    removeOrderLine,
+    setOrderLineQuantity,
     printBackEnabled,
     selectedPrint,
     designImageUri,
@@ -108,6 +120,18 @@ function Page() {
   const [success, setSuccess] = useState(false);
   const [postcodeModalVisible, setPostcodeModalVisible] = useState(false);
   const [loginLoading, setLoginLoading] = useState(false);
+  /**
+   * Where the delivery details came from.
+   *
+   * `toss` means the customer agreed on Toss's consent sheet and we filled the
+   * fields from what it returned; the form collapses to a summary. Everything
+   * else means they type it, which is what always used to happen.
+   */
+  const [contactSource, setContactSource] = useState<'unknown' | 'toss' | 'manual'>(
+    'unknown',
+  );
+  const [contactLoading, setContactLoading] = useState(false);
+  const [garmentOpen, setGarmentOpen] = useState(false);
   const address2InputRef = useRef<TextInput>(null);
   const [agreedPrivacy, setAgreedPrivacy] = useState(false);
   const [agreedTerms, setAgreedTerms] = useState(false);
@@ -223,16 +247,6 @@ function Page() {
     printOption: selectedPrint,
     printBackEnabled,
   });
-  const sizeSummary = orderLines
-    .map((line) => `${line.sizeLabel} ${line.quantity}개`)
-    .join(' · ');
-  const orderFaqs = useMemo(
-    () =>
-      ['delivery-1', 'order-1', 'refund-1']
-        .map((id) => faqItems.find((item) => item.id === id))
-        .filter((item): item is (typeof faqItems)[number] => !!item),
-    [],
-  );
 
   /**
    * The print canvas is the printable region itself, at 300 DPI.
@@ -259,36 +273,192 @@ function Page() {
 
   const renderOrderSummaryCard = () => (
     <Card style={styles.summaryCard}>
+      {/*
+        The garment is decided; the size is not.
+
+        Coming here from a design the customer just approved, 상품 and 색상 are
+        answers they already gave — asking again at the till turns a decision
+        into a doubt. They read as a line, and open only if the line is wrong.
+        Size never had an answer, so it stays a question.
+      */}
       <View style={styles.summaryHeader}>
-        <Text style={styles.summaryTitle}>{selectedProduct.name}</Text>
+        <Text style={styles.summaryTitle}>
+          {selectedProduct.name} · {selectedColor}
+        </Text>
+        <Pressable
+          onPress={() => {
+            trackClick('order_change_garment_click', {
+              opening: !garmentOpen,
+            });
+            setGarmentOpen((v) => !v);
+          }}
+          accessibilityRole="button"
+          accessibilityLabel={garmentOpen ? '옷 고르기 접기' : '옷 바꾸기'}
+          accessibilityState={{ expanded: garmentOpen }}
+          hitSlop={8}
+        >
+          <Text style={styles.summaryEditLink}>
+            {garmentOpen ? '접기' : '변경'}
+          </Text>
+        </Pressable>
       </View>
 
-      {/* Colour, size and quantity are chosen in the editor, beside the design
-          and with the running total in view. This screen shows what was chosen
-          and sends the customer back to change it, rather than carrying a
-          second copy of the same controls. */}
       <Text style={styles.summaryMeta}>
-        {selectedColor} · {sizeSummary || `${totalQuantity}개`}
-        {printBackEnabled ? ' · 뒷면도 프린팅' : ''}
+        제작·배송 7~14일{printBackEnabled ? ' · 뒷면도 프린팅' : ''}
       </Text>
-      <SecondaryButton
-        label="옵션 바꾸기"
-        onPress={() => {
-          trackClick('order_change_options_click');
-          navigation.navigate('/editor');
-        }}
-        style={styles.optionEditButton}
-      />
 
-      <Text style={styles.summaryMeta}>
-        예상 결제 {formatPrice(pricing.total)} (배송비{' '}
-        {pricing.shippingFee === 0
-          ? '무료'
-          : formatPrice(pricing.shippingFee)}
-        )
-      </Text>
+      {garmentOpen ? (
+        <>
+          <Text style={styles.sizeLabel}>상품</Text>
+          <View style={styles.sizeChips}>
+            {products.map((item) => (
+              <Chip
+                key={item.id}
+                label={`${item.name} ${formatPrice(item.price ?? 0)}`}
+                selected={item.id === selectedProduct.id}
+                onPress={() => setSelectedProductId(item.id)}
+                style={styles.sizeChip}
+              />
+            ))}
+          </View>
+
+          <Text style={styles.sizeLabel}>색상</Text>
+          <View style={styles.sizeChips}>
+            {selectedProduct.colors.map((color) => (
+              <ColorSwatch
+                key={color}
+                label={color}
+                color={resolveColorValue(color)}
+                selected={selectedColor === color}
+                onPress={() => setSelectedColor(color)}
+              />
+            ))}
+          </View>
+        </>
+      ) : null}
+
+      {/*
+        Size is asked once, here.
+
+        It used to be chips on the editor, beside a mockup that cannot show a
+        size — twelve controls competing for attention on a screen whose only job was
+        to show the customer their shirt. Nothing is preselected, because the
+        smallest size was going out to people who never opened the options.
+      */}
+      <Text style={styles.sizeLabel}>사이즈</Text>
+      <View style={styles.sizeChips}>
+        {selectedProduct.sizes.map((size) => {
+          const line = orderLines.find((l) => l.sizeLabel === size.label);
+          return (
+            <Chip
+              key={size.label}
+              label={size.label}
+              selected={Boolean(line)}
+              onPress={() => {
+                trackClick('order_size_chip_click', {
+                  size: size.label,
+                  selecting: !line,
+                });
+                if (line) removeOrderLine(line.id);
+                else addOrderLine(size.label, 1);
+              }}
+              style={styles.sizeChip}
+            />
+          );
+        })}
+      </View>
+      {orderLines.length > 0 ? (
+        <View style={styles.qtyRow}>
+          {orderLines.map((line) => (
+            <View key={line.id} style={styles.qtyPill}>
+              <Text style={styles.qtyPillSize}>{line.sizeLabel}</Text>
+              <Pressable
+                onPress={() =>
+                  line.quantity > 1
+                    ? setOrderLineQuantity(line.id, line.quantity - 1)
+                    : removeOrderLine(line.id)
+                }
+                accessibilityRole="button"
+                accessibilityLabel={`${line.sizeLabel} 수량 줄이기`}
+                hitSlop={6}
+                style={styles.qtyStep}
+              >
+                <Text style={styles.qtyStepText}>−</Text>
+              </Pressable>
+              <Text style={styles.qtyValue}>{line.quantity}</Text>
+              <Pressable
+                onPress={() => setOrderLineQuantity(line.id, line.quantity + 1)}
+                accessibilityRole="button"
+                accessibilityLabel={`${line.sizeLabel} 수량 늘리기`}
+                hitSlop={6}
+                style={styles.qtyStep}
+              >
+                <Text style={styles.qtyStepText}>+</Text>
+              </Pressable>
+            </View>
+          ))}
+        </View>
+      ) : null}
+      {/* Before a size there is no order, and ₩3,000 of shipping is not a price. */}
+      {orderLines.length > 0 ? (
+        <Text style={styles.summaryMeta}>
+          예상 결제 {formatPrice(pricing.total)} (배송비{' '}
+          {pricing.shippingFee === 0 ? '무료' : formatPrice(pricing.shippingFee)}
+          )
+        </Text>
+      ) : null}
     </Card>
   );
+
+  /**
+   * Ask Toss for the delivery details instead of asking the customer.
+   *
+   * Runs once as soon as there is a session, and again if they tap the button
+   * after declining — that second call is the only one allowed to re-open the
+   * consent sheet, because re-prompting somebody who already said no is
+   * something they have to ask for.
+   */
+  const loadConsentedContact = useCallback(
+    async (retryAfterDecline: boolean) => {
+      if (contactLoading) return;
+      setContactLoading(true);
+      try {
+        const result: ConsentedContactResult = await requestConsentedContact({
+          retryAfterDecline,
+        });
+        trackEvent('order_consented_contact_result', { status: result.status });
+
+        if (result.status === 'provided') {
+          const { contact } = result;
+          if (contact.name) setName(contact.name);
+          if (contact.phone) setPhone(contact.phone);
+          if (contact.email) setEmail(contact.email);
+          if (contact.address) setAddress1(contact.address);
+          setContactSource('toss');
+          return;
+        }
+
+        if (result.status === 'unconfigured') {
+          // Ours to fix, not the customer's: the console is missing the
+          // 사용자 데이터 제공 동의문 this key points at.
+          console.error(
+            '[Order] consented user data is not set up in the console:',
+            result.code,
+          );
+        }
+        setContactSource('manual');
+      } finally {
+        setContactLoading(false);
+      }
+    },
+    [contactLoading],
+  );
+
+  useEffect(() => {
+    if (!userKey) return;
+    if (contactSource !== 'unknown') return;
+    void loadConsentedContact(false);
+  }, [userKey, contactSource]);
 
   const handleSubmit = async () => {
     trackClick('order_submit_click', {
@@ -313,6 +483,18 @@ function Page() {
         missing_design_input: true,
       });
       setError('디자인 이미지나 텍스트를 먼저 추가해 주세요.');
+      return;
+    }
+    /**
+     * A garment order with no size is not an order.
+     *
+     * The screen checked the address and the design but never the thing being
+     * worn, which was safe only because the catalogue used to preselect a
+     * size. It no longer does, so this is the guard that used to be implicit.
+     */
+    if (orderLines.length === 0) {
+      trackEvent('order_validation_failed', { missing_size: true });
+      setError('사이즈를 골라주세요.');
       return;
     }
     setSubmitting(true);
@@ -511,6 +693,58 @@ function Page() {
 
       {renderOrderSummaryCard()}
 
+      {/*
+        Toss already knows where to send it.
+
+        These fields were nine boxes the customer typed while their design sat
+        on another screen. getConsentedUserData asks them once, on Toss's own
+        consent sheet, and hands back the same four answers. The form is still
+        here — an old Toss app, a refusal, or a console without a consent
+        document all land on it — but it is the fallback now, not the way in.
+      */}
+      {contactSource === 'toss' ? (
+        <Card style={styles.formCard}>
+          <Text style={styles.sectionTitle}>어디로 보내드릴까요?</Text>
+          <Text style={styles.consentedName}>{name}</Text>
+          <Text style={styles.consentedLine}>{phone}</Text>
+          <Text style={styles.consentedLine}>{address1}</Text>
+          {email ? <Text style={styles.consentedLine}>{email}</Text> : null}
+          <TextInput
+            style={styles.input}
+            placeholder="상세 주소 (동/호수 등)"
+            value={address2}
+            onChangeText={setAddress2}
+          />
+          <TextInput
+            style={styles.input}
+            placeholder="배송 시 요청사항이 있으면 알려주세요"
+            value={memo}
+            onChangeText={setMemo}
+          />
+          <Pressable
+            onPress={() => setContactSource('manual')}
+            accessibilityRole="button"
+            accessibilityLabel="배송지 직접 입력하기"
+            style={styles.consentedSwitch}
+          >
+            <Text style={styles.consentedSwitchText}>직접 입력할게요</Text>
+          </Pressable>
+        </Card>
+      ) : (
+        <>
+        {contactSource === 'manual' ? (
+          <Pressable
+            onPress={() => void loadConsentedContact(true)}
+            disabled={contactLoading}
+            accessibilityRole="button"
+            accessibilityLabel="토스에서 배송지 가져오기"
+            style={styles.consentedFetch}
+          >
+            <Text style={styles.consentedFetchText}>
+              {contactLoading ? '가져오는 중...' : '토스에서 배송지 가져오기'}
+            </Text>
+          </Pressable>
+        ) : null}
       <Card style={styles.formCard}>
         <Text style={styles.sectionTitle}>주문하시는 분</Text>
         <TextInput
@@ -592,19 +826,9 @@ function Page() {
           multiline
         />
       </Card>
+        </>
+      )}
 
-      <Card style={styles.quickFaqCard}>
-        <Text style={styles.quickFaqTitle}>주문 전에 확인해 주세요</Text>
-        {orderFaqs.map((item) => (
-          <View key={item.id} style={styles.quickFaqRow}>
-            <Text style={styles.quickFaqQ}>Q.</Text>
-            <View style={styles.quickFaqBody}>
-              <Text style={styles.quickFaqQuestion}>{item.question}</Text>
-              <Text style={styles.quickFaqAnswer}>{item.answer}</Text>
-            </View>
-          </View>
-        ))}
-      </Card>
 
       {/* 동의 체크박스 */}
       <View style={styles.agreementSection}>
@@ -640,19 +864,20 @@ function Page() {
                 : '토스페이로 결제하기'
           }
           onPress={handleSubmit}
-          disabled={submitting || success || !agreedPrivacy || !agreedTerms || !agreedCustom || !name || !phone || !email || !address1}
+          disabled={submitting || success || !agreedPrivacy || !agreedTerms || !agreedCustom || !name || !phone || !email || !address1 || orderLines.length === 0}
           style={styles.primaryCta}
         />
-        {!success && !submitting && (!name || !phone || !email || !address1 || !agreedPrivacy || !agreedTerms || !agreedCustom) && (
+        {!success && !submitting && (orderLines.length === 0 || !name || !phone || !email || !address1 || !agreedPrivacy || !agreedTerms || !agreedCustom) && (
           <Text style={styles.disabledReason}>
-            {!name ? '※ 이름을 입력해주세요' :
+            {orderLines.length === 0 ? '※ 사이즈를 골라주세요' :
+             !name ? '※ 이름을 입력해주세요' :
              !phone ? '※ 연락처를 입력해주세요' :
              !email ? '※ 이메일을 입력해주세요' :
              !address1 ? '※ 주소를 입력해주세요' :
              '※ 필수 동의 항목을 확인해주세요'}
           </Text>
         )}
-        <SecondaryButton label="돌아가기" onPress={() => navigation.goBack()} />
+        {/* 헤더의 '이전'과 같은 동작이라, 결제 화면 아래에는 두지 않는다. */}
       </View>
 
       <DaumPostcodeModal
@@ -824,6 +1049,107 @@ const styles = StyleSheet.create({
   chipSpacing: {
     marginRight: theme.spacing.sm,
     marginBottom: theme.spacing.sm,
+  },
+  consentedName: {
+    fontSize: 16,
+    lineHeight: 22,
+    fontWeight: '700',
+    color: '#191F28',
+    marginBottom: 2,
+  },
+  consentedLine: {
+    fontSize: 14,
+    lineHeight: 20,
+    color: '#4E5968',
+  },
+  consentedSwitch: {
+    alignSelf: 'flex-start',
+    paddingVertical: 8,
+  },
+  consentedSwitchText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#1B64DA',
+  },
+  consentedFetch: {
+    minHeight: 48,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#1B64DA',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 12,
+  },
+  consentedFetchText: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#1B64DA',
+  },
+  checkoutNotice: {
+    fontSize: 13,
+    lineHeight: 18,
+    color: '#8B95A1',
+    marginBottom: 12,
+  },
+  sizeLabel: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#8B95A1',
+    marginTop: 12,
+    marginBottom: 8,
+  },
+  sizeChips: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  sizeChip: {
+    marginRight: 0,
+  },
+  qtyRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 10,
+  },
+  qtyPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
+    paddingHorizontal: 10,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#F2F4F6',
+  },
+  qtyPillSize: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#191F28',
+    marginRight: 2,
+  },
+  qtyStep: {
+    width: 26,
+    height: 26,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  qtyStepText: {
+    fontSize: 16,
+    lineHeight: 18,
+    fontWeight: '700',
+    color: '#4E5968',
+  },
+  qtyValue: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#191F28',
+    minWidth: 14,
+    textAlign: 'center',
+  },
+  summaryEditLink: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#1B64DA',
   },
   formCard: {
     marginBottom: theme.spacing.lg,

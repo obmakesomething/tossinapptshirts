@@ -266,8 +266,18 @@ export function CatalogProvider({ children }: { children: React.ReactNode }) {
         ? current
         : (selectedProduct.colors[0] ?? ''),
     );
-    const firstSize = selectedProduct.sizes[0]?.label ?? '';
-    setOrderLines([createOrderLine(firstSize, 1)]);
+    /**
+     * No size is chosen for the customer.
+     *
+     * This used to seed sizes[0], which is the smallest size every garment
+     * offers — XS on a tee, S on a hoodie. Anyone who never opened the option
+     * sheet ordered that, and the press had no way to know it was not meant.
+     * The screens were already built for the unchosen state — the editor
+     * summary reads 사이즈 미선택 and the sheet says 아래에서 사이즈를 골라주세요
+     * — the default just made it unreachable. Sizes also differ between
+     * garments, so a switch has to drop the old line either way.
+     */
+    setOrderLines([]);
     const autoPrint = resolveAutoPrint(selectedProduct);
     setSelectedPrintId(autoPrint.id);
   }, [selectedProduct?.id]);

@@ -1,7 +1,7 @@
 {
   "schema": "fga-action-contracts-v1",
   "status": "guessed",
-  "note": "What each control on the design-to-order path is supposed to do. The engine observes what a click actually did; without these it has an observation and nothing to check it against, and reports NOT EVALUATED. Outcome types come from the engine's own vocabulary: NAVIGATION, DIALOG, IN_PLACE_UPDATE, NETWORK_ONLY_NO_VISIBLE_CHANGE, NO_OBSERVED_CHANGE. Contracts for controls the crawl cannot reach are declared on purpose — an unreachable checkout should be a stated gap rather than a silence.",
+  "note": "What each control on the design-to-order path is supposed to do. The engine observes what a click actually did; without these it has an observation and nothing to check it against, and reports NOT EVALUATED. Outcome types come from the engine's own vocabulary: NAVIGATION, DIALOG, IN_PLACE_UPDATE, NETWORK_ONLY_NO_VISIBLE_CHANGE, NO_OBSERVED_CHANGE. Contracts for controls the crawl cannot reach are declared on purpose — an unreachable checkout should be a stated gap rather than a silence. 완성 보기 and 상품 변경 were removed when the preview screen was deleted and the garment picker moved inline: a contract for a control that no longer exists is not a stated gap, it is a false one.",
   "contracts": [
     {
       "label": "지금 만들어보기",
@@ -24,25 +24,85 @@
       }
     },
     {
-      "label": "완성 보기",
+      "label": "티셔츠",
       "outcome": {
-        "type": "NAVIGATION",
-        "target": "/preview"
+        "type": "IN_PLACE_UPDATE"
+      },
+      "note": "상품을 바꾸면 목업·가격·사이즈 목록이 그 자리에서 갱신된다. 화면 이동 없음."
+    },
+    {
+      "label": "후드",
+      "outcome": {
+        "type": "IN_PLACE_UPDATE"
       }
     },
     {
-      "label": "상품 변경",
+      "label": "맨투맨",
+      "outcome": {
+        "type": "IN_PLACE_UPDATE"
+      }
+    },
+    {
+      "label": "M",
+      "outcome": {
+        "type": "IN_PLACE_UPDATE"
+      },
+      "note": "사이즈 칩은 주문 줄을 더하거나 뺀다. 합계와 주문 버튼 문구가 함께 바뀐다."
+    },
+    {
+      "label": "앞면",
+      "outcome": {
+        "type": "IN_PLACE_UPDATE"
+      }
+    },
+    {
+      "label": "뒷면",
+      "outcome": {
+        "type": "IN_PLACE_UPDATE"
+      }
+    },
+    {
+      "label": "편집하기",
+      "outcome": {
+        "type": "IN_PLACE_UPDATE"
+      },
+      "note": "편집 드로어를 펼친다. 컬럼 위에 겹쳐 그려지므로 화면 이동이 아니다."
+    },
+    {
+      "label": "저장",
+      "outcome": {
+        "type": "IN_PLACE_UPDATE"
+      },
+      "note": "디자인을 저장하고 토스트로 알린다. 미리보기 화면이 가지고 있던 기능."
+    },
+    {
+      "label": "공유",
+      "outcome": {
+        "type": "DIALOG"
+      },
+      "note": "토스 공유 시트를 띄운다."
+    },
+    {
+      "label": "옵션 바꾸기",
       "outcome": {
         "type": "NAVIGATION",
-        "target": "/products"
-      }
+        "target": "/editor"
+      },
+      "note": "주문 화면에서 디자인 화면으로 돌아간다. 색상·사이즈·수량은 모두 그쪽에 있다."
+    },
+    {
+      "label": "토스에서 배송지 가져오기",
+      "outcome": {
+        "type": "DIALOG"
+      },
+      "note": "토스 동의 시트를 띄운다. 거부한 뒤 다시 시도할 때만 나타나는 컨트롤."
     }
   ],
   "sourceProvenance": {
     "repo": "obmakesomething/tossinapptshirts",
-    "commit": "775db365",
-    "ref": "feat/drop-ai-and-print-the-approved-layout",
-    "extractedAt": "2026-08-07T00:00:00+09:00"
+    "commit": "d89bc4d4",
+    "ref": "feat/one-screen",
+    "extractedAt": "2026-08-29T00:00:00+09:00"
   },
   "packExtraction": {
     "schema": "fga-pack-extraction-metadata-v1",

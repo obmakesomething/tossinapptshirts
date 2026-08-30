@@ -53,6 +53,7 @@ const ToastItem: React.FC<{ toast: Toast; onDismiss: () => void }> = ({
                     onPress={toast.action.onPress}
                     style={({ pressed }) => [styles.actionButton, pressed && styles.pressed]}
                     accessibilityRole="button"
+                    accessibilityLabel={toast.action.label}
                 >
                     <Text style={styles.actionText}>{toast.action.label}</Text>
                 </Pressable>

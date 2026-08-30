@@ -21,9 +21,9 @@
   "requiredRouteStateCount": 1,
   "schema": "fga-pack-manifest-v1",
   "sourceProvenance": {
-    "commit": "e6ae64bd",
-    "extractedAt": "2026-08-07T00:00:00+09:00",
-    "ref": "feat/drop-ai-and-print-the-approved-layout",
+    "commit": "d89bc4d4",
+    "extractedAt": "2026-08-29T00:00:00+09:00",
+    "ref": "feat/one-screen",
     "repo": "obmakesomething/tossinapptshirts"
   },
   "status": "extracted",

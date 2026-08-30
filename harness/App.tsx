@@ -7,13 +7,12 @@
 import React from 'react';
 import { View, StyleSheet, Text, Pressable } from 'react-native';
 import { useHarnessLocation, navigateTo } from './mocks/granite';
-import { CatalogProvider } from '../src/context/catalog';
+import { CatalogProvider, useCatalog } from '../src/context/catalog';
 import { ToastProvider } from '../src/context/toastContext';
 import { ToastContainer } from '../src/components/toast';
 
 import { Route as Home } from '../src/pages/index';
 import { Route as Editor } from '../src/pages/editor';
-import { Route as Preview } from '../src/pages/preview';
 import { Route as Order } from '../src/pages/order';
 import { Route as OrderComplete } from '../src/pages/order-complete';
 import { Route as OrderDetail } from '../src/pages/order-detail';
@@ -31,7 +30,6 @@ export const HARNESS_ROUTES: { path: string; label: string; Component: React.Com
   { path: '/products', label: '상품', Component: Products.component },
   { path: '/my', label: '마이', Component: My.component },
   { path: '/editor', label: '에디터', Component: Editor.component },
-  { path: '/preview', label: '미리보기', Component: Preview.component },
   { path: '/order', label: '주문', Component: Order.component },
   { path: '/order-complete', label: '주문완료', Component: OrderComplete.component },
   { path: '/orders', label: '주문내역', Component: Orders.component },
@@ -42,6 +40,29 @@ export const HARNESS_ROUTES: { path: string; label: string; Component: React.Com
   { path: '/terms', label: '약관', Component: Terms.component },
   { path: '/privacy', label: '개인정보', Component: Privacy.component },
 ];
+
+/**
+ * Stands a session up without the login round trip.
+ *
+ * Everything behind the Toss login — the order form, consent, payment — was
+ * unreachable here: appLogin is mocked, but the code it returns is exchanged
+ * against the production API, which localhost cannot reach. `?session=1`
+ * seeds a stub envelope so those screens can be reviewed at all.
+ */
+function HarnessSession({ children }: { children: React.ReactNode }) {
+  const { setAitSession, userKey } = useCatalog();
+  React.useEffect(() => {
+    if (userKey) return;
+    if (new URLSearchParams(window.location.search).get('session') !== '1') return;
+    setAitSession({
+      sessionToken: 'harness-session',
+      user: { id: 'harness-user' },
+      identity: { provider: 'toss', userKey: 'harness-user-key' },
+      mode: 'stub',
+    });
+  }, [userKey]);
+  return <>{children}</>;
+}
 
 export default function App() {
   const path = useHarnessLocation();
@@ -68,7 +89,9 @@ export default function App() {
       <View style={styles.bare}>
         <ToastProvider>
           <CatalogProvider>
-            <Screen />
+            <HarnessSession>
+              <Screen />
+            </HarnessSession>
             <ToastContainer />
           </CatalogProvider>
         </ToastProvider>

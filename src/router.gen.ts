@@ -11,7 +11,6 @@ import { Route as _OrderCompleteRoute } from '../pages/order-complete';
 import { Route as _OrderDetailRoute } from '../pages/order-detail';
 import { Route as _OrderRoute } from '../pages/order';
 import { Route as _OrdersRoute } from '../pages/orders';
-import { Route as _PreviewRoute } from '../pages/preview';
 import { Route as _PrivacyRoute } from '../pages/privacy';
 import { Route as _ProductsRoute } from '../pages/products';
 import { Route as _TermsRoute } from '../pages/terms';
@@ -29,7 +28,6 @@ declare module '@granite-js/react-native' {
     '/order-detail': (typeof _OrderDetailRoute)['_inputType'];
     '/order': (typeof _OrderRoute)['_inputType'];
     '/orders': (typeof _OrdersRoute)['_inputType'];
-    '/preview': (typeof _PreviewRoute)['_inputType'];
     '/privacy': (typeof _PrivacyRoute)['_inputType'];
     '/products': (typeof _ProductsRoute)['_inputType'];
     '/terms': (typeof _TermsRoute)['_inputType'];
@@ -47,7 +45,6 @@ declare module '@granite-js/react-native' {
     '/order-detail': (typeof _OrderDetailRoute)['_outputType'];
     '/order': (typeof _OrderRoute)['_outputType'];
     '/orders': (typeof _OrdersRoute)['_outputType'];
-    '/preview': (typeof _PreviewRoute)['_outputType'];
     '/privacy': (typeof _PrivacyRoute)['_outputType'];
     '/products': (typeof _ProductsRoute)['_outputType'];
     '/terms': (typeof _TermsRoute)['_outputType'];
