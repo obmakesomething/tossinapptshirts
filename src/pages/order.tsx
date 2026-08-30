@@ -7,8 +7,9 @@ import {
 import React, { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import {
-  Chip,
   Card,
+  Chip,
+  ColorSwatch,
   PrimaryButton,
   Screen,
   SecondaryButton,
@@ -17,6 +18,7 @@ import {
 import { DaumPostcodeModal, type AddressData } from '../components/DaumPostcodeModal';
 import { API_BASE_URL } from '../config';
 import { useCatalog } from '../context/catalog';
+import { resolveColorValue } from '../data/colorMap';
 import {
   type ConsentedContactResult,
   requestConsentedContact,
@@ -87,6 +89,9 @@ function Page() {
     selectedColor,
     orderLines,
     totalQuantity,
+    products,
+    setSelectedProductId,
+    setSelectedColor,
     addOrderLine,
     removeOrderLine,
     setOrderLineQuantity,
@@ -290,9 +295,42 @@ function Page() {
       </View>
 
       <Text style={styles.summaryMeta}>
-        {selectedColor} · 제작·배송 7~14일
-        {printBackEnabled ? ' · 뒷면도 프린팅' : ''}
+        제작·배송 7~14일{printBackEnabled ? ' · 뒷면도 프린팅' : ''}
       </Text>
+
+      {/*
+        Colour is chosen here too now.
+
+        It used to sit on the editor because you can see it on the mockup, but
+        seeing it and choosing it are different things, and the editor's job is
+        to show the customer their design with one button under it. Everything
+        that describes the order is described in one place: this one.
+      */}
+      <Text style={styles.sizeLabel}>상품</Text>
+      <View style={styles.sizeChips}>
+        {products.map((item) => (
+          <Chip
+            key={item.id}
+            label={`${item.name} ${formatPrice(item.price ?? 0)}`}
+            selected={item.id === selectedProduct.id}
+            onPress={() => setSelectedProductId(item.id)}
+            style={styles.sizeChip}
+          />
+        ))}
+      </View>
+
+      <Text style={styles.sizeLabel}>색상</Text>
+      <View style={styles.sizeChips}>
+        {selectedProduct.colors.map((color) => (
+          <ColorSwatch
+            key={color}
+            label={color}
+            color={resolveColorValue(color)}
+            selected={selectedColor === color}
+            onPress={() => setSelectedColor(color)}
+          />
+        ))}
+      </View>
 
       {/*
         Size is asked once, here.

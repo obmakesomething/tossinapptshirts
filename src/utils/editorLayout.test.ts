@@ -18,7 +18,7 @@ const DEVICES: Array<[string, number]> = [
 ];
 
 /** What the header and the block below the canvas measure at 375pt wide. */
-const MEASURED = { headerHeight: 164, actionsHeight: 222 };
+const MEASURED = { headerHeight: 96, actionsHeight: 98 };
 
 describe('the editor column fits the phone it is on', () => {
   describe.each(DEVICES)('%s (%ipt)', (_name, height) => {
@@ -80,7 +80,6 @@ describe('the drawer never takes room the screen does not have', () => {
       hasArtwork: true,
       panelExpanded: true,
     });
-    expect(layout.panelHeight).toBeLessThan(220);
     expect(layout.canvasHeight).toBe(MIN_CANVAS_HEIGHT);
     expect(layout.fits).toBe(true);
   });
@@ -98,7 +97,9 @@ describe('the drawer never takes room the screen does not have', () => {
     }
   });
 
-  it('rests as just its own handle', () => {
+  it('costs the column nothing while it is shut', () => {
+    // It is not rendered when closed — it opens from the header — so a closed
+    // drawer must not reserve the bar it used to rest as.
     const layout = computeEditorLayout({
       safeHeight: 852,
       screenHeight: 852,
@@ -107,6 +108,9 @@ describe('the drawer never takes room the screen does not have', () => {
       panelExpanded: false,
     });
     expect(layout.panelHeight).toBe(PANEL_HANDLE_HEIGHT);
+    expect(PANEL_HANDLE_HEIGHT).toBe(0);
+    // Everything the drawer is not taking goes to the garment.
+    expect(layout.canvasHeight).toBeGreaterThan(500);
   });
 });
 

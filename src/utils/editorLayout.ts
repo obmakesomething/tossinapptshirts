@@ -17,25 +17,39 @@
 export const MIN_CANVAS_HEIGHT = 200;
 /** What the garment may shrink to on a phone that cannot afford 200. */
 export const CANVAS_FLOOR = 160;
-/** The resting drawer is its own title bar and nothing else. */
-export const PANEL_HANDLE_HEIGHT = 56;
+/**
+ * The drawer reserves nothing when it is shut.
+ *
+ * It used to rest as a title bar along the bottom, so a closed drawer still
+ * cost 56pt of column. It is not rendered at all now — it opens from the
+ * header — so a shut drawer is worth exactly zero, and the garment gets it.
+ */
+export const PANEL_HANDLE_HEIGHT = 0;
 /** Reset button and print-size caption, plus slack under 완성 보기. */
 export const RESET_CAPTION_RESERVED = 46;
 /** With no artwork only the upload button sits below the garment. */
 export const EMPTY_CTA_RESERVED = 132;
-/** Title row, lead copy, garment/colour row and the 앞면/뒷면 segment. */
-export const EDITOR_HEADER_RESERVED = 164;
+/**
+ * The title row, and the lead copy that only shows before there is a photo.
+ *
+ * This was 164 when the header also carried a garment/colour row and the
+ * 앞면/뒷면 segment. Both moved — colour and garment to the order screen,
+ * placement into the edit drawer — so the header is a back arrow, a title and
+ * an edit button.
+ */
+export const EDITOR_HEADER_RESERVED = 96;
 /**
  * Size chips, order button and the DPI line, before they are measured.
  *
- * The block measures 256pt at 375pt wide with the chips wrapped onto two
- * lines and the resolution notice showing; this is that plus the reset row
- * and deliberate slack. It is generous on purpose: an over-reserve costs the
+ * The block measures 98pt at 375pt wide — an order button and, when it has
+ * something to say, the resolution notice. It was 320 when size chips and a
+ * quantity strip lived here too; they are on the order screen now. This is
+ * that measurement plus the reset row and deliberate slack. It is generous on purpose: an over-reserve costs the
  * garment a few points, an under-reserve hides the end of the column behind
  * the drawer. Only the first frame and the web harness ever use it — onLayout
  * replaces it everywhere else, and never fires in the harness at all.
  */
-export const ARTWORK_CAPTION_RESERVED = 320;
+export const ARTWORK_CAPTION_RESERVED = 140;
 
 export type EditorLayoutInput = {
   /** What the safe area reported, or 0 before it has. */

@@ -29,7 +29,6 @@ import {
 } from '../components/ui';
 import { useCatalog } from '../context/catalog';
 import { useToast } from '../context/toastContext';
-import { resolveColorValue } from '../data/colorMap';
 import { buildTemplate, printSizeByCategory } from '../data/mockupTemplates';
 import {
   trackClick,
@@ -43,12 +42,10 @@ import {
 import { toImageDataUrl } from '../utils/imageMime';
 import { textRole } from '../utils/textRole';
 import { computeEditorLayout } from '../utils/editorLayout';
-import { GarmentSheet } from '../components/GarmentSheet';
 import {
   type PrintResolutionResult,
   evaluatePrintResolution,
 } from '../utils/printResolution';
-import { FREE_SHIPPING_THRESHOLD, SHIPPING_FEE } from '../data/pricing';
 import { formatPrice } from '../utils/format';
 
 const ACCENT = '#1B64DA';
@@ -68,7 +65,6 @@ function Page() {
   const { showToast } = useToast();
   const {
 
-    products,
     selectedProduct,
     selectedColor,
     orderLines,
@@ -93,8 +89,6 @@ function Page() {
     replacePhoto,
     deletePhoto,
     selectPhoto,
-    setSelectedProductId,
-    setSelectedColor,
     saveCurrentDesign,
   } = useCatalog();
 
@@ -118,7 +112,6 @@ function Page() {
   const [imageControlFocused, setImageControlFocused] = useState(false);
   // Rests collapsed: the first thing to see after adding a photo is the shirt.
   const [panelExpanded, setPanelExpanded] = useState(false);
-  const [garmentSheetOpen, setGarmentSheetOpen] = useState(false);
   const [printQuality, setPrintQuality] = useState<PrintResolutionResult | null>(
     null,
   );
@@ -491,78 +484,31 @@ function Page() {
             {hasArtwork ? '디자인 확인' : '사진 올리기'}
           </Text>
           {/*
-            Undo, redo, save and share moved into the edit drawer.
+            The only other way out of this screen, and it is not on the bottom.
 
-            None of them is the thing to do on this screen — the thing to do is
-            add a photo, or order the shirt you are looking at. They are edit
-            tools, so they live with the edit tools.
+            Everything that is not "order this" is an edit tool, and edit tools
+            open from here. The bottom of the screen is left to the one action
+            the customer came to take.
           */}
+          {hasArtwork ? (
+            <Pressable
+              style={styles.headerIconButton}
+              onPress={() => setPanelExpanded((v) => !v)}
+              accessibilityRole="button"
+              accessibilityLabel={panelExpanded ? '편집 도구 접기' : '편집하기'}
+              hitSlop={5}
+            >
+              <Text style={styles.headerIconText}>✎</Text>
+            </Pressable>
+          ) : (
+            <View style={styles.headerIconButtonPlaceholder} />
+          )}
         </View>
-        <Text style={styles.leadCopy} {...textRole('lead')}>
-          {hasArtwork
-            ? `금액은 배송비 ${formatPrice(SHIPPING_FEE)} 별도, ${formatPrice(FREE_SHIPPING_THRESHOLD)} 이상 무료예요.`
-            : '사진을 올리면 옷에 얹어 보여드려요.'}
-        </Text>
-        {/*
-          One line, not twelve controls.
-
-          Garment and colour were chips and swatches laid out here, which meant
-          the screen asked for five decisions before there was a photo to make
-          them about. They are behind 변경 now: the only thing to do on an empty
-          editor is add a photo, and the only thing to do on a full one is order
-          it. Size and quantity moved to the order screen entirely — a flat
-          mockup cannot show them, so putting them beside it bought nothing.
-        */}
-        <View style={styles.optionRow}>
-          <View
-            style={[
-              styles.compactDot,
-              { backgroundColor: resolveColorValue(selectedColor) },
-            ]}
-          />
-          <Text style={styles.compactName} numberOfLines={1}>
-            {selectedProduct.name} · {selectedColor}
+        {hasArtwork ? null : (
+          <Text style={styles.leadCopy} {...textRole('lead')}>
+            사진을 올리면 옷에 얹어 보여드려요.
           </Text>
-          <Pressable
-            style={styles.optionChangeButton}
-            onPress={() => {
-              trackClick('editor_options_open');
-              setGarmentSheetOpen(true);
-            }}
-            accessibilityRole="button"
-            accessibilityLabel="옷 바꾸기"
-          >
-            <Text style={styles.optionRowAction}>변경</Text>
-            <Chevron direction="right" size={9} />
-          </Pressable>
-        </View>
-        {/* 앞/뒤면 세그먼트 — 올릴 것이 있을 때만 */}
-        {hasArtwork ? (
-        <View style={styles.placementSegment}>
-          <Pressable
-            style={[styles.segmentButton, selectedPlacement === 'front' && styles.segmentButtonActive]}
-            onPress={() => handlePlacementChange('front')}
-            accessibilityRole="button"
-            accessibilityLabel="앞면"
-            accessibilityState={{ selected: selectedPlacement === 'front' }}
-          >
-            <Text style={[styles.segmentButtonText, selectedPlacement === 'front' && styles.segmentButtonTextActive]}>
-              앞면
-            </Text>
-          </Pressable>
-          <Pressable
-            style={[styles.segmentButton, selectedPlacement === 'back' && styles.segmentButtonActive]}
-            onPress={() => handlePlacementChange('back')}
-            accessibilityRole="button"
-            accessibilityLabel="뒷면"
-            accessibilityState={{ selected: selectedPlacement === 'back' }}
-          >
-            <Text style={[styles.segmentButtonText, selectedPlacement === 'back' && styles.segmentButtonTextActive]}>
-              뒷면
-            </Text>
-          </Pressable>
-        </View>
-        ) : null}
+        )}
       </View>
 
       {/* ── 캔버스 (최대화) ── */}
@@ -668,22 +614,54 @@ function Page() {
       ) : null}
 
       {/* ── 하단 탭 패널 — 편집할 것이 있을 때만 ── */}
-      {hasArtwork ? (
+      {hasArtwork && panelExpanded ? (
       <View style={[styles.panel, { height: panelHeight }]}>
+        {/*
+          No resting handle along the bottom.
+
+          A collapsed drawer is still a bar competing with the order button for
+          the edge of the screen the thumb reaches first. The drawer opens from
+          the header now and closes from its own 닫기, so when it is shut the
+          bottom of the screen holds one thing.
+        */}
         <View style={styles.editPanelHeader}>
+          <Text style={styles.editPanelTitle}>편집하기</Text>
           <Pressable
-            style={styles.editPanelToggleRow}
-            onPress={() => setPanelExpanded((v) => !v)}
+            onPress={() => setPanelExpanded(false)}
             accessibilityRole="button"
-            accessibilityLabel={panelExpanded ? '편집 도구 접기' : '편집 도구 펼치기'}
+            accessibilityLabel="편집 도구 닫기"
+            hitSlop={8}
           >
-            <Text style={styles.editPanelTitle}>편집하기</Text>
-            <Chevron direction={panelExpanded ? 'down' : 'up'} size={9} />
+            <Chevron direction="down" size={9} />
           </Pressable>
         </View>
-        {panelExpanded ? (
         <>
         {/* Edit tools, in the place called 편집하기. */}
+        {/* 앞면·뒷면은 디자인 행위라, 편집 도구와 함께 둔다. */}
+        <View style={styles.placementSegment}>
+          <Pressable
+            style={[styles.segmentButton, selectedPlacement === 'front' && styles.segmentButtonActive]}
+            onPress={() => handlePlacementChange('front')}
+            accessibilityRole="button"
+            accessibilityLabel="앞면"
+            accessibilityState={{ selected: selectedPlacement === 'front' }}
+          >
+            <Text style={[styles.segmentButtonText, selectedPlacement === 'front' && styles.segmentButtonTextActive]}>
+              앞면
+            </Text>
+          </Pressable>
+          <Pressable
+            style={[styles.segmentButton, selectedPlacement === 'back' && styles.segmentButtonActive]}
+            onPress={() => handlePlacementChange('back')}
+            accessibilityRole="button"
+            accessibilityLabel="뒷면"
+            accessibilityState={{ selected: selectedPlacement === 'back' }}
+          >
+            <Text style={[styles.segmentButtonText, selectedPlacement === 'back' && styles.segmentButtonTextActive]}>
+              뒷면
+            </Text>
+          </Pressable>
+        </View>
         <View style={styles.panelToolRow}>
           <Pressable
             onPress={handleUndo}
@@ -1034,19 +1012,8 @@ function Page() {
 
         </ScrollView>
         </>
-        ) : null}
       </View>
       ) : null}
-
-      <GarmentSheet
-        visible={garmentSheetOpen}
-        onClose={() => setGarmentSheetOpen(false)}
-        products={products}
-        product={selectedProduct}
-        selectedColor={selectedColor}
-        onSelectProduct={setSelectedProductId}
-        onSelectColor={setSelectedColor}
-      />
 
       {/* Delete Photo Confirmation Modal */}
       <Modal
@@ -1103,6 +1070,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     marginBottom: theme.spacing.sm,
+  },
+  headerIconButtonPlaceholder: {
+    width: 34,
   },
   headerIconButton: {
     width: 34,
