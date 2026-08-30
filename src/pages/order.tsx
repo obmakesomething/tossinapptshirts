@@ -131,6 +131,7 @@ function Page() {
     'unknown',
   );
   const [contactLoading, setContactLoading] = useState(false);
+  const [garmentOpen, setGarmentOpen] = useState(false);
   const address2InputRef = useRef<TextInput>(null);
   const [agreedPrivacy, setAgreedPrivacy] = useState(false);
   const [agreedTerms, setAgreedTerms] = useState(false);
@@ -272,25 +273,33 @@ function Page() {
 
   const renderOrderSummaryCard = () => (
     <Card style={styles.summaryCard}>
-      <View style={styles.summaryHeader}>
-        <Text style={styles.summaryTitle}>{selectedProduct.name}</Text>
-        {/*
-          A link, not a full-width button.
+      {/*
+        The garment is decided; the size is not.
 
-          It goes where the header's 이전 already goes, so it does not need the
-          weight of a second button — and the room it was taking is what put
-          the consents and the pay button below the fold.
-        */}
+        Coming here from a design the customer just approved, 상품 and 색상 are
+        answers they already gave — asking again at the till turns a decision
+        into a doubt. They read as a line, and open only if the line is wrong.
+        Size never had an answer, so it stays a question.
+      */}
+      <View style={styles.summaryHeader}>
+        <Text style={styles.summaryTitle}>
+          {selectedProduct.name} · {selectedColor}
+        </Text>
         <Pressable
           onPress={() => {
-            trackClick('order_change_options_click');
-            navigation.navigate('/editor');
+            trackClick('order_change_garment_click', {
+              opening: !garmentOpen,
+            });
+            setGarmentOpen((v) => !v);
           }}
           accessibilityRole="button"
-          accessibilityLabel="옷 바꾸기"
+          accessibilityLabel={garmentOpen ? '옷 고르기 접기' : '옷 바꾸기'}
+          accessibilityState={{ expanded: garmentOpen }}
           hitSlop={8}
         >
-          <Text style={styles.summaryEditLink}>옷 바꾸기</Text>
+          <Text style={styles.summaryEditLink}>
+            {garmentOpen ? '접기' : '변경'}
+          </Text>
         </Pressable>
       </View>
 
@@ -298,39 +307,35 @@ function Page() {
         제작·배송 7~14일{printBackEnabled ? ' · 뒷면도 프린팅' : ''}
       </Text>
 
-      {/*
-        Colour is chosen here too now.
+      {garmentOpen ? (
+        <>
+          <Text style={styles.sizeLabel}>상품</Text>
+          <View style={styles.sizeChips}>
+            {products.map((item) => (
+              <Chip
+                key={item.id}
+                label={`${item.name} ${formatPrice(item.price ?? 0)}`}
+                selected={item.id === selectedProduct.id}
+                onPress={() => setSelectedProductId(item.id)}
+                style={styles.sizeChip}
+              />
+            ))}
+          </View>
 
-        It used to sit on the editor because you can see it on the mockup, but
-        seeing it and choosing it are different things, and the editor's job is
-        to show the customer their design with one button under it. Everything
-        that describes the order is described in one place: this one.
-      */}
-      <Text style={styles.sizeLabel}>상품</Text>
-      <View style={styles.sizeChips}>
-        {products.map((item) => (
-          <Chip
-            key={item.id}
-            label={`${item.name} ${formatPrice(item.price ?? 0)}`}
-            selected={item.id === selectedProduct.id}
-            onPress={() => setSelectedProductId(item.id)}
-            style={styles.sizeChip}
-          />
-        ))}
-      </View>
-
-      <Text style={styles.sizeLabel}>색상</Text>
-      <View style={styles.sizeChips}>
-        {selectedProduct.colors.map((color) => (
-          <ColorSwatch
-            key={color}
-            label={color}
-            color={resolveColorValue(color)}
-            selected={selectedColor === color}
-            onPress={() => setSelectedColor(color)}
-          />
-        ))}
-      </View>
+          <Text style={styles.sizeLabel}>색상</Text>
+          <View style={styles.sizeChips}>
+            {selectedProduct.colors.map((color) => (
+              <ColorSwatch
+                key={color}
+                label={color}
+                color={resolveColorValue(color)}
+                selected={selectedColor === color}
+                onPress={() => setSelectedColor(color)}
+              />
+            ))}
+          </View>
+        </>
+      ) : null}
 
       {/*
         Size is asked once, here.
