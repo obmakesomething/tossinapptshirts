@@ -50,11 +50,15 @@ const FILL_SOFT = '#F2F4F6';
 const PANEL_BG = '#FFFFFF';
 const DEFAULT_STAGE_ZOOM = 1.0;
 /**
- * Kept in step with canvasArea's own paddingHorizontal below — they were 16
- * and 24, so the width the stage was sized against was not the width it got.
+ * None. The garment goes edge to edge.
+ *
+ * The mockups are transparent PNGs, so something has to sit behind a white
+ * tee or it vanishes into a white page — but that backdrop was a rounded card
+ * inset from both margins, which put the thing being sold inside a box and
+ * took the width off it. It is a full-bleed band now: same contrast, no box.
  */
-const CANVAS_AREA_HORIZONTAL_PADDING = 12 * 2;
-const CANVAS_FRAME_HORIZONTAL_PADDING = 6 * 2;
+const CANVAS_AREA_HORIZONTAL_PADDING = 0;
+const CANVAS_FRAME_HORIZONTAL_PADDING = 0;
 const CANVAS_FRAME_VERTICAL_PADDING = 12 * 2;
 
 export const Route = createRoute('/editor', {
@@ -1226,9 +1230,8 @@ const styles = StyleSheet.create({
     width: '100%',
     alignItems: 'center',
     justifyContent: 'center',
-    // Matches CANVAS_AREA_HORIZONTAL_PADDING; the garment is the content, and
-    // margin around it is margin taken off the thing being sold.
-    paddingHorizontal: 12,
+    // Matches CANVAS_AREA_HORIZONTAL_PADDING.
+    paddingHorizontal: 0,
     marginBottom: theme.spacing.xs,
   },
   canvasAreaFocused: {
@@ -1265,6 +1268,9 @@ const styles = StyleSheet.create({
   },
   canvasOutsideActions: {
     width: '100%',
+    // The garment is full-bleed; the button is not. Zeroing the area's padding
+    // for the shirt had taken the margins off this too.
+    paddingHorizontal: 20,
     alignItems: 'stretch',
     marginTop: theme.spacing.xs,
     marginBottom: 2,
@@ -1359,10 +1365,11 @@ const styles = StyleSheet.create({
   canvasFrame: {
     position: 'relative',
     width: '100%',
-    borderRadius: 16,
-    paddingVertical: 18,
-    // Matches CANVAS_FRAME_HORIZONTAL_PADDING.
-    paddingHorizontal: 6,
+    // No radius and no inset: the backdrop is a band the garment sits on,
+    // not a card the garment sits in.
+    borderRadius: 0,
+    paddingVertical: 0,
+    paddingHorizontal: 0,
     alignItems: 'center',
     justifyContent: 'center',
   },
